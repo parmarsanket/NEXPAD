@@ -1,0 +1,76 @@
+package com.sanket.tools.nexpad.viewmodel
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.sanket.tools.nexpad.model.GamepadInput
+import com.sanket.tools.nexpad.network.NetworkClient
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+
+class GamepadViewModel : ViewModel() {
+    private val networkClient = NetworkClient()
+    
+    private val _inputState = MutableStateFlow(GamepadInput())
+    val inputState: StateFlow<GamepadInput> = _inputState.asStateFlow()
+
+    private var transmitJob: Job? = null
+    
+    fun connect(ip: String, port: Int) {
+        viewModelScope.launch {
+            networkClient.connect(ip, port)
+            startTransmitting()
+        }
+    }
+    
+    fun disconnect() {
+        transmitJob?.cancel()
+        networkClient.disconnect()
+    }
+    
+    private fun startTransmitting() {
+        transmitJob?.cancel()
+        transmitJob = viewModelScope.launch {
+            while (isActive) {
+                networkClient.sendInput(_inputState.value)
+                // 60Hz transmission rate (1000ms / 60 = ~16.6ms)
+                delay(16L) 
+            }
+        }
+    }
+
+    fun updateButton(buttonName: String, isPressed: Boolean) {
+        _inputState.update { current ->
+            when (buttonName) {
+                "A" -> current.copy(btnA = isPressed)
+                "B" -> current.copy(btnB = isPressed)
+                "X" -> current.copy(btnX = isPressed)
+                "Y" -> current.copy(btnY = isPressed)
+                "UP" -> current.copy(dpadUp = isPressed)
+                "DOWN" -> current.copy(dpadDown = isPressed)
+                "LEFT" -> current.copy(dpadLeft = isPressed)
+                "RIGHT" -> current.copy(dpadRight = isPressed)
+                "L1" -> current.copy(btnL1 = isPressed)
+                "R1" -> current.copy(btnR1 = isPressed)
+                else -> current
+            }
+        }
+    }
+
+    fun updateLeftStick(x: Float, y: Float) {
+        _inputState.update { it.copy(leftStickX = x, leftStickY = y) }
+    }
+
+    fun updateRightStick(x: Float, y: Float) {
+        _inputState.update { it.copy(rightStickX = x, rightStickY = y) }
+    }
+
+    fun updateGyro(x: Float, y: Float, z: Float) {
+        _inputState.update { it.copy(gyroX = x, gyroY = y, gyroZ = z) }
+    }
+}
