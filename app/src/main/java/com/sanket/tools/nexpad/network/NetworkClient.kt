@@ -1,5 +1,6 @@
 package com.sanket.tools.nexpad.network
 
+import com.sanket.tools.nexpad.model.GamepadFeedback
 import com.sanket.tools.nexpad.model.GamepadInput
 import io.ktor.network.selector.SelectorManager
 import io.ktor.network.sockets.BoundDatagramSocket
@@ -7,7 +8,11 @@ import io.ktor.network.sockets.Datagram
 import io.ktor.network.sockets.InetSocketAddress
 import io.ktor.network.sockets.aSocket
 import io.ktor.utils.io.core.ByteReadPacket
+import io.ktor.utils.io.core.readBytes
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -15,12 +20,28 @@ import kotlinx.serialization.json.Json
 class NetworkClient {
     private var socket: BoundDatagramSocket? = null
     private var serverAddress: InetSocketAddress? = null
+    private var receiveJob: Job? = null
+    
+    var onFeedbackReceived: ((GamepadFeedback) -> Unit)? = null
 
     suspend fun connect(ip: String, port: Int) = withContext(Dispatchers.IO) {
         serverAddress = InetSocketAddress(ip, port)
         val selectorManager = SelectorManager(Dispatchers.IO)
         // Bind to any local port
         socket = aSocket(selectorManager).udp().bind()
+        
+        receiveJob = launch {
+            while (isActive) {
+                try {
+                    val datagram = socket?.receive() ?: break
+                    val json = String(datagram.packet.readBytes())
+                    val feedback = Json.decodeFromString<GamepadFeedback>(json)
+                    onFeedbackReceived?.invoke(feedback)
+                } catch (e: Exception) {
+                    // Ignore silent drops
+                }
+            }
+        }
     }
 
     suspend fun sendInput(input: GamepadInput) = withContext(Dispatchers.IO) {
@@ -43,6 +64,7 @@ class NetworkClient {
     }
 
     fun disconnect() {
+        receiveJob?.cancel()
         socket?.close()
         socket = null
     }

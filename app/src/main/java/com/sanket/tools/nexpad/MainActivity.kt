@@ -10,9 +10,16 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.ViewModelProvider
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.rememberScrollableState
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -20,7 +27,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.sensors.GyroSensor
 import com.sanket.tools.nexpad.ui.theme.NEXPADTheme
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
@@ -57,7 +66,8 @@ class MainActivity : ComponentActivity() {
                     GamepadScreen(
                         viewModel = viewModel,
                         modifier = Modifier.padding(innerPadding),
-                        onVibrate = { vibrateDevice() }
+                        onVibrate = { vibrateDevice() },
+                        triggerRumble = { l, r -> triggerRumble(l, r) }
                     )
                 }
             }
@@ -70,6 +80,22 @@ class MainActivity : ComponentActivity() {
         } else {
             @Suppress("DEPRECATION")
             vibrator.vibrate(50)
+        }
+    }
+
+    private fun triggerRumble(leftMotor: Int, rightMotor: Int) {
+        val intensity = maxOf(leftMotor, rightMotor)
+        if (intensity == 0) {
+            vibrator.cancel()
+            return
+        }
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val amplitude = (intensity.toFloat() / 255f * 255).toInt()
+            vibrator.vibrate(VibrationEffect.createOneShot(200, amplitude))
+        } else {
+            @Suppress("DEPRECATION")
+            vibrator.vibrate(200)
         }
     }
 
@@ -88,13 +114,20 @@ class MainActivity : ComponentActivity() {
 fun GamepadScreen(
     viewModel: GamepadViewModel, 
     modifier: Modifier = Modifier,
-    onVibrate: () -> Unit
+    onVibrate: () -> Unit,
+    triggerRumble: (Int, Int) -> Unit = { _, _ -> }
 ) {
     val state by viewModel.inputState.collectAsState()
     var ipAddress by remember { mutableStateOf("10.204.233.238") }
     var isConnected by remember { mutableStateOf(false) }
 
-    Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
+    LaunchedEffect(Unit) {
+        viewModel.feedbackFlow.collect { feedback ->
+            triggerRumble(feedback.leftMotorSpeed, feedback.rightMotorSpeed)
+        }
+    }
+
+    Column(modifier = modifier.fillMaxSize().padding(16.dp).verticalScroll(state = rememberScrollState())) {
         // Top Connection Bar
         Row(
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
@@ -123,49 +156,117 @@ fun GamepadScreen(
             }
         }
 
+        // Gamepad Area
         Row(
             modifier = Modifier.fillMaxSize(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Left Side: Basic representation
-            Box(
-                modifier = Modifier.size(120.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("Left Stick Area")
-            }
-
-            // Center: Live Sensor Data
+            // Left Side: L2, L1, D-Pad, L3
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(if (isConnected) "🟢 Connected to $ipAddress" else "🔴 Disconnected")
+                GamepadButton("L2", isConnected, onVibrate, viewModel)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Gyro: X:${"%.1f".format(state.gyroX)} Y:${"%.1f".format(state.gyroY)}")
-                Text("Button A: ${if (state.btnA) "PRESSED" else "IDLE"}")
+                GamepadButton("L1", isConnected, onVibrate, viewModel)
+                Spacer(modifier = Modifier.height(16.dp))
+                DPadLayout(isConnected, onVibrate, viewModel)
+                Spacer(modifier = Modifier.height(16.dp))
+                GamepadButton("L3", isConnected, onVibrate, viewModel)
             }
 
-            // Right Side: Action Buttons with press state
-            Column {
-                Box(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .pointerInput(isConnected) {
-                            detectTapGestures(
-                                onPress = {
-                                    if (isConnected) onVibrate()
-                                    viewModel.updateButton("A", true)
-                                    tryAwaitRelease()
-                                    viewModel.updateButton("A", false)
-                                }
-                            )
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Button(onClick = { }) {
-                        Text("A")
-                    }
+            // Center: Menu Buttons and Live Sensor Data
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Row {
+                    GamepadButton("SELECT", isConnected, onVibrate, viewModel)
+                    Spacer(modifier = Modifier.width(16.dp))
+                    GamepadButton("GUIDE", isConnected, onVibrate, viewModel)
+                    Spacer(modifier = Modifier.width(16.dp))
+                    GamepadButton("START", isConnected, onVibrate, viewModel)
                 }
+                Spacer(modifier = Modifier.height(32.dp))
+                Text(if (isConnected) "🟢 Connected" else "🔴 Disconnected", fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Gyroscope", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Text("X: ${"%.2f".format(state.gyroX)}")
+                Text("Y: ${"%.2f".format(state.gyroY)}")
+                Text("Z: ${"%.2f".format(state.gyroZ)}")
+            }
+
+            // Right Side: R2, R1, ABXY, R3
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                GamepadButton("R2", isConnected, onVibrate, viewModel)
+                Spacer(modifier = Modifier.height(8.dp))
+                GamepadButton("R1", isConnected, onVibrate, viewModel)
+                Spacer(modifier = Modifier.height(16.dp))
+                ABXYLayout(isConnected, onVibrate, viewModel)
+                Spacer(modifier = Modifier.height(16.dp))
+                GamepadButton("R3", isConnected, onVibrate, viewModel)
             }
         }
+    }
+}
+
+@Composable
+fun DPadLayout(isConnected: Boolean, onVibrate: () -> Unit, viewModel: GamepadViewModel) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        GamepadButton("UP", isConnected, onVibrate, viewModel)
+        Row {
+            GamepadButton("LEFT", isConnected, onVibrate, viewModel)
+            Spacer(modifier = Modifier.width(64.dp))
+            GamepadButton("RIGHT", isConnected, onVibrate, viewModel)
+        }
+        GamepadButton("DOWN", isConnected, onVibrate, viewModel)
+    }
+}
+
+@Composable
+fun ABXYLayout(isConnected: Boolean, onVibrate: () -> Unit, viewModel: GamepadViewModel) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        GamepadButton("Y", isConnected, onVibrate, viewModel)
+        Row {
+            GamepadButton("X", isConnected, onVibrate, viewModel)
+            Spacer(modifier = Modifier.width(64.dp))
+            GamepadButton("B", isConnected, onVibrate, viewModel)
+        }
+        GamepadButton("A", isConnected, onVibrate, viewModel)
+    }
+}
+
+@Composable
+fun GamepadButton(
+    text: String,
+    isConnected: Boolean,
+    onVibrate: () -> Unit,
+    viewModel: GamepadViewModel,
+    modifier: Modifier = Modifier
+) {
+    var isPressed by remember { mutableStateOf(false) }
+    
+    Box(
+        modifier = modifier
+            .padding(4.dp)
+            .size(64.dp)
+            .background(
+                color = if (isPressed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                shape = CircleShape
+            )
+            .pointerInput(isConnected) {
+                detectTapGestures(
+                    onPress = {
+                        if (isConnected) onVibrate()
+                        isPressed = true
+                        viewModel.updateButton(text, true)
+                        tryAwaitRelease()
+                        isPressed = false
+                        viewModel.updateButton(text, false)
+                    }
+                )
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text, 
+            color = if (isPressed) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Bold
+        )
     }
 }

@@ -2,12 +2,16 @@ package com.sanket.tools.nexpad.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.sanket.tools.nexpad.model.GamepadFeedback
 import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpad.network.NetworkClient
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
@@ -18,6 +22,17 @@ class GamepadViewModel : ViewModel() {
     
     private val _inputState = MutableStateFlow(GamepadInput())
     val inputState: StateFlow<GamepadInput> = _inputState.asStateFlow()
+
+    private val _feedbackFlow = MutableSharedFlow<GamepadFeedback>()
+    val feedbackFlow: SharedFlow<GamepadFeedback> = _feedbackFlow.asSharedFlow()
+
+    init {
+        networkClient.onFeedbackReceived = { feedback: GamepadFeedback ->
+            viewModelScope.launch {
+                _feedbackFlow.emit(feedback)
+            }
+        }
+    }
 
     private var transmitJob: Job? = null
     
@@ -57,6 +72,13 @@ class GamepadViewModel : ViewModel() {
                 "RIGHT" -> current.copy(dpadRight = isPressed)
                 "L1" -> current.copy(btnL1 = isPressed)
                 "R1" -> current.copy(btnR1 = isPressed)
+                "L2" -> current.copy(triggerL2 = if (isPressed) 1f else 0f)
+                "R2" -> current.copy(triggerR2 = if (isPressed) 1f else 0f)
+                "L3" -> current.copy(btnL3 = isPressed)
+                "R3" -> current.copy(btnR3 = isPressed)
+                "START" -> current.copy(btnStart = isPressed)
+                "SELECT" -> current.copy(btnSelect = isPressed)
+                "GUIDE" -> current.copy(btnGuide = isPressed)
                 else -> current
             }
         }
