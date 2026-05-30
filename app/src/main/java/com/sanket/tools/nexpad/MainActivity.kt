@@ -13,6 +13,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -48,9 +49,6 @@ class MainActivity : ComponentActivity() {
         gyroSensor = GyroSensor(this) { x, y, z ->
             viewModel.updateGyro(x, y, z)
         }
-
-        // Auto-connect to a default IP for testing (can be changed later)
-        viewModel.connect("192.168.1.100", 9999)
 
         enableEdgeToEdge()
         setContent {
@@ -93,46 +91,79 @@ fun GamepadScreen(
     onVibrate: () -> Unit
 ) {
     val state by viewModel.inputState.collectAsState()
+    var ipAddress by remember { mutableStateOf("10.204.233.238") }
+    var isConnected by remember { mutableStateOf(false) }
 
-    Row(
-        modifier = modifier.fillMaxSize().padding(32.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Left Side: Basic representation
-        Box(
-            modifier = Modifier.size(120.dp),
-            contentAlignment = Alignment.Center
+    Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
+        // Top Connection Bar
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Left Stick/DPad Area")
+            OutlinedTextField(
+                value = ipAddress,
+                onValueChange = { ipAddress = it },
+                label = { Text("PC IP Address (Wi-Fi or Hotspot)") },
+                modifier = Modifier.weight(1f).padding(end = 8.dp),
+                enabled = !isConnected
+            )
+            Button(onClick = {
+                if (isConnected) {
+                    viewModel.disconnect()
+                    isConnected = false
+                } else {
+                    if (ipAddress.isNotBlank()) {
+                        viewModel.connect(ipAddress, 9999)
+                        isConnected = true
+                    }
+                }
+            }) {
+                Text(if (isConnected) "Disconnect" else "Connect")
+            }
         }
 
-        // Center: Live Sensor Data
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Networking: UDP @ 60Hz")
-            Text("Gyro: X:${"%.1f".format(state.gyroX)} Y:${"%.1f".format(state.gyroY)}")
-            Text("Button A: ${if (state.btnA) "PRESSED" else "IDLE"}")
-        }
-
-        // Right Side: Action Buttons with press state
-        Column {
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left Side: Basic representation
             Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            onPress = {
-                                onVibrate()
-                                viewModel.updateButton("A", true)
-                                tryAwaitRelease()
-                                viewModel.updateButton("A", false)
-                            }
-                        )
-                    },
+                modifier = Modifier.size(120.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Button(onClick = { }) {
-                    Text("A")
+                Text("Left Stick Area")
+            }
+
+            // Center: Live Sensor Data
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(if (isConnected) "🟢 Connected to $ipAddress" else "🔴 Disconnected")
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Gyro: X:${"%.1f".format(state.gyroX)} Y:${"%.1f".format(state.gyroY)}")
+                Text("Button A: ${if (state.btnA) "PRESSED" else "IDLE"}")
+            }
+
+            // Right Side: Action Buttons with press state
+            Column {
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .pointerInput(isConnected) {
+                            detectTapGestures(
+                                onPress = {
+                                    if (isConnected) onVibrate()
+                                    viewModel.updateButton("A", true)
+                                    tryAwaitRelease()
+                                    viewModel.updateButton("A", false)
+                                }
+                            )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Button(onClick = { }) {
+                        Text("A")
+                    }
                 }
             }
         }
