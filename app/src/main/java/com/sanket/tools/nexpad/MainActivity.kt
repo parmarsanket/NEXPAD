@@ -185,10 +185,26 @@ fun GamepadScreen(
                 Spacer(modifier = Modifier.height(32.dp))
                 Text(if (isConnected) "🟢 Connected" else "🔴 Disconnected", fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Gyroscope", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                
+                val isGyroSteeringEnabled by viewModel.isGyroSteeringEnabled.collectAsState()
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Gyro Steering (Forza): ", fontWeight = FontWeight.Bold)
+                    androidx.compose.material3.Switch(
+                        checked = isGyroSteeringEnabled,
+                        onCheckedChange = { viewModel.toggleGyroSteering() }
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Gyroscope (Gravity)", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 Text("X: ${"%.2f".format(state.gyroX)}")
                 Text("Y: ${"%.2f".format(state.gyroY)}")
                 Text("Z: ${"%.2f".format(state.gyroZ)}")
+                
+                if (isGyroSteeringEnabled) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Steering Output: ${"%.2f".format(state.leftStickX)}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                }
             }
 
             // Right Side: R2, R1, ABXY, R3
