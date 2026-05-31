@@ -105,26 +105,11 @@ class GamepadViewModel : ViewModel() {
             // Y-axis gravity points towards the floor when turning the phone.
             // Invert 'y' so that tilting Right (+) steers Right (+), and Left (-) steers Left (-)
             val rawSteering = (-y / maxTilt).coerceIn(-1.0f, 1.0f)
-            val absSteering = kotlin.math.abs(rawSteering)
-            
-            val finalSteering = if (absSteering < 0.05f) {
-                // Inner deadzone: Ignore tiny hand shaking when trying to drive straight
-                0.0f
-            } else {
-                // Anti-deadzone: Games like Forza ignore joystick input below 20-25%.
-                // We instantly jump the joystick to 24% as soon as you tilt past the hand-shake zone,
-                // so the car responds instantly, giving a smooth linear feel instead of a "keyboard" jerk.
-                val antiDeadzone = 0.24f
-                val activeRange = 1.0f - 0.05f
-                val stickRange = 1.0f - antiDeadzone
-                
-                val mapped = antiDeadzone + ((absSteering - 0.05f) / activeRange) * stickRange
-                if (rawSteering > 0) mapped else -mapped
-            }
             
             val newState = it.copy(gyroX = x, gyroY = y, gyroZ = z)
             if (isGyroSteeringEnabled.value) {
-                newState.leftStickX = finalSteering
+                // User requested raw 1:1 input without anti-deadzone
+                newState.leftStickX = rawSteering
             }
             newState
         }
