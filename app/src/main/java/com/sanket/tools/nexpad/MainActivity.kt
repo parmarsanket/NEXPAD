@@ -117,8 +117,11 @@ fun GamepadScreen(
     onVibrate: () -> Unit,
     triggerRumble: (Int, Int) -> Unit = { _, _ -> }
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val sharedPref = remember { context.getSharedPreferences("NEXPAD_PREFS", Context.MODE_PRIVATE) }
+    
     val state by viewModel.inputState.collectAsState()
-    var ipAddress by remember { mutableStateOf("10.204.233.238") }
+    var ipAddress by remember { mutableStateOf(sharedPref.getString("LAST_IP", "10.204.233.238") ?: "") }
     var isConnected by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -147,6 +150,7 @@ fun GamepadScreen(
                     isConnected = false
                 } else {
                     if (ipAddress.isNotBlank()) {
+                        sharedPref.edit().putString("LAST_IP", ipAddress).apply()
                         viewModel.connect(ipAddress, 9999)
                         isConnected = true
                     }
