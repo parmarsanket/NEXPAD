@@ -103,12 +103,13 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(32.dp))
 
         // Gyroscope Settings
-        Text("Gyroscope Steering", color = Color.LightGray)
+        Text("Gyroscope Settings (Forced 6-Axis)", color = Color.LightGray)
         
         val isGyroEnabled by viewModel.isGyroSteeringEnabled.collectAsState()
         val isGyroInverted by viewModel.isGyroInverted.collectAsState()
         val is6AxisEnabled by viewModel.is6AxisEnabled.collectAsState()
         
+        /* 
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -142,21 +143,18 @@ fun SettingsScreen(
                 enabled = isGyroEnabled
             )
         }
+        */
 
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Enable 6-Axis Motion Data (PC Emulators)", color = Color.White)
+            Text("Enable 6-Axis Motion Data (PC Emulators)", color = Color.Gray)
             Spacer(modifier = Modifier.weight(1f))
             Switch(
-                checked = is6AxisEnabled,
-                onCheckedChange = { 
-                    viewModel.is6AxisEnabled.value = it
-                    if (it) viewModel.isGyroSteeringEnabled.value = false // Mutually exclusive
-                    sharedPref.edit().putBoolean("ENABLE_6AXIS", it).putBoolean("ENABLE_GYRO", viewModel.isGyroSteeringEnabled.value).apply()
-                },
-                colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF00E676), checkedTrackColor = Color.DarkGray)
+                checked = true, // Forced to true
+                onCheckedChange = null, // Disabled
+                colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF00E676), checkedTrackColor = Color.DarkGray, disabledCheckedThumbColor = Color.Gray)
             )
         }
     }
