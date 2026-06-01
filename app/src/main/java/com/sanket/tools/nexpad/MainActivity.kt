@@ -61,7 +61,7 @@ class MainActivity : ComponentActivity() {
         layoutManager = LayoutManager(this)
 
         val sharedPref = getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
-        viewModel.isGyroInverted.value = sharedPref.getBoolean("INVERT_GYRO", false)
+        viewModel.isGyroInverted.value = sharedPref.getBoolean("INVERT_GYRO", true)
         viewModel.isGyroSteeringEnabled.value = sharedPref.getBoolean("ENABLE_GYRO", false)
 
         // Setup Vibrator

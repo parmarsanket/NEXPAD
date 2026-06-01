@@ -126,7 +126,7 @@ class GamepadViewModel : ViewModel() {
             // Y-axis gravity points towards the floor when turning the phone. 
             // If isGyroInverted is true, we don't invert the axis.
             val multiplier = if (isGyroInverted.value) 1f else -1f
-            val rawSteering = ((y * multiplier) / maxTilt).coerceIn(-1.0f, 1.0f)
+            val rawSteering = ((-y * multiplier) / maxTilt).coerceIn(-1.0f, 1.0f)
             
             val newState = it.copy(gyroX = x, gyroY = y, gyroZ = z)
             if (isGyroSteeringEnabled.value) {
