@@ -1,135 +1,94 @@
 package com.sanket.tools.nexpad.ui
 
 import android.content.Context
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.sanket.tools.nexpad.ui.components.ABXYLayout
-import com.sanket.tools.nexpad.ui.components.DPadLayout
-import com.sanket.tools.nexpad.ui.components.GamepadButton
+import com.sanket.tools.nexpad.R
+import com.sanket.tools.nexpad.model.Position
+import com.sanket.tools.nexpad.ui.components.CroppedImage
+import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
+import kotlin.math.roundToInt
 
 @Composable
 fun GamepadScreen(
     viewModel: GamepadViewModel, 
-    modifier: Modifier = Modifier,
-    onVibrate: () -> Unit,
-    triggerRumble: (Int, Int) -> Unit = { _, _ -> }
+    layoutManager: LayoutManager,
+    onBack: () -> Unit,
+    onVibrate: () -> Unit
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val sharedPref = remember { context.getSharedPreferences("NEXPAD_PREFS", Context.MODE_PRIVATE) }
-    
-    val state by viewModel.inputState.collectAsState()
-    var ipAddress by remember { mutableStateOf(sharedPref.getString("LAST_IP", "10.204.233.238") ?: "") }
-    var isConnected by remember { mutableStateOf(false) }
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp.value
+    val screenHeight = configuration.screenHeightDp.dp.value
 
-    LaunchedEffect(Unit) {
-        viewModel.feedbackFlow.collect { feedback ->
-            triggerRumble(feedback.leftMotorSpeed, feedback.rightMotorSpeed)
+    val profile = layoutManager.getActiveProfile()
+    
+    // Fallback UI if we just use standard buttons for now, but absolutely positioned!
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    ) {
+        // Back Button
+        IconButton(onClick = onBack, modifier = Modifier.align(Alignment.TopStart).padding(16.dp)) {
+            Text("⬅️", fontSize = 24.sp)
+        }
+
+        // Render each mapped component
+        profile.positions.forEach { (key, position) ->
+            val offsetX = (position.xRatio * screenWidth).roundToInt()
+            val offsetY = (position.yRatio * screenHeight).roundToInt()
+            
+            Box(
+                modifier = Modifier
+                    .offset { IntOffset(offsetX, offsetY) }
+            ) {
+                // Here we would use CroppedImage for actual images. 
+                // For demonstration, we use our highly functional GamepadButton but floating!
+                DraggableGamepadButton(key = key, isConnected = true, onVibrate = onVibrate, viewModel = viewModel, isRgbEnabled = profile.isRgbEnabled)
+            }
         }
     }
+}
 
-    Column(modifier = modifier.fillMaxSize().padding(16.dp).verticalScroll(state = rememberScrollState())) {
-        // Top Connection Bar
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedTextField(
-                value = ipAddress,
-                onValueChange = { ipAddress = it },
-                label = { Text("PC IP Address (Wi-Fi or Hotspot)") },
-                modifier = Modifier.weight(1f).padding(end = 8.dp),
-                enabled = !isConnected
+@Composable
+fun DraggableGamepadButton(key: String, isConnected: Boolean, onVibrate: () -> Unit, viewModel: GamepadViewModel, isRgbEnabled: Boolean) {
+    var isPressed by remember { mutableStateOf(false) }
+    
+    // Simulating CroppedImage for now with text until exact pixels are tuned
+    Box(
+        modifier = Modifier
+            .size(80.dp)
+            .background(
+                color = if (isPressed) Color.DarkGray else Color.LightGray,
+                shape = androidx.compose.foundation.shape.CircleShape
             )
-            Button(onClick = {
-                if (isConnected) {
-                    viewModel.disconnect()
-                    isConnected = false
-                } else {
-                    if (ipAddress.isNotBlank()) {
-                        sharedPref.edit().putString("LAST_IP", ipAddress).apply()
-                        viewModel.connect(ipAddress, 9999)
-                        isConnected = true
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        if (isConnected) onVibrate()
+                        isPressed = true
+                        viewModel.updateButton(key, true)
+                        tryAwaitRelease()
+                        isPressed = false
+                        viewModel.updateButton(key, false)
                     }
-                }
-            }) {
-                Text(if (isConnected) "Disconnect" else "Connect")
-            }
-        }
-
-        // Gamepad Area
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Left Side: L2, L1, D-Pad, L3
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                GamepadButton("L2", isConnected, onVibrate, viewModel)
-                Spacer(modifier = Modifier.height(8.dp))
-                GamepadButton("L1", isConnected, onVibrate, viewModel)
-                Spacer(modifier = Modifier.height(16.dp))
-                DPadLayout(isConnected, onVibrate, viewModel)
-                Spacer(modifier = Modifier.height(16.dp))
-                GamepadButton("L3", isConnected, onVibrate, viewModel)
-            }
-
-            // Center: Menu Buttons and Live Sensor Data
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Row {
-                    GamepadButton("SELECT", isConnected, onVibrate, viewModel)
-                    Spacer(modifier = Modifier.width(16.dp))
-                    GamepadButton("GUIDE", isConnected, onVibrate, viewModel)
-                    Spacer(modifier = Modifier.width(16.dp))
-                    GamepadButton("START", isConnected, onVibrate, viewModel)
-                }
-                Spacer(modifier = Modifier.height(32.dp))
-                Text(if (isConnected) "🟢 Connected" else "🔴 Disconnected", fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                val isGyroSteeringEnabled by viewModel.isGyroSteeringEnabled.collectAsState()
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Gyro Steering (Forza): ", fontWeight = FontWeight.Bold)
-                    androidx.compose.material3.Switch(
-                        checked = isGyroSteeringEnabled,
-                        onCheckedChange = { viewModel.toggleGyroSteering() }
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Gyroscope (Gravity)", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                Text("X: ${"%.2f".format(state.gyroX)}")
-                Text("Y: ${"%.2f".format(state.gyroY)}")
-                Text("Z: ${"%.2f".format(state.gyroZ)}")
-                
-                if (isGyroSteeringEnabled) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("Steering Output: ${"%.2f".format(state.leftStickX)}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                }
-            }
-
-            // Right Side: R2, R1, ABXY, R3
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                GamepadButton("R2", isConnected, onVibrate, viewModel)
-                Spacer(modifier = Modifier.height(8.dp))
-                GamepadButton("R1", isConnected, onVibrate, viewModel)
-                Spacer(modifier = Modifier.height(16.dp))
-                ABXYLayout(isConnected, onVibrate, viewModel)
-                Spacer(modifier = Modifier.height(16.dp))
-                GamepadButton("R3", isConnected, onVibrate, viewModel)
-            }
-        }
+                )
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(key, color = Color.White, fontWeight = FontWeight.Bold)
     }
 }

@@ -33,6 +33,8 @@ import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.sensors.GyroSensor
 import com.sanket.tools.nexpad.ui.GamepadScreen
 import com.sanket.tools.nexpad.ui.theme.NEXPADTheme
+import com.sanket.tools.nexpad.ui.NavigationGraph
+import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
 class MainActivity : ComponentActivity() {
@@ -40,11 +42,13 @@ class MainActivity : ComponentActivity() {
     private lateinit var viewModel: GamepadViewModel
     private lateinit var gyroSensor: GyroSensor
     private lateinit var vibrator: Vibrator
+    private lateinit var layoutManager: LayoutManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
         viewModel = ViewModelProvider(this)[GamepadViewModel::class.java]
+        layoutManager = LayoutManager(this)
 
         // Setup Vibrator
         vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -64,12 +68,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             NEXPADTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    GamepadScreen(
-                        viewModel = viewModel,
-                        modifier = Modifier.padding(innerPadding),
-                        onVibrate = { vibrateDevice() },
-                        triggerRumble = { l, r -> triggerRumble(l, r) }
-                    )
+                    Box(modifier = Modifier.padding(innerPadding)) {
+                        NavigationGraph(viewModel, layoutManager)
+                    }
                 }
             }
         }
