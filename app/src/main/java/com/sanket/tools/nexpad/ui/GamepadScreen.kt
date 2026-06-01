@@ -46,7 +46,7 @@ fun GamepadScreen(
             val totalSpeed = (feedback.leftMotorSpeed + feedback.rightMotorSpeed) / 2
             if (totalSpeed > 0) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    vibrator.vibrate(VibrationEffect.createOneShot(100, (totalSpeed / 65535f * 255).toInt().coerceIn(1, 255)))
+                    vibrator.vibrate(VibrationEffect.createOneShot(100, totalSpeed.coerceIn(1, 255)))
                 } else {
                     @Suppress("DEPRECATION")
                     vibrator.vibrate(100)

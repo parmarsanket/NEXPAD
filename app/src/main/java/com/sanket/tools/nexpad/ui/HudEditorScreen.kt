@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -141,60 +143,71 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
         // Selected Control Panel
         if (selectedKey != null) {
             val position = positions[selectedKey]!!
-            Box(
+            ElevatedCard(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(top = 80.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xEE1A1A1A))
-                    .padding(16.dp)
+                    .width(320.dp),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 8.dp),
+                colors = CardDefaults.elevatedCardColors(containerColor = Color(0xFF1A1A1A))
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Editing: $selectedKey", color = Color.White, fontWeight = FontWeight.Bold)
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("Editing Button: $selectedKey", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                     
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Scale", color = Color.LightGray, modifier = Modifier.width(60.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Text("Size", color = Color.LightGray, modifier = Modifier.width(60.dp))
                         Slider(
                             value = position.scale,
                             onValueChange = { positions[selectedKey!!] = position.copy(scale = it) },
                             valueRange = 0.5f..2.5f,
-                            modifier = Modifier.width(150.dp)
+                            modifier = Modifier.weight(1f)
                         )
                     }
                     
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         Text("Opacity", color = Color.LightGray, modifier = Modifier.width(60.dp))
                         Slider(
                             value = position.opacity,
                             onValueChange = { positions[selectedKey!!] = position.copy(opacity = it) },
                             valueRange = 0.1f..1.0f,
-                            modifier = Modifier.width(150.dp)
+                            modifier = Modifier.weight(1f)
                         )
                     }
+
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     Button(
                         onClick = {
                             positions.remove(selectedKey)
                             selectedKey = null
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD50000)),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Remove Button")
+                        Text("REMOVE BUTTON", fontWeight = FontWeight.Bold)
                     }
                 }
             }
         }
 
-        // Add/Remove Dialog
+        // Add/Remove Dialog (Material 3 with Scroll)
         if (showAddDialog) {
             val allKeys = defaultPositions().keys.toList()
             AlertDialog(
                 onDismissRequest = { showAddDialog = false },
-                title = { Text("Manage Buttons") },
+                title = { Text("Manage Controller Buttons", fontWeight = FontWeight.Bold) },
                 text = {
-                    Column(modifier = Modifier.fillMaxWidth().height(300.dp)) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(400.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
                         allKeys.forEach { key ->
                             val isPresent = positions.containsKey(key)
                             Row(
@@ -207,21 +220,28 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
                                             positions[key] = defaultPositions()[key]!!
                                         }
                                     }
-                                    .padding(8.dp),
+                                    .padding(vertical = 12.dp, horizontal = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Checkbox(checked = isPresent, onCheckedChange = null)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(key)
+                                Checkbox(
+                                    checked = isPresent, 
+                                    onCheckedChange = null,
+                                    colors = CheckboxDefaults.colors(checkedColor = Color(0xFF00C853))
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(key, fontSize = 18.sp, fontWeight = if (isPresent) FontWeight.Bold else FontWeight.Normal)
                             }
                         }
                     }
                 },
                 confirmButton = {
-                    Button(onClick = { showAddDialog = false }) {
-                        Text("Done")
+                    TextButton(onClick = { showAddDialog = false }) {
+                        Text("Done", color = Color(0xFF00C853), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
-                }
+                },
+                containerColor = Color(0xFF1E1E1E),
+                titleContentColor = Color.White,
+                textContentColor = Color.LightGray
             )
         }
     }
