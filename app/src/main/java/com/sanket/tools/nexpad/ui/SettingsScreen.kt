@@ -159,5 +159,23 @@ fun SettingsScreen(
                 colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF00E676), checkedTrackColor = Color.DarkGray)
             )
         }
+
+        val is6AxisInverted by viewModel.is6AxisInverted.collectAsState()
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Invert 6-Axis Motion Data", color = Color.White)
+            Spacer(modifier = Modifier.weight(1f))
+            Switch(
+                checked = is6AxisInverted,
+                onCheckedChange = { 
+                    viewModel.is6AxisInverted.value = it
+                    sharedPref.edit().putBoolean("INVERT_6AXIS", it).apply()
+                },
+                colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF00E676), checkedTrackColor = Color.DarkGray),
+                enabled = is6AxisEnabled
+            )
+        }
     }
 }

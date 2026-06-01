@@ -64,6 +64,7 @@ class MainActivity : ComponentActivity() {
         viewModel.isGyroInverted.value = sharedPref.getBoolean("INVERT_GYRO", false)
         viewModel.isGyroSteeringEnabled.value = sharedPref.getBoolean("ENABLE_GYRO", false)
         viewModel.is6AxisEnabled.value = sharedPref.getBoolean("ENABLE_6AXIS", false)
+        viewModel.is6AxisInverted.value = sharedPref.getBoolean("INVERT_6AXIS", false)
 
         // Setup Vibrator
         vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
