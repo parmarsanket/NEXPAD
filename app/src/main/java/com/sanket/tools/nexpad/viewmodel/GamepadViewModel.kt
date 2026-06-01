@@ -122,8 +122,9 @@ class GamepadViewModel : ViewModel() {
         _inputState.update { 
             // Max tilt for full steering lock. 6.0 m/s^2 is ~40 degrees tilt.
             val maxTilt = 6.0f
-            // Y-axis gravity points towards the floor when turning the phone.
-            val rawSteering = (y / maxTilt).coerceIn(-1.0f, 1.0f)
+            // Y-axis gravity points towards the floor when turning the phone. 
+            // Inverting Y so that tilting right steers right, and tilting left steers left.
+            val rawSteering = (-y / maxTilt).coerceIn(-1.0f, 1.0f)
             
             val newState = it.copy(gyroX = x, gyroY = y, gyroZ = z)
             if (isGyroSteeringEnabled.value) {
