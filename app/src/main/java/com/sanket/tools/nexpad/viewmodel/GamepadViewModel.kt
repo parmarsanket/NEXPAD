@@ -125,8 +125,8 @@ class GamepadViewModel : ViewModel() {
         if (!is6AxisEnabled.value) {
             _inputState.update { 
                 val maxTilt = 6.0f
-                val multiplier = if (isGyroInverted.value) 1f else -1f
-                val rawSteering = ((y * multiplier) / maxTilt).coerceIn(-1.0f, 1.0f)
+                val multiplier = if (isGyroInverted.value) -1f else 1f
+                val rawSteering = ((x * multiplier) / maxTilt).coerceIn(-1.0f, 1.0f)
                 
                 val newState = it.copy()
                 if (isGyroSteeringEnabled.value) {

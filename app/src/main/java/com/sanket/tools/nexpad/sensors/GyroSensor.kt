@@ -53,14 +53,18 @@ class GyroSensor(
 
         when (rotation) {
             Surface.ROTATION_90 -> {
-                // Landscape
-                x = -hwY
-                y = hwX
-            }
-            Surface.ROTATION_270 -> {
-                // Reverse Landscape
+                // Landscape (Left edge at top, turned 90 deg CCW)
+                // Top edge (+Y) points Right -> Screen X = hwY
+                // Right edge (+X) points Down -> Screen Y = -hwX
                 x = hwY
                 y = -hwX
+            }
+            Surface.ROTATION_270 -> {
+                // Reverse Landscape (Right edge at top, turned 90 deg CW)
+                // Top edge (+Y) points Left -> Screen X = -hwY
+                // Right edge (+X) points Up -> Screen Y = hwX
+                x = -hwY
+                y = hwX
             }
             Surface.ROTATION_180 -> {
                 x = -hwX
