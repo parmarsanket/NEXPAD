@@ -28,17 +28,17 @@ import kotlin.math.roundToInt
 data class CropData(val x: Int, val y: Int, val w: Int, val h: Int)
 
 val buttonCrops = mapOf(
-    "L2" to CropData(124, 82, 140, 80),
-    "L1" to CropData(118, 170, 110, 60),
-    "DPAD" to CropData(300, 510, 140, 140),
-    "L3" to CropData(200, 340, 150, 150),
-    "SELECT" to CropData(400, 380, 50, 50),
-    "GUIDE" to CropData(460, 230, 80, 80),
-    "START" to CropData(520, 380, 50, 50),
-    "R2" to CropData(724, 82, 140, 80),
-    "R1" to CropData(740, 170, 110, 60),
-    "R3" to CropData(540, 530, 150, 150),
-    "ABXY" to CropData(610, 290, 190, 250)
+    "L2" to CropData(200, 90, 220, 100),
+    "L1" to CropData(200, 200, 220, 100),
+    "DPAD" to CropData(510, 510, 220, 220),
+    "L3" to CropData(340, 320, 220, 220),
+    "SELECT" to CropData(660, 380, 80, 80),
+    "GUIDE" to CropData(750, 210, 150, 150),
+    "START" to CropData(890, 380, 80, 80),
+    "R2" to CropData(1220, 90, 220, 100),
+    "R1" to CropData(1220, 200, 220, 100),
+    "R3" to CropData(880, 530, 220, 220),
+    "ABXY" to CropData(1020, 290, 280, 280)
 )
 
 @Composable
