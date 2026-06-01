@@ -61,14 +61,9 @@ class MainActivity : ComponentActivity() {
         layoutManager = LayoutManager(this)
 
         val sharedPref = getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
-        
-        /* 
-        // 2D Steering disabled, 6-Axis forced ON
         viewModel.isGyroInverted.value = sharedPref.getBoolean("INVERT_GYRO", false)
         viewModel.isGyroSteeringEnabled.value = sharedPref.getBoolean("ENABLE_GYRO", false)
         viewModel.is6AxisEnabled.value = sharedPref.getBoolean("ENABLE_6AXIS", false)
-        */
-        viewModel.is6AxisEnabled.value = true
 
         // Setup Vibrator
         vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

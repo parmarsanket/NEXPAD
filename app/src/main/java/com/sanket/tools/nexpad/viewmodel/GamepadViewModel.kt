@@ -114,15 +114,14 @@ class GamepadViewModel : ViewModel() {
 
     val isGyroSteeringEnabled = MutableStateFlow(false)
     val isGyroInverted = MutableStateFlow(false)
-    val is6AxisEnabled = MutableStateFlow(true) // Forced to true
+    val is6AxisEnabled = MutableStateFlow(false)
 
     fun toggleGyroSteering() {
-        // Disabled
+        isGyroSteeringEnabled.value = !isGyroSteeringEnabled.value
     }
 
     fun update2DSteering(x: Float, y: Float, z: Float) {
-        /* 
-        // 2D steering disabled per user request
+        // Only run 2D steering if 6-axis is disabled
         if (!is6AxisEnabled.value) {
             _inputState.update { 
                 val maxTilt = 6.0f
@@ -136,16 +135,17 @@ class GamepadViewModel : ViewModel() {
                 newState
             }
         }
-        */
     }
 
     fun updateAccel(x: Float, y: Float, z: Float) {
-        // Always send 6-axis data
-        _inputState.update { it.copy(accelX = x, accelY = y, accelZ = z) }
+        if (is6AxisEnabled.value) {
+            _inputState.update { it.copy(accelX = x, accelY = y, accelZ = z) }
+        }
     }
 
     fun update6AxisGyro(x: Float, y: Float, z: Float) {
-        // Always send 6-axis data
-        _inputState.update { it.copy(gyroX = x, gyroY = y, gyroZ = z) }
+        if (is6AxisEnabled.value) {
+            _inputState.update { it.copy(gyroX = x, gyroY = y, gyroZ = z) }
+        }
     }
 }
