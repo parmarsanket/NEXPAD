@@ -142,8 +142,9 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
         }
 
         // Selected Control Panel
-        if (selectedKey != null && positions.containsKey(selectedKey)) {
-            val position = positions[selectedKey]!!
+        val currentKey = selectedKey
+        if (currentKey != null && positions.containsKey(currentKey)) {
+            val position = positions[currentKey]!!
             ElevatedCard(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -156,7 +157,7 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
                     modifier = Modifier.padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Editing Button: $selectedKey", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    Text("Editing Button: $currentKey", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                     
                     Spacer(modifier = Modifier.height(16.dp))
                     
@@ -164,7 +165,7 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
                         Text("Size", color = Color.LightGray, modifier = Modifier.width(60.dp))
                         Slider(
                             value = position.scale,
-                            onValueChange = { positions[selectedKey!!] = position.copy(scale = it) },
+                            onValueChange = { positions[currentKey] = position.copy(scale = it) },
                             valueRange = 0.5f..2.5f,
                             modifier = Modifier.weight(1f)
                         )
@@ -174,7 +175,7 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
                         Text("Opacity", color = Color.LightGray, modifier = Modifier.width(60.dp))
                         Slider(
                             value = position.opacity,
-                            onValueChange = { positions[selectedKey!!] = position.copy(opacity = it) },
+                            onValueChange = { positions[currentKey] = position.copy(opacity = it) },
                             valueRange = 0.1f..1.0f,
                             modifier = Modifier.weight(1f)
                         )
@@ -184,7 +185,7 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
 
                     Button(
                         onClick = {
-                            positions.remove(selectedKey)
+                            positions.remove(currentKey)
                             selectedKey = null
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD50000)),
