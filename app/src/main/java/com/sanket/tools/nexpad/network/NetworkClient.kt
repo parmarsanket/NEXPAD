@@ -24,13 +24,16 @@ class NetworkClient : IGamepadConnection {
     
     override var onFeedbackReceived: ((GamepadFeedback) -> Unit)? = null
 
-    override suspend fun connect(address: String, port: Int) = withContext(Dispatchers.IO) {
-        serverAddress = InetSocketAddress(address, port)
-        val selectorManager = SelectorManager(Dispatchers.IO)
-        // Bind to any local port
-        socket = aSocket(selectorManager).udp().bind()
+    override suspend fun connect(address: String, port: Int) {
+        withContext(Dispatchers.IO) {
+            serverAddress = InetSocketAddress(address, port)
+            val selectorManager = SelectorManager(Dispatchers.IO)
+            // Bind to any local port
+            socket = aSocket(selectorManager).udp().bind()
+        }
         
-        receiveJob = launch {
+        // Launch receive job in a separate scope so connect() can return immediately!
+        receiveJob = kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
             while (isActive) {
                 try {
                     val datagram = socket?.receive() ?: break
