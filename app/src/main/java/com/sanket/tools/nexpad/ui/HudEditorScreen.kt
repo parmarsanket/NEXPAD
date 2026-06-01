@@ -44,6 +44,14 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
     var selectedKey by remember { mutableStateOf<String?>(null) }
     var showAddDialog by remember { mutableStateOf(false) }
 
+    // Auto-save when leaving the editor
+    DisposableEffect(Unit) {
+        onDispose {
+            val updatedProfile = profile.copy(positions = positions.toMap())
+            layoutManager.saveProfile(updatedProfile)
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
