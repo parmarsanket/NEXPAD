@@ -61,8 +61,9 @@ class MainActivity : ComponentActivity() {
         layoutManager = LayoutManager(this)
 
         val sharedPref = getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
-        viewModel.isGyroInverted.value = sharedPref.getBoolean("INVERT_GYRO", true)
+        viewModel.isGyroInverted.value = sharedPref.getBoolean("INVERT_GYRO", false)
         viewModel.isGyroSteeringEnabled.value = sharedPref.getBoolean("ENABLE_GYRO", false)
+        viewModel.is6AxisEnabled.value = sharedPref.getBoolean("ENABLE_6AXIS", false)
 
         // Setup Vibrator
         vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -74,9 +75,12 @@ class MainActivity : ComponentActivity() {
         }
 
         // Setup Gyro
-        gyroSensor = GyroSensor(this) { x, y, z ->
-            viewModel.updateGyro(x, y, z)
-        }
+        gyroSensor = GyroSensor(
+            context = this,
+            onGravityChanged = { x, y, z -> viewModel.update2DSteering(x, y, z) },
+            onAccelChanged = { x, y, z -> viewModel.updateAccel(x, y, z) },
+            onGyroChanged = { x, y, z -> viewModel.update6AxisGyro(x, y, z) }
+        )
 
         enableEdgeToEdge()
         setContent {

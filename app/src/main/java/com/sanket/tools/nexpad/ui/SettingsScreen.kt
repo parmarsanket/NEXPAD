@@ -107,18 +107,20 @@ fun SettingsScreen(
         
         val isGyroEnabled by viewModel.isGyroSteeringEnabled.collectAsState()
         val isGyroInverted by viewModel.isGyroInverted.collectAsState()
+        val is6AxisEnabled by viewModel.is6AxisEnabled.collectAsState()
         
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Enable Gyro Steering", color = Color.White)
+            Text("Enable Gyro Steering (2D Joystick)", color = Color.White)
             Spacer(modifier = Modifier.weight(1f))
             Switch(
                 checked = isGyroEnabled,
                 onCheckedChange = { 
                     viewModel.isGyroSteeringEnabled.value = it
-                    sharedPref.edit().putBoolean("ENABLE_GYRO", it).apply()
+                    if (it) viewModel.is6AxisEnabled.value = false // Mutually exclusive
+                    sharedPref.edit().putBoolean("ENABLE_GYRO", it).putBoolean("ENABLE_6AXIS", viewModel.is6AxisEnabled.value).apply()
                 },
                 colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF00E676), checkedTrackColor = Color.DarkGray)
             )
@@ -135,6 +137,24 @@ fun SettingsScreen(
                 onCheckedChange = { 
                     viewModel.isGyroInverted.value = it
                     sharedPref.edit().putBoolean("INVERT_GYRO", it).apply()
+                },
+                colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF00E676), checkedTrackColor = Color.DarkGray),
+                enabled = isGyroEnabled
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Enable 6-Axis Motion Data (PC Emulators)", color = Color.White)
+            Spacer(modifier = Modifier.weight(1f))
+            Switch(
+                checked = is6AxisEnabled,
+                onCheckedChange = { 
+                    viewModel.is6AxisEnabled.value = it
+                    if (it) viewModel.isGyroSteeringEnabled.value = false // Mutually exclusive
+                    sharedPref.edit().putBoolean("ENABLE_6AXIS", it).putBoolean("ENABLE_GYRO", viewModel.isGyroSteeringEnabled.value).apply()
                 },
                 colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF00E676), checkedTrackColor = Color.DarkGray)
             )

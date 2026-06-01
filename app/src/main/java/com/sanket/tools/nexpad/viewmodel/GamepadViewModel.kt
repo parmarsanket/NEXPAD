@@ -114,26 +114,38 @@ class GamepadViewModel : ViewModel() {
 
     val isGyroSteeringEnabled = MutableStateFlow(false)
     val isGyroInverted = MutableStateFlow(false)
+    val is6AxisEnabled = MutableStateFlow(false)
 
     fun toggleGyroSteering() {
         isGyroSteeringEnabled.value = !isGyroSteeringEnabled.value
     }
 
-    fun updateGyro(x: Float, y: Float, z: Float) {
-        _inputState.update { 
-            // Max tilt for full steering lock. 6.0 m/s^2 is ~40 degrees tilt.
-            val maxTilt = 6.0f
-            // Y-axis gravity points towards the floor when turning the phone. 
-            // If isGyroInverted is true, we don't invert the axis.
-            val multiplier = if (isGyroInverted.value) 1f else -1f
-            val rawSteering = ((-y * multiplier) / maxTilt).coerceIn(-1.0f, 1.0f)
-            
-            val newState = it.copy(gyroX = x, gyroY = y, gyroZ = z)
-            if (isGyroSteeringEnabled.value) {
-                // User requested raw 1:1 input without anti-deadzone
-                newState.leftStickX = rawSteering
+    fun update2DSteering(x: Float, y: Float, z: Float) {
+        // Only run 2D steering if 6-axis is disabled
+        if (!is6AxisEnabled.value) {
+            _inputState.update { 
+                val maxTilt = 6.0f
+                val multiplier = if (isGyroInverted.value) 1f else -1f
+                val rawSteering = ((y * multiplier) / maxTilt).coerceIn(-1.0f, 1.0f)
+                
+                val newState = it.copy()
+                if (isGyroSteeringEnabled.value) {
+                    newState.leftStickX = rawSteering
+                }
+                newState
             }
-            newState
+        }
+    }
+
+    fun updateAccel(x: Float, y: Float, z: Float) {
+        if (is6AxisEnabled.value) {
+            _inputState.update { it.copy(accelX = x, accelY = y, accelZ = z) }
+        }
+    }
+
+    fun update6AxisGyro(x: Float, y: Float, z: Float) {
+        if (is6AxisEnabled.value) {
+            _inputState.update { it.copy(gyroX = x, gyroY = y, gyroZ = z) }
         }
     }
 }

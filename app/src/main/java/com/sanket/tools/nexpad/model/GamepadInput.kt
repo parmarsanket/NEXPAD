@@ -49,8 +49,13 @@ data class GamepadInput(
     var rightStickX: Float = 0f,
     var rightStickY: Float = 0f,
 
-    // Gyroscope data
+    // Gyroscope data (Angular Velocity)
     var gyroX: Float = 0f,
     var gyroY: Float = 0f,
-    var gyroZ: Float = 0f
+    var gyroZ: Float = 0f,
+
+    // Accelerometer data (G-Force)
+    var accelX: Float = 0f,
+    var accelY: Float = 0f,
+    var accelZ: Float = 0f
 )
