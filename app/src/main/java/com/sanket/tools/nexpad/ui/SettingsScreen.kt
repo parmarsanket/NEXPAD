@@ -99,5 +99,45 @@ fun SettingsScreen(
                 colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF00E676), checkedTrackColor = Color.DarkGray)
             )
         }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Gyroscope Settings
+        Text("Gyroscope Steering", color = Color.LightGray)
+        
+        val isGyroEnabled by viewModel.isGyroSteeringEnabled.collectAsState()
+        val isGyroInverted by viewModel.isGyroInverted.collectAsState()
+        
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Enable Gyro Steering", color = Color.White)
+            Spacer(modifier = Modifier.weight(1f))
+            Switch(
+                checked = isGyroEnabled,
+                onCheckedChange = { 
+                    viewModel.isGyroSteeringEnabled.value = it
+                    sharedPref.edit().putBoolean("ENABLE_GYRO", it).apply()
+                },
+                colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF00E676), checkedTrackColor = Color.DarkGray)
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Invert Gyro Steering", color = Color.White)
+            Spacer(modifier = Modifier.weight(1f))
+            Switch(
+                checked = isGyroInverted,
+                onCheckedChange = { 
+                    viewModel.isGyroInverted.value = it
+                    sharedPref.edit().putBoolean("INVERT_GYRO", it).apply()
+                },
+                colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF00E676), checkedTrackColor = Color.DarkGray)
+            )
+        }
     }
 }

@@ -60,7 +60,7 @@ fun GamepadScreen(
             .fillMaxSize()
             .background(Color(0xFF0D0D0D))
     ) {
-        // Back Button & Gyro Toggle
+        // Back Button & Connection Status
         Row(
             modifier = Modifier.align(Alignment.TopStart).padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -70,13 +70,6 @@ fun GamepadScreen(
             }
             Spacer(modifier = Modifier.width(16.dp))
             Text(if (isConnected) "🟢 Connected" else "🔴 Disconnected", color = Color.White, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.width(32.dp))
-            Text("Gyro Steering: ", color = Color.White, fontWeight = FontWeight.Bold)
-            Switch(
-                checked = isGyroSteeringEnabled,
-                onCheckedChange = { viewModel.toggleGyroSteering() },
-                colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF00E676), checkedTrackColor = Color.DarkGray)
-            )
         }
 
         // Render mapped components

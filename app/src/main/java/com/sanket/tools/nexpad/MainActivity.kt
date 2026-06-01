@@ -50,6 +50,10 @@ class MainActivity : ComponentActivity() {
         viewModel = ViewModelProvider(this)[GamepadViewModel::class.java]
         layoutManager = LayoutManager(this)
 
+        val sharedPref = getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
+        viewModel.isGyroInverted.value = sharedPref.getBoolean("INVERT_GYRO", false)
+        viewModel.isGyroSteeringEnabled.value = sharedPref.getBoolean("ENABLE_GYRO", false)
+
         // Setup Vibrator
         vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
