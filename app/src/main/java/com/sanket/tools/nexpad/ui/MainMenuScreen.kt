@@ -2,6 +2,8 @@ package com.sanket.tools.nexpad.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,11 +19,13 @@ import com.sanket.tools.nexpad.utils.LayoutManager
 @Composable
 fun MainMenuScreen(navController: NavController, layoutManager: LayoutManager) {
     var activeProfile by remember { mutableStateOf(layoutManager.getActiveProfile()) }
+    val scrollState = rememberScrollState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF121212))
+            .verticalScroll(scrollState)
             .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
