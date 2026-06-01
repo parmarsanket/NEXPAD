@@ -42,13 +42,30 @@ class GyroSensor(
             windowManager.defaultDisplay.rotation
         }
 
-        var x = event.values[0]
-        var y = event.values[1]
-        var z = event.values[2]
+        var hwX = event.values[0]
+        var hwY = event.values[1]
+        var hwZ = event.values[2]
 
-        // Fix hardware axis inversion on 180 flip
-        if (rotation == Surface.ROTATION_270) {
-            y = -y
+        // Remap from Hardware (Portrait) to Display (Landscape)
+        var x = hwX
+        var y = hwY
+        var z = hwZ
+
+        when (rotation) {
+            Surface.ROTATION_90 -> {
+                // Landscape
+                x = -hwY
+                y = hwX
+            }
+            Surface.ROTATION_270 -> {
+                // Reverse Landscape
+                x = hwY
+                y = -hwX
+            }
+            Surface.ROTATION_180 -> {
+                x = -hwX
+                y = -hwY
+            }
         }
 
         when (event.sensor.type) {
