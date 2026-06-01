@@ -72,6 +72,7 @@ class GamepadViewModel : ViewModel() {
     }
 
     fun updateButton(buttonName: String, isPressed: Boolean) {
+        android.util.Log.d("NEXPAD_DEBUG", "Button $buttonName updated to: $isPressed")
         _inputState.update { current ->
             when (buttonName) {
                 "A" -> current.copy(btnA = isPressed)

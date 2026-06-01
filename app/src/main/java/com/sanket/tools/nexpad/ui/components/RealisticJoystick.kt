@@ -3,7 +3,9 @@ package com.sanket.tools.nexpad.ui.components
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -74,6 +76,8 @@ fun RealisticJoystick(
             )
         }
 
+        val coroutineScope = rememberCoroutineScope()
+
         // Thumbstick
         Box(
             modifier = Modifier
@@ -82,6 +86,28 @@ fun RealisticJoystick(
                 .shadow(12.dp, CircleShape)
                 .clip(CircleShape)
                 .background(thumbGradient)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = {
+                            val buttonName = if (isLeft) "L3" else "R3"
+                            android.util.Log.d("NEXPAD_DEBUG", "Single Tap -> Triggered $buttonName")
+                            coroutineScope.launch {
+                                viewModel.updateButton(buttonName, true)
+                                kotlinx.coroutines.delay(100)
+                                viewModel.updateButton(buttonName, false)
+                            }
+                        },
+                        onDoubleTap = {
+                            val buttonName = if (isLeft) "L3" else "R3"
+                            android.util.Log.d("NEXPAD_DEBUG", "Double Tap -> Triggered $buttonName")
+                            coroutineScope.launch {
+                                viewModel.updateButton(buttonName, true)
+                                kotlinx.coroutines.delay(300) // longer hold for double tap
+                                viewModel.updateButton(buttonName, false)
+                            }
+                        }
+                    )
+                }
                 .pointerInput(Unit) {
                     detectDragGestures(
                         onDragEnd = {
@@ -116,8 +142,10 @@ fun RealisticJoystick(
                         val normalizedY = -newY / maxRadius // Invert Y so up is positive
 
                         if (isLeft) {
+                            android.util.Log.d("NEXPAD_DEBUG", "LS DRAG -> X: $normalizedX, Y: $normalizedY")
                             viewModel.updateLeftStick(normalizedX, normalizedY)
                         } else {
+                            android.util.Log.d("NEXPAD_DEBUG", "RS DRAG -> X: $normalizedX, Y: $normalizedY")
                             viewModel.updateRightStick(normalizedX, normalizedY)
                         }
                     }
