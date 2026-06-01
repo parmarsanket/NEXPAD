@@ -141,7 +141,7 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
         }
 
         // Selected Control Panel
-        if (selectedKey != null) {
+        if (selectedKey != null && positions.containsKey(selectedKey)) {
             val position = positions[selectedKey]!!
             ElevatedCard(
                 modifier = Modifier
