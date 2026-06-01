@@ -17,15 +17,15 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-class NetworkClient {
+class NetworkClient : IGamepadConnection {
     private var socket: BoundDatagramSocket? = null
     private var serverAddress: InetSocketAddress? = null
     private var receiveJob: Job? = null
     
-    var onFeedbackReceived: ((GamepadFeedback) -> Unit)? = null
+    override var onFeedbackReceived: ((GamepadFeedback) -> Unit)? = null
 
-    suspend fun connect(ip: String, port: Int) = withContext(Dispatchers.IO) {
-        serverAddress = InetSocketAddress(ip, port)
+    override suspend fun connect(address: String, port: Int) = withContext(Dispatchers.IO) {
+        serverAddress = InetSocketAddress(address, port)
         val selectorManager = SelectorManager(Dispatchers.IO)
         // Bind to any local port
         socket = aSocket(selectorManager).udp().bind()
@@ -44,7 +44,7 @@ class NetworkClient {
         }
     }
 
-    suspend fun sendInput(input: GamepadInput) = withContext(Dispatchers.IO) {
+    override suspend fun sendInput(input: GamepadInput) = withContext(Dispatchers.IO) {
         val currentSocket = socket
         val target = serverAddress
         if (currentSocket == null || target == null) return@withContext
@@ -63,7 +63,7 @@ class NetworkClient {
         }
     }
 
-    fun disconnect() {
+    override fun disconnect() {
         receiveJob?.cancel()
         socket?.close()
         socket = null

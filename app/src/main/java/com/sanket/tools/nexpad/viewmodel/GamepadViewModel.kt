@@ -17,8 +17,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
+import com.sanket.tools.nexpad.network.IGamepadConnection
+
 class GamepadViewModel : ViewModel() {
-    private val networkClient = NetworkClient()
+    private val connection: IGamepadConnection = NetworkClient()
     
     private val _inputState = MutableStateFlow(GamepadInput())
     val inputState: StateFlow<GamepadInput> = _inputState.asStateFlow()
@@ -27,7 +29,7 @@ class GamepadViewModel : ViewModel() {
     val feedbackFlow: SharedFlow<GamepadFeedback> = _feedbackFlow.asSharedFlow()
 
     init {
-        networkClient.onFeedbackReceived = { feedback: GamepadFeedback ->
+        connection.onFeedbackReceived = { feedback: GamepadFeedback ->
             viewModelScope.launch {
                 _feedbackFlow.emit(feedback)
             }
@@ -38,21 +40,21 @@ class GamepadViewModel : ViewModel() {
     
     fun connect(ip: String, port: Int) {
         viewModelScope.launch {
-            networkClient.connect(ip, port)
+            connection.connect(ip, port)
             startTransmitting()
         }
     }
     
     fun disconnect() {
         transmitJob?.cancel()
-        networkClient.disconnect()
+        connection.disconnect()
     }
     
     private fun startTransmitting() {
         transmitJob?.cancel()
         transmitJob = viewModelScope.launch {
             while (isActive) {
-                networkClient.sendInput(_inputState.value)
+                connection.sendInput(_inputState.value)
                 // 60Hz transmission rate (1000ms / 60 = ~16.6ms)
                 delay(16L) 
             }
