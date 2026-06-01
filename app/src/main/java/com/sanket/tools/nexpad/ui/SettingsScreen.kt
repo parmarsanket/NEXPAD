@@ -113,7 +113,7 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Enable Gyro Steering (2D Joystick)", color = Color.White)
+            Text("Enable 2D Gyro Steering (Left Stick)", color = Color.White)
             Spacer(modifier = Modifier.weight(1f))
             Switch(
                 checked = isGyroEnabled,
@@ -130,7 +130,7 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Invert Gyro Steering", color = Color.White)
+            Text("Invert 2D Gyro Steering", color = Color.White)
             Spacer(modifier = Modifier.weight(1f))
             Switch(
                 checked = isGyroInverted,
@@ -147,7 +147,7 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Enable 6-Axis Motion Data (PC Emulators)", color = Color.White)
+            Text("Enable 6-Axis Motion Data (3D Emulators)", color = Color.White)
             Spacer(modifier = Modifier.weight(1f))
             Switch(
                 checked = is6AxisEnabled,
