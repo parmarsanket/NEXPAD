@@ -68,7 +68,8 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
                         detectDragGestures(
                             onDragStart = { selectedKey = key },
                             onDragEnd = {
-                                positions[key] = position.copy(xRatio = offsetX / screenWidth, yRatio = offsetY / screenHeight)
+                                val currentPos = positions[key] ?: return@detectDragGestures
+                                positions[key] = currentPos.copy(xRatio = offsetX / screenWidth, yRatio = offsetY / screenHeight)
                             }
                         ) { change, dragAmount ->
                             change.consume()
