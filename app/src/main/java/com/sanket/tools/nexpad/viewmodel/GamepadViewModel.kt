@@ -43,9 +43,14 @@ class GamepadViewModel : ViewModel() {
     
     fun connect(ip: String, port: Int) {
         viewModelScope.launch {
-            connection.connect(ip, port)
-            _isConnected.value = true
-            startTransmitting()
+            try {
+                connection.connect(ip, port)
+                _isConnected.value = true
+                startTransmitting()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _isConnected.value = false
+            }
         }
     }
     
