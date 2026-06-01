@@ -10,7 +10,12 @@ data class LayoutProfile(
 )
 
 @Serializable
-data class Position(val xRatio: Float, val yRatio: Float)
+data class Position(
+    val xRatio: Float, 
+    val yRatio: Float,
+    val scale: Float = 1.0f,
+    val opacity: Float = 1.0f
+)
 
 fun defaultPositions(): Map<String, Position> {
     // Relative coordinates (0.0 to 1.0) of screen width/height

@@ -7,6 +7,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
@@ -38,10 +40,8 @@ fun GamepadScreen(
     
     val context = androidx.compose.ui.platform.LocalContext.current
 
-    // Rumble Feedback Logic restored from previous branch!
     LaunchedEffect(Unit) {
         viewModel.feedbackFlow.collect { feedback ->
-            // Trigger device vibration
             val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
             val totalSpeed = (feedback.leftMotorSpeed + feedback.rightMotorSpeed) / 2
             if (totalSpeed > 0) {
@@ -58,9 +58,9 @@ fun GamepadScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0D0D0D)) // Floating UI on Dark Background! No image.
+            .background(Color(0xFF0D0D0D))
     ) {
-        // Back Button & Gyro Toggle restored!
+        // Back Button & Gyro Toggle
         Row(
             modifier = Modifier.align(Alignment.TopStart).padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -79,13 +79,16 @@ fun GamepadScreen(
             )
         }
 
-        // Render each mapped component using the 3D Canvas Composables
+        // Render mapped components
         profile.positions.forEach { (key, position) ->
             val offsetX = (position.xRatio * screenWidth).roundToInt()
             val offsetY = (position.yRatio * screenHeight).roundToInt()
             
             Box(
-                modifier = Modifier.offset { IntOffset(offsetX, offsetY) }
+                modifier = Modifier
+                    .offset { IntOffset(offsetX, offsetY) }
+                    .scale(position.scale)
+                    .alpha(position.opacity)
             ) {
                 when {
                     key == "LS" -> RealisticJoystick(isLeft = true, isConnected = isConnected, viewModel = viewModel, isRgbEnabled = profile.isRgbEnabled)
