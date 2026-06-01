@@ -13,6 +13,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
 import androidx.navigation.NavController
 import com.sanket.tools.nexpad.R
 import com.sanket.tools.nexpad.model.Position
@@ -34,10 +36,21 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
             .fillMaxSize()
             .background(Color.Black)
     ) {
+        // Base controller image as the background shell
+        Image(
+            painter = painterResource(id = R.drawable.realistic_controller),
+            contentDescription = "Controller Shell",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = androidx.compose.ui.layout.ContentScale.FillBounds,
+            alpha = 0.3f // Dim the background so the draggable buttons pop out
+        )
+
         // Render all buttons at their current dragged positions
         positions.forEach { (key, position) ->
             var offsetX by remember { mutableFloatStateOf(position.xRatio * screenWidth) }
             var offsetY by remember { mutableFloatStateOf(position.yRatio * screenHeight) }
+
+            val crop = buttonCrops[key]
 
             Box(
                 modifier = Modifier
@@ -54,11 +67,23 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
                             offsetY += dragAmount.y
                         }
                     }
-                    .background(Color.White.copy(alpha = 0.2f))
-                    .padding(8.dp)
             ) {
-                // Mock visual for the editor so they know what they are dragging
-                Text(key, color = Color.White)
+                if (crop != null) {
+                    CroppedImage(
+                        imageRes = R.drawable.realistic_controller,
+                        srcOffsetX = crop.x,
+                        srcOffsetY = crop.y,
+                        cropWidth = crop.w,
+                        cropHeight = crop.h,
+                        targetWidthDp = (crop.w * 0.4f).toInt(),
+                        targetHeightDp = (crop.h * 0.4f).toInt(),
+                        modifier = Modifier.background(Color.White.copy(alpha=0.1f)) // Show box in editor mode
+                    )
+                } else {
+                    Box(modifier = Modifier.background(Color.White.copy(alpha = 0.2f)).padding(8.dp)) {
+                        Text(key, color = Color.White)
+                    }
+                }
             }
         }
 
