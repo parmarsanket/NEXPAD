@@ -3,43 +3,25 @@ package com.sanket.tools.nexpad.ui
 import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.R
-import com.sanket.tools.nexpad.model.Position
-import com.sanket.tools.nexpad.ui.components.CroppedImage
+import com.sanket.tools.nexpad.ui.components.RealisticButton
+import com.sanket.tools.nexpad.ui.components.RealisticDPad
+import com.sanket.tools.nexpad.ui.components.RealisticJoystick
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.roundToInt
-
-data class CropData(val x: Int, val y: Int, val w: Int, val h: Int)
-
-val buttonCrops = mapOf(
-    "L2" to CropData(200, 90, 220, 100),
-    "L1" to CropData(200, 200, 220, 100),
-    "DPAD" to CropData(510, 510, 220, 220),
-    "L3" to CropData(340, 320, 220, 220),
-    "SELECT" to CropData(660, 380, 80, 80),
-    "GUIDE" to CropData(750, 210, 150, 150),
-    "START" to CropData(890, 380, 80, 80),
-    "R2" to CropData(1220, 90, 220, 100),
-    "R1" to CropData(1220, 200, 220, 100),
-    "R3" to CropData(880, 530, 220, 220),
-    "ABXY" to CropData(1020, 290, 280, 280)
-)
 
 @Composable
 fun GamepadScreen(
@@ -59,21 +41,20 @@ fun GamepadScreen(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // Base controller image as the background shell
+        // Blank Controller Shell Background
         Image(
-            painter = painterResource(id = R.drawable.realistic_controller),
+            painter = painterResource(id = R.drawable.blank_controller),
             contentDescription = "Controller Shell",
             modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.FillBounds,
-            alpha = 0.3f // Dim the background so the draggable buttons pop out
+            contentScale = ContentScale.FillBounds
         )
 
         // Back Button
         IconButton(onClick = onBack, modifier = Modifier.align(Alignment.TopStart).padding(16.dp)) {
-            Text("⬅️", fontSize = 24.sp)
+            Text("⬅️", fontSize = 24.sp, color = Color.White)
         }
 
-        // Render each mapped component using the hyper-realistic cropped image portions
+        // Render each mapped component using the 3D Canvas Composables
         profile.positions.forEach { (key, position) ->
             val offsetX = (position.xRatio * screenWidth).roundToInt()
             val offsetY = (position.yRatio * screenHeight).roundToInt()
@@ -81,49 +62,17 @@ fun GamepadScreen(
             Box(
                 modifier = Modifier.offset { IntOffset(offsetX, offsetY) }
             ) {
-                DraggableGamepadButton(key = key, isConnected = true, onVibrate = onVibrate, viewModel = viewModel, isRgbEnabled = profile.isRgbEnabled)
-            }
-        }
-    }
-}
-
-@Composable
-fun DraggableGamepadButton(key: String, isConnected: Boolean, onVibrate: () -> Unit, viewModel: GamepadViewModel, isRgbEnabled: Boolean) {
-    var isPressed by remember { mutableStateOf(false) }
-    val crop = buttonCrops[key]
-    
-    Box(
-        modifier = Modifier
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onPress = {
-                        if (isConnected) onVibrate()
-                        isPressed = true
-                        viewModel.updateButton(key, true)
-                        tryAwaitRelease()
-                        isPressed = false
-                        viewModel.updateButton(key, false)
-                    }
-                )
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        if (crop != null) {
-            // Draw the actual highly realistic button from the image!
-            CroppedImage(
-                imageRes = R.drawable.realistic_controller,
-                srcOffsetX = crop.x,
-                srcOffsetY = crop.y,
-                cropWidth = crop.w,
-                cropHeight = crop.h,
-                targetWidthDp = (crop.w * 0.4f).toInt(), // Scale it down visually
-                targetHeightDp = (crop.h * 0.4f).toInt(),
-                modifier = if (isPressed) Modifier.background(Color.White.copy(alpha=0.3f)) else Modifier
-            )
-        } else {
-            // Fallback for buttons not yet mapped with coordinates
-            Box(modifier = Modifier.size(60.dp).background(if (isPressed) Color.DarkGray else Color.LightGray, shape = androidx.compose.foundation.shape.CircleShape), contentAlignment = Alignment.Center) {
-                Text(key, color = Color.White, fontWeight = FontWeight.Bold)
+                when {
+                    key == "L3" -> RealisticJoystick(isLeft = true, isConnected = true, viewModel = viewModel, isRgbEnabled = profile.isRgbEnabled)
+                    key == "R3" -> RealisticJoystick(isLeft = false, isConnected = true, viewModel = viewModel, isRgbEnabled = profile.isRgbEnabled)
+                    key == "DPAD" -> RealisticDPad(isConnected = true, viewModel = viewModel, isRgbEnabled = profile.isRgbEnabled)
+                    key == "A" -> RealisticButton(key = "A", buttonColor = Color(0xFF00C853), isConnected = true, onVibrate = onVibrate, viewModel = viewModel, isRgbEnabled = profile.isRgbEnabled)
+                    key == "B" -> RealisticButton(key = "B", buttonColor = Color(0xFFD50000), isConnected = true, onVibrate = onVibrate, viewModel = viewModel, isRgbEnabled = profile.isRgbEnabled)
+                    key == "X" -> RealisticButton(key = "X", buttonColor = Color(0xFF2962FF), isConnected = true, onVibrate = onVibrate, viewModel = viewModel, isRgbEnabled = profile.isRgbEnabled)
+                    key == "Y" -> RealisticButton(key = "Y", buttonColor = Color(0xFFFFD600), isConnected = true, onVibrate = onVibrate, viewModel = viewModel, isRgbEnabled = profile.isRgbEnabled)
+                    key == "GUIDE" -> RealisticButton(key = "X", buttonColor = Color.White, isConnected = true, onVibrate = onVibrate, viewModel = viewModel, isRgbEnabled = profile.isRgbEnabled)
+                    else -> RealisticButton(key = key, buttonColor = Color.Gray, isConnected = true, onVibrate = onVibrate, viewModel = viewModel, isRgbEnabled = profile.isRgbEnabled)
+                }
             }
         }
     }

@@ -69,7 +69,20 @@ class MainActivity : ComponentActivity() {
             NEXPADTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Box(modifier = Modifier.padding(innerPadding)) {
-                        NavigationGraph(viewModel, layoutManager)
+                        NavigationGraph(
+                            viewModel = viewModel,
+                            layoutManager = layoutManager,
+                            context = this@MainActivity,
+                            onVibrate = {
+                                val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                    vibrator.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
+                                } else {
+                                    @Suppress("DEPRECATION")
+                                    vibrator.vibrate(50)
+                                }
+                            }
+                        )
                     }
                 }
             }

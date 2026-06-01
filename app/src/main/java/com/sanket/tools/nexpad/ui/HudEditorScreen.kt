@@ -7,19 +7,22 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.navigation.NavController
 import com.sanket.tools.nexpad.R
 import com.sanket.tools.nexpad.model.Position
-import com.sanket.tools.nexpad.ui.components.CroppedImage
+import com.sanket.tools.nexpad.ui.components.RealisticButton
+import com.sanket.tools.nexpad.ui.components.RealisticDPad
+import com.sanket.tools.nexpad.ui.components.RealisticJoystick
 import com.sanket.tools.nexpad.utils.LayoutManager
+import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.roundToInt
 
 @Composable
@@ -28,8 +31,10 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
     val screenWidth = configuration.screenWidthDp.dp.value
     val screenHeight = configuration.screenHeightDp.dp.value
 
-    var profile by remember { mutableStateOf(layoutManager.getActiveProfile()) }
-    var positions by remember { mutableStateOf(profile.positions.toMutableMap()) }
+    val profile = layoutManager.getActiveProfile()
+    val positions = remember { mutableStateMapOf<String, Position>().apply { putAll(profile.positions) } }
+    // We pass a dummy GamepadViewModel because editor shouldn't send actual events
+    val dummyViewModel = androidx.lifecycle.viewmodel.compose.viewModel<GamepadViewModel>()
 
     Box(
         modifier = Modifier
@@ -38,11 +43,10 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
     ) {
         // Base controller image as the background shell
         Image(
-            painter = painterResource(id = R.drawable.realistic_controller),
+            painter = painterResource(id = R.drawable.blank_controller),
             contentDescription = "Controller Shell",
             modifier = Modifier.fillMaxSize(),
-            contentScale = androidx.compose.ui.layout.ContentScale.FillBounds,
-            alpha = 0.3f // Dim the background so the draggable buttons pop out
+            contentScale = androidx.compose.ui.layout.ContentScale.FillBounds
         )
 
         // Render all buttons at their current dragged positions
@@ -50,15 +54,12 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
             var offsetX by remember { mutableFloatStateOf(position.xRatio * screenWidth) }
             var offsetY by remember { mutableFloatStateOf(position.yRatio * screenHeight) }
 
-            val crop = buttonCrops[key]
-
             Box(
                 modifier = Modifier
                     .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
                     .pointerInput(Unit) {
                         detectDragGestures(
                             onDragEnd = {
-                                // Save the new ratio to state
                                 positions[key] = Position(offsetX / screenWidth, offsetY / screenHeight)
                             }
                         ) { change, dragAmount ->
@@ -67,41 +68,40 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
                             offsetY += dragAmount.y
                         }
                     }
+                    .background(Color.White.copy(alpha = 0.1f)) // highlight draggable area
             ) {
-                if (crop != null) {
-                    CroppedImage(
-                        imageRes = R.drawable.realistic_controller,
-                        srcOffsetX = crop.x,
-                        srcOffsetY = crop.y,
-                        cropWidth = crop.w,
-                        cropHeight = crop.h,
-                        targetWidthDp = (crop.w * 0.4f).toInt(),
-                        targetHeightDp = (crop.h * 0.4f).toInt(),
-                        modifier = Modifier.background(Color.White.copy(alpha=0.1f)) // Show box in editor mode
-                    )
-                } else {
-                    Box(modifier = Modifier.background(Color.White.copy(alpha = 0.2f)).padding(8.dp)) {
-                        Text(key, color = Color.White)
-                    }
+                when {
+                    key == "L3" -> RealisticJoystick(isLeft = true, isConnected = false, viewModel = dummyViewModel, isRgbEnabled = profile.isRgbEnabled)
+                    key == "R3" -> RealisticJoystick(isLeft = false, isConnected = false, viewModel = dummyViewModel, isRgbEnabled = profile.isRgbEnabled)
+                    key == "DPAD" -> RealisticDPad(isConnected = false, viewModel = dummyViewModel, isRgbEnabled = profile.isRgbEnabled)
+                    key == "A" -> RealisticButton(key = "A", buttonColor = Color(0xFF00C853), isConnected = false, onVibrate = {}, viewModel = dummyViewModel, isRgbEnabled = profile.isRgbEnabled)
+                    key == "B" -> RealisticButton(key = "B", buttonColor = Color(0xFFD50000), isConnected = false, onVibrate = {}, viewModel = dummyViewModel, isRgbEnabled = profile.isRgbEnabled)
+                    key == "X" -> RealisticButton(key = "X", buttonColor = Color(0xFF2962FF), isConnected = false, onVibrate = {}, viewModel = dummyViewModel, isRgbEnabled = profile.isRgbEnabled)
+                    key == "Y" -> RealisticButton(key = "Y", buttonColor = Color(0xFFFFD600), isConnected = false, onVibrate = {}, viewModel = dummyViewModel, isRgbEnabled = profile.isRgbEnabled)
+                    else -> RealisticButton(key = key, buttonColor = Color.Gray, isConnected = false, onVibrate = {}, viewModel = dummyViewModel, isRgbEnabled = profile.isRgbEnabled)
                 }
             }
         }
 
-        // Top Bar for saving
+        // Top bar for saving
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("DRAG TO MOVE - HUD EDITOR", color = Color.White)
-            Button(onClick = {
-                val updatedProfile = profile.copy(positions = positions)
-                layoutManager.saveProfile(updatedProfile)
-                navController.popBackStack()
-            }) {
-                Text("Save & Exit")
+            IconButton(onClick = { navController.popBackStack() }) {
+                Text("⬅️", fontSize = 24.sp, color = Color.White)
+            }
+            Button(
+                onClick = {
+                    val updatedProfile = profile.copy(positions = positions.toMap())
+                    layoutManager.saveProfile(updatedProfile)
+                    navController.popBackStack()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E676))
+            ) {
+                Text("SAVE LAYOUT")
             }
         }
     }
