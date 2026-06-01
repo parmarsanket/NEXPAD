@@ -38,9 +38,13 @@ class GamepadViewModel : ViewModel() {
 
     private var transmitJob: Job? = null
     
+    private val _isConnected = MutableStateFlow(false)
+    val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
+    
     fun connect(ip: String, port: Int) {
         viewModelScope.launch {
             connection.connect(ip, port)
+            _isConnected.value = true
             startTransmitting()
         }
     }
@@ -48,6 +52,7 @@ class GamepadViewModel : ViewModel() {
     fun disconnect() {
         transmitJob?.cancel()
         connection.disconnect()
+        _isConnected.value = false
     }
     
     private fun startTransmitting() {
@@ -72,15 +77,23 @@ class GamepadViewModel : ViewModel() {
                 "DOWN" -> current.copy(dpadDown = isPressed)
                 "LEFT" -> current.copy(dpadLeft = isPressed)
                 "RIGHT" -> current.copy(dpadRight = isPressed)
-                "L1" -> current.copy(btnL1 = isPressed)
-                "R1" -> current.copy(btnR1 = isPressed)
-                "L2" -> current.copy(triggerL2 = if (isPressed) 1f else 0f)
-                "R2" -> current.copy(triggerR2 = if (isPressed) 1f else 0f)
+                "LB" -> current.copy(btnL1 = isPressed)
+                "RB" -> current.copy(btnR1 = isPressed)
+                "LT" -> current.copy(triggerL2 = if (isPressed) 1f else 0f)
+                "RT" -> current.copy(triggerR2 = if (isPressed) 1f else 0f)
                 "L3" -> current.copy(btnL3 = isPressed)
                 "R3" -> current.copy(btnR3 = isPressed)
-                "START" -> current.copy(btnStart = isPressed)
-                "SELECT" -> current.copy(btnSelect = isPressed)
-                "GUIDE" -> current.copy(btnGuide = isPressed)
+                "MENU" -> current.copy(btnStart = isPressed)
+                "VIEW" -> current.copy(btnSelect = isPressed)
+                "XBOX" -> current.copy(btnGuide = isPressed)
+                "SHARE" -> current.copy(btnShare = isPressed)
+                "SCREENSHOT" -> current.copy(btnScreenshot = isPressed)
+                "M1" -> current.copy(btnM1 = isPressed)
+                "M2" -> current.copy(btnM2 = isPressed)
+                "M3" -> current.copy(btnM3 = isPressed)
+                "M4" -> current.copy(btnM4 = isPressed)
+                "PROFILE" -> current.copy(btnProfile = isPressed)
+                "TURBO" -> current.copy(btnTurbo = isPressed)
                 else -> current
             }
         }

@@ -5,7 +5,6 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -13,14 +12,9 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.Image
-import androidx.compose.ui.res.painterResource
 import androidx.navigation.NavController
-import com.sanket.tools.nexpad.R
 import com.sanket.tools.nexpad.model.Position
-import com.sanket.tools.nexpad.ui.components.RealisticButton
-import com.sanket.tools.nexpad.ui.components.RealisticDPad
-import com.sanket.tools.nexpad.ui.components.RealisticJoystick
+import com.sanket.tools.nexpad.ui.components.*
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.roundToInt
@@ -33,22 +27,13 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
 
     val profile = layoutManager.getActiveProfile()
     val positions = remember { mutableStateMapOf<String, Position>().apply { putAll(profile.positions) } }
-    // We pass a dummy GamepadViewModel because editor shouldn't send actual events
     val dummyViewModel = androidx.lifecycle.viewmodel.compose.viewModel<GamepadViewModel>()
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(Color(0xFF0D0D0D)) // Solid sleek dark background, no image!
     ) {
-        // Base controller image as the background shell
-        Image(
-            painter = painterResource(id = R.drawable.blank_controller),
-            contentDescription = "Controller Shell",
-            modifier = Modifier.fillMaxSize(),
-            contentScale = androidx.compose.ui.layout.ContentScale.FillBounds
-        )
-
         // Render all buttons at their current dragged positions
         positions.forEach { (key, position) ->
             var offsetX by remember { mutableFloatStateOf(position.xRatio * screenWidth) }
@@ -68,16 +53,20 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
                             offsetY += dragAmount.y
                         }
                     }
-                    .background(Color.White.copy(alpha = 0.1f)) // highlight draggable area
+                    .background(Color.White.copy(alpha = 0.05f)) // highlight draggable area
             ) {
                 when {
-                    key == "L3" -> RealisticJoystick(isLeft = true, isConnected = false, viewModel = dummyViewModel, isRgbEnabled = profile.isRgbEnabled)
-                    key == "R3" -> RealisticJoystick(isLeft = false, isConnected = false, viewModel = dummyViewModel, isRgbEnabled = profile.isRgbEnabled)
+                    key == "LS" -> RealisticJoystick(isLeft = true, isConnected = false, viewModel = dummyViewModel, isRgbEnabled = profile.isRgbEnabled)
+                    key == "RS" -> RealisticJoystick(isLeft = false, isConnected = false, viewModel = dummyViewModel, isRgbEnabled = profile.isRgbEnabled)
                     key == "DPAD" -> RealisticDPad(isConnected = false, viewModel = dummyViewModel, isRgbEnabled = profile.isRgbEnabled)
+                    key == "LT" || key == "RT" -> RealisticTrigger(key = key, isConnected = false, onVibrate = {}, viewModel = dummyViewModel, isRgbEnabled = profile.isRgbEnabled)
+                    key == "LB" || key == "RB" -> RealisticBumper(key = key, isConnected = false, onVibrate = {}, viewModel = dummyViewModel, isRgbEnabled = profile.isRgbEnabled)
                     key == "A" -> RealisticButton(key = "A", buttonColor = Color(0xFF00C853), isConnected = false, onVibrate = {}, viewModel = dummyViewModel, isRgbEnabled = profile.isRgbEnabled)
                     key == "B" -> RealisticButton(key = "B", buttonColor = Color(0xFFD50000), isConnected = false, onVibrate = {}, viewModel = dummyViewModel, isRgbEnabled = profile.isRgbEnabled)
                     key == "X" -> RealisticButton(key = "X", buttonColor = Color(0xFF2962FF), isConnected = false, onVibrate = {}, viewModel = dummyViewModel, isRgbEnabled = profile.isRgbEnabled)
                     key == "Y" -> RealisticButton(key = "Y", buttonColor = Color(0xFFFFD600), isConnected = false, onVibrate = {}, viewModel = dummyViewModel, isRgbEnabled = profile.isRgbEnabled)
+                    key in listOf("MENU", "VIEW", "XBOX", "SHARE", "SCREENSHOT") -> RealisticSystemButton(key = key, isConnected = false, onVibrate = {}, viewModel = dummyViewModel, isRgbEnabled = profile.isRgbEnabled)
+                    key in listOf("M1", "M2", "M3", "M4", "PROFILE", "TURBO") -> RealisticMacroButton(key = key, isConnected = false, onVibrate = {}, viewModel = dummyViewModel, isRgbEnabled = profile.isRgbEnabled)
                     else -> RealisticButton(key = key, buttonColor = Color.Gray, isConnected = false, onVibrate = {}, viewModel = dummyViewModel, isRgbEnabled = profile.isRgbEnabled)
                 }
             }

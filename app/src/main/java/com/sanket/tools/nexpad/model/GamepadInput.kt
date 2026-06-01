@@ -16,14 +16,26 @@ data class GamepadInput(
     var dpadLeft: Boolean = false,
     var dpadRight: Boolean = false,
 
-    // Bumpers & System
-    var btnL1: Boolean = false,
-    var btnR1: Boolean = false,
-    var btnL3: Boolean = false,
-    var btnR3: Boolean = false,
-    var btnStart: Boolean = false,
-    var btnSelect: Boolean = false,
-    var btnGuide: Boolean = false,
+    // Bumpers & Clicks
+    var btnL1: Boolean = false, // LB
+    var btnR1: Boolean = false, // RB
+    var btnL3: Boolean = false, // LS Click
+    var btnR3: Boolean = false, // RS Click
+
+    // System Buttons
+    var btnStart: Boolean = false, // Menu
+    var btnSelect: Boolean = false, // View
+    var btnGuide: Boolean = false, // Xbox / Home
+    var btnShare: Boolean = false, // Share
+    var btnScreenshot: Boolean = false,
+
+    // Advanced / Elite
+    var btnM1: Boolean = false,
+    var btnM2: Boolean = false,
+    var btnM3: Boolean = false,
+    var btnM4: Boolean = false,
+    var btnProfile: Boolean = false,
+    var btnTurbo: Boolean = false,
 
     // Triggers (0.0 to 1.0)
     var triggerL2: Float = 0f,
