@@ -6,7 +6,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 class LayoutManager(private val context: Context) {
-    private val prefs = context.getSharedPreferences("NEXPAD_LAYOUTS", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences("NEXPAD_LAYOUTS_V2", Context.MODE_PRIVATE)
 
     fun saveProfile(profile: LayoutProfile) {
         val json = Json.encodeToString(profile)
