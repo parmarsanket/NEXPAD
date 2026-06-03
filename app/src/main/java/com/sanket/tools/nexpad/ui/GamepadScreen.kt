@@ -36,14 +36,24 @@ fun GamepadScreen(
 
     val profile = layoutManager.getActiveProfile()
     val isConnected by viewModel.isConnected.collectAsState()
-    val isGyroSteeringEnabled by viewModel.isGyroSteeringEnabled.collectAsState()
     
     val context = androidx.compose.ui.platform.LocalContext.current
 
     LaunchedEffect(Unit) {
         viewModel.feedbackFlow.collect { feedback ->
-            val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-            val totalSpeed = (feedback.leftMotorSpeed + feedback.rightMotorSpeed) / 2
+            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as android.os.VibratorManager
+                vibratorManager.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            }
+            
+            val sharedPref = context.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
+            val intensityScalar = sharedPref.getFloat("RUMBLE_INTENSITY", 1.0f)
+            
+            val totalSpeed = ((feedback.leftMotorSpeed + feedback.rightMotorSpeed) / 2 * intensityScalar).toInt()
+            
             if (totalSpeed > 0) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     vibrator.vibrate(VibrationEffect.createOneShot(100, totalSpeed.coerceIn(1, 255)))

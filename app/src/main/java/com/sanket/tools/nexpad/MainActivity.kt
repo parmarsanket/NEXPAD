@@ -61,10 +61,25 @@ class MainActivity : ComponentActivity() {
         layoutManager = LayoutManager(this)
 
         val sharedPref = getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
-        viewModel.isGyroInverted.value = sharedPref.getBoolean("INVERT_GYRO", false)
-        viewModel.isGyroSteeringEnabled.value = sharedPref.getBoolean("ENABLE_GYRO", false)
-        viewModel.is6AxisEnabled.value = sharedPref.getBoolean("ENABLE_6AXIS", false)
-        viewModel.is6AxisInverted.value = sharedPref.getBoolean("INVERT_6AXIS", false)
+        // Initialize sensor states from preferences
+        // Gyro/6-Axis settings have been moved to Desktop. We no longer read them here.
+        
+        // Start UDP Server if last IP exists
+        val lastIp = sharedPref.getString("LAST_IP", "")
+        if (!lastIp.isNullOrBlank()) {
+            viewModel.connect(lastIp, 9999)
+        }
+
+        // Initialize Sensors
+        gyroSensor = GyroSensor(
+            context = this,
+            onGravityChanged = { x, y, z -> 
+                // Gravity steering is disabled on Android side.
+                // Desktop app will process raw Accel/Gyro data instead.
+            },
+            onAccelChanged = { x, y, z -> viewModel.updateAccel(x, y, z) },
+            onGyroChanged = { x, y, z -> viewModel.update6AxisGyro(x, y, z) }
+        )
 
         // Setup Vibrator
         vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -75,37 +90,30 @@ class MainActivity : ComponentActivity() {
             getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         }
 
-        // Setup Gyro
-        gyroSensor = GyroSensor(
-            context = this,
-            onGravityChanged = { x, y, z -> viewModel.update2DSteering(x, y, z) },
-            onAccelChanged = { x, y, z -> viewModel.updateAccel(x, y, z) },
-            onGyroChanged = { x, y, z -> viewModel.update6AxisGyro(x, y, z) }
-        )
-
         enableEdgeToEdge()
         setContent {
             NEXPADTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { _ ->
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        NavigationGraph(
-                            viewModel = viewModel,
-                            layoutManager = layoutManager,
-                            context = this@MainActivity,
-                            onVibrate = {
-                                val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                    vibrator.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
-                                } else {
-                                    @Suppress("DEPRECATION")
-                                    vibrator.vibrate(50)
-                                }
+                androidx.compose.material3.Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = androidx.compose.ui.graphics.Color.Black
+                ) {
+                    NavigationGraph(
+                        viewModel = viewModel,
+                        layoutManager = layoutManager,
+                        context = this@MainActivity,
+                        onVibrate = {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                vibrator.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
+                            } else {
+                                @Suppress("DEPRECATION")
+                                vibrator.vibrate(50)
                             }
-                        )
-                    }
+                        }
+                    )
                 }
             }
         }
+
     }
 
     private fun vibrateDevice() {

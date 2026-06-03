@@ -107,80 +107,27 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Gyroscope Settings
-        Text("Gyroscope Steering", color = Color.LightGray)
+        var rumbleIntensity by remember { mutableFloatStateOf(sharedPref.getFloat("RUMBLE_INTENSITY", 1.0f)) }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Text("Haptics & Vibration", color = Color.LightGray)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Rumble Intensity Master Volume: ${(rumbleIntensity * 100).toInt()}%", color = Color.White)
+        }
+        Slider(
+            value = rumbleIntensity,
+            onValueChange = { 
+                rumbleIntensity = it 
+                sharedPref.edit().putFloat("RUMBLE_INTENSITY", it).apply()
+            },
+            valueRange = 0f..1.0f,
+            colors = SliderDefaults.colors(thumbColor = Color(0xFF00E676), activeTrackColor = Color(0xFF00E676))
+        )
         
-        val isGyroEnabled by viewModel.isGyroSteeringEnabled.collectAsState()
-        val isGyroInverted by viewModel.isGyroInverted.collectAsState()
-        val is6AxisEnabled by viewModel.is6AxisEnabled.collectAsState()
-        
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Enable 2D Gyro Steering (Left Stick)", color = Color.White)
-            Spacer(modifier = Modifier.weight(1f))
-            Switch(
-                checked = isGyroEnabled,
-                onCheckedChange = { 
-                    viewModel.isGyroSteeringEnabled.value = it
-                    if (it) viewModel.is6AxisEnabled.value = false // Mutually exclusive
-                    sharedPref.edit().putBoolean("ENABLE_GYRO", it).putBoolean("ENABLE_6AXIS", viewModel.is6AxisEnabled.value).apply()
-                },
-                colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF00E676), checkedTrackColor = Color.DarkGray)
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Invert 2D Gyro Steering", color = Color.White)
-            Spacer(modifier = Modifier.weight(1f))
-            Switch(
-                checked = isGyroInverted,
-                onCheckedChange = { 
-                    viewModel.isGyroInverted.value = it
-                    sharedPref.edit().putBoolean("INVERT_GYRO", it).apply()
-                },
-                colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF00E676), checkedTrackColor = Color.DarkGray),
-                enabled = isGyroEnabled
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Enable 6-Axis Motion Data (3D Emulators)", color = Color.White)
-            Spacer(modifier = Modifier.weight(1f))
-            Switch(
-                checked = is6AxisEnabled,
-                onCheckedChange = { 
-                    viewModel.is6AxisEnabled.value = it
-                    if (it) viewModel.isGyroSteeringEnabled.value = false // Mutually exclusive
-                    sharedPref.edit().putBoolean("ENABLE_6AXIS", it).putBoolean("ENABLE_GYRO", viewModel.isGyroSteeringEnabled.value).apply()
-                },
-                colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF00E676), checkedTrackColor = Color.DarkGray)
-            )
-        }
-
-        val is6AxisInverted by viewModel.is6AxisInverted.collectAsState()
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Invert 6-Axis Motion Data", color = Color.White)
-            Spacer(modifier = Modifier.weight(1f))
-            Switch(
-                checked = is6AxisInverted,
-                onCheckedChange = { 
-                    viewModel.is6AxisInverted.value = it
-                    sharedPref.edit().putBoolean("INVERT_6AXIS", it).apply()
-                },
-                colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF00E676), checkedTrackColor = Color.DarkGray),
-                enabled = is6AxisEnabled
-            )
-        }
+        // Gyro settings have been moved to the Desktop app.
     }
 }
