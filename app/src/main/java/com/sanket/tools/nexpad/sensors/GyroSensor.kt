@@ -4,23 +4,31 @@ import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
-import android.view.WindowManager
-import android.view.Surface
-import android.os.Build
 import android.hardware.SensorManager
+import android.os.Build
+import android.view.Surface
+import android.view.WindowManager
+
 
 class GyroSensor(
-    private val context: Context,
+    context: Context,
     private val onGravityChanged: (Float, Float, Float) -> Unit,
     private val onAccelChanged: (Float, Float, Float) -> Unit,
     private val onGyroChanged: (Float, Float, Float) -> Unit
 ) : SensorEventListener {
 
+    companion object {
+        private const val SENSOR_DELAY =
+            SensorManager.SENSOR_DELAY_FASTEST
+    }
+
+    private val appContext = context.applicationContext
+
     private val sensorManager =
-        context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        appContext.getSystemService(Context.SENSOR_SERVICE) as SensorManager
 
     private val windowManager by lazy {
-        context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        appContext.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     }
 
     private val gravitySensor =
@@ -33,28 +41,19 @@ class GyroSensor(
         sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
 
     fun start() {
-        gravitySensor?.let {
-            sensorManager.registerListener(
-                this,
-                it,
-                SensorManager.SENSOR_DELAY_FASTEST
-            )
-        }
 
-        accelSensor?.let {
-            sensorManager.registerListener(
-                this,
-                it,
-                SensorManager.SENSOR_DELAY_FASTEST
-            )
-        }
-
-        gyroSensor?.let {
-            sensorManager.registerListener(
-                this,
-                it,
-                SensorManager.SENSOR_DELAY_FASTEST
-            )
+        listOf(
+            gravitySensor,
+            accelSensor,
+            gyroSensor
+        ).forEach { sensor ->
+            sensor?.let {
+                sensorManager.registerListener(
+                    this,
+                    it,
+                    SENSOR_DELAY
+                )
+            }
         }
     }
 
@@ -63,14 +62,16 @@ class GyroSensor(
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
+
         event ?: return
 
-        val rotation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            context.display?.rotation ?: Surface.ROTATION_0
-        } else {
-            @Suppress("DEPRECATION")
-            windowManager.defaultDisplay.rotation
-        }
+        val rotation =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                appContext.display?.rotation ?: Surface.ROTATION_0
+            } else {
+                @Suppress("DEPRECATION")
+                windowManager.defaultDisplay.rotation
+            }
 
         val hwX = event.values[0]
         val hwY = event.values[1]
@@ -78,7 +79,6 @@ class GyroSensor(
 
         var x = hwX
         var y = hwY
-        val z = hwZ
 
         when (rotation) {
             Surface.ROTATION_90 -> {
@@ -98,16 +98,33 @@ class GyroSensor(
         }
 
         when (event.sensor.type) {
+
             Sensor.TYPE_GRAVITY ->
-                onGravityChanged(x, y, z)
+                onGravityChanged(
+                    x,
+                    y,
+                    hwZ
+                )
 
             Sensor.TYPE_ACCELEROMETER ->
-                onAccelChanged(x, y, z)
+                onAccelChanged(
+                    x,
+                    y,
+                    hwZ
+                )
 
             Sensor.TYPE_GYROSCOPE ->
-                onGyroChanged(x, y, z)
+                onGyroChanged(
+                    x,
+                    y,
+                    hwZ
+                )
         }
     }
 
-    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+    override fun onAccuracyChanged(
+        sensor: Sensor?,
+        accuracy: Int
+    ) = Unit
+
 }
