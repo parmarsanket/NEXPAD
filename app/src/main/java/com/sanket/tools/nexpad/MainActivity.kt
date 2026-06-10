@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -22,14 +23,19 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.sanket.tools.nexpad.sensors.GyroSensor
 import com.sanket.tools.nexpad.ui.GamepadScreen
 import com.sanket.tools.nexpad.ui.theme.NEXPADTheme
@@ -48,19 +54,19 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         
         // Hide system bars (Navigation bar and Status bar)
-        val windowInsetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
-        windowInsetsController.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        windowInsetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
+        windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
         
         // Draw across the camera cutout
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            window.attributes.layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            window.attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         }
         
         viewModel = ViewModelProvider(this)[GamepadViewModel::class.java]
         layoutManager = LayoutManager(this)
 
-        val sharedPref = getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
+        val sharedPref = getSharedPreferences("nexpad_prefs", MODE_PRIVATE)
         // Initialize sensor states from preferences
         // Gyro/6-Axis settings have been moved to Desktop. We no longer read them here.
         
@@ -73,29 +79,32 @@ class MainActivity : ComponentActivity() {
         // Initialize Sensors
         gyroSensor = GyroSensor(
             context = this,
-            onGravityChanged = { x, y, z -> 
+            onGravityChanged = { x, y, z ->
                 // Gravity steering is disabled on Android side.
                 // Desktop app will process raw Accel/Gyro data instead.
             },
             onAccelChanged = { x, y, z -> viewModel.updateAccel(x, y, z) },
-            onGyroChanged = { x, y, z -> viewModel.update6AxisGyro(x, y, z) }
+            onGyroChanged = { x, y, z -> viewModel.update6AxisGyro(x, y, z) },
+            onGameRotationChanged = { x, y, z ->
+
+            }
         )
 
         // Setup Vibrator
         vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            val vibratorManager = getSystemService(VIBRATOR_MANAGER_SERVICE) as VibratorManager
             vibratorManager.defaultVibrator
         } else {
             @Suppress("DEPRECATION")
-            getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            getSystemService(VIBRATOR_SERVICE) as Vibrator
         }
 
         enableEdgeToEdge()
         setContent {
             NEXPADTheme {
-                androidx.compose.material3.Surface(
+                Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = androidx.compose.ui.graphics.Color.Black
+                    color = Color.Black
                 ) {
                     NavigationGraph(
                         viewModel = viewModel,
