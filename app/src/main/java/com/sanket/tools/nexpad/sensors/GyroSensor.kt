@@ -10,21 +10,52 @@ import android.os.Build
 import android.hardware.SensorManager
 
 class GyroSensor(
-    private val context: Context, 
+    private val context: Context,
     private val onGravityChanged: (Float, Float, Float) -> Unit,
     private val onAccelChanged: (Float, Float, Float) -> Unit,
     private val onGyroChanged: (Float, Float, Float) -> Unit
 ) : SensorEventListener {
-    private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-    private val gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY)
-    private val accelSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-    private val gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
+
+    private val sensorManager =
+        context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+
+    private val windowManager by lazy {
+        context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+    }
+
+    private val gravitySensor =
+        sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY)
+
+    private val accelSensor =
+        sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+
+    private val gyroSensor =
+        sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
 
     fun start() {
-        // Use SENSOR_DELAY_GAME for low latency
-        gravitySensor?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
-        accelSensor?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
-        gyroSensor?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
+        gravitySensor?.let {
+            sensorManager.registerListener(
+                this,
+                it,
+                SensorManager.SENSOR_DELAY_FASTEST
+            )
+        }
+
+        accelSensor?.let {
+            sensorManager.registerListener(
+                this,
+                it,
+                SensorManager.SENSOR_DELAY_FASTEST
+            )
+        }
+
+        gyroSensor?.let {
+            sensorManager.registerListener(
+                this,
+                it,
+                SensorManager.SENSOR_DELAY_FASTEST
+            )
+        }
     }
 
     fun stop() {
@@ -32,9 +63,8 @@ class GyroSensor(
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
-        if (event == null) return
+        event ?: return
 
-        val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
         val rotation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             context.display?.rotation ?: Surface.ROTATION_0
         } else {
@@ -42,42 +72,42 @@ class GyroSensor(
             windowManager.defaultDisplay.rotation
         }
 
-        var hwX = event.values[0]
-        var hwY = event.values[1]
-        var hwZ = event.values[2]
+        val hwX = event.values[0]
+        val hwY = event.values[1]
+        val hwZ = event.values[2]
 
-        // Remap from Hardware (Portrait) to Display (Landscape)
         var x = hwX
         var y = hwY
-        var z = hwZ
+        val z = hwZ
 
         when (rotation) {
             Surface.ROTATION_90 -> {
-                // Landscape (Left edge at top, turned 90 deg CCW)
-                // Top edge (+Y) points Right -> Screen X = hwY
-                // Right edge (+X) points Down -> Screen Y = -hwX
                 x = hwY
                 y = -hwX
             }
-            Surface.ROTATION_270 -> {
-                // Reverse Landscape (Right edge at top, turned 90 deg CW)
-                // Top edge (+Y) points Left -> Screen X = -hwY
-                // Right edge (+X) points Up -> Screen Y = hwX
-                x = -hwY
-                y = hwX
-            }
+
             Surface.ROTATION_180 -> {
                 x = -hwX
                 y = -hwY
             }
+
+            Surface.ROTATION_270 -> {
+                x = -hwY
+                y = hwX
+            }
         }
 
         when (event.sensor.type) {
-            Sensor.TYPE_GRAVITY -> onGravityChanged(x, y, z)
-            Sensor.TYPE_ACCELEROMETER -> onAccelChanged(x, y, z)
-            Sensor.TYPE_GYROSCOPE -> onGyroChanged(x, y, z)
+            Sensor.TYPE_GRAVITY ->
+                onGravityChanged(x, y, z)
+
+            Sensor.TYPE_ACCELEROMETER ->
+                onAccelChanged(x, y, z)
+
+            Sensor.TYPE_GYROSCOPE ->
+                onGyroChanged(x, y, z)
         }
     }
 
-    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
 }

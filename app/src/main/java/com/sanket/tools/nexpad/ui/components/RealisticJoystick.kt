@@ -29,6 +29,7 @@ import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun RealisticJoystick(
@@ -93,7 +94,7 @@ fun RealisticJoystick(
                             android.util.Log.d("NEXPAD_DEBUG", "Single Tap -> Triggered $buttonName")
                             coroutineScope.launch {
                                 viewModel.updateButton(buttonName, true)
-                                kotlinx.coroutines.delay(100)
+                                kotlinx.coroutines.delay(100.milliseconds)
                                 viewModel.updateButton(buttonName, false)
                             }
                         },
@@ -102,7 +103,7 @@ fun RealisticJoystick(
                             android.util.Log.d("NEXPAD_DEBUG", "Double Tap -> Triggered $buttonName")
                             coroutineScope.launch {
                                 viewModel.updateButton(buttonName, true)
-                                kotlinx.coroutines.delay(300) // longer hold for double tap
+                                kotlinx.coroutines.delay(300.milliseconds) // longer hold for double tap
                                 viewModel.updateButton(buttonName, false)
                             }
                         }

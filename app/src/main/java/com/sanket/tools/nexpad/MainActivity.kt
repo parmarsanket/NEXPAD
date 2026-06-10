@@ -116,30 +116,30 @@ class MainActivity : ComponentActivity() {
 
     }
 
-    private fun vibrateDevice() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
-        } else {
-            @Suppress("DEPRECATION")
-            vibrator.vibrate(50)
-        }
-    }
-
-    private fun triggerRumble(leftMotor: Int, rightMotor: Int) {
-        val intensity = maxOf(leftMotor, rightMotor)
-        if (intensity == 0) {
-            vibrator.cancel()
-            return
-        }
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val amplitude = (intensity.toFloat() / 255f * 255).toInt()
-            vibrator.vibrate(VibrationEffect.createOneShot(200, amplitude))
-        } else {
-            @Suppress("DEPRECATION")
-            vibrator.vibrate(200)
-        }
-    }
+//    private fun vibrateDevice() {
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//            vibrator.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
+//        } else {
+//            @Suppress("DEPRECATION")
+//            vibrator.vibrate(50)
+//        }
+//    }
+//
+//    private fun triggerRumble(leftMotor: Int, rightMotor: Int) {
+//        val intensity = maxOf(leftMotor, rightMotor)
+//        if (intensity == 0) {
+//            vibrator.cancel()
+//            return
+//        }
+//
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//            val amplitude = (intensity.toFloat() / 255f * 255).toInt()
+//            vibrator.vibrate(VibrationEffect.createOneShot(200, amplitude))
+//        } else {
+//            @Suppress("DEPRECATION")
+//            vibrator.vibrate(200)
+//        }
+//    }
 
     override fun onResume() {
         super.onResume()
