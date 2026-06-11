@@ -9,8 +9,13 @@ import com.sanket.tools.nexpad.model.GamepadInput
  */
 interface IGamepadConnection {
     var onFeedbackReceived: ((GamepadFeedback) -> Unit)?
+    var onConnectionStateChanged: ((Boolean) -> Unit)?
+    var onStatusChanged: ((String) -> Unit)?
+    var onDiagnosticLog: ((String) -> Unit)?
     
     suspend fun connect(address: String, port: Int)
     suspend fun sendInput(input: GamepadInput)
     fun disconnect()
+    fun startAdvertising()
+    fun close()
 }

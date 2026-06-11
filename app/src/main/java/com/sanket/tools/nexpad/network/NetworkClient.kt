@@ -24,6 +24,9 @@ class NetworkClient : IGamepadConnection {
     private var receiveJob: Job? = null
     
     override var onFeedbackReceived: ((GamepadFeedback) -> Unit)? = null
+    override var onConnectionStateChanged: ((Boolean) -> Unit)? = null
+    override var onStatusChanged: ((String) -> Unit)? = null
+    override var onDiagnosticLog: ((String) -> Unit)? = null
 
     override suspend fun connect(address: String, port: Int) {
         withContext(Dispatchers.IO) {
@@ -31,6 +34,8 @@ class NetworkClient : IGamepadConnection {
             val selectorManager = SelectorManager(Dispatchers.IO)
             // Bind to any local port
             socket = aSocket(selectorManager).udp().bind()
+            onConnectionStateChanged?.invoke(true)
+            onStatusChanged?.invoke("Connected to $address:$port")
         }
         
         // Launch receive job in a separate scope so connect() can return immediately!
@@ -138,5 +143,13 @@ class NetworkClient : IGamepadConnection {
         receiveJob?.cancel()
         socket?.close()
         socket = null
+        onConnectionStateChanged?.invoke(false)
+        onStatusChanged?.invoke("Disconnected")
     }
+
+    override fun startAdvertising() {
+        // No-op for network client
+    }
+
+    override fun close() = disconnect()
 }

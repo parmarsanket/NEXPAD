@@ -608,54 +608,49 @@ fun buildReport(input: GamepadInput): ByteArray {
 
 ---
 
-## Implementation Roadmap
+## 🛠️ Step-by-Step Implementation Plan (Ready for Phase 2)
 
-### Step 1: Core Bluetooth Manager
-- [ ] Create `BluetoothHidManager.kt`
-- [ ] Implement `registerApp()` with NEXPAD HID descriptor
-- [ ] Implement `connect()` / `disconnect()` lifecycle
-- [ ] Implement `sendReport()` for gamepad data
-- [ ] Handle `onSetReport()` for rumble feedback
+**Core Principle:** *DO NOT touch existing NEXPAD PC/WiFi logic. The app will swap the underlying `IGamepadConnection` interface dynamically based on user toggle.*
 
-### Step 2: HID Report Builder
-- [ ] Create `HidReportBuilder.kt`
-- [ ] Convert `GamepadInput` → packed byte array
-- [ ] Map NEXPAD button layout to HID button bits
-- [ ] Map analog sticks to 16-bit axis values
-- [ ] Map triggers to 8-bit values
-- [ ] Map D-Pad to Hat Switch values
+### Step 1: Settings Screen Toggle (Mode Selection)
+- **Target File:** `app/src/main/java/com/sanket/tools/nexpad/ui/SettingsScreen.kt`
+- **Action:** Add a Segmented Button / Toggle Switch at the top for **[ Desktop Mode (WiFi) | Bluetooth Mode (HID) ]**.
+- **Logic:** 
+  - If "Desktop Mode" is selected: Show the existing IP Address input and Connect button.
+  - If "Bluetooth Mode" is selected: Hide the IP input. Show a "Start Bluetooth Pairing" button and connection status.
+  - Save the selected mode to `SharedPreferences` so it remembers the user's choice.
 
-### Step 3: Permission Handling
-- [ ] Create `BluetoothPermissionHelper.kt`
-- [ ] Handle Android 12+ vs legacy permission models
-- [ ] Runtime permission request flow
-- [ ] Check if device supports BT HID profile
+### Step 2: Extracting XInput HID Descriptor
+- **Target File:** `app/src/main/java/com/sanket/tools/nexpad/bluetooth/HidDescriptors.kt` (New)
+- **Action:** Define `XBOX_ONE_S_DESCRIPTOR` byte array.
+- **Why XInput?** Bluetooth doesn't natively speak "XInput" (which is a USB protocol). However, if we use the *exact* HID Descriptor of an official Xbox Wireless Controller, Windows will automatically translate our Bluetooth inputs into XInput! This is the secret to getting perfect PC compatibility wirelessly.
+- **ESP32 Features Included:** We will expand the descriptor to support **16-bit analog sticks** (for ultra-precise aiming) and **128 buttons** (to map M1-M4, Profile, and Turbo).
 
-### Step 4: Device Discovery & Pairing UI
-- [ ] Create `BluetoothPairScreen.kt`
-- [ ] Scan for nearby Bluetooth devices
-- [ ] Display available devices
-- [ ] Handle pairing flow
-- [ ] Show connection status
+### Step 3: Bluetooth Client (The Core Engine)
+- **Target File:** `app/src/main/java/com/sanket/tools/nexpad/bluetooth/BluetoothClient.kt` (New)
+- **Interface:** Must implement `IGamepadConnection` (just like `NetworkClient` does).
+- **Action:**
+  - Initialize `BluetoothHidDevice`.
+  - `registerApp()` using the XInput descriptor.
+  - `sendInput(input: GamepadInput)`: Convert the NEXPAD state into the 14-byte byte array expected by the Xbox descriptor and call `sendReport()`.
+  - Listen for incoming `onSetReport` requests from the host.
 
-### Step 5: Mode Toggle
-- [ ] Create `ConnectionScreen.kt` — choose WiFi or BT mode
-- [ ] Create `ModeToggle.kt` component
-- [ ] Update `GamepadViewModel.kt` to route to correct manager
-- [ ] Persist mode selection
+### Step 4: Routing the ViewModel
+- **Target File:** `app/src/main/java/com/sanket/tools/nexpad/viewmodel/GamepadNetworkManager.kt`
+- **Action:** Modify the hardcoded `private val connection: IGamepadConnection = NetworkClient()`.
+- **Logic:** 
+  - Change to `var connection: IGamepadConnection`.
+  - Add a function `setConnectionMode(isBluetooth: Boolean)`.
+  - If `isBluetooth` == true, instantiate `BluetoothClient()`. Else, instantiate `NetworkClient()`.
+  - *Result:* The UI buttons, joysticks, and sensors don't need a single line of code changed. They just update the ViewModel, and the ViewModel sends it to whichever connection is active!
 
-### Step 6: Rumble/Vibration
-- [ ] Receive OUTPUT reports from host
-- [ ] Map strong/weak motor values to phone vibration intensity
-- [ ] Use `Vibrator` API for haptic feedback
+### Step 5: Android Permissions
+- **Target File:** `app/src/main/java/com/sanket/tools/nexpad/bluetooth/BluetoothPermissionHelper.kt` (New)
+- **Action:** Handle Android 12+ strict Bluetooth permissions (`BLUETOOTH_CONNECT`, `BLUETOOTH_ADVERTISE`). If the user toggles to Bluetooth Mode, prompt them for these permissions immediately before trying to register the HID device.
 
-### Step 7: Testing
-- [ ] Test on Windows PC (Bluetooth pairing)
-- [ ] Test on Android TV
-- [ ] Test on Mac
-- [ ] Test with html5gamepad.com (web-based gamepad tester)
-- [ ] Test latency vs Phase 1 WiFi mode
-- [ ] Test battery impact
+### Step 6: Rumble Feedback Integration
+- **Target File:** `BluetoothClient.kt`
+- **Action:** When `onSetReport` receives 2 bytes from the PC (Left Motor / Right Motor), trigger `onFeedbackReceived` callback. The existing `GamepadScreen.kt` already listens to this callback and shakes the phone!
 
 ---
 

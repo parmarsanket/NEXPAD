@@ -98,12 +98,12 @@ class GyroSensor(
                         hwZ - lastGravityZ
                     ) > CHANGE_THRESHOLD)
                 ) {
-                    Log.d(
-                        TAG,
-                        "GRAVITY | X=${"%.2f".format(x)} | Y=${"%.2f".format(y)} | Z=${
-                            "%.2f".format(hwZ)
-                        }"
-                    )
+//                    Log.d(
+//                        TAG,
+//                        "GRAVITY | X=${"%.2f".format(x)} | Y=${"%.2f".format(y)} | Z=${
+//                            "%.2f".format(hwZ)
+//                        }"
+//                    )
                     lastGravityX = x; lastGravityY = y; lastGravityZ = hwZ
                     lastLogTime = now
                 }
@@ -115,12 +115,12 @@ class GyroSensor(
                         hwZ - lastAccelZ
                     ) > CHANGE_THRESHOLD)
                 ) {
-                    Log.d(
-                        TAG,
-                        "ACCEL   | X=${"%.2f".format(x)} | Y=${"%.2f".format(y)} | Z=${
-                            "%.2f".format(hwZ)
-                        }"
-                    )
+//                    Log.d(
+//                        TAG,
+//                        "ACCEL   | X=${"%.2f".format(x)} | Y=${"%.2f".format(y)} | Z=${
+//                            "%.2f".format(hwZ)
+//                        }"
+//                    )
                     lastAccelX = x; lastAccelY = y; lastAccelZ = hwZ
                     lastLogTime = now
                 }
@@ -132,12 +132,12 @@ class GyroSensor(
                         hwZ - lastGyroZ
                     ) > CHANGE_THRESHOLD)
                 ) {
-                    Log.d(
-                        TAG,
-                        "GYRO    | X=${"%.2f".format(x)} | Y=${"%.2f".format(y)} | Z=${
-                            "%.2f".format(hwZ)
-                        }"
-                    )
+//                    Log.d(
+//                        TAG,
+//                        "GYRO    | X=${"%.2f".format(x)} | Y=${"%.2f".format(y)} | Z=${
+//                            "%.2f".format(hwZ)
+//                        }"
+//                    )
                     lastGyroX = x; lastGyroY = y; lastGyroZ = hwZ
                     lastLogTime = now
                 }

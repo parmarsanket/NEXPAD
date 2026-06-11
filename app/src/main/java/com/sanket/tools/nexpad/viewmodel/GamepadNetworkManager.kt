@@ -1,5 +1,7 @@
 package com.sanket.tools.nexpad.viewmodel
 
+import android.content.Context
+import com.sanket.tools.nexpad.bluetooth.BluetoothClient
 import com.sanket.tools.nexpad.model.GamepadFeedback
 import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpad.network.IGamepadConnection
@@ -18,9 +20,10 @@ import kotlinx.coroutines.launch
 
 class GamepadNetworkManager(
     private val scope: CoroutineScope,
+    private val context: Context,
     private val getInputState: () -> GamepadInput
 ) {
-    private val connection: IGamepadConnection = NetworkClient()
+    private var connection: IGamepadConnection = NetworkClient()
     
     private val _feedbackFlow = MutableSharedFlow<GamepadFeedback>()
     val feedbackFlow: SharedFlow<GamepadFeedback> = _feedbackFlow.asSharedFlow()
@@ -30,23 +33,66 @@ class GamepadNetworkManager(
     private val _isConnected = MutableStateFlow(false)
     val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
 
+    private val _connectionStatus = MutableStateFlow("Disconnected")
+    val connectionStatus: StateFlow<String> = _connectionStatus.asStateFlow()
+
+    private val _diagnosticLog = MutableStateFlow<List<String>>(emptyList())
+    val diagnosticLog: StateFlow<List<String>> = _diagnosticLog.asStateFlow()
+
     init {
+        setupConnectionCallbacks()
+    }
+
+    private fun setupConnectionCallbacks() {
         connection.onFeedbackReceived = { feedback: GamepadFeedback ->
             scope.launch {
                 _feedbackFlow.emit(feedback)
             }
         }
+        connection.onConnectionStateChanged = { connected: Boolean ->
+            scope.launch {
+                _isConnected.value = connected
+                if (connected) {
+                    startTransmitting()
+                } else {
+                    transmitJob?.cancel()
+                }
+            }
+        }
+        connection.onStatusChanged = { status ->
+            _connectionStatus.value = status
+        }
+        connection.onDiagnosticLog = { entry ->
+            _diagnosticLog.value = (_diagnosticLog.value + entry).takeLast(20)
+        }
     }
 
-    fun connect(ip: String, port: Int) {
+    fun setConnectionMode(isBluetooth: Boolean) {
+        transmitJob?.cancel()
+        connection.onFeedbackReceived = null
+        connection.onConnectionStateChanged = null
+        connection.onStatusChanged = null
+        connection.onDiagnosticLog = null
+        connection.close()
+        _isConnected.value = false
+        _diagnosticLog.value = emptyList()
+
+        connection = if (isBluetooth) {
+            BluetoothClient(context)
+        } else {
+            NetworkClient()
+        }
+        setupConnectionCallbacks()
+    }
+
+    fun connect(address: String, port: Int) {
         scope.launch {
             try {
-                connection.connect(ip, port)
-                _isConnected.value = true
-                startTransmitting()
+                connection.connect(address, port)
             } catch (e: Exception) {
                 e.printStackTrace()
                 _isConnected.value = false
+                _connectionStatus.value = e.message ?: "Connection failed"
             }
         }
     }
@@ -54,6 +100,16 @@ class GamepadNetworkManager(
     fun disconnect() {
         transmitJob?.cancel()
         connection.disconnect()
+        _isConnected.value = false
+    }
+
+    fun startAdvertising() {
+        connection.startAdvertising()
+    }
+
+    fun close() {
+        transmitJob?.cancel()
+        connection.close()
         _isConnected.value = false
     }
     

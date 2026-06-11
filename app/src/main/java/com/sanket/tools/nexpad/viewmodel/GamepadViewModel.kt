@@ -1,6 +1,7 @@
 package com.sanket.tools.nexpad.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.sanket.tools.nexpad.model.GamepadInput
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -8,12 +9,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-class GamepadViewModel : ViewModel() {
+class GamepadViewModel(application: Application) : AndroidViewModel(application) {
     private val _inputState = MutableStateFlow(GamepadInput())
     val inputState: StateFlow<GamepadInput> = _inputState.asStateFlow()
 
     private val networkManager = GamepadNetworkManager(
         scope = viewModelScope,
+        context = application.applicationContext,
         getInputState = { _inputState.value }
     )
 
@@ -23,10 +25,24 @@ class GamepadViewModel : ViewModel() {
 
     // Expose flows for the UI
     val isConnected = networkManager.isConnected
+    val connectionStatus = networkManager.connectionStatus
+    val diagnosticLog = networkManager.diagnosticLog
     val feedbackFlow = networkManager.feedbackFlow
+
+    fun setConnectionMode(isBluetooth: Boolean) = networkManager.setConnectionMode(isBluetooth)
 
     fun connect(ip: String, port: Int) = networkManager.connect(ip, port)
     fun disconnect() = networkManager.disconnect()
+    fun startAdvertising() = networkManager.startAdvertising()
+
+    fun getPairedBluetoothDevices(): List<android.bluetooth.BluetoothDevice> {
+        val bluetoothManager = getApplication<Application>().getSystemService(android.content.Context.BLUETOOTH_SERVICE) as android.bluetooth.BluetoothManager
+        val adapter = bluetoothManager.adapter
+        if (com.sanket.tools.nexpad.bluetooth.BluetoothPermissionHelper.hasAllPermissions(getApplication())) {
+            return adapter?.bondedDevices?.toList() ?: emptyList()
+        }
+        return emptyList()
+    }
 
     fun updateAccel(x: Float, y: Float, z: Float) = sensorController.updateAccel(x, y, z)
     fun update6AxisGyro(x: Float, y: Float, z: Float) = sensorController.update6AxisGyro(x, y, z)
@@ -71,5 +87,10 @@ class GamepadViewModel : ViewModel() {
 
     fun updateRightStick(x: Float, y: Float) {
         _inputState.update { it.copy(rightStickX = x, rightStickY = y) }
+    }
+
+    override fun onCleared() {
+        networkManager.close()
+        super.onCleared()
     }
 }

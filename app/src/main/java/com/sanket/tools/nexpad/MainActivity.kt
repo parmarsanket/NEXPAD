@@ -67,13 +67,17 @@ class MainActivity : ComponentActivity() {
         layoutManager = LayoutManager(this)
 
         val sharedPref = getSharedPreferences("nexpad_prefs", MODE_PRIVATE)
-        // Initialize sensor states from preferences
-        // Gyro/6-Axis settings have been moved to Desktop. We no longer read them here.
         
-        // Start UDP Server if last IP exists
-        val lastIp = sharedPref.getString("LAST_IP", "")
-        if (!lastIp.isNullOrBlank()) {
-            viewModel.connect(lastIp, 9999)
+        // Initialize Connection Mode
+        val isBluetoothMode = sharedPref.getBoolean("BLUETOOTH_MODE", false)
+        viewModel.setConnectionMode(isBluetoothMode)
+        
+        if (!isBluetoothMode) {
+            // Start UDP Server if last IP exists
+            val lastIp = sharedPref.getString("LAST_IP", "")
+            if (!lastIp.isNullOrBlank()) {
+                viewModel.connect(lastIp, 9999)
+            }
         }
 
         // Initialize Sensors
