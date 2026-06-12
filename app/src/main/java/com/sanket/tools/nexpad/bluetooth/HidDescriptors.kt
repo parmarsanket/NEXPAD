@@ -4,15 +4,17 @@ object HidDescriptors {
     const val GAMEPAD_REPORT_ID = 1
     const val GAMEPAD_REPORT_SIZE = 13 // 13 bytes standard layout
 
+
+        
     /**
      * Standard Generic Gamepad Descriptor.
      * Report 1 (13 Bytes):
      * Bytes 0-3: 32 Buttons
      * Bytes 4-7: Left Stick (X, Y) - 16-bit
-     * Bytes 8-11: Right Stick (Rx, Ry) - 16-bit
+     * Bytes 8-11: Right Stick (Z, Rz) - 16-bit
      * Byte 12: D-Pad (Hat Switch)
      */
-    val XBOX_ONE_S_DESCRIPTOR = byteArrayOf(
+    val GENERIC_DESCRIPTOR = byteArrayOf(
         0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
         0x09, 0x05,        // Usage (Game Pad)
         0xA1.toByte(), 0x01, // Collection (Application)

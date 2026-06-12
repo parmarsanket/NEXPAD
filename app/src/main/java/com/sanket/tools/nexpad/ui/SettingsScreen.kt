@@ -207,43 +207,7 @@ fun SettingsScreen(
                 )
             }
 
-            Text("Paired Devices", color = Color.LightGray, fontSize = 14.sp)
-            val pairedDevices = remember { mutableStateListOf<android.bluetooth.BluetoothDevice>() }
 
-            LaunchedEffect(isBluetoothMode, bluetoothPermissionsGranted) {
-                if (isBluetoothMode && bluetoothPermissionsGranted) {
-                    pairedDevices.clear()
-                    pairedDevices.addAll(viewModel.getPairedBluetoothDevices())
-                }
-            }
-
-            if (pairedDevices.isEmpty()) {
-                Text("No paired devices found. Pair a device in Android Settings.", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
-            } else {
-                Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                    pairedDevices.forEach { device ->
-                        Card(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E)),
-                            onClick = {
-                                if (BluetoothPermissionHelper.hasAllPermissions(context)) {
-                                    viewModel.connect(device.address, 0)
-                                }
-                            }
-                        ) {
-                            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    @SuppressLint("MissingPermission")
-                                    val name = if (BluetoothPermissionHelper.hasAllPermissions(context)) device.name else "Unknown"
-                                    Text(name ?: "Unknown Device", color = Color.White)
-                                    Text(device.address, color = Color.Gray, fontSize = 12.sp)
-                                }
-                                Text("Connect", color = Color(0xFF00B0FF), fontSize = 14.sp)
-                            }
-                        }
-                    }
-                }
-            }
         }
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -266,7 +230,7 @@ fun SettingsScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+
 
         var rumbleIntensity by remember { mutableFloatStateOf(sharedPref.getFloat("RUMBLE_INTENSITY", 1.0f)) }
 

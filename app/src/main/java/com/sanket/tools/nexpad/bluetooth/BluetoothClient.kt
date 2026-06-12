@@ -13,6 +13,7 @@ import android.content.BroadcastReceiver
 import android.content.IntentFilter
 import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import com.sanket.tools.nexpad.model.GamepadFeedback
 import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpad.network.IGamepadConnection
@@ -273,19 +274,24 @@ class BluetoothClient(private val context: Context) : IGamepadConnection {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.P)
     private fun registerApp() {
         val hid = hidDevice ?: return
         if (!checkReady() || isRegistered) return
+
+        val sdpName = "NEXPAD Gamepad"
+        val descriptor = HidDescriptors.GENERIC_DESCRIPTOR
+
         val settings = BluetoothHidDeviceAppSdpSettings(
-            "NEXPAD Gamepad",
+            sdpName,
             "Bluetooth HID game controller",
             "NEXPAD",
-            0x08.toByte(), // HID SDP gamepad subclass.
-            HidDescriptors.XBOX_ONE_S_DESCRIPTOR
+            BluetoothHidDevice.SUBCLASS2_GAMEPAD, // HID SDP gamepad subclass. // Trick TV into thinking it's a Keyboard/Mouse combo
+            descriptor
         )
         val accepted = hid.registerApp(settings, null, null, executor, callback)
-        log("registerApp accepted=$accepted descriptorBytes=${HidDescriptors.XBOX_ONE_S_DESCRIPTOR.size}")
-        status(if (accepted) "Registering NEXPAD as a Bluetooth HID gamepad..." else "Android rejected HID registration")
+        log("registerApp accepted=$accepted descriptorBytes=${descriptor.size}")
+        status(if (accepted) "Registering as $sdpName..." else "Android rejected HID registration")
     }
 
     private fun connectRegisteredDevice(device: BluetoothDevice) {

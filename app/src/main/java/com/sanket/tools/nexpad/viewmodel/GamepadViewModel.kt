@@ -23,6 +23,15 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
         updateInputState = { updateFunc -> _inputState.update(updateFunc) }
     )
 
+    private val sharedPreferences = application.getSharedPreferences("nexpad_prefs", android.content.Context.MODE_PRIVATE)
+    private val _emulationMode = MutableStateFlow(sharedPreferences.getString("emulation_mode", "generic") ?: "generic")
+    val emulationMode: StateFlow<String> = _emulationMode.asStateFlow()
+
+    fun setEmulationMode(mode: String) {
+        sharedPreferences.edit().putString("emulation_mode", mode).apply()
+        _emulationMode.value = mode
+    }
+
     // Expose flows for the UI
     val isConnected = networkManager.isConnected
     val connectionStatus = networkManager.connectionStatus
