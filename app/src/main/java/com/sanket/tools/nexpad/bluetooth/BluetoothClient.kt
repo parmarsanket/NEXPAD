@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothHidDevice
 import android.bluetooth.BluetoothHidDeviceAppSdpSettings
+import android.bluetooth.BluetoothHidDeviceAppQosSettings
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.content.Context
@@ -43,7 +44,8 @@ class BluetoothClient(private val context: Context) : IGamepadConnection {
         this[lastIndex] = 8
     }
 
-    private val callback = object : BluetoothHidDevice.Callback() {
+    private val callback = @RequiresApi(Build.VERSION_CODES.P)
+    object : BluetoothHidDevice.Callback() {
         override fun onAppStatusChanged(pluggedDevice: BluetoothDevice?, registered: Boolean) {
             isRegistered = registered
             log("App registration changed: registered=$registered, plugged=${deviceLabel(pluggedDevice)}")
@@ -134,6 +136,7 @@ class BluetoothClient(private val context: Context) : IGamepadConnection {
     }
 
     private val bluetoothReceiver = object : BroadcastReceiver() {
+        @RequiresApi(Build.VERSION_CODES.P)
         override fun onReceive(receiverContext: Context, intent: Intent) {
             val device = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
@@ -161,6 +164,7 @@ class BluetoothClient(private val context: Context) : IGamepadConnection {
     }
 
     private val profileListener = object : BluetoothProfile.ServiceListener {
+        @RequiresApi(Build.VERSION_CODES.P)
         override fun onServiceConnected(profile: Int, proxy: BluetoothProfile) {
             log("onServiceConnected called: profile=$profile, closed=$closed")
             if (profile != BluetoothProfile.HID_DEVICE || closed) return
@@ -196,6 +200,7 @@ class BluetoothClient(private val context: Context) : IGamepadConnection {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.P)
     override suspend fun connect(address: String, port: Int) {
         if (!checkReady()) return
         val adapter = bluetoothAdapter ?: return status("This device has no Bluetooth adapter")
@@ -213,11 +218,13 @@ class BluetoothClient(private val context: Context) : IGamepadConnection {
         if (isRegistered) connectRegisteredDevice(device)
     }
 
+    @RequiresApi(Build.VERSION_CODES.P)
     override suspend fun sendInput(input: GamepadInput) {
         lastReport = HidReportBuilder.build(input)
         sendCurrentReport(null)
     }
 
+    @RequiresApi(Build.VERSION_CODES.P)
     override fun disconnect() {
         pendingDevice = null
         val device = connectedDevice
@@ -237,6 +244,7 @@ class BluetoothClient(private val context: Context) : IGamepadConnection {
         status("HID is starting. Pair NEXPAD from the host Bluetooth settings.")
     }
 
+    @RequiresApi(Build.VERSION_CODES.P)
     override fun close() {
         if (closed) return
         closed = true
@@ -273,7 +281,6 @@ class BluetoothClient(private val context: Context) : IGamepadConnection {
             status("Android rejected the HID profile request. This phone may not support HID Device mode.")
         }
     }
-
     @RequiresApi(Build.VERSION_CODES.P)
     private fun registerApp() {
         val hid = hidDevice ?: return
@@ -286,14 +293,26 @@ class BluetoothClient(private val context: Context) : IGamepadConnection {
             sdpName,
             "Bluetooth HID game controller",
             "NEXPAD",
-            BluetoothHidDevice.SUBCLASS2_GAMEPAD, // HID SDP gamepad subclass. // Trick TV into thinking it's a Keyboard/Mouse combo
+            BluetoothHidDevice.SUBCLASS1_COMBO, // Trick TV into thinking it's a Keyboard/Mouse combo
             descriptor
         )
-        val accepted = hid.registerApp(settings, null, null, executor, callback)
+
+        // QoS parameters for ultra-low latency (11.25ms polling interval)
+        val qos = BluetoothHidDeviceAppQosSettings(
+            BluetoothHidDeviceAppQosSettings.SERVICE_GUARANTEED,
+            800,   // tokenRate: 800 bytes/sec
+            9,     // tokenBucketSize: 9 bytes
+            0,     // peakBandwidth
+            11250, // latency: 11250 microseconds (11.25ms)
+            11250  // delayVariation: 11250 microseconds
+        )
+
+        val accepted = hid.registerApp(settings, null, qos, executor, callback)
         log("registerApp accepted=$accepted descriptorBytes=${descriptor.size}")
         status(if (accepted) "Registering as $sdpName..." else "Android rejected HID registration")
     }
 
+    @RequiresApi(Build.VERSION_CODES.P)
     private fun connectRegisteredDevice(device: BluetoothDevice) {
         if (!isRegistered) return
         val accepted = hidDevice?.connect(device) == true
@@ -301,6 +320,7 @@ class BluetoothClient(private val context: Context) : IGamepadConnection {
         if (!accepted) status("Android rejected the connection to ${deviceName(device)}")
     }
 
+    @RequiresApi(Build.VERSION_CODES.P)
     private fun sendCurrentReport(reason: String?) {
         val device = connectedDevice ?: return
         val accepted = hidDevice?.sendReport(
