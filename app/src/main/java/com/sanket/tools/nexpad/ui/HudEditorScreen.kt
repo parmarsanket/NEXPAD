@@ -1,5 +1,6 @@
 package com.sanket.tools.nexpad.ui
 
+import android.content.pm.ActivityInfo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,6 +29,7 @@ import com.sanket.tools.nexpad.model.Position
 import com.sanket.tools.nexpad.model.defaultPositions
 import com.sanket.tools.nexpad.ui.components.*
 import com.sanket.tools.nexpad.utils.LayoutManager
+import com.sanket.tools.nexpad.utils.LockScreenOrientation
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.roundToInt
 
@@ -51,7 +53,9 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
             layoutManager.saveProfile(updatedProfile)
         }
     }
-
+    LockScreenOrientation(
+        ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+    )
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -60,6 +64,7 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
                 detectTapGestures { selectedKey = null } // Deselect if tapping background
             }
     ) {
+
         // Render all buttons
         positions.forEach { (key, position) ->
             var offsetX by remember { mutableFloatStateOf(position.xRatio * screenWidth) }
@@ -89,6 +94,9 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
                         detectTapGestures(onPress = { selectedKey = key })
                     }
             ) {
+                LockScreenOrientation(
+                    ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                )
                 // The Button Component
                 when {
                     key == "LS" -> RealisticJoystick(isLeft = true, isConnected = false, viewModel = dummyViewModel, isRgbEnabled = profile.isRgbEnabled)

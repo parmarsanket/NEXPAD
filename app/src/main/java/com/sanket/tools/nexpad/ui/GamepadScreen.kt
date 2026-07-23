@@ -1,6 +1,7 @@
 package com.sanket.tools.nexpad.ui
 
 import android.content.Context
+import android.content.pm.ActivityInfo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -22,6 +23,7 @@ import kotlin.math.roundToInt
 import android.os.Vibrator
 import android.os.Build
 import android.os.VibrationEffect
+import com.sanket.tools.nexpad.utils.LockScreenOrientation
 
 @Composable
 fun GamepadScreen(
@@ -38,7 +40,9 @@ fun GamepadScreen(
     val isConnected by viewModel.isConnected.collectAsState()
     
     val context = androidx.compose.ui.platform.LocalContext.current
-
+    LockScreenOrientation(
+        ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+    )
     LaunchedEffect(Unit) {
         viewModel.feedbackFlow.collect { feedback ->
             val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
