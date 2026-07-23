@@ -72,7 +72,7 @@ fun GamepadScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0D0D0D))
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // Back Button & Connection Status
         Row(
@@ -80,10 +80,10 @@ fun GamepadScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack) {
-                Text("⬅️", fontSize = 24.sp, color = Color.White)
+                Text("⬅️", fontSize = 24.sp, color = MaterialTheme.colorScheme.onBackground)
             }
             Spacer(modifier = Modifier.width(16.dp))
-            Text(if (isConnected) "🟢 Connected" else "🔴 Disconnected", color = Color.White, fontWeight = FontWeight.Bold)
+            Text(if (isConnected) "🟢 Connected" else "🔴 Disconnected", color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.labelMedium)
         }
 
         // Render mapped components

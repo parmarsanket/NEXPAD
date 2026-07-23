@@ -108,7 +108,7 @@ class MainActivity : ComponentActivity() {
             NEXPADTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.background
                 ) {
                     NavigationGraph(
                         viewModel = viewModel,

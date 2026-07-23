@@ -59,7 +59,7 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0D0D0D))
+            .background(MaterialTheme.colorScheme.background)
             .pointerInput(Unit) {
                 detectTapGestures { selectedKey = null } // Deselect if tapping background
             }
@@ -67,8 +67,8 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
 
         // Render all buttons
         positions.forEach { (key, position) ->
-            var offsetX by remember { mutableFloatStateOf(position.xRatio * screenWidth) }
-            var offsetY by remember { mutableFloatStateOf(position.yRatio * screenHeight) }
+            var offsetX by remember(screenWidth, screenHeight) { mutableFloatStateOf(position.xRatio * screenWidth) }
+            var offsetY by remember(screenWidth, screenHeight) { mutableFloatStateOf(position.yRatio * screenHeight) }
             val isSelected = selectedKey == key
 
             Box(
@@ -117,8 +117,8 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        .background(if (isSelected) Color(0x3300E676) else Color.Transparent)
-                        .border(if (isSelected) 2.dp else 0.dp, if (isSelected) Color(0xFF00E676) else Color.Transparent)
+                        .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else Color.Transparent)
+                        .border(if (isSelected) 2.dp else 0.dp, if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
                 )
             }
         }
@@ -132,16 +132,17 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = { navController.popBackStack() }) {
-                Text("⬅️", fontSize = 24.sp, color = Color.White)
+                Text("⬅️", fontSize = 24.sp, color = MaterialTheme.colorScheme.onBackground)
             }
             
             Row {
                 Button(
                     onClick = { showAddDialog = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333)),
-                    modifier = Modifier.padding(end = 16.dp)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    modifier = Modifier.padding(end = 16.dp),
+                    shape = RoundedCornerShape(28.dp)
                 ) {
-                    Text("⚙️ ADD BUTTONS", color = Color.White)
+                    Text("⚙️ ADD BUTTONS", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 
                 Button(
@@ -150,9 +151,10 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
                         layoutManager.saveProfile(updatedProfile)
                         navController.popBackStack()
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E676))
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    shape = RoundedCornerShape(28.dp)
                 ) {
-                    Text("SAVE LAYOUT", fontWeight = FontWeight.Bold)
+                    Text("SAVE LAYOUT", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary)
                 }
             }
         }
@@ -167,18 +169,19 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
                     .padding(top = 80.dp)
                     .width(320.dp),
                 elevation = CardDefaults.elevatedCardElevation(defaultElevation = 8.dp),
-                colors = CardDefaults.elevatedCardColors(containerColor = Color(0xFF1A1A1A))
+                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(28.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Editing Button: $currentKey", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    Text("Editing Button: $currentKey", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleLarge)
                     
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        Text("Size", color = Color.LightGray, modifier = Modifier.width(60.dp))
+                        Text("Size", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(60.dp))
                         Slider(
                             value = position.scale,
                             onValueChange = { positions[currentKey] = position.copy(scale = it) },
@@ -188,7 +191,7 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
                     }
                     
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        Text("Opacity", color = Color.LightGray, modifier = Modifier.width(60.dp))
+                        Text("Opacity", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(60.dp))
                         Slider(
                             value = position.opacity,
                             onValueChange = { positions[currentKey] = position.copy(opacity = it) },
@@ -204,10 +207,11 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
                             positions.remove(currentKey)
                             selectedKey = null
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD50000)),
-                        modifier = Modifier.fillMaxWidth()
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(28.dp)
                     ) {
-                        Text("REMOVE BUTTON", fontWeight = FontWeight.Bold)
+                        Text("REMOVE BUTTON", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onError)
                     }
                 }
             }
@@ -218,7 +222,7 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
             val allKeys = defaultPositions().keys.toList()
             AlertDialog(
                 onDismissRequest = { showAddDialog = false },
-                title = { Text("Manage Controller Buttons", fontWeight = FontWeight.Bold) },
+                title = { Text("Manage Controller Buttons", style = MaterialTheme.typography.titleLarge) },
                 text = {
                     Column(
                         modifier = Modifier
@@ -244,22 +248,22 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
                                 Checkbox(
                                     checked = isPresent, 
                                     onCheckedChange = null,
-                                    colors = CheckboxDefaults.colors(checkedColor = Color(0xFF00C853))
+                                    colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
                                 )
                                 Spacer(modifier = Modifier.width(16.dp))
-                                Text(key, fontSize = 18.sp, fontWeight = if (isPresent) FontWeight.Bold else FontWeight.Normal)
+                                Text(key, fontSize = 18.sp, fontWeight = if (isPresent) FontWeight.Bold else FontWeight.Normal, color = MaterialTheme.colorScheme.onSurface)
                             }
                         }
                     }
                 },
                 confirmButton = {
                     TextButton(onClick = { showAddDialog = false }) {
-                        Text("Done", color = Color(0xFF00C853), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text("Done", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
                     }
                 },
-                containerColor = Color(0xFF1E1E1E),
-                titleContentColor = Color.White,
-                textContentColor = Color.LightGray
+                containerColor = MaterialTheme.colorScheme.surface,
+                titleContentColor = MaterialTheme.colorScheme.onSurface,
+                textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
