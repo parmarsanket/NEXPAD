@@ -1,33 +1,238 @@
 package com.sanket.tools.nexpad.ui
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.Canvas
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.*
+import androidx.compose.material3.carousel.HorizontalCenteredHeroCarousel
+import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.sanket.tools.nexpad.utils.LayoutManager
 
+// ---------------------------------------------------------------------------
+// Design tokens — pulling the cyberpunk palette out of the composables makes
+// it reusable and gives us one place to retheme from.
+// ---------------------------------------------------------------------------
+private object NeonPalette {
+    val Cyan = Color(0xFF00E5FF)
+    val Purple = Color(0xFFB400FF)
+    val Green = Color(0xFF39FF14)
+    val PanelBgTop = Color(0xFF0E1524)
+    val PanelBgBottom = Color(0xFF070B14)
+    val CardIdleBg = Color(0xFF111111)
+    val CardIdleBorder = Color(0xFF333333)
+    val CardIdleText = Color(0xFF888888)
+    val ConnectedDot = Color(0xFF34D399)
+}
+
+data class LayoutOption(
+    val title: String,
+    val subtitle: String
+)
+
+// Single source of truth for the carousel content — was previously
+// duplicated with copy-paste "Layout 1/2/3" subtitles on the advanced tier.
+private val layoutOptions = listOf(
+    LayoutOption("Classic Pro", "Layout 1"),
+    LayoutOption("FPS Master", "Layout 2"),
+    LayoutOption("Racing Sim", "Layout 3"),
+    LayoutOption("Advance 1", "Layout 4"),
+    LayoutOption("Advance 2", "Layout 5"),
+    LayoutOption("Advance 3", "Layout 6"),
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HomeScreen(navController: NavController, layoutManager: LayoutManager) {
+    val scrollState = rememberScrollState()
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        "NEXPAD",
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            fontSize = 36.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 0.8.sp,
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.onBackground,
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.primaryContainer,
+                                    MaterialTheme.colorScheme.secondaryContainer,
+                                    MaterialTheme.colorScheme.tertiaryContainer,
+                                    MaterialTheme.colorScheme.tertiary
+                                )
+                            )
+                        )
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                )
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .verticalScroll(scrollState)
+                .padding(horizontal = 24.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            HeaderRow()
+
+            VShapedPanel(
+                onPlayClick = { navController.navigate("gamepad") }
+            )
+
+            DeviceHeroCard()
+
+            Text(
+                "Command Center",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
+                    CommandButton(
+                        label = "Connect Device",
+                        icon = "🔗",
+                        onClick = { navController.navigate("device_scan") },
+                        modifier = Modifier.weight(1f)
+                    )
+                    CommandButton(
+                        label = "Virtual Controller",
+                        icon = "🎮",
+                        onClick = { navController.navigate("gamepad") },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
+                    CommandButton(
+                        label = "HUD Editor",
+                        icon = "🎛️",
+                        onClick = { navController.navigate("editor") },
+                        modifier = Modifier.weight(1f)
+                    )
+                    CommandButton(
+                        label = "Settings",
+                        icon = "⚙️",
+                        onClick = { navController.navigate("settings") },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeaderRow() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Bottom
+    ) {
+        Text(
+            "Ready to Play",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f))
+                .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(50))
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+                .semantics { contentDescription = "Connection status: connected" },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(NeonPalette.ConnectedDot)
+            )
+            Text("Connected", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
+        }
+    }
+}
+
+@Composable
+private fun DeviceHeroCard() {
+    GlassCard(modifier = Modifier.fillMaxWidth().height(220.dp)) {
+        Column(
+            modifier = Modifier.padding(24.dp).fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(16.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("💻", fontSize = 32.sp)
+                }
+                Column {
+                    Text("Windows PC", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
+                    Text(
+                        "Main Rig • Local Network",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                StatBox("Signal", "98%", MaterialTheme.colorScheme.primary, Modifier.weight(1f))
+                StatBox("Latency", "2ms", MaterialTheme.colorScheme.primary, Modifier.weight(1f))
+                StatBox("Battery", "85%", MaterialTheme.colorScheme.onBackground, Modifier.weight(1f))
+            }
+        }
+    }
+}
 
 @Composable
 fun GlassCard(
@@ -51,130 +256,6 @@ fun GlassCard(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun HomeScreen(navController: NavController, layoutManager: LayoutManager) {
-    val scrollState = rememberScrollState()
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = @Composable {
-                    Text(
-                         "NEXPAD",
-                        style = MaterialTheme.typography.displayLarge.copy(
-                            fontSize = 36.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 0.8.sp,
-                            brush = Brush.linearGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.onBackground,
-                                    MaterialTheme.colorScheme.primary,
-                                    MaterialTheme.colorScheme.primaryContainer,
-                                    MaterialTheme.colorScheme.secondaryContainer,
-                                    MaterialTheme.colorScheme.tertiaryContainer,
-                                    MaterialTheme.colorScheme.tertiary
-                                )
-                            )
-                        )
-                    )
-                }
-                        ,
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
-                )
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(scrollState)
-                .padding(horizontal = 24.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            // Header Section
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom
-            ) {
-                Text("Ready to Play", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onBackground)
-                
-                // Connection Chip
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f))
-                        .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(50))
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF34D399)))
-                    Text("Connected", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
-                }
-            }
-
-            // Master V-Shaped Layout Selector Panel
-            var selectedLayout by remember { mutableStateOf("Classic Pro") }
-            
-            VShapedPanel(
-                selectedLayout = selectedLayout,
-                onLayoutSelected = { selectedLayout = it },
-                onPlayClick = { navController.navigate("gamepad") }
-            )
-
-            // Hero Card
-            GlassCard(modifier = Modifier.fillMaxWidth().height(220.dp)) {
-                Column(modifier = Modifier.padding(24.dp).fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                                .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(16.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("💻", fontSize = 32.sp)
-                        }
-                        Column {
-                            Text("Windows PC", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
-                            Text("Main Rig • Local Network", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        StatBox("Signal", "98%", MaterialTheme.colorScheme.primary, Modifier.weight(1f))
-                        StatBox("Latency", "2ms", MaterialTheme.colorScheme.primary, Modifier.weight(1f))
-                        StatBox("Battery", "85%", MaterialTheme.colorScheme.onBackground, Modifier.weight(1f))
-                    }
-                }
-            }
-
-            // Command Center
-            Text("Command Center", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
-            
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
-                    CommandButton("Connect Device", "🔗", MaterialTheme.colorScheme.primary, { navController.navigate("gamepad") }, Modifier.weight(1f))
-                    CommandButton("Virtual Controller", "🎮", MaterialTheme.colorScheme.tertiary, { navController.navigate("gamepad") }, Modifier.weight(1f))
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
-                    CommandButton("HUD Editor", "🎛️", MaterialTheme.colorScheme.secondary, { navController.navigate("editor") }, Modifier.weight(1f))
-                    CommandButton("Settings", "⚙️", MaterialTheme.colorScheme.primaryContainer, { navController.navigate("settings") }, Modifier.weight(1f))
-                }
-            }
-        }
-    }
-}
-
 @Composable
 fun StatBox(label: String, value: String, valueColor: Color, modifier: Modifier = Modifier) {
     Column(
@@ -190,12 +271,18 @@ fun StatBox(label: String, value: String, valueColor: Color, modifier: Modifier 
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CommandButton(label: String, icon: String, iconColor: Color, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun CommandButton(
+    label: String,
+    icon: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Card(
         onClick = onClick,
-        modifier = modifier.height(112.dp),
+        modifier = modifier
+            .height(112.dp)
+            .semantics { contentDescription = label },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(24.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
@@ -212,150 +299,195 @@ fun CommandButton(label: String, icon: String, iconColor: Color, onClick: () -> 
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun VShapedPanel(
-    selectedLayout: String,
-    onLayoutSelected: (String) -> Unit,
-    onPlayClick: () -> Unit
-) {
+fun VShapedPanel(onPlayClick: () -> Unit) {
+    var selectedIndex by remember { mutableIntStateOf(0) }
+    val state = rememberCarouselState { layoutOptions.size }
+
+    // No need for a separate CoroutineScope + launch here — LaunchedEffect
+    // already gives us a coroutine, and the assignment itself is synchronous.
+    LaunchedEffect(state.currentItem) {
+        selectedIndex = state.currentItem
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(380.dp)
             .padding(vertical = 16.dp)
     ) {
-        // Draw the Glowing V-Shape Container Border
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val path = Path().apply {
-                moveTo(0f, 0f)
-                lineTo(size.width, 0f)
-                lineTo(size.width, size.height * 0.75f)
-                lineTo(size.width * 0.5f, size.height)
-                lineTo(0f, size.height * 0.75f)
-                close()
-            }
-            // Draw background fill (Deep Cyberpunk Dark)
-            drawPath(
-                path = path,
-                brush = Brush.linearGradient(
-                    colors = listOf(Color(0xFF0E1524), Color(0xFF070B14))
-                )
-            )
-            // Draw neon glow (thick, low alpha)
-            drawPath(
-                path = path,
-                brush = Brush.linearGradient(
-                    colors = listOf(Color(0xFF00E5FF).copy(alpha = 0.3f), Color(0xFFB400FF).copy(alpha = 0.3f), Color(0xFF00E5FF).copy(alpha = 0.3f))
-                ),
-                style = Stroke(width = 12.dp.toPx())
-            )
-            // Draw core neon border (thick, high alpha)
-            drawPath(
-                path = path,
-                brush = Brush.linearGradient(
-                    colors = listOf(Color(0xFF00E5FF), Color(0xFFB400FF), Color(0xFF00E5FF))
-                ),
-                style = Stroke(width = 4.dp.toPx())
+        VPanelBackground(modifier = Modifier.fillMaxSize())
+
+        HorizontalCenteredHeroCarousel(
+            state = state,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(221.dp)
+                .align(Alignment.TopCenter)
+                .padding(24.dp),
+            itemSpacing = 8.dp,
+            contentPadding = PaddingValues(horizontal = 16.dp)
+        ) { index ->
+            val item = layoutOptions[index]
+            InnerLayoutCard(
+                modifier = Modifier.fillMaxSize().padding(4.dp),
+                title = item.title,
+                subtitle = item.subtitle,
+                isSelected = selectedIndex == index,
             )
         }
 
-        Column(modifier = Modifier.fillMaxSize()) {
-            // The LazyRow Carousel Inside the Panel
-            val scrollState = rememberScrollState()
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 30.dp, bottom = 20.dp)
-                    .horizontalScroll(scrollState),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Spacer(modifier = Modifier.width(8.dp))
-                InnerLayoutCard(
-                    title = "Classic Pro",
-                    subtitle = "Layout 1",
-                    isSelected = selectedLayout == "Classic Pro",
-                    onClick = { onLayoutSelected("Classic Pro") }
-                )
-                InnerLayoutCard(
-                    title = "FPS Master",
-                    subtitle = "Layout 2",
-                    isSelected = selectedLayout == "FPS Master",
-                    onClick = { onLayoutSelected("FPS Master") }
-                )
-                InnerLayoutCard(
-                    title = "Racing Sim",
-                    subtitle = "Layout 3",
-                    isSelected = selectedLayout == "Racing Sim",
-                    onClick = { onLayoutSelected("Racing Sim") }
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-            }
-        }
-
-        // The Play Button inside the V-pocket
-        Box(
+        PlayButton(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .offset(y = (-40).dp)
-                .clickable { onPlayClick() }
-        ) {
-            Canvas(modifier = Modifier.size(50.dp, 40.dp)) {
-                val path = Path().apply {
-                    moveTo(0f, 0f)
-                    lineTo(size.width, size.height / 2f)
-                    lineTo(0f, size.height)
-                    close()
-                }
-                // Outer Glow
-                drawPath(path = path, color = Color(0xFF39FF14).copy(alpha = 0.4f), style = Stroke(width = 16.dp.toPx()))
-                // Inner Glow
-                drawPath(path = path, color = Color(0xFF39FF14).copy(alpha = 0.7f), style = Stroke(width = 8.dp.toPx()))
-                // Core
-                drawPath(path = path, color = Color(0xFF39FF14))
-            }
+                .offset(y = (-40).dp),
+            onClick = onPlayClick
+        )
+    }
+}
+
+/** Draws the glowing V-shaped chassis behind the carousel. */
+@Composable
+private fun VPanelBackground(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val path = Path().apply {
+            moveTo(0f, 0f)
+            lineTo(size.width, 0f)
+            lineTo(size.width, size.height * 0.75f)
+            lineTo(size.width * 0.5f, size.height)
+            lineTo(0f, size.height * 0.75f)
+            close()
         }
+        drawPath(
+            path = path,
+            brush = Brush.linearGradient(colors = listOf(NeonPalette.PanelBgTop, NeonPalette.PanelBgBottom))
+        )
+        drawPath(
+            path = path,
+            brush = Brush.linearGradient(
+                colors = listOf(
+                    NeonPalette.Cyan.copy(alpha = 0.3f),
+                    NeonPalette.Purple.copy(alpha = 0.3f),
+                    NeonPalette.Cyan.copy(alpha = 0.3f)
+                )
+            ),
+            style = Stroke(width = 12.dp.toPx())
+        )
+        drawPath(
+            path = path,
+            brush = Brush.linearGradient(colors = listOf(NeonPalette.Cyan, NeonPalette.Purple, NeonPalette.Cyan)),
+            style = Stroke(width = 4.dp.toPx())
+        )
     }
 }
 
 @Composable
-fun InnerLayoutCard(title: String, subtitle: String, isSelected: Boolean, onClick: () -> Unit) {
-    val width = if (isSelected) 140.dp else 100.dp
-    val height = if (isSelected) 160.dp else 120.dp
-    
-    // Cyberpunk specific colors
-    val bgColor = if (isSelected) Brush.linearGradient(listOf(Color(0xFF005577), Color(0xFF660088))) else Brush.linearGradient(listOf(Color(0xFF111111), Color(0xFF111111)))
-    val borderColor = if (isSelected) Color.White else Color(0xFF333333)
-    val borderWidth = if (isSelected) 3.dp else 2.dp
-    val textColor = if (isSelected) Color.White else Color(0xFF888888)
-    
+private fun PlayButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
     Box(
-        modifier = Modifier
+        modifier = modifier
+            .clickable(onClickLabel = "Start playing") { onClick() }
+            .semantics { contentDescription = "Play" }
+    ) {
+        Canvas(modifier = Modifier.size(50.dp, 40.dp)) {
+            val path = Path().apply {
+                moveTo(0f, 0f)
+                lineTo(size.width, size.height / 2f)
+                lineTo(0f, size.height)
+                close()
+            }
+            drawPath(path = path, color = NeonPalette.Green.copy(alpha = 0.4f), style = Stroke(width = 16.dp.toPx()))
+            drawPath(path = path, color = NeonPalette.Green.copy(alpha = 0.7f), style = Stroke(width = 8.dp.toPx()))
+            drawPath(path = path, color = NeonPalette.Green)
+        }
+    }
+}
+
+private val cardAnimSpecDp = tween<Dp>(durationMillis = 280, easing = FastOutSlowInEasing)
+private val cardAnimSpecFloat = tween<Float>(durationMillis = 280, easing = FastOutSlowInEasing)
+private val cardAnimSpecColor = tween<Color>(durationMillis = 280, easing = FastOutSlowInEasing)
+
+@Composable
+fun InnerLayoutCard(modifier: Modifier, title: String, subtitle: String, isSelected: Boolean) {
+    // Every visual property below is animated off the SAME isSelected flag, so
+    // swiping left vs right produces identical motion either way — the carousel
+    // just decides which index gets isSelected = true, this composable only
+    // reacts to that boolean and doesn't care which direction it came from.
+    val width by animateDpAsState(
+        targetValue = if (isSelected) 140.dp else 100.dp,
+        animationSpec = cardAnimSpecDp,
+        label = "cardWidth"
+    )
+    val height by animateDpAsState(
+        targetValue = if (isSelected) 160.dp else 120.dp,
+        animationSpec = cardAnimSpecDp,
+        label = "cardHeight"
+    )
+    val borderWidth by animateDpAsState(
+        targetValue = if (isSelected) 3.dp else 2.dp,
+        animationSpec = cardAnimSpecDp,
+        label = "borderWidth"
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (isSelected) Color.White else NeonPalette.CardIdleBorder,
+        animationSpec = cardAnimSpecColor,
+        label = "borderColor"
+    )
+    val textColor by animateColorAsState(
+        targetValue = if (isSelected) Color.White else NeonPalette.CardIdleText,
+        animationSpec = cardAnimSpecColor,
+        label = "textColor"
+    )
+    val bgStart by animateColorAsState(
+        targetValue = if (isSelected) Color(0xFF005577) else NeonPalette.CardIdleBg,
+        animationSpec = cardAnimSpecColor,
+        label = "bgStart"
+    )
+    val bgEnd by animateColorAsState(
+        targetValue = if (isSelected) Color(0xFF660088) else NeonPalette.CardIdleBg,
+        animationSpec = cardAnimSpecColor,
+        label = "bgEnd"
+    )
+    val titleFontSize by animateFloatAsState(
+        targetValue = if (isSelected) 16f else 12f,
+        animationSpec = cardAnimSpecFloat,
+        label = "titleFontSize"
+    )
+    // Subtitle stays composed at all times and just fades — swapping it in/out
+    // with an if() is what caused the old abrupt pop when selection changed.
+    val subtitleAlpha by animateFloatAsState(
+        targetValue = if (isSelected) 0.9f else 0f,
+        animationSpec = cardAnimSpecFloat,
+        label = "subtitleAlpha"
+    )
+
+    Box(
+        modifier = modifier
             .size(width, height)
             .clip(RoundedCornerShape(16.dp))
-            .background(bgColor)
+            .background(Brush.linearGradient(listOf(bgStart, bgEnd)))
             .border(borderWidth, borderColor, RoundedCornerShape(16.dp))
-            .clickable { onClick() },
+            .semantics { contentDescription = "$title layout${if (isSelected) ", selected" else ""}" },
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             Text(
-                text = title, 
-                color = textColor, 
-                fontWeight = if (isSelected) FontWeight.Black else FontWeight.SemiBold, 
-                fontSize = if (isSelected) 16.sp else 12.sp,
-                // Add text shadow for selected state
-                style = if (isSelected) androidx.compose.ui.text.TextStyle(
-                    shadow = androidx.compose.ui.graphics.Shadow(
-                        color = Color.Black,
-                        offset = androidx.compose.ui.geometry.Offset(0f, 4f),
-                        blurRadius = 8f
-                    )
-                ) else androidx.compose.ui.text.TextStyle.Default
+                text = title,
+                color = textColor,
+                fontWeight = if (isSelected) FontWeight.Black else FontWeight.SemiBold,
+                fontSize = titleFontSize.sp,
+                style = if (isSelected) {
+                    TextStyle(shadow = Shadow(color = Color.Black, offset = Offset(0f, 4f), blurRadius = 8f))
+                } else {
+                    TextStyle.Default
+                }
             )
-            if (isSelected) {
-                Text(subtitle, color = textColor.copy(alpha = 0.9f), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
-            }
+            Text(
+                subtitle,
+                color = textColor.copy(alpha = subtitleAlpha),
+                fontSize = 11.sp,
+                modifier = Modifier.padding(top = 4.dp)
+            )
         }
     }
 }
