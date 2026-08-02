@@ -7,6 +7,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import kotlin.math.abs
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
@@ -131,40 +132,81 @@ fun HomeScreen(navController: NavController, layoutManager: LayoutManager) {
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(scrollState)
-                .padding(horizontal = 24.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+        Box(
+
         ) {
-            HeaderRow()
-
-            VShapedPanel(
-                onPlayClick = { navController.navigate("gamepad") }
-            )
-            Text(
-                "Online Device",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            DeviceHeroCard()
-
-            Text(
-                "Command Center",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface
+            CyberGrid(
+                Modifier.matchParentSize()
             )
 
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
-                    CommandButton("Connect Device", Icons.Rounded.Link, MaterialTheme.colorScheme.primary, { navController.navigate("device_scan") }, Modifier.weight(1f))
-                    CommandButton("Virtual Controller", Icons.Rounded.SportsEsports, MaterialTheme.colorScheme.primary, { navController.navigate("gamepad") }, Modifier.weight(1f))
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
-                    CommandButton("HUD Editor", Icons.Rounded.DashboardCustomize, MaterialTheme.colorScheme.secondary, { navController.navigate("editor") }, Modifier.weight(1f))
-                    CommandButton("Settings", Icons.Rounded.Settings, MaterialTheme.colorScheme.primaryContainer, { navController.navigate("settings") }, Modifier.weight(1f))
+            ScanLine(
+                Modifier.matchParentSize()
+            )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                HeaderRow()
+
+                VShapedPanel(
+                    onPlayClick = { navController.navigate("gamepad") }
+                )
+                Text(
+                    "Online Device",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                DeviceHeroCard()
+
+                Text(
+                    "Command Center",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        CommandButton(
+                            "Connect Device",
+                            Icons.Rounded.Link,
+                            MaterialTheme.colorScheme.primary,
+                            { navController.navigate("device_scan") },
+                            Modifier.weight(1f)
+                        )
+                        CommandButton(
+                            "Virtual Controller",
+                            Icons.Rounded.SportsEsports,
+                            MaterialTheme.colorScheme.primary,
+                            { navController.navigate("gamepad") },
+                            Modifier.weight(1f)
+                        )
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        CommandButton(
+                            "HUD Editor",
+                            Icons.Rounded.DashboardCustomize,
+                            MaterialTheme.colorScheme.secondary,
+                            { navController.navigate("editor") },
+                            Modifier.weight(1f)
+                        )
+                        CommandButton(
+                            "Settings",
+                            Icons.Rounded.Settings,
+                            MaterialTheme.colorScheme.primaryContainer,
+                            { navController.navigate("settings") },
+                            Modifier.weight(1f)
+                        )
+                    }
                 }
             }
         }
@@ -567,4 +609,79 @@ fun InnerLayoutCard(modifier: Modifier, title: String, subtitle: String, isSelec
             )
         }
     }
+}
+@Composable
+fun CyberGrid(
+    modifier: Modifier = Modifier,
+    gridSize: Dp = 28.dp,
+    lineColor: Color = Color(0xFF00E5FF).copy(alpha = 0.08f)
+) {
+    Canvas(modifier) {
+
+        val step = gridSize.toPx()
+
+        // Vertical
+        var x = 0f
+        while (x <= size.width) {
+            drawLine(
+                color = lineColor,
+                start = Offset(x, 0f),
+                end = Offset(x, size.height),
+                strokeWidth = 1.dp.toPx()
+            )
+            x += step
+        }
+
+        // Horizontal
+        var y = 0f
+        while (y <= size.height) {
+            drawLine(
+                color = lineColor,
+                start = Offset(0f, y),
+                end = Offset(size.width, y),
+                strokeWidth = 1.dp.toPx()
+            )
+            y += step
+        }
+    }
+}
+@Composable
+fun ScanLine(
+    modifier: Modifier = Modifier
+) {
+
+    val transition = rememberInfiniteTransition()
+
+    val offset by transition.animateFloat(
+        initialValue = -200f,
+        targetValue = 2000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 6000,
+                easing = LinearEasing
+            )
+        )
+    )
+
+    Canvas(modifier) {
+
+        drawRect(
+
+            brush = Brush.verticalGradient(
+
+                listOf(
+                    Color.Transparent,
+                    Color(0xFF00E5FF).copy(alpha = .12f),
+                    Color.Transparent
+                ),
+
+                startY = offset,
+                endY = offset + 120.dp.toPx()
+
+            )
+
+        )
+
+    }
+
 }
