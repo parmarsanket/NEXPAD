@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import com.sanket.tools.nexpad.sensors.GyroSensor
+import com.sanket.tools.nexpad.sensors.MotionSensorManager
 import com.sanket.tools.nexpad.ui.GamepadScreen
 import com.sanket.tools.nexpad.ui.theme.NEXPADTheme
 import com.sanket.tools.nexpad.ui.NavigationGraph
@@ -46,7 +46,7 @@ import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 class MainActivity : ComponentActivity() {
     
     private lateinit var viewModel: GamepadViewModel
-    private lateinit var gyroSensor: GyroSensor
+    private lateinit var motionSensorManager: MotionSensorManager
     private lateinit var vibrator: Vibrator
     private lateinit var layoutManager: LayoutManager
 
@@ -81,16 +81,13 @@ class MainActivity : ComponentActivity() {
         }
 
         // Initialize Sensors
-        gyroSensor = GyroSensor(
+        motionSensorManager = MotionSensorManager(
             context = this,
-            onGravityChanged = { x, y, z ->
+            onMotionPacket = { packet ->
                 // Gravity steering is disabled on Android side.
                 // Desktop app will process raw Accel/Gyro data instead.
-            },
-            onAccelChanged = { x, y, z -> viewModel.updateAccel(x, y, z) },
-            onGyroChanged = { x, y, z -> viewModel.update6AxisGyro(x, y, z) },
-            onGameRotationChanged = { x, y, z ->
-
+                viewModel.updateAccel(packet.accelX, packet.accelY, packet.accelZ)
+                viewModel.update6AxisGyro(packet.gyroX, packet.gyroY, packet.gyroZ)
             }
         )
 
@@ -156,11 +153,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        gyroSensor.start()
+        motionSensorManager.start()
     }
 
     override fun onPause() {
         super.onPause()
-        gyroSensor.stop()
+        motionSensorManager.stop()
     }
 }
