@@ -1,9 +1,18 @@
 package com.sanket.tools.nexpad.ui
 
+import androidx.constraintlayout.compose.ConstraintLayout
+import androidx.constraintlayout.compose.Dimension
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import kotlin.math.abs
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -15,30 +24,45 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Computer
+import androidx.compose.material.icons.rounded.DashboardCustomize
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material3.*
 import androidx.compose.material3.carousel.HorizontalCenteredHeroCarousel
+import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
 import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.sanket.tools.nexpad.utils.LayoutManager
+
 
 // ---------------------------------------------------------------------------
 // Design tokens — pulling the cyberpunk palette out of the composables makes
@@ -120,7 +144,11 @@ fun HomeScreen(navController: NavController, layoutManager: LayoutManager) {
             VShapedPanel(
                 onPlayClick = { navController.navigate("gamepad") }
             )
-
+            Text(
+                "Online Device",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             DeviceHeroCard()
 
             Text(
@@ -131,32 +159,12 @@ fun HomeScreen(navController: NavController, layoutManager: LayoutManager) {
 
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
-                    CommandButton(
-                        label = "Connect Device",
-                        icon = "🔗",
-                        onClick = { navController.navigate("device_scan") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    CommandButton(
-                        label = "Virtual Controller",
-                        icon = "🎮",
-                        onClick = { navController.navigate("gamepad") },
-                        modifier = Modifier.weight(1f)
-                    )
+                    CommandButton("Connect Device", Icons.Rounded.Link, MaterialTheme.colorScheme.primary, { navController.navigate("device_scan") }, Modifier.weight(1f))
+                    CommandButton("Virtual Controller", Icons.Rounded.SportsEsports, MaterialTheme.colorScheme.primary, { navController.navigate("gamepad") }, Modifier.weight(1f))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
-                    CommandButton(
-                        label = "HUD Editor",
-                        icon = "🎛️",
-                        onClick = { navController.navigate("editor") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    CommandButton(
-                        label = "Settings",
-                        icon = "⚙️",
-                        onClick = { navController.navigate("settings") },
-                        modifier = Modifier.weight(1f)
-                    )
+                    CommandButton("HUD Editor", Icons.Rounded.DashboardCustomize, MaterialTheme.colorScheme.secondary, { navController.navigate("editor") }, Modifier.weight(1f))
+                    CommandButton("Settings", Icons.Rounded.Settings, MaterialTheme.colorScheme.primaryContainer, { navController.navigate("settings") }, Modifier.weight(1f))
                 }
             }
         }
@@ -213,7 +221,12 @@ private fun DeviceHeroCard() {
                         .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(16.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("💻", fontSize = 32.sp)
+                    Icon(
+                        imageVector = Icons.Rounded.Computer,
+                        contentDescription = "PC",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(32.dp)
+                    )
                 }
                 Column {
                     Text("Windows PC", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
@@ -251,7 +264,7 @@ fun GlassCard(
                 )
             )
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
-            .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(28.dp)),
+            .border(2.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(28.dp)),
         content = content
     )
 }
@@ -271,28 +284,27 @@ fun StatBox(label: String, value: String, valueColor: Color, modifier: Modifier 
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CommandButton(
-    label: String,
-    icon: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
+fun CommandButton(label: String, icon: ImageVector, iconColor: Color, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Card(
         onClick = onClick,
-        modifier = modifier
-            .height(112.dp)
-            .semantics { contentDescription = label },
+        modifier = modifier.height(112.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(icon, fontSize = 28.sp)
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = iconColor,
+                modifier = Modifier.size(32.dp)
+            )
             Spacer(modifier = Modifier.height(12.dp))
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
         }
@@ -314,36 +326,43 @@ fun VShapedPanel(onPlayClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(380.dp)
-            .padding(vertical = 16.dp)
+            //.height(350.dp)
+            .aspectRatio(1.1f)
     ) {
         VPanelBackground(modifier = Modifier.fillMaxSize())
 
-        HorizontalCenteredHeroCarousel(
-            state = state,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(221.dp)
-                .align(Alignment.TopCenter)
-                .padding(24.dp),
-            itemSpacing = 8.dp,
-            contentPadding = PaddingValues(horizontal = 16.dp)
-        ) { index ->
-            val item = layoutOptions[index]
-            InnerLayoutCard(
-                modifier = Modifier.fillMaxSize().padding(4.dp),
-                title = item.title,
-                subtitle = item.subtitle,
-                isSelected = selectedIndex == index,
-            )
-        }
+        Column(
+            modifier = Modifier.align(Alignment.TopCenter)
+        ) {
+            HorizontalCenteredHeroCarousel(
+                state = state,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(221.dp)
+                    .padding(24.dp),
+                itemSpacing = 8.dp,
+                contentPadding = PaddingValues(horizontal = 16.dp)
+            ) { index ->
+                val item = layoutOptions[index]
+                InnerLayoutCard(
+                    modifier = Modifier.fillMaxSize().padding(4.dp),
+                    title = item.title,
+                    subtitle = item.subtitle,
+                    isSelected = selectedIndex == index,
+                )
+            }
+          Box(
+              modifier = Modifier.fillMaxSize()
+          ) {
+              PlayButton(
+                  modifier = Modifier
+                      .align(alignment = Alignment.Center)
+                      .padding(bottom = 24.dp),
+                  onClick = onPlayClick
+              )
+          }
 
-        PlayButton(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .offset(y = (-40).dp),
-            onClick = onPlayClick
-        )
+        }
     }
 }
 
@@ -372,37 +391,95 @@ private fun VPanelBackground(modifier: Modifier = Modifier) {
                     NeonPalette.Cyan.copy(alpha = 0.3f)
                 )
             ),
-            style = Stroke(width = 12.dp.toPx())
+            style = Stroke(width = 8.dp.toPx())
         )
         drawPath(
             path = path,
             brush = Brush.linearGradient(colors = listOf(NeonPalette.Cyan, NeonPalette.Purple, NeonPalette.Cyan)),
-            style = Stroke(width = 4.dp.toPx())
+            style = Stroke(width = 2.dp.toPx())
         )
     }
 }
 
 @Composable
-private fun PlayButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun PlayButton(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+
+    val infinite = rememberInfiniteTransition(label = "")
+
+    val glowAlpha by infinite.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 900,
+                easing = FastOutSlowInEasing
+            ),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = ""
+    )
+
+    val scale by infinite.animateFloat(
+        initialValue = 0.97f,
+        targetValue = 1.04f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = ""
+    )
+    val haptic = LocalHapticFeedback.current
     Box(
         modifier = modifier
-            .clickable(onClickLabel = "Start playing") { onClick() }
-            .semantics { contentDescription = "Play" }
-    ) {
-        Canvas(modifier = Modifier.size(50.dp, 40.dp)) {
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                onClick() },
+        contentAlignment = Alignment.Center
+    )
+    {
+
+        Canvas(
+            modifier = Modifier.size(80.dp)
+        ) {
+
+            drawRoundRect(
+                color = NeonPalette.Green.copy(alpha = 0.08f * glowAlpha),
+                topLeft = Offset(
+                    x = -size.width * 0.25f,
+                    y = -size.height * 0.10f
+                ),
+                size = Size(
+                    width = size.width * 1.5f ,
+                    height = size.height * 1.2f
+                ),
+                cornerRadius = CornerRadius(50.dp.toPx())
+            )
+            //-----------------------------------
+            // Triangle
+            //-----------------------------------
+
             val path = Path().apply {
-                moveTo(0f, 0f)
-                lineTo(size.width, size.height / 2f)
-                lineTo(0f, size.height)
+                moveTo(size.width * .3f, size.height * .22f)
+
+                lineTo(size.width * .85f, size.height * .5f)
+
+                lineTo(size.width * .3f, size.height * .78f)
                 close()
             }
+
             drawPath(path = path, color = NeonPalette.Green.copy(alpha = 0.4f), style = Stroke(width = 16.dp.toPx()))
             drawPath(path = path, color = NeonPalette.Green.copy(alpha = 0.7f), style = Stroke(width = 8.dp.toPx()))
             drawPath(path = path, color = NeonPalette.Green)
         }
     }
 }
-
 private val cardAnimSpecDp = tween<Dp>(durationMillis = 280, easing = FastOutSlowInEasing)
 private val cardAnimSpecFloat = tween<Float>(durationMillis = 280, easing = FastOutSlowInEasing)
 private val cardAnimSpecColor = tween<Color>(durationMillis = 280, easing = FastOutSlowInEasing)
@@ -424,12 +501,12 @@ fun InnerLayoutCard(modifier: Modifier, title: String, subtitle: String, isSelec
         label = "cardHeight"
     )
     val borderWidth by animateDpAsState(
-        targetValue = if (isSelected) 3.dp else 2.dp,
+        targetValue = if (isSelected) 2.dp else 2.dp,
         animationSpec = cardAnimSpecDp,
         label = "borderWidth"
     )
     val borderColor by animateColorAsState(
-        targetValue = if (isSelected) Color.White else NeonPalette.CardIdleBorder,
+        targetValue = if (isSelected) NeonPalette.Cyan else NeonPalette.CardIdleBorder,
         animationSpec = cardAnimSpecColor,
         label = "borderColor"
     )
