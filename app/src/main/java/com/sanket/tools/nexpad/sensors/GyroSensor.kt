@@ -68,7 +68,7 @@ class MotionSensorManager(
     private val windowManager by lazy { context.getSystemService(Context.WINDOW_SERVICE) as WindowManager }
 
     private val gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY)
-    private val linearAccelSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
+    private val accelSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
     private val gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
     private val uncalibratedGyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE_UNCALIBRATED)
     private val gameRotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR)
@@ -96,7 +96,7 @@ class MotionSensorManager(
 
         listOf(
             gravitySensor,
-            linearAccelSensor,
+            accelSensor,
             gyroSensor,
             uncalibratedGyroSensor,
             gameRotationSensor
@@ -140,7 +140,7 @@ class MotionSensorManager(
                 motion.gravityY = y
                 motion.gravityZ = hwZ
             }
-            Sensor.TYPE_LINEAR_ACCELERATION -> {
+            Sensor.TYPE_ACCELEROMETER -> {
                 motion.accelX = x.deadZone()
                 motion.accelY = y.deadZone()
                 motion.accelZ = hwZ.deadZone()
@@ -198,11 +198,12 @@ class MotionSensorManager(
                 motion.qX = quaternion[1]
                 motion.qY = quaternion[2]
                 motion.qZ = quaternion[3]
+
+                // ONLY emit the synchronized packet on the Master Tick (Rotation Vector)
+                // Otherwise we spam the network 5x per frame.
+                onMotionPacket(motion)
             }
         }
-
-        // Emit the synchronized packet
-        onMotionPacket(motion)
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit

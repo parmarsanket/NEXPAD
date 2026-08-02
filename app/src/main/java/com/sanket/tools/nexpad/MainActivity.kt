@@ -87,7 +87,7 @@ class MainActivity : ComponentActivity() {
                 // Gravity steering is disabled on Android side.
                 // Desktop app will process raw Accel/Gyro data instead.
                 viewModel.updateAccel(packet.accelX, packet.accelY, packet.accelZ)
-                viewModel.update6AxisGyro(packet.gyroX, packet.gyroY, packet.gyroZ)
+                viewModel.update6AxisGyro(packet.rawGyroX, packet.rawGyroY, packet.rawGyroZ)
             }
         )
 
