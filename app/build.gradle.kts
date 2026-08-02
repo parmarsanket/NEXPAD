@@ -7,9 +7,7 @@ plugins {
 android {
     namespace = "com.sanket.tools.nexpad"
     compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
+        version = release(37)
     }
 
     defaultConfig {
@@ -45,6 +43,8 @@ dependencies {
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation("androidx.compose.ui:ui-text-google-fonts:1.6.7")
+    implementation("androidx.constraintlayout:constraintlayout-compose:1.0.1")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     testImplementation(libs.junit)
@@ -62,4 +62,10 @@ dependencies {
     
     // Serialization
     implementation(libs.kotlinx.serialization.json)
+    
+    // Navigation
+    implementation("androidx.navigation:navigation-compose:2.7.7")
+    
+    // Modern Icons (Material Icons Extended)
+    implementation("androidx.compose.material:material-icons-extended")
 }
