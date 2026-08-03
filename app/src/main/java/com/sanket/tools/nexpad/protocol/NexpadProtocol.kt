@@ -134,7 +134,11 @@ object NexpadProtocol {
 
     private fun floatToInt16(value: Float): Short {
         val clamped = value.coerceIn(-1.0f, 1.0f)
-        return (clamped * 32767).toInt().toShort()
+        return if (clamped >= 0) {
+            (clamped * 32767f).toInt().toShort()
+        } else {
+            (clamped * 32768f).toInt().toShort()
+        }
     }
 
     private fun floatToUInt8(value: Float): Byte {

@@ -150,14 +150,14 @@ class MotionSensorManager(
                 motion.accelZ = hwZ.deadZone()
             }
             Sensor.TYPE_GYROSCOPE -> {
-                motion.gyroX = x.deadZone()
-                motion.gyroY = y.deadZone()
-                motion.gyroZ = hwZ.deadZone()
+                motion.gyroX = -x.deadZone()
+                motion.gyroY = -y.deadZone()
+                motion.gyroZ = -hwZ.deadZone()
             }
             Sensor.TYPE_GYROSCOPE_UNCALIBRATED -> {
-                motion.rawGyroX = x
-                motion.rawGyroY = y
-                motion.rawGyroZ = hwZ
+                motion.rawGyroX = -x
+                motion.rawGyroY = -y
+                motion.rawGyroZ = -hwZ
 
                 if (event.values.size >= 6) {
                     // Bias values are also in portrait coordinate space — remap to landscape
