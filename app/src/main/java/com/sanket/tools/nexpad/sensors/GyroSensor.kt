@@ -5,9 +5,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.os.Build
 import android.view.Surface
-import android.view.WindowManager
 import kotlin.math.abs
 
 data class MotionPacket(
@@ -65,7 +63,6 @@ class MotionSensorManager(
     }
 
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-    private val windowManager by lazy { context.getSystemService(Context.WINDOW_SERVICE) as WindowManager }
 
     private val gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY)
     private val accelSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
@@ -82,18 +79,25 @@ class MotionSensorManager(
     // Single synchronized packet
     private val motion = MotionPacket()
     
-    // Cached display rotation
-    private var displayRotation = Surface.ROTATION_0
+    /**
+     * NEXPAD always runs in locked landscape. We hardcode ROTATION_90 because:
+     * - Some phones report ROTATION_0 even in landscape (their "natural" orientation IS landscape)
+     * - Querying the display at start() is unreliable if the Activity hasn't fully rotated yet
+     * - All sensor coordinate remapping must be consistent for the Desktop's gyro math
+     *
+     * Android sensor coordinate system (portrait, ROTATION_0):
+     *   X → points right along the short edge
+     *   Y → points up along the long edge
+     *   Z → points out of the screen
+     *
+     * After ROTATION_90 remap (landscape, phone turned left):
+     *   X' = Y   (the long edge is now horizontal)
+     *   Y' = -X  (the short edge is now vertical, inverted)
+     *   Z' = Z   (unchanged, still out of screen)
+     */
+    private val displayRotation = Surface.ROTATION_90
 
     fun start() {
-        // Cache display rotation once on start (assuming locked landscape)
-        displayRotation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            context.display?.rotation ?: Surface.ROTATION_0
-        } else {
-            @Suppress("DEPRECATION")
-            windowManager.defaultDisplay.rotation
-        }
-
         listOf(
             gravitySensor,
             accelSensor,
@@ -156,9 +160,12 @@ class MotionSensorManager(
                 motion.rawGyroZ = hwZ
 
                 if (event.values.size >= 6) {
-                    motion.biasX = event.values[3]
-                    motion.biasY = event.values[4]
-                    motion.biasZ = event.values[5]
+                    // Bias values are also in portrait coordinate space — remap to landscape
+                    val hwBiasX = event.values[3]
+                    val hwBiasY = event.values[4]
+                    motion.biasX = hwBiasY        // X' = Y  (landscape remap)
+                    motion.biasY = -hwBiasX       // Y' = -X (landscape remap)
+                    motion.biasZ = event.values[5] // Z unchanged
                 }
             }
             Sensor.TYPE_GAME_ROTATION_VECTOR -> {
