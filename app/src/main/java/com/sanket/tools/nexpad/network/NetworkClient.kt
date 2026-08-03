@@ -3,29 +3,25 @@ package com.sanket.tools.nexpad.network
 import com.sanket.tools.nexpad.model.GamepadFeedback
 import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpad.protocol.NexpadProtocol
-import io.ktor.network.selector.SelectorManager
-import io.ktor.network.sockets.BoundDatagramSocket
-import io.ktor.network.sockets.Datagram
-import io.ktor.network.sockets.InetSocketAddress
-import io.ktor.network.sockets.aSocket
-import io.ktor.utils.io.core.ByteReadPacket
-import io.ktor.utils.io.core.readBytes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import java.nio.channels.DatagramChannel
+import java.net.InetSocketAddress
+import java.nio.ByteBuffer
 
-/**
- * Handles the UDP network connection for sending gamepad input and receiving feedback.
- * Uses the NEXPAD Universal Binary Protocol for optimal performance,
- * with a fallback to JSON decoding for backward compatibility with older servers.
- */
+// ... (imports remain)
+
 class NetworkClient : IGamepadConnection {
-    private var socket: BoundDatagramSocket? = null
+    private var channel: DatagramChannel? = null
     private var serverAddress: InetSocketAddress? = null
     private var receiveJob: Job? = null
+    
+    private val sendBuffer = ByteBuffer.allocateDirect(NexpadProtocol.INPUT_PACKET_SIZE)
+    private val sendByteArray = ByteArray(NexpadProtocol.INPUT_PACKET_SIZE)
     
     override var onFeedbackReceived: ((GamepadFeedback) -> Unit)? = null
     override var onConnectionStateChanged: ((Boolean) -> Unit)? = null
@@ -34,68 +30,96 @@ class NetworkClient : IGamepadConnection {
 
     override suspend fun connect(address: String, port: Int) {
         withContext(Dispatchers.IO) {
-            serverAddress = InetSocketAddress(address, port)
-            val selectorManager = SelectorManager(Dispatchers.IO)
-            // Bind to any local port
-            socket = aSocket(selectorManager).udp().bind()
-            onConnectionStateChanged?.invoke(true)
-            onStatusChanged?.invoke("Connected to $address:$port")
+            try {
+                serverAddress = InetSocketAddress(address, port)
+                channel = DatagramChannel.open().apply {
+                    configureBlocking(false)
+                    socket().bind(InetSocketAddress(0)) // Bind to any local port
+                }
+                
+                onConnectionStateChanged?.invoke(true)
+                onStatusChanged?.invoke("Connected to $address:$port")
+            } catch (e: Exception) {
+                onConnectionStateChanged?.invoke(false)
+                onStatusChanged?.invoke("Connection failed: ${e.message}")
+                return@withContext
+            }
         }
         
         // Launch receive job in a separate scope so connect() can return immediately
         receiveJob = kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+            val receiveBuffer = ByteBuffer.allocateDirect(1024)
+            
             while (isActive) {
                 try {
-                    val datagram = socket?.receive() ?: break
-                    val bytes = datagram.packet.readBytes()
+                    receiveBuffer.clear()
+                    val senderAddress = channel?.receive(receiveBuffer)
                     
-                    // Attempt binary decode first (6 bytes for feedback)
-                    var feedback = NexpadProtocol.decodeFeedback(bytes)
-                    
-                    // Fallback to JSON if binary decode fails (backward compatibility)
-                    if (feedback == null) {
-                        try {
-                            val json = String(bytes)
-                            feedback = Json.decodeFromString<GamepadFeedback>(json)
-                        } catch (e: Exception) {
-                            // Ignored: Not valid JSON either
+                    if (senderAddress != null) {
+                        receiveBuffer.flip()
+                        val bytes = ByteArray(receiveBuffer.remaining())
+                        receiveBuffer.get(bytes)
+                        
+                        // Attempt binary decode first (6 bytes for feedback)
+                        var feedback = NexpadProtocol.decodeFeedback(bytes)
+                        
+                        // Fallback to JSON if binary decode fails (backward compatibility)
+                        if (feedback == null) {
+                            try {
+                                val json = String(bytes)
+                                feedback = Json.decodeFromString<GamepadFeedback>(json)
+                            } catch (e: Exception) {
+                                // Ignored: Not valid JSON either
+                            }
                         }
+                        
+                        feedback?.let { 
+                            onFeedbackReceived?.invoke(it) 
+                        }
+                    } else {
+                        // Non-blocking wait
+                        kotlinx.coroutines.delay(10)
                     }
-                    
-                    feedback?.let { 
-                        onFeedbackReceived?.invoke(it) 
-                    }
+                } catch (e: java.nio.channels.ClosedChannelException) {
+                    break // Normal closure
                 } catch (e: Exception) {
-                    // Ignore silent drops
+                    if (isActive) e.printStackTrace()
                 }
             }
         }
     }
 
-    override suspend fun sendInput(input: GamepadInput) = withContext(Dispatchers.IO) {
-        val currentSocket = socket
-        val target = serverAddress
-        if (currentSocket == null || target == null) return@withContext
+    private var packetsSent = 0
+    
+    override suspend fun sendInput(input: GamepadInput) {
+        val currentChannel = channel ?: return
+        val target = serverAddress ?: return
         
         try {
-            // Encode input state to binary packet using the NEXPAD protocol
-            val packetData = NexpadProtocol.encodeInput(input)
+            // Write directly to the pre-allocated sendBuffer
+            NexpadProtocol.encodeInput(input, sendByteArray)
             
-            // Send as UDP Datagram
-            val packet = Datagram(
-                ByteReadPacket(packetData),
-                target
-            )
-            currentSocket.send(packet)
+            sendBuffer.clear()
+            sendBuffer.put(sendByteArray)
+            sendBuffer.flip()
+            
+            // Send the pre-allocated packet
+            currentChannel.send(sendBuffer, target)
+            
+            packetsSent++
+            if (packetsSent % 60 == 0) {
+                onDiagnosticLog?.invoke("Sent $packetsSent packets to ${target.hostString}:${target.port}")
+            }
         } catch (e: Exception) {
             e.printStackTrace()
+            onDiagnosticLog?.invoke("Send error: ${e.javaClass.simpleName} - ${e.message}")
         }
     }
 
     override fun disconnect() {
         receiveJob?.cancel()
-        socket?.close()
-        socket = null
+        channel?.close()
+        channel = null
         onConnectionStateChanged?.invoke(false)
         onStatusChanged?.invoke("Disconnected")
     }

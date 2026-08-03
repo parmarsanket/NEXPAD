@@ -33,8 +33,13 @@ object NexpadProtocol {
     const val INPUT_PACKET_SIZE = 40
     const val FEEDBACK_PACKET_SIZE = 6
 
+    private val encodeBuffer = ByteBuffer.allocate(INPUT_PACKET_SIZE).apply {
+        order(ByteOrder.BIG_ENDIAN)
+    }
+
     /**
      * Encodes [GamepadInput] into a 40-byte binary packet.
+     * Writes directly into [outputData] to avoid memory allocations.
      * Uses BIG_ENDIAN network byte order.
      * 
      * Button mapping (23 bits used):
@@ -45,63 +50,64 @@ object NexpadProtocol {
      * Bit 17: M1, Bit 18: M2, Bit 19: M3, Bit 20: M4
      * Bit 21: Profile, Bit 22: Turbo
      */
-    fun encodeInput(input: GamepadInput): ByteArray {
-        val buffer = ByteBuffer.allocate(INPUT_PACKET_SIZE)
-        buffer.order(ByteOrder.BIG_ENDIAN)
+    fun encodeInput(input: GamepadInput, outputData: ByteArray) {
+        synchronized(encodeBuffer) {
+            encodeBuffer.clear()
 
-        // 1. Version (1 byte)
-        buffer.put(PROTOCOL_VERSION)
+            // 1. Version (1 byte)
+            encodeBuffer.put(PROTOCOL_VERSION)
 
-        // 2. Buttons bitmask (4 bytes)
-        var buttonMask = 0
-        if (input.btnA) buttonMask = buttonMask or (1 shl 0)
-        if (input.btnB) buttonMask = buttonMask or (1 shl 1)
-        if (input.btnX) buttonMask = buttonMask or (1 shl 2)
-        if (input.btnY) buttonMask = buttonMask or (1 shl 3)
-        if (input.dpadUp) buttonMask = buttonMask or (1 shl 4)
-        if (input.dpadDown) buttonMask = buttonMask or (1 shl 5)
-        if (input.dpadLeft) buttonMask = buttonMask or (1 shl 6)
-        if (input.dpadRight) buttonMask = buttonMask or (1 shl 7)
-        if (input.btnL1) buttonMask = buttonMask or (1 shl 8)
-        if (input.btnR1) buttonMask = buttonMask or (1 shl 9)
-        if (input.btnL3) buttonMask = buttonMask or (1 shl 10)
-        if (input.btnR3) buttonMask = buttonMask or (1 shl 11)
-        if (input.btnStart) buttonMask = buttonMask or (1 shl 12)
-        if (input.btnSelect) buttonMask = buttonMask or (1 shl 13)
-        if (input.btnGuide) buttonMask = buttonMask or (1 shl 14)
-        if (input.btnShare) buttonMask = buttonMask or (1 shl 15)
-        if (input.btnScreenshot) buttonMask = buttonMask or (1 shl 16)
-        if (input.btnM1) buttonMask = buttonMask or (1 shl 17)
-        if (input.btnM2) buttonMask = buttonMask or (1 shl 18)
-        if (input.btnM3) buttonMask = buttonMask or (1 shl 19)
-        if (input.btnM4) buttonMask = buttonMask or (1 shl 20)
-        if (input.btnProfile) buttonMask = buttonMask or (1 shl 21)
-        if (input.btnTurbo) buttonMask = buttonMask or (1 shl 22)
-        
-        buffer.putInt(buttonMask)
+            // 2. Buttons bitmask (4 bytes)
+            var buttonMask = 0
+            if (input.btnA) buttonMask = buttonMask or (1 shl 0)
+            if (input.btnB) buttonMask = buttonMask or (1 shl 1)
+            if (input.btnX) buttonMask = buttonMask or (1 shl 2)
+            if (input.btnY) buttonMask = buttonMask or (1 shl 3)
+            if (input.dpadUp) buttonMask = buttonMask or (1 shl 4)
+            if (input.dpadDown) buttonMask = buttonMask or (1 shl 5)
+            if (input.dpadLeft) buttonMask = buttonMask or (1 shl 6)
+            if (input.dpadRight) buttonMask = buttonMask or (1 shl 7)
+            if (input.btnL1) buttonMask = buttonMask or (1 shl 8)
+            if (input.btnR1) buttonMask = buttonMask or (1 shl 9)
+            if (input.btnL3) buttonMask = buttonMask or (1 shl 10)
+            if (input.btnR3) buttonMask = buttonMask or (1 shl 11)
+            if (input.btnStart) buttonMask = buttonMask or (1 shl 12)
+            if (input.btnSelect) buttonMask = buttonMask or (1 shl 13)
+            if (input.btnGuide) buttonMask = buttonMask or (1 shl 14)
+            if (input.btnShare) buttonMask = buttonMask or (1 shl 15)
+            if (input.btnScreenshot) buttonMask = buttonMask or (1 shl 16)
+            if (input.btnM1) buttonMask = buttonMask or (1 shl 17)
+            if (input.btnM2) buttonMask = buttonMask or (1 shl 18)
+            if (input.btnM3) buttonMask = buttonMask or (1 shl 19)
+            if (input.btnM4) buttonMask = buttonMask or (1 shl 20)
+            if (input.btnProfile) buttonMask = buttonMask or (1 shl 21)
+            if (input.btnTurbo) buttonMask = buttonMask or (1 shl 22)
+            
+            encodeBuffer.putInt(buttonMask)
 
-        // 3. Sticks (8 bytes) - Convert float [-1.0, 1.0] to Int16 [-32768, 32767]
-        buffer.putShort(floatToInt16(input.leftStickX))
-        buffer.putShort(floatToInt16(input.leftStickY))
-        buffer.putShort(floatToInt16(input.rightStickX))
-        buffer.putShort(floatToInt16(input.rightStickY))
+            // 3. Sticks (8 bytes) - Convert float [-1.0, 1.0] to Int16 [-32768, 32767]
+            encodeBuffer.putShort(floatToInt16(input.leftStickX))
+            encodeBuffer.putShort(floatToInt16(input.leftStickY))
+            encodeBuffer.putShort(floatToInt16(input.rightStickX))
+            encodeBuffer.putShort(floatToInt16(input.rightStickY))
 
-        // 4. Triggers (2 bytes) - Convert float [0.0, 1.0] to UInt8 [0, 255]
-        buffer.put(floatToUInt8(input.triggerL2))
-        buffer.put(floatToUInt8(input.triggerR2))
+            // 4. Triggers (2 bytes) - Convert float [0.0, 1.0] to UInt8 [0, 255]
+            encodeBuffer.put(floatToUInt8(input.triggerL2))
+            encodeBuffer.put(floatToUInt8(input.triggerR2))
 
-        // 5. Sensors (24 bytes) - 6x4 Floats
-        buffer.putFloat(input.gyroX)
-        buffer.putFloat(input.gyroY)
-        buffer.putFloat(input.gyroZ)
-        buffer.putFloat(input.accelX)
-        buffer.putFloat(input.accelY)
-        buffer.putFloat(input.accelZ)
+            // 5. Sensors (24 bytes) - 6x4 Floats
+            encodeBuffer.putFloat(input.gyroX)
+            encodeBuffer.putFloat(input.gyroY)
+            encodeBuffer.putFloat(input.gyroZ)
+            encodeBuffer.putFloat(input.accelX)
+            encodeBuffer.putFloat(input.accelY)
+            encodeBuffer.putFloat(input.accelZ)
 
-        // 6. Reserved (1 byte)
-        buffer.put(0.toByte())
+            // 6. Reserved (1 byte)
+            encodeBuffer.put(0.toByte())
 
-        return buffer.array()
+            System.arraycopy(encodeBuffer.array(), 0, outputData, 0, INPUT_PACKET_SIZE)
+        }
     }
 
     /**

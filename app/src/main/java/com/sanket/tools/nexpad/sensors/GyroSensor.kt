@@ -48,10 +48,6 @@ data class MotionPacket(
     var biasZ: Float = 0f
 )
 
-private fun Float.deadZone(threshold: Float = 0.02f): Float {
-    return if (abs(this) < threshold) 0f else this
-}
-
 class MotionSensorManager(
     private val context: Context,
     private val onMotionPacket: (MotionPacket) -> Unit
@@ -97,7 +93,16 @@ class MotionSensorManager(
      */
     private val displayRotation = Surface.ROTATION_90
 
+    private var sensorThread: android.os.HandlerThread? = null
+    private var sensorHandler: android.os.Handler? = null
+
     fun start() {
+        if (sensorThread == null) {
+            sensorThread = android.os.HandlerThread("NexpadSensorThread", android.os.Process.THREAD_PRIORITY_URGENT_DISPLAY)
+            sensorThread?.start()
+            sensorHandler = android.os.Handler(sensorThread!!.looper)
+        }
+        
         listOf(
             gravitySensor,
             accelSensor,
@@ -105,12 +110,15 @@ class MotionSensorManager(
             uncalibratedGyroSensor,
             gameRotationSensor
         ).forEach { sensor ->
-            sensor?.let { sensorManager.registerListener(this, it, SENSOR_DELAY_MICROS) }
+            sensor?.let { sensorManager.registerListener(this, it, SENSOR_DELAY_MICROS, sensorHandler) }
         }
     }
 
     fun stop() {
         sensorManager.unregisterListener(this)
+        sensorThread?.quitSafely()
+        sensorThread = null
+        sensorHandler = null
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
@@ -145,14 +153,14 @@ class MotionSensorManager(
                 motion.gravityZ = hwZ
             }
             Sensor.TYPE_ACCELEROMETER -> {
-                motion.accelX = x.deadZone()
-                motion.accelY = y.deadZone()
-                motion.accelZ = hwZ.deadZone()
+                motion.accelX = x
+                motion.accelY = y
+                motion.accelZ = hwZ
             }
             Sensor.TYPE_GYROSCOPE -> {
-                motion.gyroX = -x.deadZone()
-                motion.gyroY = -y.deadZone()
-                motion.gyroZ = -hwZ.deadZone()
+                motion.gyroX = -x
+                motion.gyroY = -y
+                motion.gyroZ = -hwZ
             }
             Sensor.TYPE_GYROSCOPE_UNCALIBRATED -> {
                 motion.rawGyroX = -x

@@ -21,7 +21,7 @@ import kotlinx.coroutines.launch
 class GamepadNetworkManager(
     private val scope: CoroutineScope,
     private val context: Context,
-    private val getInputState: () -> GamepadInput
+    private val inputState: GamepadInput
 ) {
     private var connection: IGamepadConnection = NetworkClient()
     
@@ -112,12 +112,24 @@ class GamepadNetworkManager(
         connection.close()
         _isConnected.value = false
     }
+
+    fun sendImmediate() {
+        if (_isConnected.value) {
+            scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    connection.sendInput(inputState)
+                } catch (e: Exception) {
+                    // Ignore silent drops
+                }
+            }
+        }
+    }
     
     private fun startTransmitting() {
         transmitJob?.cancel()
-        transmitJob = scope.launch {
+        transmitJob = scope.launch(kotlinx.coroutines.Dispatchers.IO) {
             while (isActive) {
-                connection.sendInput(getInputState())
+                connection.sendInput(inputState)
                 // 60Hz transmission rate (1000ms / 60 = ~16.6ms)
                 delay(16L) 
             }

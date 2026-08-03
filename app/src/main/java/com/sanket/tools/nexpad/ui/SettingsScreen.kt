@@ -197,17 +197,16 @@ fun SettingsScreen(
                 modifier = Modifier.padding(top = 4.dp)
             )
 
-            if (diagnosticLog.isNotEmpty()) {
-                Text("Bluetooth diagnostics", color = Color.LightGray, fontSize = 13.sp, modifier = Modifier.padding(top = 12.dp))
-                Text(
-                    diagnosticLog.takeLast(8).joinToString("\n"),
-                    color = Color(0xFF9E9E9E),
-                    fontSize = 10.sp,
-                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
-                )
-            }
+        }
 
-
+        if (diagnosticLog.isNotEmpty()) {
+            Text("Network Diagnostics", color = Color.LightGray, fontSize = 13.sp, modifier = Modifier.padding(top = 12.dp))
+            Text(
+                diagnosticLog.takeLast(8).joinToString("\n"),
+                color = Color(0xFF9E9E9E),
+                fontSize = 10.sp,
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+            )
         }
 
         Spacer(modifier = Modifier.height(32.dp))

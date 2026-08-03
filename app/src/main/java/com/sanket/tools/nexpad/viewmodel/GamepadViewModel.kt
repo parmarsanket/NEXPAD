@@ -7,20 +7,19 @@ import com.sanket.tools.nexpad.model.GamepadInput
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 
 class GamepadViewModel(application: Application) : AndroidViewModel(application) {
-    private val _inputState = MutableStateFlow(GamepadInput())
-    val inputState: StateFlow<GamepadInput> = _inputState.asStateFlow()
+    // Single shared instance for zero-allocation state updates
+    val inputState = GamepadInput()
 
     private val networkManager = GamepadNetworkManager(
         scope = viewModelScope,
         context = application.applicationContext,
-        getInputState = { _inputState.value }
+        inputState = inputState
     )
 
     private val sensorController = SensorController(
-        updateInputState = { updateFunc -> _inputState.update(updateFunc) }
+        inputState = inputState
     )
 
     private val sharedPreferences = application.getSharedPreferences("nexpad_prefs", android.content.Context.MODE_PRIVATE)
@@ -54,48 +53,50 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun updateAccel(x: Float, y: Float, z: Float) = sensorController.updateAccel(x, y, z)
-    fun update6AxisGyro(x: Float, y: Float, z: Float) = sensorController.update6AxisGyro(x, y, z)
-
     fun updateButton(buttonName: String, isPressed: Boolean) {
-        android.util.Log.d("NEXPAD_DEBUG", "Button $buttonName updated to: $isPressed")
-        _inputState.update { current ->
-            when (buttonName) {
-                "A" -> current.copy(btnA = isPressed)
-                "B" -> current.copy(btnB = isPressed)
-                "X" -> current.copy(btnX = isPressed)
-                "Y" -> current.copy(btnY = isPressed)
-                "UP" -> current.copy(dpadUp = isPressed)
-                "DOWN" -> current.copy(dpadDown = isPressed)
-                "LEFT" -> current.copy(dpadLeft = isPressed)
-                "RIGHT" -> current.copy(dpadRight = isPressed)
-                "LB" -> current.copy(btnL1 = isPressed)
-                "RB" -> current.copy(btnR1 = isPressed)
-                "LT" -> current.copy(triggerL2 = if (isPressed) 1f else 0f)
-                "RT" -> current.copy(triggerR2 = if (isPressed) 1f else 0f)
-                "L3" -> current.copy(btnL3 = isPressed)
-                "R3" -> current.copy(btnR3 = isPressed)
-                "MENU" -> current.copy(btnStart = isPressed)
-                "VIEW" -> current.copy(btnSelect = isPressed)
-                "XBOX" -> current.copy(btnGuide = isPressed)
-                "SHARE" -> current.copy(btnShare = isPressed)
-                "SCREENSHOT" -> current.copy(btnScreenshot = isPressed)
-                "M1" -> current.copy(btnM1 = isPressed)
-                "M2" -> current.copy(btnM2 = isPressed)
-                "M3" -> current.copy(btnM3 = isPressed)
-                "M4" -> current.copy(btnM4 = isPressed)
-                "PROFILE" -> current.copy(btnProfile = isPressed)
-                "TURBO" -> current.copy(btnTurbo = isPressed)
-                else -> current
-            }
+        applyButtonState(buttonName, isPressed)
+        // Zero-Delay dispatch: Fire a UDP packet immediately, bypassing the 16ms loop
+        networkManager.sendImmediate()
+    }
+
+    private fun applyButtonState(buttonName: String, isPressed: Boolean) {
+        when (buttonName) {
+            "A" -> inputState.btnA = isPressed
+            "B" -> inputState.btnB = isPressed
+            "X" -> inputState.btnX = isPressed
+            "Y" -> inputState.btnY = isPressed
+            "UP" -> inputState.dpadUp = isPressed
+            "DOWN" -> inputState.dpadDown = isPressed
+            "LEFT" -> inputState.dpadLeft = isPressed
+            "RIGHT" -> inputState.dpadRight = isPressed
+            "LB" -> inputState.btnL1 = isPressed
+            "RB" -> inputState.btnR1 = isPressed
+            "LT" -> inputState.triggerL2 = if (isPressed) 1f else 0f
+            "RT" -> inputState.triggerR2 = if (isPressed) 1f else 0f
+            "L3" -> inputState.btnL3 = isPressed
+            "R3" -> inputState.btnR3 = isPressed
+            "MENU" -> inputState.btnStart = isPressed
+            "VIEW" -> inputState.btnSelect = isPressed
+            "XBOX" -> inputState.btnGuide = isPressed
+            "SHARE" -> inputState.btnShare = isPressed
+            "SCREENSHOT" -> inputState.btnScreenshot = isPressed
+            "M1" -> inputState.btnM1 = isPressed
+            "M2" -> inputState.btnM2 = isPressed
+            "M3" -> inputState.btnM3 = isPressed
+            "M4" -> inputState.btnM4 = isPressed
+            "PROFILE" -> inputState.btnProfile = isPressed
+            "TURBO" -> inputState.btnTurbo = isPressed
         }
     }
 
     fun updateLeftStick(x: Float, y: Float) {
-        _inputState.update { it.copy(leftStickX = x, leftStickY = y) }
+        inputState.leftStickX = x
+        inputState.leftStickY = y
     }
 
     fun updateRightStick(x: Float, y: Float) {
-        _inputState.update { it.copy(rightStickX = x, rightStickY = y) }
+        inputState.rightStickX = x
+        inputState.rightStickY = y
     }
 
     override fun onCleared() {
