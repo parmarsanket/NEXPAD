@@ -20,7 +20,7 @@ fun NavigationGraph(
 
     NavHost(navController = navController, startDestination = "home") {
         composable("home") {
-            HomeScreen(navController = navController, layoutManager = layoutManager)
+            HomeScreen(navController = navController, layoutManager = layoutManager, viewModel = viewModel)
         }
         composable("settings") {
             SettingsScreen(navController = navController, layoutManager = layoutManager, viewModel = viewModel, sharedPref = sharedPref)

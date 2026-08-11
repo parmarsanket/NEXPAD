@@ -7,10 +7,18 @@ import com.sanket.tools.nexpad.model.GamepadInput
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import com.sanket.tools.nexpad.network.DiscoveryClient
+import com.sanket.tools.nexpad.network.DiscoveredServer
+import kotlinx.coroutines.launch
 
 class GamepadViewModel(application: Application) : AndroidViewModel(application) {
     // Single shared instance for zero-allocation state updates
     val inputState = GamepadInput()
+    
+    private val discoveryClient = DiscoveryClient()
+    
+    private val _discoveredServers = MutableStateFlow<List<DiscoveredServer>>(emptyList())
+    val discoveredServers: StateFlow<List<DiscoveredServer>> = _discoveredServers.asStateFlow()
 
     private val networkManager = GamepadNetworkManager(
         scope = viewModelScope,
@@ -36,21 +44,28 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     val connectionStatus = networkManager.connectionStatus
     val diagnosticLog = networkManager.diagnosticLog
     val feedbackFlow = networkManager.feedbackFlow
+    val connectionStats = networkManager.connectionStats
 
-    fun setConnectionMode(isBluetooth: Boolean) = networkManager.setConnectionMode(isBluetooth)
+
+
+    fun startDiscovery() {
+        viewModelScope.launch {
+            discoveryClient.startDiscovery(viewModelScope) { server ->
+                val current = _discoveredServers.value.toMutableList()
+                if (current.none { it.ipAddress == server.ipAddress }) {
+                    current.add(server)
+                    _discoveredServers.value = current
+                }
+            }
+        }
+    }
+
+    fun stopDiscovery() {
+        discoveryClient.stopDiscovery()
+    }
 
     fun connect(ip: String, port: Int) = networkManager.connect(ip, port)
     fun disconnect() = networkManager.disconnect()
-    fun startAdvertising() = networkManager.startAdvertising()
-
-    fun getPairedBluetoothDevices(): List<android.bluetooth.BluetoothDevice> {
-        val bluetoothManager = getApplication<Application>().getSystemService(android.content.Context.BLUETOOTH_SERVICE) as android.bluetooth.BluetoothManager
-        val adapter = bluetoothManager.adapter
-        if (com.sanket.tools.nexpad.bluetooth.BluetoothPermissionHelper.hasAllPermissions(getApplication())) {
-            return adapter?.bondedDevices?.toList() ?: emptyList()
-        }
-        return emptyList()
-    }
 
     fun updateAccel(x: Float, y: Float, z: Float) = sensorController.updateAccel(x, y, z)
     fun update6AxisGyro(x: Float, y: Float, z: Float) = sensorController.update6AxisGyro(x, y, z)
@@ -102,7 +117,8 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     }
 
     override fun onCleared() {
-        networkManager.close()
         super.onCleared()
+        discoveryClient.stopDiscovery()
+        networkManager.close()
     }
 }

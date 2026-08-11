@@ -1,5 +1,9 @@
 package com.sanket.tools.nexpad.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.Manifest
+import android.os.Build
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.compose.ui.layout.boundsInWindow
@@ -63,7 +67,8 @@ import androidx.compose.ui.unit.sp
 
 import androidx.navigation.NavController
 import com.sanket.tools.nexpad.utils.LayoutManager
-
+import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
+import com.sanket.tools.nexpad.network.DiscoveredServer
 
 // ---------------------------------------------------------------------------
 // Design tokens — pulling the cyberpunk palette out of the composables makes
@@ -97,11 +102,23 @@ private val layoutOptions = listOf(
     LayoutOption("Advance 3", "Layout 6"),
 )
 
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(navController: NavController, layoutManager: LayoutManager) {
+fun HomeScreen(navController: NavController, layoutManager: LayoutManager, viewModel: GamepadViewModel) {
     val scrollState = rememberScrollState()
+    
+    val isConnected by viewModel.isConnected.collectAsState()
+    val discoveredServers by viewModel.discoveredServers.collectAsState()
+    val connectionStats by viewModel.connectionStats.collectAsState()
 
+    LaunchedEffect(Unit) {
+        viewModel.startDiscovery()
+    }
+    DisposableEffect(Unit) {
+        onDispose { viewModel.stopDiscovery() }
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -150,7 +167,7 @@ fun HomeScreen(navController: NavController, layoutManager: LayoutManager) {
                     .padding(horizontal = 24.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                HeaderRow()
+                HeaderRow(isConnected = isConnected)
 
                 VShapedPanel(
                     onPlayClick = { navController.navigate("gamepad") }
@@ -160,7 +177,12 @@ fun HomeScreen(navController: NavController, layoutManager: LayoutManager) {
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                DeviceHeroCard()
+                DeviceHeroCard(
+                    isConnected = isConnected,
+                    servers = discoveredServers,
+                    stats = connectionStats,
+                    onConnectClick = { server -> viewModel.connect(server.ipAddress, server.port) }
+                )
 
                 Text(
                     "Command Center",
@@ -214,7 +236,7 @@ fun HomeScreen(navController: NavController, layoutManager: LayoutManager) {
 }
 
 @Composable
-private fun HeaderRow() {
+private fun HeaderRow(isConnected: Boolean) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -240,19 +262,28 @@ private fun HeaderRow() {
                 modifier = Modifier
                     .size(8.dp)
                     .clip(CircleShape)
-                    .background(NeonPalette.ConnectedDot)
+                    .background(if (isConnected) NeonPalette.ConnectedDot else Color.Red)
             )
-            Text("Connected", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
+            Text(if (isConnected) "Connected" else "Disconnected", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
         }
     }
 }
 
 @Composable
-private fun DeviceHeroCard() {
-    GlassCard(modifier = Modifier.fillMaxWidth().height(220.dp)) {
+private fun DeviceHeroCard(
+    isConnected: Boolean,
+    servers: List<DiscoveredServer>,
+    stats: com.sanket.tools.nexpad.viewmodel.ConnectionStats,
+    onConnectClick: (DiscoveredServer) -> Unit
+) {
+    val displayServer = servers.firstOrNull()
+    val serverName = displayServer?.name ?: "No PC Found"
+    val serverStatus = if (isConnected) "Connected" else if (displayServer != null) displayServer.ipAddress else "Scanning network..."
+    
+    GlassCard(modifier = Modifier.fillMaxWidth().wrapContentHeight()) {
         Column(
-            modifier = Modifier.padding(24.dp).fillMaxSize(),
-            verticalArrangement = Arrangement.SpaceBetween
+            modifier = Modifier.padding(24.dp).fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Box(
@@ -271,19 +302,96 @@ private fun DeviceHeroCard() {
                     )
                 }
                 Column {
-                    Text("Windows PC", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
+                    Text(serverName, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
                     Text(
-                        "Main Rig • Local Network",
+                        serverStatus,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
+            
+            if (!isConnected && displayServer != null) {
+                Button(
+                    onClick = { onConnectClick(displayServer) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan)
+                ) {
+                    Text("Connect", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+            }
 
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                StatBox("Signal", "98%", MaterialTheme.colorScheme.primary, Modifier.weight(1f))
-                StatBox("Latency", "2ms", MaterialTheme.colorScheme.primary, Modifier.weight(1f))
-                StatBox("Battery", "85%", MaterialTheme.colorScheme.onBackground, Modifier.weight(1f))
+            if (isConnected) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White.copy(alpha = 0.05f))
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    val quality = when {
+                        stats.packetLossPercent ?: 0f > 5f -> "Poor"
+                        stats.latencyMs ?: 0 > 50 -> "Fair"
+                        stats.latencyMs ?: 0 > 20 -> "Good"
+                        else -> "Excellent"
+                    }
+                    val qualityColor = when (quality) {
+                        "Excellent" -> NeonPalette.ConnectedDot
+                        "Good" -> NeonPalette.Cyan
+                        "Fair" -> Color.Yellow
+                        else -> Color.Red
+                    }
+                    
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("Controller Quality", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(quality, style = MaterialTheme.typography.labelLarge, color = qualityColor, fontWeight = FontWeight.Bold)
+                    }
+                    
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+                    
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Column {
+                            Text("Connection Type", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stats.transport.displayName, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("Wi-Fi Signal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            val signalText = if (stats.signalDbm != null) {
+                                val dots = when (stats.signalLevel) {
+                                    4 -> "●●●●"
+                                    3 -> "●●●○"
+                                    2 -> "●●○○"
+                                    1 -> "●○○○"
+                                    else -> "○○○○"
+                                }
+                                "$dots  ${stats.signalDbm} dBm"
+                            } else {
+                                "N/A (Hotspot)"
+                            }
+                            Text(signalText, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
+                        }
+                    }
+                    
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Column {
+                            Text("Local Latency", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            val lat = stats.latencyMs?.let { "$it ms" } ?: "-- ms"
+                            Text(lat, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("Jitter", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            val jit = stats.jitterMs?.let { "±$it ms" } ?: "-- ms"
+                            Text(jit, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
+                        }
+                    }
+                }
+            } else {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    StatBox("Network", stats.transport.displayName, MaterialTheme.colorScheme.primary, Modifier.weight(1f))
+                    StatBox("Latency", "-", MaterialTheme.colorScheme.primary, Modifier.weight(1f))
+                    StatBox("Signal", "-", MaterialTheme.colorScheme.onBackground, Modifier.weight(1f))
+                }
             }
         }
     }

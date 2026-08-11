@@ -36,19 +36,29 @@ class NetworkClient : IGamepadConnection {
     override var onConnectionStateChanged: ((Boolean) -> Unit)? = null
     override var onStatusChanged: ((String) -> Unit)? = null
     override var onDiagnosticLog: ((String) -> Unit)? = null
+    override var onNetworkPerformanceUpdated: ((latencyMs: Long, jitterMs: Long, packetLoss: Float) -> Unit)? = null
+
+    @Volatile
+    private var isHandshakeComplete = false
 
     override suspend fun connect(address: String, port: Int) {
+        // Clean up previous connection if any
+        channel?.close()
+        receiveJob?.cancel()
+
         withContext(Dispatchers.IO) {
             try {
                 serverAddress = InetSocketAddress(address, port)
                 channel = DatagramChannel.open().apply {
                     configureBlocking(false)
                     socket().bind(InetSocketAddress(0)) // Bind to any local port
+                    connect(serverAddress) // Restrict UDP channel to this server to fix NAT/Firewall drops
                 }
                 
                 onConnectionStateChanged?.invoke(true)
-                onStatusChanged?.invoke("Connected to $address:$port")
-                android.util.Log.d("NEXPAD", "📡 Connected to UDP Server at $address:$port")
+                android.util.Log.d("NEXPAD", "📡 Connecting to UDP Server at $address:$port...")
+                onStatusChanged?.invoke("Connecting to $address:$port...")
+                isHandshakeComplete = false
             } catch (e: Exception) {
                 onConnectionStateChanged?.invoke(false)
                 onStatusChanged?.invoke("Connection failed: ${e.message}")
@@ -61,15 +71,53 @@ class NetworkClient : IGamepadConnection {
         receiveJob = kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
             val receiveBuffer = ByteBuffer.allocateDirect(1024)
             
+            // Send Handshake packet
+            val handshakeBuffer = ByteBuffer.allocateDirect(1)
+            handshakeBuffer.put(NexpadProtocol.PACKET_TYPE_CONNECT)
+            handshakeBuffer.flip()
+            
+            var handshakeAttempts = 0
+            var lastHandshakeAttemptTime = 0L
+            
             while (isActive) {
+                // Non-blocking Handshake Loop
+                if (!isHandshakeComplete) {
+                    val now = System.currentTimeMillis()
+                    if (now - lastHandshakeAttemptTime > 500) {
+                        if (handshakeAttempts >= 5) {
+                            onConnectionStateChanged?.invoke(false)
+                            onStatusChanged?.invoke("Connection Timeout")
+                            return@launch
+                        }
+                        try {
+                            handshakeBuffer.rewind()
+                            channel?.send(handshakeBuffer, serverAddress)
+                            lastHandshakeAttemptTime = now
+                            handshakeAttempts++
+                        } catch (e: Exception) {}
+                    }
+                }
                 try {
                     receiveBuffer.clear()
                     val senderAddress = channel?.receive(receiveBuffer)
                     
-                    if (senderAddress != null) {
+                    if (senderAddress != null || receiveBuffer.position() > 0) {
                         receiveBuffer.flip()
                         val bytes = ByteArray(receiveBuffer.remaining())
                         receiveBuffer.get(bytes)
+                        
+                        // android.util.Log.d("NEXPAD", "📥 UDP Rx ${bytes.size}b | First: ${if(bytes.isNotEmpty()) bytes[0] else -1}")
+                        
+                        // Check for Handshake Reply
+                        if (bytes.isNotEmpty() && bytes[0] == NexpadProtocol.PACKET_TYPE_CONNECTED) {
+                            if (!isHandshakeComplete) {
+                                isHandshakeComplete = true
+                                onConnectionStateChanged?.invoke(true)
+                                onStatusChanged?.invoke("Connected to ${serverAddress?.hostString}")
+                                android.util.Log.d("NEXPAD", "🤝 Handshake successful!")
+                            }
+                            continue
+                        }
                         
                         // Attempt binary decode first (10 bytes for feedback)
                         val feedbackPair = NexpadProtocol.decodeFeedback(bytes)
@@ -103,9 +151,12 @@ class NetworkClient : IGamepadConnection {
                                         sumRtt += v
                                     }
                                     val avgRtt = sumRtt / rttSamples
-                                    val rttMsg = String.format("📡 RTT: min %.1fms / avg %.1fms / max %.1fms", minRtt, avgRtt, maxRtt)
-                                    onDiagnosticLog?.invoke(rttMsg)
-                                    android.util.Log.d("NEXPAD", rttMsg)
+                                    val jitterMs = maxRtt - minRtt
+                                    val rttMsg = String.format("min %.1fms / avg %.1fms / max %.1fms", minRtt, avgRtt, maxRtt)
+                                    val logMsg = "📡 RTT: $rttMsg"
+                                    onDiagnosticLog?.invoke(logMsg)
+                                    onNetworkPerformanceUpdated?.invoke(avgRtt.toLong(), jitterMs.toLong(), 0f) // packet loss 0f for now
+                                    android.util.Log.d("NEXPAD", logMsg)
                                 }
                             }
                             
@@ -140,6 +191,8 @@ class NetworkClient : IGamepadConnection {
     private val ENABLE_CHAOS_MONKEY = false
     
     override suspend fun sendInput(input: GamepadInput) {
+        if (!isHandshakeComplete) return
+        
         val currentChannel = channel ?: return
         val target = serverAddress ?: return
         
@@ -194,10 +247,6 @@ class NetworkClient : IGamepadConnection {
         channel = null
         onConnectionStateChanged?.invoke(false)
         onStatusChanged?.invoke("Disconnected")
-    }
-
-    override fun startAdvertising() {
-        // No-op for network client
     }
 
     override fun close() = disconnect()

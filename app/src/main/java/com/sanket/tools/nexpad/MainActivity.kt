@@ -68,16 +68,10 @@ class MainActivity : ComponentActivity() {
 
         val sharedPref = getSharedPreferences("nexpad_prefs", MODE_PRIVATE)
         
-        // Initialize Connection Mode
-        val isBluetoothMode = sharedPref.getBoolean("BLUETOOTH_MODE", false)
-        viewModel.setConnectionMode(isBluetoothMode)
-        
-        if (!isBluetoothMode) {
-            // Start UDP Server if last IP exists
-            val lastIp = sharedPref.getString("LAST_IP", "")
-            if (!lastIp.isNullOrBlank()) {
-                viewModel.connect(lastIp, 9999)
-            }
+        // Start UDP Server if last IP exists
+        val lastIp = sharedPref.getString("LAST_IP", "")
+        if (!lastIp.isNullOrBlank()) {
+            viewModel.connect(lastIp, 9999)
         }
 
         // Initialize Sensors
