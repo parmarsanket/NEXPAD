@@ -49,6 +49,8 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
 
 
     fun startDiscovery() {
+        // Clear stale servers so UI drops back to "Scanning" state instantly
+        _discoveredServers.value = emptyList()
         viewModelScope.launch {
             discoveryClient.startDiscovery(viewModelScope) { server ->
                 val current = _discoveredServers.value.toMutableList()

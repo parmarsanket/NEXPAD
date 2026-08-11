@@ -67,6 +67,7 @@ class NetworkClient : IGamepadConnection {
             }
         }
         
+        val myChannel = channel
         // Launch receive job in a separate scope so connect() can return immediately
         receiveJob = kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
             val receiveBuffer = ByteBuffer.allocateDirect(1024)
@@ -99,7 +100,7 @@ class NetworkClient : IGamepadConnection {
                 }
                 try {
                     receiveBuffer.clear()
-                    val senderAddress = channel?.receive(receiveBuffer)
+                    val senderAddress = myChannel?.receive(receiveBuffer)
                     
                     if (senderAddress != null || receiveBuffer.position() > 0) {
                         receiveBuffer.flip()
@@ -177,6 +178,14 @@ class NetworkClient : IGamepadConnection {
                     }
                 } catch (e: java.nio.channels.ClosedChannelException) {
                     break // Normal closure
+                } catch (e: java.io.IOException) {
+                    if (isActive) {
+                        e.printStackTrace()
+                        if (channel === myChannel) {
+                            disconnect()
+                        }
+                    }
+                    break
                 } catch (e: Exception) {
                     if (isActive) e.printStackTrace()
                 }
@@ -234,6 +243,12 @@ class NetworkClient : IGamepadConnection {
             packetsSent++
             if (packetsSent % 60 == 0) {
                 onDiagnosticLog?.invoke("Sent $packetsSent packets to ${target.hostString}:${target.port}")
+            }
+        } catch (e: java.io.IOException) {
+            e.printStackTrace()
+            onDiagnosticLog?.invoke("Network dropped: ${e.message}")
+            if (channel === currentChannel) {
+                disconnect()
             }
         } catch (e: Exception) {
             e.printStackTrace()

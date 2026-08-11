@@ -113,8 +113,12 @@ fun HomeScreen(navController: NavController, layoutManager: LayoutManager, viewM
     val discoveredServers by viewModel.discoveredServers.collectAsState()
     val connectionStats by viewModel.connectionStats.collectAsState()
 
-    LaunchedEffect(Unit) {
-        viewModel.startDiscovery()
+    LaunchedEffect(isConnected) {
+        if (!isConnected) {
+            viewModel.startDiscovery()
+        } else {
+            viewModel.stopDiscovery()
+        }
     }
     DisposableEffect(Unit) {
         onDispose { viewModel.stopDiscovery() }

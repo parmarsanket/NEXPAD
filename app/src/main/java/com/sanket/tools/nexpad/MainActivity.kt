@@ -68,11 +68,8 @@ class MainActivity : ComponentActivity() {
 
         val sharedPref = getSharedPreferences("nexpad_prefs", MODE_PRIVATE)
         
-        // Start UDP Server if last IP exists
-        val lastIp = sharedPref.getString("LAST_IP", "")
-        if (!lastIp.isNullOrBlank()) {
-            viewModel.connect(lastIp, 9999)
-        }
+        // We no longer auto-connect on startup. 
+        // The user must click the device from the Discovery list to connect.
 
         // Initialize Sensors
         motionSensorManager = MotionSensorManager(

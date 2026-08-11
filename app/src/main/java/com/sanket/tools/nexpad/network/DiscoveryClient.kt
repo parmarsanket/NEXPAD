@@ -66,32 +66,37 @@ class DiscoveryClient {
             listenJob = scope.launch(Dispatchers.IO) {
                 val buffer = ByteBuffer.allocate(1024)
                 while (isActive) {
-                    buffer.clear()
-                    val senderAddr = channel?.receive(buffer) as? InetSocketAddress
-                    if (senderAddr != null) {
-                        buffer.flip()
-                        if (buffer.remaining() > 0 && buffer.get() == NexpadProtocol.PACKET_TYPE_SERVER_INFO) {
-                            if (buffer.remaining() > 0) {
-                                val nameLength = buffer.get().toInt() and 0xFF
-                                if (buffer.remaining() >= nameLength) {
-                                    val nameBytes = ByteArray(nameLength)
-                                    buffer.get(nameBytes)
-                                    val serverName = String(nameBytes, Charsets.UTF_8)
-                                    
-                                    withContext(Dispatchers.Main) {
-                                        onServerDiscovered(
-                                            DiscoveredServer(
-                                                name = serverName,
-                                                ipAddress = senderAddr.address.hostAddress ?: "",
-                                                port = 9999
+                    try {
+                        buffer.clear()
+                        val senderAddr = channel?.receive(buffer) as? InetSocketAddress
+                        if (senderAddr != null) {
+                            buffer.flip()
+                            if (buffer.remaining() > 0 && buffer.get() == NexpadProtocol.PACKET_TYPE_SERVER_INFO) {
+                                if (buffer.remaining() > 0) {
+                                    val nameLength = buffer.get().toInt() and 0xFF
+                                    if (buffer.remaining() >= nameLength) {
+                                        val nameBytes = ByteArray(nameLength)
+                                        buffer.get(nameBytes)
+                                        val serverName = String(nameBytes, Charsets.UTF_8)
+                                        
+                                        withContext(Dispatchers.Main) {
+                                            onServerDiscovered(
+                                                DiscoveredServer(
+                                                    name = serverName,
+                                                    ipAddress = senderAddr.address.hostAddress ?: "",
+                                                    port = 9999
+                                                )
                                             )
-                                        )
+                                        }
                                     }
                                 }
                             }
+                        } else {
+                            delay(50)
                         }
-                    } else {
-                        delay(50)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        delay(1000) // Back off if network is temporarily down
                     }
                 }
             }
