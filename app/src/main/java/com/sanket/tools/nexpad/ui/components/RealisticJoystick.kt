@@ -143,10 +143,8 @@ fun RealisticJoystick(
                         val normalizedY = -newY / maxRadius // Invert Y so up is positive
 
                         if (isLeft) {
-                            android.util.Log.d("NEXPAD_DEBUG", "LS DRAG -> X: $normalizedX, Y: $normalizedY")
                             viewModel.updateLeftStick(normalizedX, normalizedY)
                         } else {
-                            android.util.Log.d("NEXPAD_DEBUG", "RS DRAG -> X: $normalizedX, Y: $normalizedY")
                             viewModel.updateRightStick(normalizedX, normalizedY)
                         }
                     }

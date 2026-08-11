@@ -96,6 +96,8 @@ class MotionSensorManager(
     private var sensorThread: android.os.HandlerThread? = null
     private var sensorHandler: android.os.Handler? = null
 
+    private var lastSentTimestamp = 0L
+
     fun start() {
         if (sensorThread == null) {
             sensorThread = android.os.HandlerThread("NexpadSensorThread", android.os.Process.THREAD_PRIORITY_URGENT_DISPLAY)
@@ -104,13 +106,21 @@ class MotionSensorManager(
         }
         
         listOf(
-            gravitySensor,
+            // gravitySensor, // UNUSED: Saves CPU
             accelSensor,
             gyroSensor,
-            uncalibratedGyroSensor,
-            gameRotationSensor
+            uncalibratedGyroSensor
+            // gameRotationSensor // UNUSED: Heavy CPU calculation, disabled for now
         ).forEach { sensor ->
-            sensor?.let { sensorManager.registerListener(this, it, SENSOR_DELAY_MICROS, sensorHandler) }
+            sensor?.let { 
+                sensorManager.registerListener(this, it, SENSOR_DELAY_MICROS, sensorHandler) 
+                
+                // Hardware Ceiling Diagnostic
+                if (it.type == android.hardware.Sensor.TYPE_GYROSCOPE || it.type == android.hardware.Sensor.TYPE_GYROSCOPE_UNCALIBRATED) {
+                    val maxHz = if (it.minDelay > 0) 1_000_000 / it.minDelay else "Unknown"
+                    android.util.Log.d("NEXPAD", "📡 HARDWARE CEILING: ${it.name} supports Max $maxHz Hz (minDelay: ${it.minDelay}µs)")
+                }
+            }
         }
     }
 
@@ -213,9 +223,14 @@ class MotionSensorManager(
                 motion.qX = quaternion[1]
                 motion.qY = quaternion[2]
                 motion.qZ = quaternion[3]
+            }
+        }
 
-                // ONLY emit the synchronized packet on the Master Tick (Rotation Vector)
-                // Otherwise we spam the network 5x per frame.
+        // Emit the synchronized packet on Gyro updates since Game Rotation Vector is disabled.
+        // We use timestamp debouncing to prevent sending 2x packets if both Calibrated and Uncalibrated gyros fire.
+        if (event.sensor.type == Sensor.TYPE_GYROSCOPE || event.sensor.type == Sensor.TYPE_GYROSCOPE_UNCALIBRATED) {
+            if (event.timestamp != lastSentTimestamp) {
+                lastSentTimestamp = event.timestamp
                 onMotionPacket(motion)
             }
         }

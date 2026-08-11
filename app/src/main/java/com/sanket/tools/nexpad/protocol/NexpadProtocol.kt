@@ -30,15 +30,17 @@ import java.nio.ByteOrder
 object NexpadProtocol {
 
     const val PROTOCOL_VERSION: Byte = 1
-    const val INPUT_PACKET_SIZE = 40
-    const val FEEDBACK_PACKET_SIZE = 6
+    const val INPUT_PACKET_SIZE = 44
+    const val FEEDBACK_PACKET_SIZE = 10
+
+    private val packetSequenceNumber = java.util.concurrent.atomic.AtomicInteger(0)
 
     private val encodeBuffer = ByteBuffer.allocate(INPUT_PACKET_SIZE).apply {
         order(ByteOrder.BIG_ENDIAN)
     }
 
     /**
-     * Encodes [GamepadInput] into a 40-byte binary packet.
+     * Encodes [GamepadInput] into a 44-byte binary packet.
      * Writes directly into [outputData] to avoid memory allocations.
      * Uses BIG_ENDIAN network byte order.
      * 
@@ -105,18 +107,24 @@ object NexpadProtocol {
 
             // 6. Reserved (1 byte)
             encodeBuffer.put(0.toByte())
+            
+            // 7. Sequence Number (4 bytes)
+            encodeBuffer.putInt(packetSequenceNumber.getAndIncrement())
 
             System.arraycopy(encodeBuffer.array(), 0, outputData, 0, INPUT_PACKET_SIZE)
         }
     }
 
+    // Expose the current sequence number for logging
+    fun getCurrentSequenceNumber(): Int = packetSequenceNumber.get() - 1
+
     /**
-     * Decodes a 6-byte binary packet into [GamepadFeedback].
+     * Decodes a 10-byte binary packet into [GamepadFeedback] and the Echoed Sequence Number.
      * Uses BIG_ENDIAN network byte order.
      * 
-     * @return GamepadFeedback if successfully decoded, null if invalid version or length.
+     * @return Pair of GamepadFeedback and Echo Sequence Number. Null if invalid.
      */
-    fun decodeFeedback(data: ByteArray): GamepadFeedback? {
+    fun decodeFeedback(data: ByteArray): Pair<GamepadFeedback, Int>? {
         if (data.size != FEEDBACK_PACKET_SIZE) return null
         
         val buffer = ByteBuffer.wrap(data)
@@ -131,11 +139,14 @@ object NexpadProtocol {
         val rightMotorSpeed = buffer.get().toInt() and 0xFF
         
         // 3. Lightbar RGB (3 bytes) - Ignored in the current model
-        // val r = buffer.get()
-        // val g = buffer.get()
-        // val b = buffer.get()
+        buffer.get()
+        buffer.get()
+        buffer.get()
+        
+        // 4. Echoed Sequence Number (4 bytes)
+        val echoSequence = buffer.getInt()
 
-        return GamepadFeedback(leftMotorSpeed, rightMotorSpeed)
+        return Pair(GamepadFeedback(leftMotorSpeed, rightMotorSpeed), echoSequence)
     }
 
     private fun floatToInt16(value: Float): Short {

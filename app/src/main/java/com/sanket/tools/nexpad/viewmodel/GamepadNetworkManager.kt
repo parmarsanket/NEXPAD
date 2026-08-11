@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.asCoroutineDispatcher
 
 class GamepadNetworkManager(
     private val scope: CoroutineScope,
@@ -53,8 +54,10 @@ class GamepadNetworkManager(
             scope.launch {
                 _isConnected.value = connected
                 if (connected) {
+                    if (connection is NetworkClient) acquireWifiLock()
                     startTransmitting()
                 } else {
+                    releaseWifiLock()
                     transmitJob?.cancel()
                 }
             }
@@ -125,14 +128,63 @@ class GamepadNetworkManager(
         }
     }
     
+    private val gamepadDispatcher = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
+        Thread(r, "GamepadTransmit")
+    }.asCoroutineDispatcher()
+
     private fun startTransmitting() {
         transmitJob?.cancel()
-        transmitJob = scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        transmitJob = scope.launch(gamepadDispatcher) {
+            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO)
+            
+            val intervalNanos = 5_000_000L // 200Hz = 5ms
+            var nextTick = System.nanoTime()
+            
             while (isActive) {
                 connection.sendInput(inputState)
-                // 60Hz transmission rate (1000ms / 60 = ~16.6ms)
-                delay(16L) 
+                
+                nextTick += intervalNanos
+                val sleepNanos = nextTick - System.nanoTime()
+                
+                if (sleepNanos > 0) {
+                    delay(sleepNanos / 1_000_000L) // Convert nanos to millis
+                } else {
+                    nextTick = System.nanoTime() // fell behind — resync, don't stack debt
+                }
             }
+        }
+    }
+
+    private var wifiLock: android.net.wifi.WifiManager.WifiLock? = null
+
+    @Suppress("DEPRECATION")
+    private fun acquireWifiLock() {
+        if (wifiLock?.isHeld == true) return
+        try {
+            val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+            val lockMode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                android.net.wifi.WifiManager.WIFI_MODE_FULL_LOW_LATENCY
+            } else {
+                android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF
+            }
+            wifiLock = wifiManager.createWifiLock(lockMode, "Nexpad:LowLatencyLock").apply {
+                setReferenceCounted(false)
+                acquire()
+            }
+            android.util.Log.d("NEXPAD", "🔒 WifiLock Acquired: Mode $lockMode")
+        } catch (e: Exception) {
+            android.util.Log.e("NEXPAD", "❌ Failed to acquire WifiLock: ${e.message}")
+        }
+    }
+
+    private fun releaseWifiLock() {
+        try {
+            if (wifiLock?.isHeld == true) {
+                wifiLock?.release()
+                android.util.Log.d("NEXPAD", "🔓 WifiLock Released")
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 }
