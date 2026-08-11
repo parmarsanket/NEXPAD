@@ -56,7 +56,7 @@ class NetworkClient : IGamepadConnection {
             try {
                 serverAddress = InetSocketAddress(address, port)
                 channel = DatagramChannel.open().apply {
-                    configureBlocking(false)
+                    configureBlocking(true)
                     // 0xB8 = (46 << 2) = DSCP EF (Expedited Forwarding) -> maps to WMM AC_VO (Voice) Queue
                     setOption(java.net.StandardSocketOptions.IP_TOS, 0xB8)
                     socket().bind(InetSocketAddress(0)) // Bind to any local port
@@ -77,36 +77,33 @@ class NetworkClient : IGamepadConnection {
         
         val myChannel = channel
         connectionScope = kotlinx.coroutines.CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        // Launch receive job in a separate scope so connect() can return immediately
-        receiveJob = connectionScope!!.launch {
-            val receiveBuffer = ByteBuffer.allocateDirect(1024)
-            
-            // Send Handshake packet
+        connectionScope!!.launch {
             val handshakeBuffer = ByteBuffer.allocateDirect(1)
             handshakeBuffer.put(NexpadProtocol.PACKET_TYPE_CONNECT)
             handshakeBuffer.flip()
             
             var handshakeAttempts = 0
-            var lastHandshakeAttemptTime = 0L
+            while (isActive && !isHandshakeComplete) {
+                if (handshakeAttempts >= 5) {
+                    onConnectionStateChanged?.invoke(false)
+                    onStatusChanged?.invoke("Connection Timeout")
+                    return@launch
+                }
+                try {
+                    handshakeBuffer.rewind()
+                    myChannel?.send(handshakeBuffer, serverAddress)
+                    handshakeAttempts++
+                } catch (e: Exception) {}
+                
+                kotlinx.coroutines.delay(500)
+            }
+        }
+        
+        // Launch receive job in a separate scope so connect() can return immediately
+        receiveJob = connectionScope!!.launch {
+            val receiveBuffer = ByteBuffer.allocateDirect(1024)
             
             while (isActive) {
-                // Non-blocking Handshake Loop
-                if (!isHandshakeComplete) {
-                    val now = System.currentTimeMillis()
-                    if (now - lastHandshakeAttemptTime > 500) {
-                        if (handshakeAttempts >= 5) {
-                            onConnectionStateChanged?.invoke(false)
-                            onStatusChanged?.invoke("Connection Timeout")
-                            return@launch
-                        }
-                        try {
-                            handshakeBuffer.rewind()
-                            channel?.send(handshakeBuffer, serverAddress)
-                            lastHandshakeAttemptTime = now
-                            handshakeAttempts++
-                        } catch (e: Exception) {}
-                    }
-                }
                 try {
                     receiveBuffer.clear()
                     val senderAddress = myChannel?.receive(receiveBuffer)
@@ -181,10 +178,9 @@ class NetworkClient : IGamepadConnection {
                                 // Ignored: Not valid JSON either
                             }
                         }
-                    } else {
-                        // Non-blocking wait
-                        kotlinx.coroutines.delay(10)
                     }
+                } catch (e: java.nio.channels.AsynchronousCloseException) {
+                    break // Normal closure
                 } catch (e: java.nio.channels.ClosedChannelException) {
                     break // Normal closure
                 } catch (e: java.io.IOException) {

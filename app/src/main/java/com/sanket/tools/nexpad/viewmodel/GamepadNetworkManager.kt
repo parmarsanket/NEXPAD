@@ -251,7 +251,7 @@ class GamepadNetworkManager(
                 val sleepNanos = nextTick - System.nanoTime()
                 
                 if (sleepNanos > 0) {
-                    delay(sleepNanos / 1_000_000L) // Convert nanos to millis
+                    java.util.concurrent.locks.LockSupport.parkNanos(sleepNanos)
                 } else {
                     nextTick = System.nanoTime() // fell behind — resync, don't stack debt
                 }
