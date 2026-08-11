@@ -134,14 +134,19 @@ class GamepadNetworkManager(
     
     fun disconnect() {
         transmitJob?.cancel()
+        signalPollJob?.cancel()
+        releaseWifiLock()
         connection.disconnect()
         _isConnected.value = false
     }
 
     fun close() {
         transmitJob?.cancel()
+        signalPollJob?.cancel()
+        releaseWifiLock()
         connection.close()
         _isConnected.value = false
+        gamepadDispatcher.close()
     }
 
     fun sendImmediate() {

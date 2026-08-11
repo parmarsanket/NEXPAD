@@ -5,6 +5,8 @@ import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpad.protocol.NexpadProtocol
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -21,12 +23,14 @@ class NetworkClient : IGamepadConnection {
     private var channel: DatagramChannel? = null
     private var serverAddress: InetSocketAddress? = null
     private var receiveJob: Job? = null
+    private var connectionScope: kotlinx.coroutines.CoroutineScope? = null
+    private val disconnecting = java.util.concurrent.atomic.AtomicBoolean(false)
     
     private val sendBuffer = ByteBuffer.allocateDirect(NexpadProtocol.INPUT_PACKET_SIZE)
     private val sendByteArray = ByteArray(NexpadProtocol.INPUT_PACKET_SIZE)
     
     // RTT Measurement (128-element Ring Buffer)
-    private val rttMap = LongArray(128) { 0L }
+    private val rttMap = java.util.concurrent.atomic.AtomicLongArray(128)
     private val rttHistory = DoubleArray(100) { 0.0 }
     private var rttHistoryIndex = 0
     private var rttSamples = 0
@@ -42,15 +46,19 @@ class NetworkClient : IGamepadConnection {
     private var isHandshakeComplete = false
 
     override suspend fun connect(address: String, port: Int) {
+        disconnecting.set(false)
         // Clean up previous connection if any
         channel?.close()
         receiveJob?.cancel()
+        connectionScope?.cancel()
 
         withContext(Dispatchers.IO) {
             try {
                 serverAddress = InetSocketAddress(address, port)
                 channel = DatagramChannel.open().apply {
                     configureBlocking(false)
+                    // 0xB8 = (46 << 2) = DSCP EF (Expedited Forwarding) -> maps to WMM AC_VO (Voice) Queue
+                    setOption(java.net.StandardSocketOptions.IP_TOS, 0xB8)
                     socket().bind(InetSocketAddress(0)) // Bind to any local port
                     connect(serverAddress) // Restrict UDP channel to this server to fix NAT/Firewall drops
                 }
@@ -68,8 +76,9 @@ class NetworkClient : IGamepadConnection {
         }
         
         val myChannel = channel
+        connectionScope = kotlinx.coroutines.CoroutineScope(SupervisorJob() + Dispatchers.IO)
         // Launch receive job in a separate scope so connect() can return immediately
-        receiveJob = kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+        receiveJob = connectionScope!!.launch {
             val receiveBuffer = ByteBuffer.allocateDirect(1024)
             
             // Send Handshake packet
@@ -128,10 +137,10 @@ class NetworkClient : IGamepadConnection {
                             val echoSeq = feedbackPair.second
                             
                             // Calculate RTT
-                            val sentTime = rttMap[echoSeq % 128]
+                            val sentTime = rttMap.get(echoSeq % 128)
                             if (sentTime > 0) {
                                 val rttMs = (System.nanoTime() - sentTime) / 1_000_000.0
-                                rttMap[echoSeq % 128] = 0L // Clear to prevent stale matching
+                                rttMap.set(echoSeq % 128, 0L) // Clear to prevent stale matching
                                 
                                 // Rolling min/max/avg
                                 rttHistory[rttHistoryIndex] = rttMs
@@ -212,7 +221,7 @@ class NetworkClient : IGamepadConnection {
                 
                 // Track sent time for RTT calculation
                 val seq = NexpadProtocol.getCurrentSequenceNumber()
-                rttMap[seq % 128] = System.nanoTime()
+                rttMap.set(seq % 128, System.nanoTime())
                 
                 sendBuffer.clear()
                 sendBuffer.put(sendByteArray)
@@ -238,11 +247,11 @@ class NetworkClient : IGamepadConnection {
                 
                 // Send the pre-allocated packet
                 currentChannel.send(sendBuffer, target)
-            }
-            
-            packetsSent++
-            if (packetsSent % 60 == 0) {
-                onDiagnosticLog?.invoke("Sent $packetsSent packets to ${target.hostString}:${target.port}")
+                
+                packetsSent++
+                if (packetsSent % 60 == 0) {
+                    onDiagnosticLog?.invoke("Sent $packetsSent packets to ${target.hostString}:${target.port}")
+                }
             }
         } catch (e: java.io.IOException) {
             e.printStackTrace()
@@ -257,7 +266,10 @@ class NetworkClient : IGamepadConnection {
     }
 
     override fun disconnect() {
+        if (!disconnecting.compareAndSet(false, true)) return
         receiveJob?.cancel()
+        connectionScope?.cancel()
+        connectionScope = null
         channel?.close()
         channel = null
         onConnectionStateChanged?.invoke(false)
