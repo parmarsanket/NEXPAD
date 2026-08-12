@@ -2,153 +2,274 @@ package com.sanket.tools.nexpad.network
 
 import com.sanket.tools.nexpad.model.GamepadFeedback
 import com.sanket.tools.nexpad.model.GamepadInput
-import io.ktor.network.selector.SelectorManager
-import io.ktor.network.sockets.BoundDatagramSocket
-import io.ktor.network.sockets.Datagram
-import io.ktor.network.sockets.InetSocketAddress
-import io.ktor.network.sockets.aSocket
-import io.ktor.utils.io.core.ByteReadPacket
-import io.ktor.utils.io.core.readBytes
+import com.sanket.tools.nexpad.protocol.NexpadProtocol
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.nio.channels.DatagramChannel
+import java.net.InetSocketAddress
 import java.nio.ByteBuffer
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.Mutex
+
+// ... (imports remain)
 
 class NetworkClient : IGamepadConnection {
-    private var socket: BoundDatagramSocket? = null
+    private var channel: DatagramChannel? = null
     private var serverAddress: InetSocketAddress? = null
     private var receiveJob: Job? = null
+    private var connectionScope: kotlinx.coroutines.CoroutineScope? = null
+    private val disconnecting = java.util.concurrent.atomic.AtomicBoolean(false)
+    
+    private val sendBuffer = ByteBuffer.allocateDirect(NexpadProtocol.INPUT_PACKET_SIZE)
+    private val sendByteArray = ByteArray(NexpadProtocol.INPUT_PACKET_SIZE)
+    
+    // RTT Measurement (128-element Ring Buffer)
+    private val rttMap = java.util.concurrent.atomic.AtomicLongArray(128)
+    private val rttHistory = DoubleArray(100) { 0.0 }
+    private var rttHistoryIndex = 0
+    private var rttSamples = 0
+    private var lastRttLogTime = 0L
     
     override var onFeedbackReceived: ((GamepadFeedback) -> Unit)? = null
     override var onConnectionStateChanged: ((Boolean) -> Unit)? = null
     override var onStatusChanged: ((String) -> Unit)? = null
     override var onDiagnosticLog: ((String) -> Unit)? = null
+    override var onNetworkPerformanceUpdated: ((latencyMs: Long, jitterMs: Long, packetLoss: Float) -> Unit)? = null
+
+    @Volatile
+    private var isHandshakeComplete = false
 
     override suspend fun connect(address: String, port: Int) {
+        disconnecting.set(false)
+        // Clean up previous connection if any
+        channel?.close()
+        receiveJob?.cancel()
+        connectionScope?.cancel()
+
         withContext(Dispatchers.IO) {
-            serverAddress = InetSocketAddress(address, port)
-            val selectorManager = SelectorManager(Dispatchers.IO)
-            // Bind to any local port
-            socket = aSocket(selectorManager).udp().bind()
-            onConnectionStateChanged?.invoke(true)
-            onStatusChanged?.invoke("Connected to $address:$port")
+            try {
+                serverAddress = InetSocketAddress(address, port)
+                channel = DatagramChannel.open().apply {
+                    configureBlocking(true)
+                    // 0xB8 = (46 << 2) = DSCP EF (Expedited Forwarding) -> maps to WMM AC_VO (Voice) Queue
+                    setOption(java.net.StandardSocketOptions.IP_TOS, 0xB8)
+                    socket().bind(InetSocketAddress(0)) // Bind to any local port
+                    connect(serverAddress) // Restrict UDP channel to this server to fix NAT/Firewall drops
+                }
+                
+                onConnectionStateChanged?.invoke(true)
+                android.util.Log.d("NEXPAD", "📡 Connecting to UDP Server at $address:$port...")
+                onStatusChanged?.invoke("Connecting to $address:$port...")
+                isHandshakeComplete = false
+            } catch (e: Exception) {
+                onConnectionStateChanged?.invoke(false)
+                onStatusChanged?.invoke("Connection failed: ${e.message}")
+                android.util.Log.e("NEXPAD", "❌ Connection failed: ${e.message}")
+                return@withContext
+            }
         }
         
-        // Launch receive job in a separate scope so connect() can return immediately!
-        receiveJob = kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+        val myChannel = channel
+        connectionScope = kotlinx.coroutines.CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        connectionScope!!.launch {
+            val handshakeBuffer = ByteBuffer.allocateDirect(1)
+            handshakeBuffer.put(NexpadProtocol.PACKET_TYPE_CONNECT)
+            handshakeBuffer.flip()
+            
+            var handshakeAttempts = 0
+            while (isActive && !isHandshakeComplete) {
+                if (handshakeAttempts >= 5) {
+                    onConnectionStateChanged?.invoke(false)
+                    onStatusChanged?.invoke("Connection Timeout")
+                    return@launch
+                }
+                try {
+                    handshakeBuffer.rewind()
+                    myChannel?.send(handshakeBuffer, serverAddress)
+                    handshakeAttempts++
+                } catch (e: Exception) {}
+                
+                kotlinx.coroutines.delay(500)
+            }
+        }
+        
+        // Launch receive job in a separate scope so connect() can return immediately
+        receiveJob = connectionScope!!.launch {
+            val receiveBuffer = ByteBuffer.allocateDirect(1024)
+            
             while (isActive) {
                 try {
-                    val datagram = socket?.receive() ?: break
-                    val json = String(datagram.packet.readBytes())
-                    val feedback = Json.decodeFromString<GamepadFeedback>(json)
-                    onFeedbackReceived?.invoke(feedback)
+                    receiveBuffer.clear()
+                    val senderAddress = myChannel?.receive(receiveBuffer)
+                    
+                    if (senderAddress != null || receiveBuffer.position() > 0) {
+                        receiveBuffer.flip()
+                        val bytes = ByteArray(receiveBuffer.remaining())
+                        receiveBuffer.get(bytes)
+                        
+                        // android.util.Log.d("NEXPAD", "📥 UDP Rx ${bytes.size}b | First: ${if(bytes.isNotEmpty()) bytes[0] else -1}")
+                        
+                        // Check for Handshake Reply
+                        if (bytes.isNotEmpty() && bytes[0] == NexpadProtocol.PACKET_TYPE_CONNECTED) {
+                            if (!isHandshakeComplete) {
+                                isHandshakeComplete = true
+                                onConnectionStateChanged?.invoke(true)
+                                onStatusChanged?.invoke("Connected to ${serverAddress?.hostString}")
+                                android.util.Log.d("NEXPAD", "🤝 Handshake successful!")
+                            }
+                            continue
+                        }
+                        
+                        // Attempt binary decode first (10 bytes for feedback)
+                        val feedbackPair = NexpadProtocol.decodeFeedback(bytes)
+                        
+                        if (feedbackPair != null) {
+                            val feedback = feedbackPair.first
+                            val echoSeq = feedbackPair.second
+                            
+                            // Calculate RTT
+                            val sentTime = rttMap.get(echoSeq % 128)
+                            if (sentTime > 0) {
+                                val rttMs = (System.nanoTime() - sentTime) / 1_000_000.0
+                                rttMap.set(echoSeq % 128, 0L) // Clear to prevent stale matching
+                                
+                                // Rolling min/max/avg
+                                rttHistory[rttHistoryIndex] = rttMs
+                                rttHistoryIndex = (rttHistoryIndex + 1) % 100
+                                if (rttSamples < 100) rttSamples++
+                                
+                                val now = System.currentTimeMillis()
+                                if (rttSamples > 0 && (now - lastRttLogTime > 1000)) {
+                                    lastRttLogTime = now
+                                    
+                                    var minRtt = Double.MAX_VALUE
+                                    var maxRtt = Double.MIN_VALUE
+                                    var sumRtt = 0.0
+                                    for (i in 0 until rttSamples) {
+                                        val v = rttHistory[i]
+                                        if (v < minRtt) minRtt = v
+                                        if (v > maxRtt) maxRtt = v
+                                        sumRtt += v
+                                    }
+                                    val avgRtt = sumRtt / rttSamples
+                                    val jitterMs = maxRtt - minRtt
+                                    val rttMsg = String.format("min %.1fms / avg %.1fms / max %.1fms", minRtt, avgRtt, maxRtt)
+                                    val logMsg = "📡 RTT: $rttMsg"
+                                    onDiagnosticLog?.invoke(logMsg)
+                                    onNetworkPerformanceUpdated?.invoke(avgRtt.toLong(), jitterMs.toLong(), 0f) // packet loss 0f for now
+                                    android.util.Log.d("NEXPAD", logMsg)
+                                }
+                            }
+                            
+                            onFeedbackReceived?.invoke(feedback)
+                        } else {
+                            // Fallback to JSON if binary decode fails (backward compatibility)
+                            try {
+                                val json = String(bytes)
+                                val feedback = Json.decodeFromString<GamepadFeedback>(json)
+                                onFeedbackReceived?.invoke(feedback)
+                            } catch (e: Exception) {
+                                // Ignored: Not valid JSON either
+                            }
+                        }
+                    }
+                } catch (e: java.nio.channels.AsynchronousCloseException) {
+                    break // Normal closure
+                } catch (e: java.nio.channels.ClosedChannelException) {
+                    break // Normal closure
+                } catch (e: java.io.IOException) {
+                    if (isActive) {
+                        e.printStackTrace()
+                        if (channel === myChannel) {
+                            disconnect()
+                        }
+                    }
+                    break
                 } catch (e: Exception) {
-                    // Ignore silent drops
+                    if (isActive) e.printStackTrace()
                 }
             }
         }
     }
 
-//    import java.nio.ByteBuffer
-//    import io.ktor.utils.io.core.ByteReadPacket
-//    import io.ktor.network.sockets.Datagram
-//
-//    override suspend fun sendInput(input: GamepadInput) = withContext(Dispatchers.IO) {
-//        val currentSocket = socket ?: return@withContext
-//        val target = serverAddress ?: return@withContext
-//
-//        try {
-//            // 48 bytes accommodates 1 Int (buttons) + 11 Floats (triggers, sticks, sensors)
-//            val buffer = ByteBuffer.allocate(48)
-//
-//            // 1. Bitmask all 21 booleans into a single 32-bit Integer
-//            var buttonMask = 0
-//            if (input.btnA) buttonMask = buttonMask or (1 shl 0)
-//            if (input.btnB) buttonMask = buttonMask or (1 shl 1)
-//            if (input.btnX) buttonMask = buttonMask or (1 shl 2)
-//            if (input.btnY) buttonMask = buttonMask or (1 shl 3)
-//            if (input.dpadUp) buttonMask = buttonMask or (1 shl 4)
-//            if (input.dpadDown) buttonMask = buttonMask or (1 shl 5)
-//            if (input.dpadLeft) buttonMask = buttonMask or (1 shl 6)
-//            if (input.dpadRight) buttonMask = buttonMask or (1 shl 7)
-//            if (input.btnL1) buttonMask = buttonMask or (1 shl 8)
-//            if (input.btnR1) buttonMask = buttonMask or (1 shl 9)
-//            if (input.btnL3) buttonMask = buttonMask or (1 shl 10)
-//            if (input.btnR3) buttonMask = buttonMask or (1 shl 11)
-//            if (input.btnStart) buttonMask = buttonMask or (1 shl 12)
-//            if (input.btnSelect) buttonMask = buttonMask or (1 shl 13)
-//            if (input.btnGuide) buttonMask = buttonMask or (1 shl 14)
-//            if (input.btnShare) buttonMask = buttonMask or (1 shl 15)
-//            if (input.btnScreenshot) buttonMask = buttonMask or (1 shl 16)
-//            if (input.btnM1) buttonMask = buttonMask or (1 shl 17)
-//            if (input.btnM2) buttonMask = buttonMask or (1 shl 18)
-//            if (input.btnM3) buttonMask = buttonMask or (1 shl 19)
-//            if (input.btnM4) buttonMask = buttonMask or (1 shl 20)
-//            if (input.btnProfile) buttonMask = buttonMask or (1 shl 21)
-//            if (input.btnTurbo) buttonMask = buttonMask or (1 shl 22)
-//
-//            buffer.putInt(buttonMask)
-//
-//            // 2. Add analog triggers and joysticks
-//            buffer.putFloat(input.triggerL2)
-//            buffer.putFloat(input.triggerR2)
-//            buffer.putFloat(input.leftStickX)
-//            buffer.putFloat(input.leftStickY)
-//            buffer.putFloat(input.rightStickX)
-//            buffer.putFloat(input.rightStickY)
-//
-//            // 3. Add exact sensor data variables
-//            buffer.putFloat(input.gyroX)
-//            buffer.putFloat(input.gyroY)
-//            buffer.putFloat(input.gyroZ)
-//            buffer.putFloat(input.accelX)
-//            buffer.putFloat(input.accelY)
-//            buffer.putFloat(input.accelZ)
-//
-//            // Fire the 48-byte packet over Ktor UDP
-//            val packet = Datagram(
-//                ByteReadPacket(buffer.array()),
-//                target
-//            )
-//            currentSocket.send(packet)
-//        } catch (e: Exception) {
-//            // Ignore silent drops
-//        }
-//    }
-
-    override suspend fun sendInput(input: GamepadInput) = withContext(Dispatchers.IO) {
-        val currentSocket = socket
-        val target = serverAddress
-        if (currentSocket == null || target == null) return@withContext
+    private var packetsSent = 0
+    private val sendMutex = Mutex()
+    
+    // DEBUG: Chaos Monkey - Set to true to artificially drop and scramble UDP packets for testing.
+    private val ENABLE_CHAOS_MONKEY = false
+    
+    override suspend fun sendInput(input: GamepadInput) {
+        if (!isHandshakeComplete) return
+        
+        val currentChannel = channel ?: return
+        val target = serverAddress ?: return
         
         try {
-            // Convert state to JSON string
-            val jsonString = Json.encodeToString(input)
-            // Send as UDP Datagram
-            val packet = Datagram(
-                ByteReadPacket(jsonString.toByteArray()),
-                target
-            )
-            currentSocket.send(packet)
+            sendMutex.withLock {
+                // Write directly to the pre-allocated sendBuffer
+                NexpadProtocol.encodeInput(input, sendByteArray)
+                
+                // Track sent time for RTT calculation
+                val seq = NexpadProtocol.getCurrentSequenceNumber()
+                rttMap.set(seq % 128, System.nanoTime())
+                
+                sendBuffer.clear()
+                sendBuffer.put(sendByteArray)
+                sendBuffer.flip()
+                
+                if (ENABLE_CHAOS_MONKEY) {
+                    val rand = Math.random()
+                    if (rand < 0.1) {
+                        // 10% chance to drop the packet entirely
+                        return@withLock
+                    }
+                    if (rand < 0.3) {
+                        // 20% chance to intentionally delay the packet to arrive OUT OF ORDER
+                        val delayedBuffer = ByteBuffer.allocateDirect(NexpadProtocol.INPUT_PACKET_SIZE)
+                        delayedBuffer.put(sendByteArray).flip()
+                        kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+                            kotlinx.coroutines.delay(30)
+                            try { currentChannel.send(delayedBuffer, target) } catch (e: Exception) {}
+                        }
+                        return@withLock
+                    }
+                }
+                
+                // Send the pre-allocated packet
+                currentChannel.send(sendBuffer, target)
+                
+                packetsSent++
+                if (packetsSent % 60 == 0) {
+                    onDiagnosticLog?.invoke("Sent $packetsSent packets to ${target.hostString}:${target.port}")
+                }
+            }
+        } catch (e: java.io.IOException) {
+            e.printStackTrace()
+            onDiagnosticLog?.invoke("Network dropped: ${e.message}")
+            if (channel === currentChannel) {
+                disconnect()
+            }
         } catch (e: Exception) {
             e.printStackTrace()
+            onDiagnosticLog?.invoke("Send error: ${e.javaClass.simpleName} - ${e.message}")
         }
     }
 
     override fun disconnect() {
+        if (!disconnecting.compareAndSet(false, true)) return
         receiveJob?.cancel()
-        socket?.close()
-        socket = null
+        connectionScope?.cancel()
+        connectionScope = null
+        channel?.close()
+        channel = null
         onConnectionStateChanged?.invoke(false)
         onStatusChanged?.invoke("Disconnected")
-    }
-
-    override fun startAdvertising() {
-        // No-op for network client
     }
 
     override fun close() = disconnect()

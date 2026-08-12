@@ -5,9 +5,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.os.Build
 import android.view.Surface
-import android.view.WindowManager
 import kotlin.math.abs
 
 data class MotionPacket(
@@ -50,10 +48,6 @@ data class MotionPacket(
     var biasZ: Float = 0f
 )
 
-private fun Float.deadZone(threshold: Float = 0.02f): Float {
-    return if (abs(this) < threshold) 0f else this
-}
-
 class MotionSensorManager(
     private val context: Context,
     private val onMotionPacket: (MotionPacket) -> Unit
@@ -65,7 +59,6 @@ class MotionSensorManager(
     }
 
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-    private val windowManager by lazy { context.getSystemService(Context.WINDOW_SERVICE) as WindowManager }
 
     private val gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY)
     private val accelSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
@@ -82,31 +75,60 @@ class MotionSensorManager(
     // Single synchronized packet
     private val motion = MotionPacket()
     
-    // Cached display rotation
-    private var displayRotation = Surface.ROTATION_0
+    /**
+     * NEXPAD always runs in locked landscape. We hardcode ROTATION_90 because:
+     * - Some phones report ROTATION_0 even in landscape (their "natural" orientation IS landscape)
+     * - Querying the display at start() is unreliable if the Activity hasn't fully rotated yet
+     * - All sensor coordinate remapping must be consistent for the Desktop's gyro math
+     *
+     * Android sensor coordinate system (portrait, ROTATION_0):
+     *   X → points right along the short edge
+     *   Y → points up along the long edge
+     *   Z → points out of the screen
+     *
+     * After ROTATION_90 remap (landscape, phone turned left):
+     *   X' = Y   (the long edge is now horizontal)
+     *   Y' = -X  (the short edge is now vertical, inverted)
+     *   Z' = Z   (unchanged, still out of screen)
+     */
+    private val displayRotation = Surface.ROTATION_90
+
+    private var sensorThread: android.os.HandlerThread? = null
+    private var sensorHandler: android.os.Handler? = null
+
+    private var lastSentTimestamp = 0L
 
     fun start() {
-        // Cache display rotation once on start (assuming locked landscape)
-        displayRotation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            context.display?.rotation ?: Surface.ROTATION_0
-        } else {
-            @Suppress("DEPRECATION")
-            windowManager.defaultDisplay.rotation
+        if (sensorThread == null) {
+            sensorThread = android.os.HandlerThread("NexpadSensorThread", android.os.Process.THREAD_PRIORITY_URGENT_DISPLAY)
+            sensorThread?.start()
+            sensorHandler = android.os.Handler(sensorThread!!.looper)
         }
-
+        
         listOf(
-            gravitySensor,
+            // gravitySensor, // UNUSED: Saves CPU
             accelSensor,
             gyroSensor,
-            uncalibratedGyroSensor,
-            gameRotationSensor
+            uncalibratedGyroSensor
+            // gameRotationSensor // UNUSED: Heavy CPU calculation, disabled for now
         ).forEach { sensor ->
-            sensor?.let { sensorManager.registerListener(this, it, SENSOR_DELAY_MICROS) }
+            sensor?.let { 
+                sensorManager.registerListener(this, it, SENSOR_DELAY_MICROS, sensorHandler) 
+                
+                // Hardware Ceiling Diagnostic
+                if (it.type == android.hardware.Sensor.TYPE_GYROSCOPE || it.type == android.hardware.Sensor.TYPE_GYROSCOPE_UNCALIBRATED) {
+                    val maxHz = if (it.minDelay > 0) 1_000_000 / it.minDelay else "Unknown"
+                    android.util.Log.d("NEXPAD", "📡 HARDWARE CEILING: ${it.name} supports Max $maxHz Hz (minDelay: ${it.minDelay}µs)")
+                }
+            }
         }
     }
 
     fun stop() {
         sensorManager.unregisterListener(this)
+        sensorThread?.quitSafely()
+        sensorThread = null
+        sensorHandler = null
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
@@ -141,24 +163,27 @@ class MotionSensorManager(
                 motion.gravityZ = hwZ
             }
             Sensor.TYPE_ACCELEROMETER -> {
-                motion.accelX = x.deadZone()
-                motion.accelY = y.deadZone()
-                motion.accelZ = hwZ.deadZone()
+                motion.accelX = x
+                motion.accelY = y
+                motion.accelZ = hwZ
             }
             Sensor.TYPE_GYROSCOPE -> {
-                motion.gyroX = x.deadZone()
-                motion.gyroY = y.deadZone()
-                motion.gyroZ = hwZ.deadZone()
+                motion.gyroX = -x
+                motion.gyroY = -y
+                motion.gyroZ = -hwZ
             }
             Sensor.TYPE_GYROSCOPE_UNCALIBRATED -> {
-                motion.rawGyroX = x
-                motion.rawGyroY = y
-                motion.rawGyroZ = hwZ
+                motion.rawGyroX = -x
+                motion.rawGyroY = -y
+                motion.rawGyroZ = -hwZ
 
                 if (event.values.size >= 6) {
-                    motion.biasX = event.values[3]
-                    motion.biasY = event.values[4]
-                    motion.biasZ = event.values[5]
+                    // Bias values are also in portrait coordinate space — remap to landscape
+                    val hwBiasX = event.values[3]
+                    val hwBiasY = event.values[4]
+                    motion.biasX = hwBiasY        // X' = Y  (landscape remap)
+                    motion.biasY = -hwBiasX       // Y' = -X (landscape remap)
+                    motion.biasZ = event.values[5] // Z unchanged
                 }
             }
             Sensor.TYPE_GAME_ROTATION_VECTOR -> {
@@ -198,9 +223,14 @@ class MotionSensorManager(
                 motion.qX = quaternion[1]
                 motion.qY = quaternion[2]
                 motion.qZ = quaternion[3]
+            }
+        }
 
-                // ONLY emit the synchronized packet on the Master Tick (Rotation Vector)
-                // Otherwise we spam the network 5x per frame.
+        // Emit the synchronized packet on Gyro updates since Game Rotation Vector is disabled.
+        // We use timestamp debouncing to prevent sending 2x packets if both Calibrated and Uncalibrated gyros fire.
+        if (event.sensor.type == Sensor.TYPE_GYROSCOPE || event.sensor.type == Sensor.TYPE_GYROSCOPE_UNCALIBRATED) {
+            if (event.timestamp != lastSentTimestamp) {
+                lastSentTimestamp = event.timestamp
                 onMotionPacket(motion)
             }
         }

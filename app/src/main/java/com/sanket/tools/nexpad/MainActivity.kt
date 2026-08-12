@@ -68,17 +68,8 @@ class MainActivity : ComponentActivity() {
 
         val sharedPref = getSharedPreferences("nexpad_prefs", MODE_PRIVATE)
         
-        // Initialize Connection Mode
-        val isBluetoothMode = sharedPref.getBoolean("BLUETOOTH_MODE", false)
-        viewModel.setConnectionMode(isBluetoothMode)
-        
-        if (!isBluetoothMode) {
-            // Start UDP Server if last IP exists
-            val lastIp = sharedPref.getString("LAST_IP", "")
-            if (!lastIp.isNullOrBlank()) {
-                viewModel.connect(lastIp, 9999)
-            }
-        }
+        // We no longer auto-connect on startup. 
+        // The user must click the device from the Discovery list to connect.
 
         // Initialize Sensors
         motionSensorManager = MotionSensorManager(
@@ -87,7 +78,12 @@ class MainActivity : ComponentActivity() {
                 // Gravity steering is disabled on Android side.
                 // Desktop app will process raw Accel/Gyro data instead.
                 viewModel.updateAccel(packet.accelX, packet.accelY, packet.accelZ)
-                viewModel.update6AxisGyro(packet.rawGyroX, packet.rawGyroY, packet.rawGyroZ)
+                
+                // Fallback to calibrated gyro if the device doesn't support uncalibrated gyro
+                val gX = if (packet.rawGyroX != 0f) packet.rawGyroX else packet.gyroX
+                val gY = if (packet.rawGyroY != 0f) packet.rawGyroY else packet.gyroY
+                val gZ = if (packet.rawGyroZ != 0f) packet.rawGyroZ else packet.gyroZ
+                viewModel.update6AxisGyro(gX, gY, gZ)
             }
         )
 
