@@ -31,6 +31,7 @@ class NetworkClient : IGamepadConnection {
     
     // RTT Measurement (128-element Ring Buffer)
     private val rttMap = java.util.concurrent.atomic.AtomicLongArray(128)
+    private var lastPacketReceivedTime = 0L
     private val rttHistory = DoubleArray(100) { 0.0 }
     private var rttHistoryIndex = 0
     private var rttSamples = 0
@@ -77,6 +78,22 @@ class NetworkClient : IGamepadConnection {
         
         val myChannel = channel
         connectionScope = kotlinx.coroutines.CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        
+        // Watchdog Coroutine to detect PC disconnection
+        connectionScope!!.launch {
+            while (isActive) {
+                kotlinx.coroutines.delay(1000)
+                if (isHandshakeComplete) {
+                    if (System.currentTimeMillis() - lastPacketReceivedTime > 2000) {
+                        android.util.Log.w("NEXPAD", "⏳ Connection Timeout! PC stopped responding.")
+                        onStatusChanged?.invoke("Connection Lost")
+                        disconnect()
+                        break
+                    }
+                }
+            }
+        }
+        
         connectionScope!!.launch {
             val handshakeBuffer = ByteBuffer.allocateDirect(1)
             handshakeBuffer.put(NexpadProtocol.PACKET_TYPE_CONNECT)
@@ -109,6 +126,7 @@ class NetworkClient : IGamepadConnection {
                     val senderAddress = myChannel?.receive(receiveBuffer)
                     
                     if (senderAddress != null || receiveBuffer.position() > 0) {
+                        lastPacketReceivedTime = System.currentTimeMillis()
                         receiveBuffer.flip()
                         val bytes = ByteArray(receiveBuffer.remaining())
                         receiveBuffer.get(bytes)

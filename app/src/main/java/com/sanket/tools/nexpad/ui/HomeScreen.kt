@@ -69,6 +69,16 @@ import androidx.navigation.NavController
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import com.sanket.tools.nexpad.network.DiscoveredServer
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.text.style.TextAlign
+import com.sanket.tools.nexpad.viewmodel.ConnectionType
 
 // ---------------------------------------------------------------------------
 // Design tokens — pulling the cyberpunk palette out of the composables makes
@@ -185,7 +195,8 @@ fun HomeScreen(navController: NavController, layoutManager: LayoutManager, viewM
                     isConnected = isConnected,
                     servers = discoveredServers,
                     stats = connectionStats,
-                    onConnectClick = { server -> viewModel.connect(server.ipAddress, server.port) }
+                    onConnectClick = { server -> viewModel.connect(server.ipAddress, server.port) },
+                    onDisconnectClick = { viewModel.disconnect() } // add if not already exposed on the VM
                 )
 
                 Text(
@@ -273,134 +284,294 @@ private fun HeaderRow(isConnected: Boolean) {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Device Hero Card — driven by one sealed state so Searching/Found/Connected
+// are separate composables that crossfade+scale into each other, instead of
+// one big if/else blob that just snapped between layouts.
+// ---------------------------------------------------------------------------
+
+private sealed class DeviceCardState {
+    object Searching : DeviceCardState()
+    data class Found(val server: DiscoveredServer) : DeviceCardState()
+    data class Connected(val name: String, val transport: ConnectionType) : DeviceCardState()
+
+    // Coarse key for AnimatedContent — stops the transition from re-firing
+    // when e.g. the server list reorders but we're still "Found".
+    val phase: Int get() = when (this) {
+        is Searching -> 0
+        is Found -> 1
+        is Connected -> 2
+    }
+}
+
 @Composable
 private fun DeviceHeroCard(
     isConnected: Boolean,
     servers: List<DiscoveredServer>,
     stats: com.sanket.tools.nexpad.viewmodel.ConnectionStats,
-    onConnectClick: (DiscoveredServer) -> Unit
+    onConnectClick: (DiscoveredServer) -> Unit,
+    onDisconnectClick: () -> Unit
 ) {
-    val displayServer = servers.firstOrNull()
-    val serverName = displayServer?.name ?: "No PC Found"
-    val serverStatus = if (isConnected) "Connected" else if (displayServer != null) displayServer.ipAddress else "Scanning network..."
-    
-    GlassCard(modifier = Modifier.fillMaxWidth().wrapContentHeight()) {
-        Column(
-            modifier = Modifier.padding(24.dp).fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(16.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Computer,
-                        contentDescription = "PC",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-                Column {
-                    Text(serverName, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
-                    Text(
-                        serverStatus,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            
-            if (!isConnected && displayServer != null) {
-                Button(
-                    onClick = { onConnectClick(displayServer) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan)
-                ) {
-                    Text("Connect", color = Color.Black, fontWeight = FontWeight.Bold)
-                }
-            }
+    val state: DeviceCardState = remember(isConnected, servers, stats.transport) {
+        when {
+            isConnected -> DeviceCardState.Connected(
+                name = servers.firstOrNull()?.name ?: "PC",
+                transport = stats.transport
+            )
+            servers.isNotEmpty() -> DeviceCardState.Found(servers.first())
+            else -> DeviceCardState.Searching
+        }
+    }
 
-            if (isConnected) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White.copy(alpha = 0.05f))
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    val quality = when {
-                        stats.packetLossPercent ?: 0f > 5f -> "Poor"
-                        stats.latencyMs ?: 0 > 50 -> "Fair"
-                        stats.latencyMs ?: 0 > 20 -> "Good"
-                        else -> "Excellent"
-                    }
-                    val qualityColor = when (quality) {
-                        "Excellent" -> NeonPalette.ConnectedDot
-                        "Good" -> NeonPalette.Cyan
-                        "Fair" -> Color.Yellow
-                        else -> Color.Red
-                    }
-                    
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text("Controller Quality", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(quality, style = MaterialTheme.typography.labelLarge, color = qualityColor, fontWeight = FontWeight.Bold)
-                    }
-                    
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
-                    
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Column {
-                            Text("Connection Type", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(stats.transport.displayName, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
-                        }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text("Wi-Fi Signal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            val signalText = if (stats.signalDbm != null) {
-                                val dots = when (stats.signalLevel) {
-                                    4 -> "●●●●"
-                                    3 -> "●●●○"
-                                    2 -> "●●○○"
-                                    1 -> "●○○○"
-                                    else -> "○○○○"
-                                }
-                                "$dots  ${stats.signalDbm} dBm"
-                            } else {
-                                "N/A (Hotspot)"
-                            }
-                            Text(signalText, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
-                        }
-                    }
-                    
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Column {
-                            Text("Local Latency", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            val lat = stats.latencyMs?.let { "$it ms" } ?: "-- ms"
-                            Text(lat, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
-                        }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text("Jitter", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            val jit = stats.jitterMs?.let { "±$it ms" } ?: "-- ms"
-                            Text(jit, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
-                        }
-                    }
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
+        AnimatedContent(
+            targetState = state,
+            contentKey = { it.phase },
+            transitionSpec = {
+                (fadeIn(tween(320, delayMillis = 90)) +
+                        scaleIn(initialScale = 0.92f, animationSpec = tween(320, delayMillis = 90)))
+                    .togetherWith(
+                        fadeOut(tween(150)) + scaleOut(targetScale = 1.05f, animationSpec = tween(150))
+                    )
+                    .using(SizeTransform(clip = false) { _, _ -> tween(320, easing = FastOutSlowInEasing) })
+            },
+            label = "deviceCardState",
+            modifier = Modifier.fillMaxWidth()
+        ) { target ->
+            when (target) {
+                is DeviceCardState.Searching ->
+                    SearchingContent()
+                is DeviceCardState.Found ->
+                    FoundContent(server = target.server, onConnectClick = onConnectClick)
+                is DeviceCardState.Connected ->
+                    ConnectedContent(name = target.name, stats = stats, onDisconnectClick = onDisconnectClick)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchingContent() {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        RadarScanner(size = 96.dp)
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                "Searching for PC…",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Text(
+                "Make sure Nexpad is running on your computer",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+@Composable
+private fun RadarScanner(size: Dp) {
+    val infinite = rememberInfiniteTransition(label = "radar")
+    val sweepAngle by infinite.animateFloat(
+        initialValue = 0f, targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(1800, easing = LinearEasing)),
+        label = "sweep"
+    )
+    val pulse by infinite.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1800, easing = LinearEasing)),
+        label = "pulse"
+    )
+
+    Box(modifier = Modifier.size(size), contentAlignment = Alignment.Center) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val radius = size.toPx() / 2f
+            repeat(3) { ring ->
+                val phase = (pulse + ring / 3f) % 1f
+                drawCircle(
+                    color = NeonPalette.Cyan.copy(alpha = (1f - phase) * 0.35f),
+                    radius = radius * phase,
+                    style = Stroke(width = 2.dp.toPx())
+                )
+            }
+            drawCircle(color = NeonPalette.Cyan.copy(alpha = 0.08f), radius = radius)
+            drawCircle(color = NeonPalette.Cyan.copy(alpha = 0.3f), radius = radius, style = Stroke(width = 1.5.dp.toPx()))
+            rotate(sweepAngle) {
+                drawArc(
+                    brush = Brush.sweepGradient(listOf(Color.Transparent, NeonPalette.Cyan.copy(alpha = 0.5f))),
+                    startAngle = 0f,
+                    sweepAngle = 90f,
+                    useCenter = true,
+                    size = this.size
+                )
+            }
+        }
+        Icon(
+            imageVector = Icons.Rounded.Computer,
+            contentDescription = null,
+            tint = NeonPalette.Cyan.copy(alpha = 0.7f),
+            modifier = Modifier.size(size * 0.32f)
+        )
+    }
+}
+
+@Composable
+private fun FoundContent(server: DiscoveredServer, onConnectClick: (DiscoveredServer) -> Unit) {
+    val infinite = rememberInfiniteTransition(label = "foundPulse")
+    val glow by infinite.animateFloat(
+        initialValue = 0.4f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1000, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "glow"
+    )
+
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(NeonPalette.Cyan.copy(alpha = 0.12f * glow))
+                    .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.Computer, contentDescription = "PC found", tint = NeonPalette.Cyan, modifier = Modifier.size(28.dp))
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(server.name, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
+                Text(server.ipAddress, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Button(
+            onClick = { onConnectClick(server) },
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan)
+        ) {
+            Text("Connect", color = Color.Black, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun ConnectedContent(name: String, stats: com.sanket.tools.nexpad.viewmodel.ConnectionStats, onDisconnectClick: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(NeonPalette.ConnectedDot.copy(alpha = 0.15f))
+                    .border(1.dp, NeonPalette.ConnectedDot.copy(alpha = 0.6f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.Computer, contentDescription = "Connected", tint = NeonPalette.ConnectedDot, modifier = Modifier.size(28.dp))
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(name, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(NeonPalette.ConnectedDot))
+                    Text("Connected", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+            }
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(Color.White.copy(alpha = 0.05f))
+                .padding(vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            LiveStat(modifier = Modifier.weight(1f), label = "Type", value = stats.transport.displayName)
+            StatDivider()
+            LiveStat(modifier = Modifier.weight(1f), label = "Latency", value = stats.latencyMs?.toString() ?: "--", unit = "ms")
+            StatDivider()
+            LiveStat(modifier = Modifier.weight(1f), label = "Jitter", value = stats.jitterMs?.let { "±$it" } ?: "--", unit = "ms")
+        }
+
+        OutlinedButton(
+            onClick = onDisconnectClick,
+            modifier = Modifier.fillMaxWidth().height(44.dp),
+            shape = RoundedCornerShape(14.dp),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
+        ) {
+            Text("Disconnect", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun LiveStat(modifier: Modifier = Modifier, label: String, value: String, unit: String = "") {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(4.dp))
+        AnimatedContent(
+            targetState = value,
+            transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(200)) },
+            label = "statValue"
+        ) { v ->
+            if (unit.isEmpty()) {
+                Text(
+                    text = v,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
             } else {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    StatBox("Network", stats.transport.displayName, MaterialTheme.colorScheme.primary, Modifier.weight(1f))
-                    StatBox("Latency", "-", MaterialTheme.colorScheme.primary, Modifier.weight(1f))
-                    StatBox("Signal", "-", MaterialTheme.colorScheme.onBackground, Modifier.weight(1f))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Text(
+                        text = v,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(Modifier.width(2.dp))
+                    Text(
+                        text = unit,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f).padding(bottom = 1.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Start
+                    )
                 }
             }
         }
     }
 }
 
+@Composable
+private fun StatDivider() {
+    Box(
+        modifier = Modifier
+            .height(28.dp)
+            .width(1.dp)
+            .background(Color.White.copy(alpha = 0.1f))
+    )
+}
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
