@@ -7,6 +7,7 @@ import com.sanket.tools.nexpad.network.IGamepadConnection
 import com.sanket.tools.nexpad.network.NetworkClient
 import kotlinx.coroutines.CoroutineScope
 import android.net.wifi.WifiManager
+import android.os.PowerManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -260,6 +261,7 @@ class GamepadNetworkManager(
     }
 
     private var wifiLock: android.net.wifi.WifiManager.WifiLock? = null
+    private var wakeLock: android.os.PowerManager.WakeLock? = null
 
     @Suppress("DEPRECATION")
     private fun acquireWifiLock() {
@@ -276,8 +278,17 @@ class GamepadNetworkManager(
                 acquire()
             }
             android.util.Log.d("NEXPAD", "🔒 WifiLock Acquired: Mode $lockMode")
+            
+            if (wakeLock?.isHeld != true) {
+                val powerManager = context.applicationContext.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+                wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "Nexpad:WakeLock").apply {
+                    setReferenceCounted(false)
+                    acquire()
+                }
+                android.util.Log.d("NEXPAD", "🔒 WakeLock Acquired (Partial)")
+            }
         } catch (e: Exception) {
-            android.util.Log.e("NEXPAD", "❌ Failed to acquire WifiLock: ${e.message}")
+            android.util.Log.e("NEXPAD", "❌ Failed to acquire locks: ${e.message}")
         }
     }
 
@@ -286,6 +297,10 @@ class GamepadNetworkManager(
             if (wifiLock?.isHeld == true) {
                 wifiLock?.release()
                 android.util.Log.d("NEXPAD", "🔓 WifiLock Released")
+            }
+            if (wakeLock?.isHeld == true) {
+                wakeLock?.release()
+                android.util.Log.d("NEXPAD", "🔓 WakeLock Released")
             }
         } catch (e: Exception) {
             e.printStackTrace()

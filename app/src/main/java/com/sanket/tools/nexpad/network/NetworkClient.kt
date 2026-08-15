@@ -10,7 +10,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import java.nio.channels.DatagramChannel
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
@@ -36,6 +35,11 @@ class NetworkClient : IGamepadConnection {
     private var rttHistoryIndex = 0
     private var rttSamples = 0
     private var lastRttLogTime = 0L
+    
+    // SEQ_STAMP_MASK: pack low 16 bits of seq into low 16 bits of nanoTime slot.
+    // This lets us detect stale ring-buffer slots without a second array.
+    // Precision cost: ~0.066ms (65536 ns) — irrelevant for a ping display.
+    private val SEQ_STAMP_MASK = 0xFFFFL
     
     override var onFeedbackReceived: ((GamepadFeedback) -> Unit)? = null
     override var onConnectionStateChanged: ((Boolean) -> Unit)? = null
@@ -64,7 +68,9 @@ class NetworkClient : IGamepadConnection {
                     connect(serverAddress) // Restrict UDP channel to this server to fix NAT/Firewall drops
                 }
                 
-                onConnectionStateChanged?.invoke(true)
+                // Do NOT fire onConnectionStateChanged(true) here.
+                // The socket is open but the handshake has not completed yet.
+                // Locks (WakeLock, WifiLock) are acquired only on handshake success below.
                 android.util.Log.d("NEXPAD", "📡 Connecting to UDP Server at $address:$port...")
                 onStatusChanged?.invoke("Connecting to $address:$port...")
                 isHandshakeComplete = false
@@ -95,14 +101,24 @@ class NetworkClient : IGamepadConnection {
         }
         
         connectionScope!!.launch {
-            val handshakeBuffer = ByteBuffer.allocateDirect(1)
+            val deviceName = android.os.Build.MODEL
+            val nameBytes = deviceName.toByteArray(Charsets.UTF_8)
+            val safeLength = nameBytes.size.coerceAtMost(255)
+            
+            // Simple heuristic: USB tethering often uses specific subnets like 192.168.42.x or 192.168.137.x
+            val connectionType: Byte = if (address.startsWith("192.168.42.") || address.startsWith("192.168.137.")) 2 else 1
+            
+            val handshakeBuffer = ByteBuffer.allocateDirect(3 + safeLength)
             handshakeBuffer.put(NexpadProtocol.PACKET_TYPE_CONNECT)
+            handshakeBuffer.put(connectionType)
+            handshakeBuffer.put(safeLength.toByte())
+            handshakeBuffer.put(nameBytes, 0, safeLength)
             handshakeBuffer.flip()
             
             var handshakeAttempts = 0
             while (isActive && !isHandshakeComplete) {
                 if (handshakeAttempts >= 5) {
-                    onConnectionStateChanged?.invoke(false)
+                    onConnectionStateChanged?.invoke(false) // triggers releaseWifiLock() via callback
                     onStatusChanged?.invoke("Connection Timeout")
                     return@launch
                 }
@@ -152,49 +168,47 @@ class NetworkClient : IGamepadConnection {
                             val echoSeq = feedbackPair.second
                             
                             // Calculate RTT
-                            val sentTime = rttMap.get(echoSeq % 128)
-                            if (sentTime > 0) {
-                                val rttMs = (System.nanoTime() - sentTime) / 1_000_000.0
-                                rttMap.set(echoSeq % 128, 0L) // Clear to prevent stale matching
-                                
-                                // Rolling min/max/avg
-                                rttHistory[rttHistoryIndex] = rttMs
-                                rttHistoryIndex = (rttHistoryIndex + 1) % 100
-                                if (rttSamples < 100) rttSamples++
-                                
-                                val now = System.currentTimeMillis()
-                                if (rttSamples > 0 && (now - lastRttLogTime > 1000)) {
-                                    lastRttLogTime = now
+                            val idx = echoSeq % 128
+                            val packed = rttMap.get(idx)
+                            if (packed != 0L) {
+                                val ownerStamp = packed and SEQ_STAMP_MASK
+                                if (ownerStamp == (echoSeq.toLong() and SEQ_STAMP_MASK)) {
+                                    val sentTimeNanos = packed and SEQ_STAMP_MASK.inv()
+                                    val rttMs = (System.nanoTime() - sentTimeNanos) / 1_000_000.0
+                                    rttMap.set(idx, 0L) // Clear to prevent stale matching
                                     
-                                    var minRtt = Double.MAX_VALUE
-                                    var maxRtt = Double.MIN_VALUE
-                                    var sumRtt = 0.0
-                                    for (i in 0 until rttSamples) {
-                                        val v = rttHistory[i]
-                                        if (v < minRtt) minRtt = v
-                                        if (v > maxRtt) maxRtt = v
-                                        sumRtt += v
+                                    // Rolling min/max/avg
+                                    rttHistory[rttHistoryIndex] = rttMs
+                                    rttHistoryIndex = (rttHistoryIndex + 1) % 100
+                                    if (rttSamples < 100) rttSamples++
+                                    
+                                    val now = System.currentTimeMillis()
+                                    if (rttSamples > 0 && (now - lastRttLogTime > 1000)) {
+                                        lastRttLogTime = now
+                                        
+                                        var minRtt = Double.MAX_VALUE
+                                        var maxRtt = Double.MIN_VALUE
+                                        var sumRtt = 0.0
+                                        for (i in 0 until rttSamples) {
+                                            val v = rttHistory[i]
+                                            if (v < minRtt) minRtt = v
+                                            if (v > maxRtt) maxRtt = v
+                                            sumRtt += v
+                                        }
+                                        val avgRtt = sumRtt / rttSamples
+                                        val jitterMs = maxRtt - minRtt
+                                        val rttMsg = String.format("min %.1fms / avg %.1fms / max %.1fms", minRtt, avgRtt, maxRtt)
+                                        val logMsg = "📡 RTT: $rttMsg"
+                                        onDiagnosticLog?.invoke(logMsg)
+                                        
+                                        val lossPctFloat = feedback.packetLossPct / 255f
+                                        onNetworkPerformanceUpdated?.invoke(avgRtt.toLong(), jitterMs.toLong(), lossPctFloat)
+                                        android.util.Log.d("NEXPAD", logMsg)
                                     }
-                                    val avgRtt = sumRtt / rttSamples
-                                    val jitterMs = maxRtt - minRtt
-                                    val rttMsg = String.format("min %.1fms / avg %.1fms / max %.1fms", minRtt, avgRtt, maxRtt)
-                                    val logMsg = "📡 RTT: $rttMsg"
-                                    onDiagnosticLog?.invoke(logMsg)
-                                    onNetworkPerformanceUpdated?.invoke(avgRtt.toLong(), jitterMs.toLong(), 0f) // packet loss 0f for now
-                                    android.util.Log.d("NEXPAD", logMsg)
                                 }
                             }
                             
                             onFeedbackReceived?.invoke(feedback)
-                        } else {
-                            // Fallback to JSON if binary decode fails (backward compatibility)
-                            try {
-                                val json = String(bytes)
-                                val feedback = Json.decodeFromString<GamepadFeedback>(json)
-                                onFeedbackReceived?.invoke(feedback)
-                            } catch (e: Exception) {
-                                // Ignored: Not valid JSON either
-                            }
                         }
                     }
                 } catch (e: java.nio.channels.AsynchronousCloseException) {
@@ -231,11 +245,14 @@ class NetworkClient : IGamepadConnection {
         try {
             sendMutex.withLock {
                 // Write directly to the pre-allocated sendBuffer
-                NexpadProtocol.encodeInput(input, sendByteArray)
-                
                 // Track sent time for RTT calculation
-                val seq = NexpadProtocol.getCurrentSequenceNumber()
-                rttMap.set(seq % 128, System.nanoTime())
+                input.sequenceNumber = NexpadProtocol.getCurrentSequenceNumber()
+                val seq = input.sequenceNumber
+                val idx = seq % 128
+                val stamped = (System.nanoTime() and SEQ_STAMP_MASK.inv()) or (seq.toLong() and SEQ_STAMP_MASK)
+                rttMap.set(idx, stamped)
+                
+                NexpadProtocol.encodeInput(input, sendByteArray)
                 
                 sendBuffer.clear()
                 sendBuffer.put(sendByteArray)
@@ -244,15 +261,18 @@ class NetworkClient : IGamepadConnection {
                 if (ENABLE_CHAOS_MONKEY) {
                     val rand = Math.random()
                     if (rand < 0.1) {
-                        // 10% chance to drop the packet entirely
+                        // 10% chance to drop the packet entirely — exercises packet-loss counter
                         return@withLock
                     }
                     if (rand < 0.3) {
-                        // 20% chance to intentionally delay the packet to arrive OUT OF ORDER
+                        // 20% chance to delay the packet.
+                        // Use 1500ms to reproduce RTT staleness bug (128 slots ÷ 120Hz ≈ 1.07s threshold).
+                        // Revert delay to 30ms after staleness testing is confirmed.
+                        val CHAOS_DELAY_MS = 1500L
                         val delayedBuffer = ByteBuffer.allocateDirect(NexpadProtocol.INPUT_PACKET_SIZE)
                         delayedBuffer.put(sendByteArray).flip()
                         kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
-                            kotlinx.coroutines.delay(30)
+                            kotlinx.coroutines.delay(CHAOS_DELAY_MS)
                             try { currentChannel.send(delayedBuffer, target) } catch (e: Exception) {}
                         }
                         return@withLock
@@ -281,6 +301,19 @@ class NetworkClient : IGamepadConnection {
 
     override fun disconnect() {
         if (!disconnecting.compareAndSet(false, true)) return
+        
+        // Notify server of disconnect before closing channel
+        val currentChannel = channel
+        val target = serverAddress
+        if (currentChannel != null && target != null && currentChannel.isOpen) {
+            try {
+                val buffer = ByteBuffer.allocateDirect(1)
+                buffer.put(NexpadProtocol.PACKET_TYPE_DISCONNECT)
+                buffer.flip()
+                currentChannel.send(buffer, target)
+            } catch (e: Exception) {}
+        }
+        
         receiveJob?.cancel()
         connectionScope?.cancel()
         connectionScope = null

@@ -466,22 +466,51 @@ private fun ConnectedContent(name: String, stats: com.sanket.tools.nexpad.viewmo
         modifier = Modifier.fillMaxWidth().padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(NeonPalette.ConnectedDot.copy(alpha = 0.15f))
-                    .border(1.dp, NeonPalette.ConnectedDot.copy(alpha = 0.6f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.Computer, contentDescription = "Connected", tint = NeonPalette.ConnectedDot, modifier = Modifier.size(28.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(NeonPalette.ConnectedDot.copy(alpha = 0.15f))
+                        .border(1.dp, NeonPalette.ConnectedDot.copy(alpha = 0.6f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Rounded.Computer, contentDescription = "Connected", tint = NeonPalette.ConnectedDot, modifier = Modifier.size(28.dp))
+                }
+                Column {
+                    Text(name, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(NeonPalette.ConnectedDot))
+                        Text("Connected", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
             }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(name, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(NeonPalette.ConnectedDot))
-                    Text("Connected", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+            if (stats.packetLossPercent != null) {
+                val lossPct = (stats.packetLossPercent * 100).toInt()
+                val chipColor = when {
+                    lossPct < 5 -> NeonPalette.Green
+                    lossPct < 15 -> Color(0xFFF59E0B) // Amber
+                    else -> Color(0xFFEF4444) // Red
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(chipColor.copy(alpha = 0.15f))
+                        .border(1.dp, chipColor.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = "Loss $lossPct%",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = chipColor,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }

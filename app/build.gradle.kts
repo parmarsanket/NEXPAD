@@ -59,6 +59,7 @@ dependencies {
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.cio)
     implementation(libs.ktor.network)
+    implementation("com.sanket.tools.nexpad:protocol:1.0.0")
     
     // Serialization
     implementation(libs.kotlinx.serialization.json)
