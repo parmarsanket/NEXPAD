@@ -26,6 +26,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import android.os.VibrationEffect
 import com.sanket.tools.nexpad.utils.LockScreenOrientation
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun GamepadScreen(
@@ -75,16 +76,26 @@ fun GamepadScreen(
 
     LaunchedEffect(Unit) {
         val sharedPref = context.getSharedPreferences("nexpad_prefs", android.content.Context.MODE_PRIVATE)
+        var lastLogSpeed = -1
         
         viewModel.feedbackFlow.collect { feedback ->
             val intensityScalar = sharedPref.getFloat("RUMBLE_INTENSITY", 1.0f)
             val totalSpeed = (maxOf(feedback.leftMotorSpeed, feedback.rightMotorSpeed) * intensityScalar).roundToInt()
             
+            if (totalSpeed != lastLogSpeed) {
+                lastLogSpeed = totalSpeed
+                if (totalSpeed > 0) {
+                    android.util.Log.d("NEXPAD_RUMBLE", "MOTOR ON -> Left: ${feedback.leftMotorSpeed}, Right: ${feedback.rightMotorSpeed} | Intensity: ${intensityScalar}x | Motor Output: $totalSpeed (0-255)")
+                } else {
+                    android.util.Log.d("NEXPAD_RUMBLE", "MOTOR OFF -> (0)")
+                }
+            }
+            
             if (totalSpeed > 0) {
                 isRumbling = true
                 rumbleResetJob?.cancel()
                 rumbleResetJob = launch {
-                    kotlinx.coroutines.delay(60)
+                   delay(60.milliseconds)
                     isRumbling = false
                 }
                 
