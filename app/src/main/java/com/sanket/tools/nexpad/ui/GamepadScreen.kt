@@ -22,6 +22,8 @@ import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.roundToInt
 import android.os.Vibrator
 import android.os.Build
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import android.os.VibrationEffect
 import com.sanket.tools.nexpad.utils.LockScreenOrientation
 
@@ -63,6 +65,7 @@ fun GamepadScreen(
     }
 
     var isRumbling by remember { mutableStateOf(false) }
+    var rumbleResetJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     
     val safeOnVibrate: () -> Unit = remember { {
         if (!isRumbling) {
@@ -75,10 +78,16 @@ fun GamepadScreen(
         
         viewModel.feedbackFlow.collect { feedback ->
             val intensityScalar = sharedPref.getFloat("RUMBLE_INTENSITY", 1.0f)
-            val totalSpeed = (maxOf(feedback.leftMotorSpeed, feedback.rightMotorSpeed) * intensityScalar).toInt()
+            val totalSpeed = (maxOf(feedback.leftMotorSpeed, feedback.rightMotorSpeed) * intensityScalar).roundToInt()
             
-            isRumbling = totalSpeed > 0
             if (totalSpeed > 0) {
+                isRumbling = true
+                rumbleResetJob?.cancel()
+                rumbleResetJob = launch {
+                    kotlinx.coroutines.delay(60)
+                    isRumbling = false
+                }
+                
                 // Vibrate for 60ms (bridges the 33ms ping gap + 27ms safety margin for dropped packets)
                 @Suppress("DEPRECATION")
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && hasAmplitudeControl) {
