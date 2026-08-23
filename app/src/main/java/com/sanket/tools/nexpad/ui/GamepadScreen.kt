@@ -94,6 +94,7 @@ fun GamepadScreen(
             hasPrimitives -> MotorProfile(3, 10, 30L, "LRA (premium)")
             else          -> MotorProfile(2, 32, 100L, "ERM (mid-range)")
         }
+        // android.util.Log.d("NEXPAD_RUMBLE", "Motor detected: ${profile.name} | Tier ${profile.tier} | Band ${profile.bandSize} | MinGap ${profile.minGapMs}ms")
         profile
     }
 
@@ -152,6 +153,10 @@ fun GamepadScreen(
             }
             
             if (shouldUpdate) {
+                // android.util.Log.d("NEXPAD_RUMBLE", 
+                //     if (band > 0) "T${motorProfile.tier} APPLY -> band=$band (raw=$totalSpeed) gap=${gap}ms"
+                //     else "T${motorProfile.tier} OFF")
+                
                 lastAppliedBand = band
                 lastUpdateTimeMs = now
                 
@@ -185,6 +190,7 @@ fun GamepadScreen(
                 rumbleResetJob = launch {
                     delay(250)
                     if (lastAppliedBand != 0) {
+                        // android.util.Log.d("NEXPAD_RUMBLE", "WATCHDOG -> No packets for 250ms, motor killed")
                         lastAppliedBand = 0
                         isRumbling = false
                         vibrator.cancel()
