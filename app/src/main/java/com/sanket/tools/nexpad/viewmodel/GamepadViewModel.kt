@@ -70,6 +70,7 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     fun disconnect() = networkManager.disconnect()
 
     fun updateAccel(x: Float, y: Float, z: Float) = sensorController.updateAccel(x, y, z)
+    fun updateGravity(x: Float, y: Float, z: Float) = sensorController.updateGravity(x, y, z)
     fun update6AxisGyro(x: Float, y: Float, z: Float) = sensorController.update6AxisGyro(x, y, z)
     
     fun updateButton(buttonName: String, isPressed: Boolean) {

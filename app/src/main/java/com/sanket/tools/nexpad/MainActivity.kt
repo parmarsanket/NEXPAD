@@ -75,9 +75,12 @@ class MainActivity : ComponentActivity() {
         motionSensorManager = MotionSensorManager(
             context = this,
             onMotionPacket = { packet ->
-                // Gravity steering is disabled on Android side.
-                // Desktop app will process raw Accel/Gyro data instead.
-                viewModel.updateAccel(packet.accelX, packet.accelY, packet.accelZ)
+                // Send filtered Gravity data when available, fallback to raw Accelerometer
+                if (packet.gravityX != 0f || packet.gravityY != 0f || packet.gravityZ != 0f) {
+                    viewModel.updateGravity(packet.gravityX, packet.gravityY, packet.gravityZ)
+                } else {
+                    viewModel.updateAccel(packet.accelX, packet.accelY, packet.accelZ)
+                }
                 
                 // Fallback to calibrated gyro if the device doesn't support uncalibrated gyro
                 val gX = if (packet.rawGyroX != 0f) packet.rawGyroX else packet.gyroX
