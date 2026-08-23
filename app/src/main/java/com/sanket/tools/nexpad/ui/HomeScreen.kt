@@ -293,7 +293,7 @@ private fun HeaderRow(isConnected: Boolean) {
 private sealed class DeviceCardState {
     object Searching : DeviceCardState()
     data class Found(val server: DiscoveredServer) : DeviceCardState()
-    data class Connected(val name: String, val transport: ConnectionType) : DeviceCardState()
+    data class Connected(val name: String, val stats: com.sanket.tools.nexpad.viewmodel.ConnectionStats) : DeviceCardState()
 
     // Coarse key for AnimatedContent — stops the transition from re-firing
     // when e.g. the server list reorders but we're still "Found".
@@ -312,11 +312,11 @@ private fun DeviceHeroCard(
     onConnectClick: (DiscoveredServer) -> Unit,
     onDisconnectClick: () -> Unit
 ) {
-    val state: DeviceCardState = remember(isConnected, servers, stats.transport) {
+    val state: DeviceCardState = remember(isConnected, servers, stats) {
         when {
             isConnected -> DeviceCardState.Connected(
                 name = servers.firstOrNull()?.name ?: "PC",
-                transport = stats.transport
+                stats = stats
             )
             servers.isNotEmpty() -> DeviceCardState.Found(servers.first())
             else -> DeviceCardState.Searching
@@ -344,7 +344,7 @@ private fun DeviceHeroCard(
                 is DeviceCardState.Found ->
                     FoundContent(server = target.server, onConnectClick = onConnectClick)
                 is DeviceCardState.Connected ->
-                    ConnectedContent(name = target.name, stats = stats, onDisconnectClick = onDisconnectClick)
+                    ConnectedContent(name = target.name, stats = target.stats, onDisconnectClick = onDisconnectClick)
             }
         }
     }
