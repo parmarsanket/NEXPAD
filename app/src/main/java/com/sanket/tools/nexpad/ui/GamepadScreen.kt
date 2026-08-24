@@ -25,6 +25,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import android.os.VibrationEffect
 import com.sanket.tools.nexpad.utils.LockScreenOrientation
+import kotlin.math.pow
 
 @Composable
 fun GamepadScreen(
@@ -132,18 +133,52 @@ fun GamepadScreen(
         
         viewModel.feedbackFlow.collect { feedback ->
             val intensityScalar = sharedPref.getFloat("RUMBLE_INTENSITY", 1.0f)
-            val rumbleMode = sharedPref.getString("RUMBLE_MODE", "avg") ?: "avg"
+            val rumbleMode = sharedPref.getString("RUMBLE_MODE", "smart") ?: "smart"
+            
+            // ── Stage 1: Stereo-to-Mono Downmix ─────────────────────────
+            // Controller has 2 motors (heavy left, light right).
+            // Phone has 1 motor. Combine intelligently.
+            val left = feedback.leftMotorSpeed
+            val right = feedback.rightMotorSpeed
             
             val combinedSpeed = when (rumbleMode) {
-                "min" -> minOf(feedback.leftMotorSpeed, feedback.rightMotorSpeed)
-                "max" -> maxOf(feedback.leftMotorSpeed, feedback.rightMotorSpeed)
-                else -> (feedback.leftMotorSpeed + feedback.rightMotorSpeed) / 2
+                "min"   -> minOf(left, right)
+                "max"   -> maxOf(left, right)
+                "avg"   -> (left + right) / 2
+                else    -> {
+                    // "smart": Weighted downmix — dominant motor drives feel,
+                    // weaker motor adds texture. Preserves game designer intent.
+                    ((0.7f * maxOf(left, right) + 0.3f * minOf(left, right))).roundToInt()
+                }
             }
             
-            val rawSpeed = (combinedSpeed * intensityScalar).roundToInt()
-            val totalSpeed = rawSpeed.coerceIn(0, 255)
+            val scaledSpeed = (combinedSpeed * intensityScalar).roundToInt().coerceIn(0, 255)
             
-            // Quantize to band — floor at bandSize so nonzero input never rounds to 0
+            // ── Stage 2: Hardware Dead Zone ──────────────────────────────
+            // Phone motors can't physically produce vibration below a threshold.
+            // Instead of sending inaudible amplitude, snap to the minimum or zero.
+            val motorDeadZone = when (motorProfile.tier) {
+                1 -> 0     // Binary, no amplitude control
+                3 -> 8     // LRA: precise, low threshold
+                else -> 20 // ERM: spinning weight needs minimum voltage
+            }
+            
+            val afterDeadZone = when {
+                scaledSpeed == 0 -> 0
+                scaledSpeed < motorDeadZone -> motorDeadZone
+                else -> scaledSpeed
+            }
+            
+            // ── Stage 3: Perceptual Gamma Curve (Weber-Fechner) ──────────
+            // Human vibration perception is logarithmic. A linear 0-255 mapping
+            // wastes the bottom range (feels dead) and the top range (feels flat).
+            // Gamma 0.55 = square-root-ish curve that expands the low end and
+            // compresses the top end for even perceptual distribution.
+            val gamma = 0.55
+            val totalSpeed = if (afterDeadZone == 0) 0
+                             else (255.0 * (afterDeadZone / 255.0).pow(gamma)).roundToInt().coerceIn(1, 255)
+            
+            // ── Stage 4: Band Quantization ───────────────────────────────
             val band = when {
                 totalSpeed == 0 -> 0
                 bandSize >= 255 -> totalSpeed.coerceIn(1, 255) // Tier 1: no quantization

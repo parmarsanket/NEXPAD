@@ -147,7 +147,7 @@ fun SettingsScreen(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        var rumbleMode by remember { mutableStateOf(sharedPref.getString("RUMBLE_MODE", "avg") ?: "avg") }
+        var rumbleMode by remember { mutableStateOf(sharedPref.getString("RUMBLE_MODE", "smart") ?: "smart") }
         
         Text("Rumble Mode (Stereo Mix)", color = Color.LightGray)
         Row(
@@ -155,9 +155,10 @@ fun SettingsScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             val modes = listOf(
-                "min" to "Min",
-                "avg" to "Average",
-                "max" to "Max"
+                "smart" to "Smart",
+                "max" to "Max",
+                "avg" to "Avg",
+                "min" to "Min"
             )
             
             modes.forEach { (id, label) ->
