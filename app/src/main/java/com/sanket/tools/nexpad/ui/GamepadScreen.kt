@@ -132,7 +132,15 @@ fun GamepadScreen(
         
         viewModel.feedbackFlow.collect { feedback ->
             val intensityScalar = sharedPref.getFloat("RUMBLE_INTENSITY", 1.0f)
-            val rawSpeed = (maxOf(feedback.leftMotorSpeed, feedback.rightMotorSpeed) * intensityScalar).roundToInt()
+            val rumbleMode = sharedPref.getString("RUMBLE_MODE", "avg") ?: "avg"
+            
+            val combinedSpeed = when (rumbleMode) {
+                "min" -> minOf(feedback.leftMotorSpeed, feedback.rightMotorSpeed)
+                "max" -> maxOf(feedback.leftMotorSpeed, feedback.rightMotorSpeed)
+                else -> (feedback.leftMotorSpeed + feedback.rightMotorSpeed) / 2
+            }
+            
+            val rawSpeed = (combinedSpeed * intensityScalar).roundToInt()
             val totalSpeed = rawSpeed.coerceIn(0, 255)
             
             // Quantize to band — floor at bandSize so nonzero input never rounds to 0

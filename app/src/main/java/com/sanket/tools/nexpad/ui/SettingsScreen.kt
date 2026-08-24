@@ -145,6 +145,39 @@ fun SettingsScreen(
             colors = SliderDefaults.colors(thumbColor = Color(0xFF00E676), activeTrackColor = Color(0xFF00E676))
         )
         
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        var rumbleMode by remember { mutableStateOf(sharedPref.getString("RUMBLE_MODE", "avg") ?: "avg") }
+        
+        Text("Rumble Mode (Stereo Mix)", color = Color.LightGray)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val modes = listOf(
+                "min" to "Min",
+                "avg" to "Average",
+                "max" to "Max"
+            )
+            
+            modes.forEach { (id, label) ->
+                val isSelected = rumbleMode == id
+                Button(
+                    onClick = {
+                        rumbleMode = id
+                        sharedPref.edit().putString("RUMBLE_MODE", id).apply()
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isSelected) Color(0xFF00E676) else Color.DarkGray,
+                        contentColor = if (isSelected) Color.Black else Color.White
+                    )
+                ) {
+                    Text(label)
+                }
+            }
+        }
+        
         // Gyro settings have been moved to the Desktop app.
     }
 }
