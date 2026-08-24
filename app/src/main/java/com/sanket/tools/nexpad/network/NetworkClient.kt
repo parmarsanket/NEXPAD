@@ -246,7 +246,7 @@ class NetworkClient : IGamepadConnection {
             sendMutex.withLock {
                 // Write directly to the pre-allocated sendBuffer
                 // Track sent time for RTT calculation
-                input.sequenceNumber = NexpadProtocol.getCurrentSequenceNumber()
+                input.sequenceNumber = NexpadProtocol.nextSequenceNumber()
                 val seq = input.sequenceNumber
                 val idx = seq % 128
                 val stamped = (System.nanoTime() and SEQ_STAMP_MASK.inv()) or (seq.toLong() and SEQ_STAMP_MASK)
