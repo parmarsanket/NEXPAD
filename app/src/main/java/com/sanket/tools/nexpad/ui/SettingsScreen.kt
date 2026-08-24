@@ -147,7 +147,7 @@ fun SettingsScreen(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        var rumbleMode by remember { mutableStateOf(sharedPref.getString("RUMBLE_MODE", "smart") ?: "smart") }
+        var rumbleMode by remember { mutableStateOf(sharedPref.getString("RUMBLE_MODE", "min") ?: "min") }
         
         Text("Rumble Mode (Stereo Mix)", color = Color.LightGray)
         Row(

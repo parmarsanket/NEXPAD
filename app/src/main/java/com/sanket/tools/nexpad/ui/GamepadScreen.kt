@@ -133,7 +133,7 @@ fun GamepadScreen(
         
         viewModel.feedbackFlow.collect { feedback ->
             val intensityScalar = sharedPref.getFloat("RUMBLE_INTENSITY", 1.0f)
-            val rumbleMode = sharedPref.getString("RUMBLE_MODE", "smart") ?: "smart"
+            val rumbleMode = sharedPref.getString("RUMBLE_MODE", "min") ?: "min"
             
             // ── Stage 1: Stereo-to-Mono Downmix ─────────────────────────
             // Controller has 2 motors (heavy left, light right).
