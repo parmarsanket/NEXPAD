@@ -26,6 +26,27 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
         inputState = inputState
     )
 
+    private val usbReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: android.content.Context, intent: android.content.Intent) {
+            if (intent.action == android.hardware.usb.UsbManager.ACTION_USB_ACCESSORY_ATTACHED) {
+                // Instantly switch to AOA and try to connect
+                networkManager.switchToAoaConnection()
+            }
+        }
+    }
+
+    init {
+        // Register receiver for USB connection
+        val filter = android.content.IntentFilter(android.hardware.usb.UsbManager.ACTION_USB_ACCESSORY_ATTACHED)
+        application.registerReceiver(usbReceiver, filter)
+        
+        // Initial check if already attached
+        val usbManager = application.getSystemService(android.content.Context.USB_SERVICE) as android.hardware.usb.UsbManager
+        if (!usbManager.accessoryList.isNullOrEmpty()) {
+            networkManager.switchToAoaConnection()
+        }
+    }
+
     private val sensorController = SensorController(
         inputState = inputState
     )
@@ -121,6 +142,7 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
 
     override fun onCleared() {
         super.onCleared()
+        getApplication<Application>().unregisterReceiver(usbReceiver)
         discoveryClient.stopDiscovery()
         networkManager.close()
     }

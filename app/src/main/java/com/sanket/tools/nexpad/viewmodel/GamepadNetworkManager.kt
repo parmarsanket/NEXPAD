@@ -5,6 +5,7 @@ import com.sanket.tools.nexpad.model.GamepadFeedback
 import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpad.network.IGamepadConnection
 import com.sanket.tools.nexpad.network.NetworkClient
+import com.sanket.tools.nexpad.network.AoaAccessoryConnection
 import kotlinx.coroutines.CoroutineScope
 import android.net.wifi.WifiManager
 import android.os.PowerManager
@@ -45,6 +46,19 @@ class GamepadNetworkManager(
     private val inputState: GamepadInput
 ) {
     private var connection: IGamepadConnection = NetworkClient()
+    
+    fun switchToAoaConnection() {
+        connection.close()
+        connection = AoaAccessoryConnection(context)
+        setupConnectionCallbacks()
+        scope.launch { connection.connect("aoa", 0) }
+    }
+    
+    fun switchToUdpConnection() {
+        connection.close()
+        connection = NetworkClient()
+        setupConnectionCallbacks()
+    }
     
     private val _feedbackFlow = MutableSharedFlow<GamepadFeedback>()
     val feedbackFlow: SharedFlow<GamepadFeedback> = _feedbackFlow.asSharedFlow()
