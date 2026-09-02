@@ -210,12 +210,28 @@ fun HomeScreen(navController: NavController, layoutManager: LayoutManager, viewM
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-
+                        val context = androidx.compose.ui.platform.LocalContext.current
                         CommandButton(
                             "Virtual Controller",
                             Icons.Rounded.SportsEsports,
                             MaterialTheme.colorScheme.primary,
                             { navController.navigate("gamepad") },
+                            Modifier.weight(1f)
+                        )
+                        CommandButton(
+                            "USB Tethering",
+                            Icons.Rounded.Link, // Assuming Link is imported
+                            NeonPalette.Cyan,
+                            { 
+                                try {
+                                    val intent = android.content.Intent().apply {
+                                        setClassName("com.android.settings", "com.android.settings.TetherSettings")
+                                    }
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    android.widget.Toast.makeText(context, "Cannot open tethering settings directly on this device.", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            },
                             Modifier.weight(1f)
                         )
                     }
