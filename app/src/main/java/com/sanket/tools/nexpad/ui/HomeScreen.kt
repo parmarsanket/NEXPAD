@@ -210,13 +210,7 @@ fun HomeScreen(navController: NavController, layoutManager: LayoutManager, viewM
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        CommandButton(
-                            "Connect Device",
-                            Icons.Rounded.Link,
-                            MaterialTheme.colorScheme.primary,
-                            { navController.navigate("device_scan") },
-                            Modifier.weight(1f)
-                        )
+
                         CommandButton(
                             "Virtual Controller",
                             Icons.Rounded.SportsEsports,
