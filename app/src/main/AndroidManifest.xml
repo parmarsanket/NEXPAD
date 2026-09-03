@@ -23,11 +23,11 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.NEXPAD">
+        android:theme="@style/Theme.NEXPAD" android:launchMode="singleTop">
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.NEXPAD"
+            android:theme="@style/Theme.NEXPAD" android:launchMode="singleTop"
 
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize"
             android:windowSoftInputMode="adjustResize">

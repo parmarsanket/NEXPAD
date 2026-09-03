@@ -89,6 +89,7 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
 
     fun connect(ip: String, port: Int) = networkManager.connect(ip, port)
     fun disconnect() = networkManager.disconnect()
+    fun switchToAoaConnection() = networkManager.switchToAoaConnection()
 
     fun updateAccel(x: Float, y: Float, z: Float) = sensorController.updateAccel(x, y, z)
     fun updateGravity(x: Float, y: Float, z: Float) = sensorController.updateGravity(x, y, z)

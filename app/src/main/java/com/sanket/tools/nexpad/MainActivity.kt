@@ -159,4 +159,11 @@ class MainActivity : ComponentActivity() {
         super.onPause()
         motionSensorManager.stop()
     }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        if (intent.action == android.hardware.usb.UsbManager.ACTION_USB_ACCESSORY_ATTACHED) {
+            viewModel.switchToAoaConnection()
+        }
+    }
 }
