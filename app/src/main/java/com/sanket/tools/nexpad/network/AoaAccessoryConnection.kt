@@ -1,4 +1,4 @@
-package com.sanket.tools.nexpad.network
+﻿package com.sanket.tools.nexpad.network
 
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -35,6 +35,16 @@ class AoaAccessoryConnection(private val context: Context) : IGamepadConnection 
     @Volatile private var isConnected = false
 
     private val sendByteArray = ByteArray(NexpadProtocol.INPUT_PACKET_SIZE)
+
+    // RTT Measurement (128-element Ring Buffer)
+    private val rttMap = java.util.concurrent.atomic.AtomicLongArray(128)
+    private val rttHistory = DoubleArray(100) { 0.0 }
+    private var rttHistoryIndex = 0
+    private var rttSamples = 0
+    private var lastRttLogTime = 0L
+    
+    // SEQ_STAMP_MASK: pack low 16 bits of seq into low 16 bits of nanoTime slot.
+    private val SEQ_STAMP_MASK = 0xFFFFL
 
     override var onFeedbackReceived: ((GamepadFeedback) -> Unit)? = null
     override var onConnectionStateChanged: ((Boolean) -> Unit)? = null
@@ -98,14 +108,54 @@ class AoaAccessoryConnection(private val context: Context) : IGamepadConnection 
 
                 connectionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
                 receiveJob = connectionScope?.launch {
-                    val buffer = ByteArray(8) // Expecting 8-byte feedback packets
+                    val buffer = ByteArray(NexpadProtocol.FEEDBACK_PACKET_SIZE)
                     while (isActive && isConnected) {
                         try {
                             val bytesRead = inputStream?.read(buffer) ?: -1
                             if (bytesRead > 0) {
                                 val feedbackPair = NexpadProtocol.decodeFeedback(buffer.copyOfRange(0, bytesRead))
                                 if (feedbackPair != null) {
-                                    onFeedbackReceived?.invoke(feedbackPair.first)
+                                    val feedback = feedbackPair.first
+                                    val echoSeq = feedbackPair.second
+                                    
+                                    onFeedbackReceived?.invoke(feedback)
+                                    
+                                    // Calculate RTT
+                                    val idx = echoSeq % 128
+                                    val packed = rttMap.get(idx)
+                                    if (packed != 0L) {
+                                        val ownerStamp = packed and SEQ_STAMP_MASK
+                                        if (ownerStamp == (echoSeq.toLong() and SEQ_STAMP_MASK)) {
+                                            val sentTimeNanos = packed and SEQ_STAMP_MASK.inv()
+                                            val rttMs = (System.nanoTime() - sentTimeNanos) / 1_000_000.0
+                                            rttMap.set(idx, 0L) // Clear
+                                            
+                                            rttHistory[rttHistoryIndex] = rttMs
+                                            rttHistoryIndex = (rttHistoryIndex + 1) % 100
+                                            if (rttSamples < 100) rttSamples++
+                                            
+                                            val now = System.currentTimeMillis()
+                                            if (rttSamples > 0 && (now - lastRttLogTime > 1000)) {
+                                                lastRttLogTime = now
+                                                
+                                                var minRtt = Double.MAX_VALUE
+                                                var maxRtt = Double.MIN_VALUE
+                                                var sumRtt = 0.0
+                                                for (i in 0 until rttSamples) {
+                                                    val v = rttHistory[i]
+                                                    if (v < minRtt) minRtt = v
+                                                    if (v > maxRtt) maxRtt = v
+                                                    sumRtt += v
+                                                }
+                                                val avgRtt = sumRtt / rttSamples
+                                                val jitter = maxRtt - minRtt
+                                                
+                                                val lossPctFloat = (buffer[5].toInt() and 0xFF) / 255f
+                                                
+                                                onNetworkPerformanceUpdated?.invoke(avgRtt.toLong(), jitter.toLong(), lossPctFloat)
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         } catch (e: IOException) {
@@ -129,6 +179,12 @@ class AoaAccessoryConnection(private val context: Context) : IGamepadConnection 
         if (!isConnected) return
         try {
             input.sequenceNumber = NexpadProtocol.nextSequenceNumber()
+            
+            val seq = input.sequenceNumber
+            val idx = seq % 128
+            val stamped = (System.nanoTime() and SEQ_STAMP_MASK.inv()) or (seq.toLong() and SEQ_STAMP_MASK)
+            rttMap.set(idx, stamped)
+            
             NexpadProtocol.encodeInput(input, sendByteArray)
             outputStream?.write(sendByteArray)
         } catch (e: IOException) {
