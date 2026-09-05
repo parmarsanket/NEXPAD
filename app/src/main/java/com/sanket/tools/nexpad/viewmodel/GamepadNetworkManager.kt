@@ -83,6 +83,7 @@ class GamepadNetworkManager(
             android.util.Log.w("NEXPAD", "Refusing AOA switch: USB Debugging is ON. ADB has exclusive priority.")
             return
         }
+        disconnect()
         connection.close()
         connection = AoaAccessoryConnection(context)
         _connectionStats.value = _connectionStats.value.copy(transport = ConnectionType.USB)
@@ -96,6 +97,7 @@ class GamepadNetworkManager(
             _connectionStatus.value = "USB Debugging is OFF"
             return
         }
+        disconnect()
         connection.close()
         connection = com.sanket.tools.nexpad.network.AdbBridgeConnection(context)
         _connectionStats.value = _connectionStats.value.copy(transport = ConnectionType.USB)
@@ -104,8 +106,10 @@ class GamepadNetworkManager(
     }
     
     fun switchToUdpConnection() {
+        disconnect()
         connection.close()
         connection = NetworkClient()
+        _connectionStats.value = _connectionStats.value.copy(transport = ConnectionType.WIFI)
         setupConnectionCallbacks()
     }
 
@@ -121,6 +125,7 @@ class GamepadNetworkManager(
     }
 
     fun switchToBluetoothConnection(deviceAddress: String) {
+        disconnect()
         connection.close()
         connection = com.sanket.tools.nexpad.network.BluetoothRfcommConnection(context)
         _connectionStats.value = _connectionStats.value.copy(transport = ConnectionType.BT)
@@ -203,6 +208,13 @@ class GamepadNetworkManager(
     }
 
     fun connect(address: String, port: Int) {
+        if (connection !is NetworkClient) {
+            disconnect()
+            connection.close()
+            connection = NetworkClient()
+            _connectionStats.value = _connectionStats.value.copy(transport = ConnectionType.WIFI)
+            setupConnectionCallbacks()
+        }
         detectNetworkType()
         scope.launch {
             try {
@@ -217,10 +229,14 @@ class GamepadNetworkManager(
     
     fun disconnect() {
         transmitJob?.cancel()
+        transmitJob = null
         signalPollJob?.cancel()
+        signalPollJob = null
         releaseWifiLock()
         connection.disconnect()
         _isConnected.value = false
+        _connectionStats.value = ConnectionStats()
+        _connectionStatus.value = "Disconnected"
     }
 
     fun close() {

@@ -521,7 +521,12 @@ private fun DeviceHeroCard(
                 is DeviceCardState.Searching ->
                     SearchingContent(onConnectAdbClick = onConnectAdbClick, onConnectBtClick = onConnectBtClick)
                 is DeviceCardState.Found ->
-                    FoundContent(server = target.server, onConnectClick = onConnectClick)
+                    FoundContent(
+                        server = target.server,
+                        onConnectClick = onConnectClick,
+                        onConnectAdbClick = onConnectAdbClick,
+                        onConnectBtClick = onConnectBtClick
+                    )
                 is DeviceCardState.Connected ->
                     ConnectedContent(name = target.name, stats = target.stats, onDisconnectClick = onDisconnectClick)
             }
@@ -627,7 +632,12 @@ private fun RadarScanner(size: Dp) {
 }
 
 @Composable
-private fun FoundContent(server: DiscoveredServer, onConnectClick: (DiscoveredServer) -> Unit) {
+private fun FoundContent(
+    server: DiscoveredServer,
+    onConnectClick: (DiscoveredServer) -> Unit,
+    onConnectAdbClick: () -> Unit = {},
+    onConnectBtClick: () -> Unit = {}
+) {
     val infinite = rememberInfiniteTransition(label = "foundPulse")
     val glow by infinite.animateFloat(
         initialValue = 0.4f, targetValue = 1f,
@@ -637,7 +647,7 @@ private fun FoundContent(server: DiscoveredServer, onConnectClick: (DiscoveredSe
 
     Column(
         modifier = Modifier.fillMaxWidth().padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Box(
@@ -661,7 +671,34 @@ private fun FoundContent(server: DiscoveredServer, onConnectClick: (DiscoveredSe
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan)
         ) {
-            Text("Connect", color = Color.Black, fontWeight = FontWeight.Bold)
+            Text("Connect (Wi-Fi)", color = Color.Black, fontWeight = FontWeight.Bold)
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            OutlinedButton(
+                onClick = onConnectAdbClick,
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Green),
+                border = BorderStroke(1.dp, NeonPalette.Green.copy(alpha = 0.6f)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Rounded.Usb, contentDescription = null, modifier = Modifier.size(16.dp), tint = NeonPalette.Green)
+                Spacer(Modifier.width(4.dp))
+                Text("USB (ADB)", style = MaterialTheme.typography.labelSmall, color = NeonPalette.Green)
+            }
+            OutlinedButton(
+                onClick = onConnectBtClick,
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Cyan),
+                border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.6f)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Rounded.Bluetooth, contentDescription = null, modifier = Modifier.size(16.dp), tint = NeonPalette.Cyan)
+                Spacer(Modifier.width(4.dp))
+                Text("Bluetooth", style = MaterialTheme.typography.labelSmall, color = NeonPalette.Cyan)
+            }
         }
     }
 }

@@ -29,6 +29,11 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     private val usbReceiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(context: android.content.Context, intent: android.content.Intent) {
             if (intent.action == android.hardware.usb.UsbManager.ACTION_USB_ACCESSORY_ATTACHED) {
+                // If already connected via Wi-Fi, Bluetooth, or ADB, do NOT interrupt active gameplay!
+                if (isConnected.value) {
+                    android.util.Log.d("NEXPAD", "Ignoring AOA accessory attach: active session already connected.")
+                    return
+                }
                 // If USB Debugging is ON, ADB has exclusive priority — NEVER switch to AOA!
                 if (!isUsbDebuggingEnabled()) {
                     networkManager.switchToAoaConnection()
@@ -44,12 +49,18 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
         val filter = android.content.IntentFilter(android.hardware.usb.UsbManager.ACTION_USB_ACCESSORY_ATTACHED)
         application.registerReceiver(usbReceiver, filter)
         
-        // Initial check:
-        if (isUsbDebuggingEnabled()) {
-            // When USB Debugging is ON, automatically attempt ADB connection
-            networkManager.switchToAdbConnection()
-        } else {
-            // When USB Debugging is OFF, check if an AOA accessory is already attached
+        // Single Active Transport Guard: stop discovery when connected
+        viewModelScope.launch {
+            isConnected.collect { connected ->
+                if (connected) {
+                    stopDiscovery()
+                    _discoveredServers.value = emptyList()
+                }
+            }
+        }
+
+        // When USB Debugging is OFF, check if an AOA accessory is already attached
+        if (!isUsbDebuggingEnabled()) {
             val usbManager = application.getSystemService(android.content.Context.USB_SERVICE) as android.hardware.usb.UsbManager
             if (!usbManager.accessoryList.isNullOrEmpty()) {
                 networkManager.switchToAoaConnection()
@@ -98,7 +109,10 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun connect(ip: String, port: Int) = networkManager.connect(ip, port)
-    fun disconnect() = networkManager.disconnect()
+    fun disconnect() {
+        networkManager.disconnect()
+        startDiscovery()
+    }
     fun switchToAoaConnection() = networkManager.switchToAoaConnection()
     fun switchToAdbConnection() = networkManager.switchToAdbConnection()
     fun getPairedBluetoothDevices() = networkManager.getPairedBluetoothDevices()
