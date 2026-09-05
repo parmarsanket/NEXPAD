@@ -30,12 +30,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Bluetooth
 import androidx.compose.material.icons.rounded.Computer
 import androidx.compose.material.icons.rounded.DashboardCustomize
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.Usb
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import android.annotation.SuppressLint
+import android.widget.Toast
 import androidx.compose.material3.*
 import androidx.compose.material3.carousel.HorizontalCenteredHeroCarousel
 import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
@@ -193,6 +198,62 @@ fun HomeScreen(navController: NavController, layoutManager: LayoutManager, viewM
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 val context = androidx.compose.ui.platform.LocalContext.current
+                var showBluetoothDialog by remember { mutableStateOf(false) }
+                var pairedDevices by remember { mutableStateOf<List<android.bluetooth.BluetoothDevice>>(emptyList()) }
+
+                val bluetoothPermissionLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestPermission()
+                ) { isGranted ->
+                    if (isGranted) {
+                        val devices = viewModel.getPairedBluetoothDevices()
+                        if (devices.isEmpty()) {
+                            Toast.makeText(context, "No paired Bluetooth devices found. Please pair with PC first.", Toast.LENGTH_LONG).show()
+                            try {
+                                context.startActivity(android.content.Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS))
+                            } catch (_: Exception) {}
+                        } else {
+                            pairedDevices = devices
+                            showBluetoothDialog = true
+                        }
+                    } else {
+                        Toast.makeText(context, "Bluetooth permission is required to connect via Bluetooth", Toast.LENGTH_SHORT).show()
+                    }
+                }
+
+                val onBluetoothClick: () -> Unit = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        val hasPermission = ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.BLUETOOTH_CONNECT
+                        ) == PackageManager.PERMISSION_GRANTED
+                        if (!hasPermission) {
+                            bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+                        } else {
+                            val devices = viewModel.getPairedBluetoothDevices()
+                            if (devices.isEmpty()) {
+                                Toast.makeText(context, "No paired Bluetooth devices found. Please pair with PC first.", Toast.LENGTH_LONG).show()
+                                try {
+                                    context.startActivity(android.content.Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS))
+                                } catch (_: Exception) {}
+                            } else {
+                                pairedDevices = devices
+                                showBluetoothDialog = true
+                            }
+                        }
+                    } else {
+                        val devices = viewModel.getPairedBluetoothDevices()
+                        if (devices.isEmpty()) {
+                            Toast.makeText(context, "No paired Bluetooth devices found. Please pair with PC first.", Toast.LENGTH_LONG).show()
+                            try {
+                                context.startActivity(android.content.Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS))
+                            } catch (_: Exception) {}
+                        } else {
+                            pairedDevices = devices
+                            showBluetoothDialog = true
+                        }
+                    }
+                }
+
                 val onAdbClick: () -> Unit = {
                     if (!viewModel.isUsbDebuggingEnabled()) {
                         try {
@@ -213,8 +274,63 @@ fun HomeScreen(navController: NavController, layoutManager: LayoutManager, viewM
                     stats = connectionStats,
                     onConnectClick = { server -> viewModel.connect(server.ipAddress, server.port) },
                     onDisconnectClick = { viewModel.disconnect() },
-                    onConnectAdbClick = onAdbClick
+                    onConnectAdbClick = onAdbClick,
+                    onConnectBtClick = onBluetoothClick
                 )
+
+                if (showBluetoothDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showBluetoothDialog = false },
+                        title = {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Icon(Icons.Rounded.Bluetooth, contentDescription = null, tint = NeonPalette.Cyan)
+                                Text("Select Bluetooth PC", color = Color.White)
+                            }
+                        },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                Text("Choose your paired Windows computer to connect:", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                                Spacer(Modifier.height(4.dp))
+                                pairedDevices.forEach { device ->
+                                    @SuppressLint("MissingPermission")
+                                    val devName = device.name ?: "Unknown Device"
+                                    val devAddress = device.address
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                showBluetoothDialog = false
+                                                viewModel.switchToBluetoothConnection(devAddress)
+                                            },
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
+                                        shape = RoundedCornerShape(12.dp),
+                                        border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.3f))
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(14.dp).fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Column {
+                                                Text(devName, style = MaterialTheme.typography.titleSmall, color = Color.White)
+                                                Text(devAddress, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
+                                            Icon(Icons.Rounded.Link, contentDescription = "Connect", tint = NeonPalette.Cyan, modifier = Modifier.size(20.dp))
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = {},
+                        dismissButton = {
+                            TextButton(onClick = { showBluetoothDialog = false }) {
+                                Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        },
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                }
 
                 Text(
                     "Command Center",
@@ -271,11 +387,23 @@ fun HomeScreen(navController: NavController, layoutManager: LayoutManager, viewM
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        val context = androidx.compose.ui.platform.LocalContext.current
+                        CommandButton(
+                            if (isConnected && connectionStats.transport == ConnectionType.BT) "Disconnect BT" else "Bluetooth",
+                            Icons.Rounded.Bluetooth,
+                            NeonPalette.Cyan,
+                            {
+                                if (isConnected && connectionStats.transport == ConnectionType.BT) {
+                                    viewModel.disconnect()
+                                } else {
+                                    onBluetoothClick()
+                                }
+                            },
+                            Modifier.weight(1f)
+                        )
                         CommandButton(
                             "USB Tethering",
                             Icons.Rounded.Link,
-                            NeonPalette.Cyan,
+                            MaterialTheme.colorScheme.primaryContainer,
                             { 
                                 try {
                                     val intent = android.content.Intent().apply {
@@ -286,7 +414,7 @@ fun HomeScreen(navController: NavController, layoutManager: LayoutManager, viewM
                                     android.widget.Toast.makeText(context, "Cannot open tethering settings directly on this device.", android.widget.Toast.LENGTH_SHORT).show()
                                 }
                             },
-                            Modifier.fillMaxWidth()
+                            Modifier.weight(1f)
                         )
                     }
                 }
@@ -356,12 +484,17 @@ private fun DeviceHeroCard(
     stats: com.sanket.tools.nexpad.viewmodel.ConnectionStats,
     onConnectClick: (DiscoveredServer) -> Unit,
     onDisconnectClick: () -> Unit,
-    onConnectAdbClick: () -> Unit = {}
+    onConnectAdbClick: () -> Unit = {},
+    onConnectBtClick: () -> Unit = {}
 ) {
     val state: DeviceCardState = remember(isConnected, servers, stats) {
         when {
             isConnected -> DeviceCardState.Connected(
-                name = if (stats.transport == ConnectionType.USB) "PC (USB / ADB)" else (servers.firstOrNull()?.name ?: "PC"),
+                name = when (stats.transport) {
+                    ConnectionType.USB -> "PC (USB / ADB)"
+                    ConnectionType.BT -> "PC (Bluetooth)"
+                    else -> servers.firstOrNull()?.name ?: "PC"
+                },
                 stats = stats
             )
             servers.isNotEmpty() -> DeviceCardState.Found(servers.first())
@@ -386,7 +519,7 @@ private fun DeviceHeroCard(
         ) { target ->
             when (target) {
                 is DeviceCardState.Searching ->
-                    SearchingContent(onConnectAdbClick = onConnectAdbClick)
+                    SearchingContent(onConnectAdbClick = onConnectAdbClick, onConnectBtClick = onConnectBtClick)
                 is DeviceCardState.Found ->
                     FoundContent(server = target.server, onConnectClick = onConnectClick)
                 is DeviceCardState.Connected ->
@@ -397,7 +530,7 @@ private fun DeviceHeroCard(
 }
 
 @Composable
-private fun SearchingContent(onConnectAdbClick: () -> Unit = {}) {
+private fun SearchingContent(onConnectAdbClick: () -> Unit = {}, onConnectBtClick: () -> Unit = {}) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(28.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -417,15 +550,32 @@ private fun SearchingContent(onConnectAdbClick: () -> Unit = {}) {
                 textAlign = TextAlign.Center
             )
         }
-        OutlinedButton(
-            onClick = onConnectAdbClick,
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Green),
-            border = BorderStroke(1.dp, NeonPalette.Green.copy(alpha = 0.6f)),
-            shape = RoundedCornerShape(12.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Icon(Icons.Rounded.Usb, contentDescription = null, modifier = Modifier.size(18.dp), tint = NeonPalette.Green)
-            Spacer(Modifier.width(8.dp))
-            Text("Connect via USB (ADB)", style = MaterialTheme.typography.labelMedium, color = NeonPalette.Green)
+            OutlinedButton(
+                onClick = onConnectAdbClick,
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Green),
+                border = BorderStroke(1.dp, NeonPalette.Green.copy(alpha = 0.6f)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Rounded.Usb, contentDescription = null, modifier = Modifier.size(16.dp), tint = NeonPalette.Green)
+                Spacer(Modifier.width(4.dp))
+                Text("USB (ADB)", style = MaterialTheme.typography.labelSmall, color = NeonPalette.Green)
+            }
+            OutlinedButton(
+                onClick = onConnectBtClick,
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Cyan),
+                border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.6f)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Rounded.Bluetooth, contentDescription = null, modifier = Modifier.size(16.dp), tint = NeonPalette.Cyan)
+                Spacer(Modifier.width(4.dp))
+                Text("Bluetooth", style = MaterialTheme.typography.labelSmall, color = NeonPalette.Cyan)
+            }
         }
     }
 }
@@ -576,15 +726,17 @@ private fun ConnectedContent(name: String, stats: com.sanket.tools.nexpad.viewmo
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(14.dp))
                 .background(Color.White.copy(alpha = 0.05f))
-                .padding(vertical = 14.dp),
+                .padding(vertical = 14.dp, horizontal = 4.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            LiveStat(modifier = Modifier.weight(1f), label = "Type", value = stats.transport.displayName)
+            LiveStat(modifier = Modifier.weight(1.1f), label = "Input Lag", value = stats.inputLagMs?.toString() ?: "--", unit = "ms")
             StatDivider()
-            LiveStat(modifier = Modifier.weight(1f), label = "Latency", value = stats.latencyMs?.toString() ?: "--", unit = "ms")
+            LiveStat(modifier = Modifier.weight(0.9f), label = "Ping", value = stats.latencyMs?.toString() ?: "--", unit = "ms")
             StatDivider()
-            LiveStat(modifier = Modifier.weight(1f), label = "Jitter", value = stats.jitterMs?.let { "±$it" } ?: "--", unit = "ms")
+            LiveStat(modifier = Modifier.weight(1.0f), label = "Jitter", value = stats.oneWayJitterMs?.let { String.format(java.util.Locale.US, "±%.1f", it) } ?: "--", unit = "ms")
+            StatDivider()
+            LiveStat(modifier = Modifier.weight(1.0f), label = "Type", value = stats.transport.displayName)
         }
 
         OutlinedButton(
@@ -622,7 +774,8 @@ private fun LiveStat(modifier: Modifier = Modifier, label: String, value: String
             } else {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Bottom
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.Center
                 ) {
                     Text(
                         text = v,
@@ -630,17 +783,15 @@ private fun LiveStat(modifier: Modifier = Modifier, label: String, value: String
                         color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.End,
-                        modifier = Modifier.weight(1f)
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                     Spacer(Modifier.width(2.dp))
                     Text(
                         text = unit,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f).padding(bottom = 1.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Start
+                        maxLines = 1,
+                        modifier = Modifier.padding(bottom = 1.dp)
                     )
                 }
             }

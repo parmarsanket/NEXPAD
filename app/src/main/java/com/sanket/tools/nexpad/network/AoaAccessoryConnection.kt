@@ -85,7 +85,7 @@ class AoaAccessoryConnection(private val context: Context) : IGamepadConnection 
     override var onConnectionStateChanged: ((Boolean) -> Unit)? = null
     override var onStatusChanged: ((String) -> Unit)? = null
     override var onDiagnosticLog: ((String) -> Unit)? = null
-    override var onNetworkPerformanceUpdated: ((latencyMs: Long, jitterMs: Long, packetLoss: Float) -> Unit)? = null
+    override var onNetworkPerformanceUpdated: ((latencyMs: Long, jitterMs: Float, packetLoss: Float) -> Unit)? = null
 
     private val permissionReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -323,7 +323,7 @@ class AoaAccessoryConnection(private val context: Context) : IGamepadConnection 
             val lossPctFloat = (packetLossByte and 0xFF) / 255f
 
             callbackScope?.launch {
-                onNetworkPerformanceUpdated?.invoke(avgRtt.toLong(), jitterMs.toLong(), lossPctFloat)
+                onNetworkPerformanceUpdated?.invoke(avgRtt.toLong(), jitterMs.toFloat(), lossPctFloat)
             }
         }
     }

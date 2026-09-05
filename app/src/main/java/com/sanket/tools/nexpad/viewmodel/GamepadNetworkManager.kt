@@ -34,9 +34,28 @@ data class ConnectionStats(
     val rxLinkSpeedMbps: Int? = null,
     val txLinkSpeedMbps: Int? = null,
     val latencyMs: Long? = null,
-    val jitterMs: Long? = null,
+    val jitterMs: Float? = null,
     val packetLossPercent: Float? = null
-)
+) {
+    /**
+     * Real One-Way Controller Input Lag (Phone -> PC).
+     * Represents the time for a button/stick input to reach Windows and register in-game.
+     * Approximated as half of Round-Trip Ping (RTT).
+     */
+    val inputLagMs: Long?
+        get() = latencyMs?.let { rtt ->
+            if (rtt <= 0L) 1L else ((rtt + 1) / 2).coerceAtLeast(1L)
+        }
+
+    /**
+     * Real One-Way Input Jitter (Phone -> PC).
+     * Approximated as half of Round-Trip Jitter variance.
+     */
+    val oneWayJitterMs: Float?
+        get() = jitterMs?.let { j ->
+            (j / 2f).coerceAtLeast(0f)
+        }
+}
 
 
 
@@ -88,6 +107,25 @@ class GamepadNetworkManager(
         connection.close()
         connection = NetworkClient()
         setupConnectionCallbacks()
+    }
+
+    @android.annotation.SuppressLint("MissingPermission")
+    fun getPairedBluetoothDevices(): List<android.bluetooth.BluetoothDevice> {
+        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? android.bluetooth.BluetoothManager
+        val adapter = bluetoothManager?.adapter ?: android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+        return if (adapter != null && adapter.isEnabled) {
+            adapter.bondedDevices?.toList() ?: emptyList()
+        } else {
+            emptyList()
+        }
+    }
+
+    fun switchToBluetoothConnection(deviceAddress: String) {
+        connection.close()
+        connection = com.sanket.tools.nexpad.network.BluetoothRfcommConnection(context)
+        _connectionStats.value = _connectionStats.value.copy(transport = ConnectionType.BT)
+        setupConnectionCallbacks()
+        scope.launch { connection.connect(deviceAddress, 0) }
     }
     
     private val _feedbackFlow = MutableSharedFlow<GamepadFeedback>()
@@ -286,7 +324,9 @@ class GamepadNetworkManager(
         transmitJob = scope.launch(gamepadDispatcher) {
             android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO)
             
-            val intervalNanos = 5_000_000L // 200Hz = 5ms
+            // Bluetooth Classic ACL 6-slot timing aligns optimally at 125 Hz (8ms).
+            // USB (ADB/AOA) and Wi-Fi run at full 200 Hz (5ms).
+            val intervalNanos = if (connection is com.sanket.tools.nexpad.network.BluetoothRfcommConnection) 8_000_000L else 5_000_000L
             var nextTick = System.nanoTime()
             
             while (isActive) {

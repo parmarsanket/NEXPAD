@@ -45,7 +45,7 @@ class NetworkClient : IGamepadConnection {
     override var onConnectionStateChanged: ((Boolean) -> Unit)? = null
     override var onStatusChanged: ((String) -> Unit)? = null
     override var onDiagnosticLog: ((String) -> Unit)? = null
-    override var onNetworkPerformanceUpdated: ((latencyMs: Long, jitterMs: Long, packetLoss: Float) -> Unit)? = null
+    override var onNetworkPerformanceUpdated: ((latencyMs: Long, jitterMs: Float, packetLoss: Float) -> Unit)? = null
 
     @Volatile
     private var isHandshakeComplete = false
@@ -189,20 +189,24 @@ class NetworkClient : IGamepadConnection {
                                         var minRtt = Double.MAX_VALUE
                                         var maxRtt = Double.MIN_VALUE
                                         var sumRtt = 0.0
+                                        var sumConsecutiveDelta = 0.0
                                         for (i in 0 until rttSamples) {
                                             val v = rttHistory[i]
                                             if (v < minRtt) minRtt = v
                                             if (v > maxRtt) maxRtt = v
                                             sumRtt += v
+                                            if (i > 0) {
+                                                sumConsecutiveDelta += kotlin.math.abs(v - rttHistory[i - 1])
+                                            }
                                         }
                                         val avgRtt = sumRtt / rttSamples
-                                        val jitterMs = maxRtt - minRtt
+                                        val jitterMs = if (rttSamples > 1) (sumConsecutiveDelta / (rttSamples - 1)) else 0.0
                                         val rttMsg = String.format("min %.1fms / avg %.1fms / max %.1fms", minRtt, avgRtt, maxRtt)
                                         val logMsg = "📡 RTT: $rttMsg"
                                         onDiagnosticLog?.invoke(logMsg)
                                         
                                         val lossPctFloat = feedback.packetLossPct / 255f
-                                        onNetworkPerformanceUpdated?.invoke(avgRtt.toLong(), jitterMs.toLong(), lossPctFloat)
+                                        onNetworkPerformanceUpdated?.invoke(avgRtt.toLong(), jitterMs.toFloat(), lossPctFloat)
                                         android.util.Log.d("NEXPAD", logMsg)
                                     }
                                 }

@@ -101,6 +101,8 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     fun disconnect() = networkManager.disconnect()
     fun switchToAoaConnection() = networkManager.switchToAoaConnection()
     fun switchToAdbConnection() = networkManager.switchToAdbConnection()
+    fun getPairedBluetoothDevices() = networkManager.getPairedBluetoothDevices()
+    fun switchToBluetoothConnection(macAddress: String) = networkManager.switchToBluetoothConnection(macAddress)
 
     fun isUsbDebuggingEnabled(): Boolean {
         return try {
