@@ -67,7 +67,9 @@ class MainActivity : ComponentActivity() {
         layoutManager = LayoutManager(this)
 
         if (intent?.action == android.hardware.usb.UsbManager.ACTION_USB_ACCESSORY_ATTACHED) {
-            viewModel.switchToAoaConnection()
+            if (!viewModel.isUsbDebuggingEnabled()) {
+                viewModel.switchToAoaConnection()
+            }
         }
 
         val sharedPref = getSharedPreferences("nexpad_prefs", MODE_PRIVATE)

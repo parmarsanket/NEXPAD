@@ -35,6 +35,7 @@ import androidx.compose.material.icons.rounded.DashboardCustomize
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.SportsEsports
+import androidx.compose.material.icons.rounded.Usb
 import androidx.compose.material3.*
 import androidx.compose.material3.carousel.HorizontalCenteredHeroCarousel
 import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
@@ -191,12 +192,28 @@ fun HomeScreen(navController: NavController, layoutManager: LayoutManager, viewM
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onSurface
                 )
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val onAdbClick: () -> Unit = {
+                    if (!viewModel.isUsbDebuggingEnabled()) {
+                        try {
+                            val intent = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+                            context.startActivity(intent)
+                            android.widget.Toast.makeText(context, "Please enable USB Debugging to connect via ADB", android.widget.Toast.LENGTH_LONG).show()
+                        } catch (_: Exception) {
+                            android.widget.Toast.makeText(context, "Developer Settings not found. Enable Developer Options.", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        viewModel.switchToAdbConnection()
+                    }
+                }
+
                 DeviceHeroCard(
                     isConnected = isConnected,
                     servers = discoveredServers,
                     stats = connectionStats,
                     onConnectClick = { server -> viewModel.connect(server.ipAddress, server.port) },
-                    onDisconnectClick = { viewModel.disconnect() } // add if not already exposed on the VM
+                    onDisconnectClick = { viewModel.disconnect() },
+                    onConnectAdbClick = onAdbClick
                 )
 
                 Text(
@@ -210,7 +227,6 @@ fun HomeScreen(navController: NavController, layoutManager: LayoutManager, viewM
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        val context = androidx.compose.ui.platform.LocalContext.current
                         CommandButton(
                             "Virtual Controller",
                             Icons.Rounded.SportsEsports,
@@ -219,17 +235,14 @@ fun HomeScreen(navController: NavController, layoutManager: LayoutManager, viewM
                             Modifier.weight(1f)
                         )
                         CommandButton(
-                            "USB Tethering",
-                            Icons.Rounded.Link, // Assuming Link is imported
-                            NeonPalette.Cyan,
+                            if (isConnected && connectionStats.transport == ConnectionType.USB) "Disconnect USB" else "USB (ADB Debug)",
+                            Icons.Rounded.Usb,
+                            NeonPalette.Green,
                             { 
-                                try {
-                                    val intent = android.content.Intent().apply {
-                                        setClassName("com.android.settings", "com.android.settings.TetherSettings")
-                                    }
-                                    context.startActivity(intent)
-                                } catch (e: Exception) {
-                                    android.widget.Toast.makeText(context, "Cannot open tethering settings directly on this device.", android.widget.Toast.LENGTH_SHORT).show()
+                                if (isConnected && connectionStats.transport == ConnectionType.USB) {
+                                    viewModel.disconnect()
+                                } else {
+                                    onAdbClick()
                                 }
                             },
                             Modifier.weight(1f)
@@ -252,6 +265,28 @@ fun HomeScreen(navController: NavController, layoutManager: LayoutManager, viewM
                             MaterialTheme.colorScheme.primaryContainer,
                             { navController.navigate("settings") },
                             Modifier.weight(1f)
+                        )
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        val context = androidx.compose.ui.platform.LocalContext.current
+                        CommandButton(
+                            "USB Tethering",
+                            Icons.Rounded.Link,
+                            NeonPalette.Cyan,
+                            { 
+                                try {
+                                    val intent = android.content.Intent().apply {
+                                        setClassName("com.android.settings", "com.android.settings.TetherSettings")
+                                    }
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    android.widget.Toast.makeText(context, "Cannot open tethering settings directly on this device.", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            Modifier.fillMaxWidth()
                         )
                     }
                 }
@@ -320,12 +355,13 @@ private fun DeviceHeroCard(
     servers: List<DiscoveredServer>,
     stats: com.sanket.tools.nexpad.viewmodel.ConnectionStats,
     onConnectClick: (DiscoveredServer) -> Unit,
-    onDisconnectClick: () -> Unit
+    onDisconnectClick: () -> Unit,
+    onConnectAdbClick: () -> Unit = {}
 ) {
     val state: DeviceCardState = remember(isConnected, servers, stats) {
         when {
             isConnected -> DeviceCardState.Connected(
-                name = servers.firstOrNull()?.name ?: "PC",
+                name = if (stats.transport == ConnectionType.USB) "PC (USB / ADB)" else (servers.firstOrNull()?.name ?: "PC"),
                 stats = stats
             )
             servers.isNotEmpty() -> DeviceCardState.Found(servers.first())
@@ -350,7 +386,7 @@ private fun DeviceHeroCard(
         ) { target ->
             when (target) {
                 is DeviceCardState.Searching ->
-                    SearchingContent()
+                    SearchingContent(onConnectAdbClick = onConnectAdbClick)
                 is DeviceCardState.Found ->
                     FoundContent(server = target.server, onConnectClick = onConnectClick)
                 is DeviceCardState.Connected ->
@@ -361,7 +397,7 @@ private fun DeviceHeroCard(
 }
 
 @Composable
-private fun SearchingContent() {
+private fun SearchingContent(onConnectAdbClick: () -> Unit = {}) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(28.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -380,6 +416,16 @@ private fun SearchingContent() {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
+        }
+        OutlinedButton(
+            onClick = onConnectAdbClick,
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Green),
+            border = BorderStroke(1.dp, NeonPalette.Green.copy(alpha = 0.6f)),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(Icons.Rounded.Usb, contentDescription = null, modifier = Modifier.size(18.dp), tint = NeonPalette.Green)
+            Spacer(Modifier.width(8.dp))
+            Text("Connect via USB (ADB)", style = MaterialTheme.typography.labelMedium, color = NeonPalette.Green)
         }
     }
 }

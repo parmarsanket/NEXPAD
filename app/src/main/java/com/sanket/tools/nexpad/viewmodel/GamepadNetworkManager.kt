@@ -47,11 +47,41 @@ class GamepadNetworkManager(
 ) {
     private var connection: IGamepadConnection = NetworkClient()
     
+    private fun isUsbDebuggingEnabled(): Boolean {
+        return try {
+            android.provider.Settings.Global.getInt(
+                context.contentResolver,
+                android.provider.Settings.Global.ADB_ENABLED,
+                0
+            ) == 1
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun switchToAoaConnection() {
+        if (isUsbDebuggingEnabled()) {
+            android.util.Log.w("NEXPAD", "Refusing AOA switch: USB Debugging is ON. ADB has exclusive priority.")
+            return
+        }
         connection.close()
         connection = AoaAccessoryConnection(context)
+        _connectionStats.value = _connectionStats.value.copy(transport = ConnectionType.USB)
         setupConnectionCallbacks()
         scope.launch { connection.connect("aoa", 0) }
+    }
+
+    fun switchToAdbConnection() {
+        if (!isUsbDebuggingEnabled()) {
+            android.util.Log.w("NEXPAD", "Refusing ADB switch: USB Debugging is OFF.")
+            _connectionStatus.value = "USB Debugging is OFF"
+            return
+        }
+        connection.close()
+        connection = com.sanket.tools.nexpad.network.AdbBridgeConnection(context)
+        _connectionStats.value = _connectionStats.value.copy(transport = ConnectionType.USB)
+        setupConnectionCallbacks()
+        scope.launch { connection.connect("adb", 0) }
     }
     
     fun switchToUdpConnection() {

@@ -29,21 +29,31 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     private val usbReceiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(context: android.content.Context, intent: android.content.Intent) {
             if (intent.action == android.hardware.usb.UsbManager.ACTION_USB_ACCESSORY_ATTACHED) {
-                // Instantly switch to AOA and try to connect
-                networkManager.switchToAoaConnection()
+                // If USB Debugging is ON, ADB has exclusive priority — NEVER switch to AOA!
+                if (!isUsbDebuggingEnabled()) {
+                    networkManager.switchToAoaConnection()
+                } else {
+                    android.util.Log.d("NEXPAD", "USB Debugging is ON: Ignoring AOA accessory intent, keeping ADB priority.")
+                }
             }
         }
     }
 
     init {
-        // Register receiver for USB connection
+        // Register receiver for USB accessory connection
         val filter = android.content.IntentFilter(android.hardware.usb.UsbManager.ACTION_USB_ACCESSORY_ATTACHED)
         application.registerReceiver(usbReceiver, filter)
         
-        // Initial check if already attached
-        val usbManager = application.getSystemService(android.content.Context.USB_SERVICE) as android.hardware.usb.UsbManager
-        if (!usbManager.accessoryList.isNullOrEmpty()) {
-            networkManager.switchToAoaConnection()
+        // Initial check:
+        if (isUsbDebuggingEnabled()) {
+            // When USB Debugging is ON, automatically attempt ADB connection
+            networkManager.switchToAdbConnection()
+        } else {
+            // When USB Debugging is OFF, check if an AOA accessory is already attached
+            val usbManager = application.getSystemService(android.content.Context.USB_SERVICE) as android.hardware.usb.UsbManager
+            if (!usbManager.accessoryList.isNullOrEmpty()) {
+                networkManager.switchToAoaConnection()
+            }
         }
     }
 
@@ -90,6 +100,19 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     fun connect(ip: String, port: Int) = networkManager.connect(ip, port)
     fun disconnect() = networkManager.disconnect()
     fun switchToAoaConnection() = networkManager.switchToAoaConnection()
+    fun switchToAdbConnection() = networkManager.switchToAdbConnection()
+
+    fun isUsbDebuggingEnabled(): Boolean {
+        return try {
+            android.provider.Settings.Global.getInt(
+                getApplication<Application>().contentResolver,
+                android.provider.Settings.Global.ADB_ENABLED,
+                0
+            ) == 1
+        } catch (_: Exception) {
+            false
+        }
+    }
 
     fun updateAccel(x: Float, y: Float, z: Float) = sensorController.updateAccel(x, y, z)
     fun updateGravity(x: Float, y: Float, z: Float) = sensorController.updateGravity(x, y, z)
