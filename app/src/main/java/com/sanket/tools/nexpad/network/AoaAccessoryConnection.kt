@@ -144,6 +144,11 @@ class AoaAccessoryConnection(private val context: Context) : IGamepadConnection 
                 txThread = Thread({ runTxLoop() }, "NEXPAD-AOA-TX").apply { start() }
                 rxThread = Thread({ runRxLoop() }, "NEXPAD-AOA-RX").apply { start() }
 
+                // Immediate initial handshake packet to notify Desktop transport of active session
+                callbackScope?.launch {
+                    sendInput(GamepadInput())
+                }
+
                 val pcName = accessory.description?.takeIf { it.isNotBlank() && it != "NEXPAD USB Gamepad" } ?: "Windows PC"
                 onServerNameResolved?.invoke(pcName)
                 onConnectionStateChanged?.invoke(true)

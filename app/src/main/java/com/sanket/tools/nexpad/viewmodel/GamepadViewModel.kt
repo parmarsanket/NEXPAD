@@ -207,12 +207,14 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
             }
         }
         
-        // Single Active Transport Guard: stop discovery when connected
+        // Single Active Transport Guard: stop discovery when connected, auto-resume when disconnected
         viewModelScope.launch {
             isConnected.collect { connected ->
                 if (connected) {
                     stopDiscovery()
                     _discoveredServers.value = emptyList()
+                } else {
+                    startDiscovery()
                 }
             }
         }
