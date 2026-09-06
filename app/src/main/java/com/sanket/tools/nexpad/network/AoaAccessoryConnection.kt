@@ -86,6 +86,7 @@ class AoaAccessoryConnection(private val context: Context) : IGamepadConnection 
     override var onStatusChanged: ((String) -> Unit)? = null
     override var onDiagnosticLog: ((String) -> Unit)? = null
     override var onNetworkPerformanceUpdated: ((latencyMs: Long, jitterMs: Float, packetLoss: Float) -> Unit)? = null
+    override var onServerNameResolved: ((String) -> Unit)? = null
 
     private val permissionReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -143,9 +144,11 @@ class AoaAccessoryConnection(private val context: Context) : IGamepadConnection 
                 txThread = Thread({ runTxLoop() }, "NEXPAD-AOA-TX").apply { start() }
                 rxThread = Thread({ runRxLoop() }, "NEXPAD-AOA-RX").apply { start() }
 
+                val pcName = accessory.description?.takeIf { it.isNotBlank() && it != "NEXPAD USB Gamepad" } ?: "Windows PC"
+                onServerNameResolved?.invoke(pcName)
                 onConnectionStateChanged?.invoke(true)
-                onStatusChanged?.invoke("Connected via AOA (USB)")
-                Log.d(TAG, "AOA Accessory opened with dedicated real-time threads")
+                onStatusChanged?.invoke("Connected to $pcName via USB")
+                Log.d(TAG, "AOA Accessory opened with dedicated real-time threads (Host: $pcName)")
             } else {
                 onStatusChanged?.invoke("Failed to open accessory")
                 Log.e(TAG, "Accessory open failed")

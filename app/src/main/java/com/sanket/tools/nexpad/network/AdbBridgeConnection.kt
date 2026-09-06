@@ -81,6 +81,7 @@ class AdbBridgeConnection(private val context: Context) : IGamepadConnection {
     override var onStatusChanged: ((String) -> Unit)? = null
     override var onDiagnosticLog: ((String) -> Unit)? = null
     override var onNetworkPerformanceUpdated: ((latencyMs: Long, jitterMs: Float, packetLoss: Float) -> Unit)? = null
+    override var onServerNameResolved: ((String) -> Unit)? = null
 
     override suspend fun connect(address: String, port: Int) {
         withContext(Dispatchers.IO) {
@@ -182,6 +183,7 @@ class AdbBridgeConnection(private val context: Context) : IGamepadConnection {
         android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO)
 
         rxAccumulated = 0
+        var handshakeParsed = false
 
         while (isConnected) {
             val stream = inputStream ?: break
@@ -201,6 +203,21 @@ class AdbBridgeConnection(private val context: Context) : IGamepadConnection {
             }
 
             var offset = 0
+            if (!handshakeParsed) {
+                if (bytesRead >= 2 && rxChunkBuffer[0] == NexpadProtocol.PACKET_TYPE_CONNECTED) {
+                    val nameLen = rxChunkBuffer[1].toInt() and 0xFF
+                    if (bytesRead >= 2 + nameLen) {
+                        val pcName = String(rxChunkBuffer, 2, nameLen, Charsets.UTF_8).trim()
+                        if (pcName.isNotEmpty()) {
+                            onServerNameResolved?.invoke(pcName)
+                        }
+                        offset = 2 + nameLen
+                        handshakeParsed = true
+                    }
+                } else if (bytesRead > 0 && rxChunkBuffer[0] == NexpadProtocol.PROTOCOL_VERSION) {
+                    handshakeParsed = true
+                }
+            }
             while (offset < bytesRead) {
                 val needed = FEEDBACK_PACKET_SIZE - rxAccumulated
                 val toCopy = minOf(needed, bytesRead - offset)

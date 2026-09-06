@@ -67,9 +67,7 @@ class MainActivity : ComponentActivity() {
         layoutManager = LayoutManager(this)
 
         if (intent?.action == android.hardware.usb.UsbManager.ACTION_USB_ACCESSORY_ATTACHED) {
-            if (!viewModel.isUsbDebuggingEnabled()) {
-                viewModel.switchToAoaConnection()
-            }
+            viewModel.checkAoaAccessory()
         }
 
         val sharedPref = getSharedPreferences("nexpad_prefs", MODE_PRIVATE)
@@ -158,6 +156,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        viewModel.checkAoaAccessory()
         motionSensorManager.start()
     }
 
@@ -169,7 +168,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         if (intent.action == android.hardware.usb.UsbManager.ACTION_USB_ACCESSORY_ATTACHED) {
-            viewModel.switchToAoaConnection()
+            viewModel.checkAoaAccessory()
         }
     }
 }

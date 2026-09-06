@@ -46,11 +46,19 @@ class NetworkClient : IGamepadConnection {
     override var onStatusChanged: ((String) -> Unit)? = null
     override var onDiagnosticLog: ((String) -> Unit)? = null
     override var onNetworkPerformanceUpdated: ((latencyMs: Long, jitterMs: Float, packetLoss: Float) -> Unit)? = null
+    override var onServerNameResolved: ((String) -> Unit)? = null
 
     @Volatile
     private var isHandshakeComplete = false
 
+    var benchmarkStartTimeMs: Long = 0L
+    private var firstPingLogged: Boolean = false
+
     override suspend fun connect(address: String, port: Int) {
+        if (benchmarkStartTimeMs == 0L) {
+            benchmarkStartTimeMs = android.os.SystemClock.elapsedRealtime()
+        }
+        firstPingLogged = false
         disconnecting.set(false)
         // Clean up previous connection if any
         channel?.close()
@@ -105,8 +113,10 @@ class NetworkClient : IGamepadConnection {
             val nameBytes = deviceName.toByteArray(Charsets.UTF_8)
             val safeLength = nameBytes.size.coerceAtMost(255)
             
-            // Simple heuristic: USB tethering often uses specific subnets like 192.168.42.x or 192.168.137.x
-            val connectionType: Byte = if (address.startsWith("192.168.42.") || address.startsWith("192.168.137.")) 2 else 1
+            // Check if target address belongs to an active USB tethering interface (rndis0/usb0/ncm0)
+            val isUsbTethering = NetworkInterfaceHelper.isUsbTetheringAddress(address)
+            val connectionType: Byte = if (isUsbTethering) 2 else 1
+            android.util.Log.d("NEXPAD", "Handshake target $address -> connectionType=$connectionType (isUsbTethering=$isUsbTethering)")
             
             val handshakeBuffer = ByteBuffer.allocateDirect(3 + safeLength)
             handshakeBuffer.put(NexpadProtocol.PACKET_TYPE_CONNECT)
@@ -116,25 +126,35 @@ class NetworkClient : IGamepadConnection {
             handshakeBuffer.flip()
             
             var handshakeAttempts = 0
+            android.util.Log.d("NEXPAD", "⏱️ [BENCHMARK] Step 1: Handshake loop started at t=${android.os.SystemClock.elapsedRealtime() - benchmarkStartTimeMs}ms with serverAddress=$serverAddress")
             while (isActive && !isHandshakeComplete) {
-                if (handshakeAttempts >= 5) {
+                if (handshakeAttempts >= 30) {
+                    val tTimeout = android.os.SystemClock.elapsedRealtime() - benchmarkStartTimeMs
+                    android.util.Log.w("NEXPAD", "⏱️ [BENCHMARK] Handshake loop TIMED OUT after ${tTimeout}ms ($handshakeAttempts attempts)! isHandshakeComplete=$isHandshakeComplete")
                     onConnectionStateChanged?.invoke(false) // triggers releaseWifiLock() via callback
                     onStatusChanged?.invoke("Connection Timeout")
                     return@launch
                 }
                 try {
                     handshakeBuffer.rewind()
-                    myChannel?.send(handshakeBuffer, serverAddress)
+                    val bytesSent = myChannel?.send(handshakeBuffer, serverAddress)
                     handshakeAttempts++
-                } catch (e: Exception) {}
+                    if (handshakeAttempts == 1 || handshakeAttempts % 5 == 0) {
+                        android.util.Log.d("NEXPAD", "⏱️ [BENCHMARK] Handshake attempt #$handshakeAttempts sent ($bytesSent bytes) at t=${android.os.SystemClock.elapsedRealtime() - benchmarkStartTimeMs}ms")
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("NEXPAD", "Handshake attempt #$handshakeAttempts FAILED with exception: ${e.message}", e)
+                }
                 
-                kotlinx.coroutines.delay(500)
+                kotlinx.coroutines.delay(100)
             }
+            android.util.Log.d("NEXPAD", "Exited handshake loop. isHandshakeComplete=$isHandshakeComplete, attempts=$handshakeAttempts")
         }
         
         // Launch receive job in a separate scope so connect() can return immediately
         receiveJob = connectionScope!!.launch {
             val receiveBuffer = ByteBuffer.allocateDirect(1024)
+            android.util.Log.d("NEXPAD", "receiveJob started. Waiting for packets at t=${android.os.SystemClock.elapsedRealtime() - benchmarkStartTimeMs}ms...")
             
             while (isActive) {
                 try {
@@ -147,15 +167,26 @@ class NetworkClient : IGamepadConnection {
                         val bytes = ByteArray(receiveBuffer.remaining())
                         receiveBuffer.get(bytes)
                         
-                        // android.util.Log.d("NEXPAD", "📥 UDP Rx ${bytes.size}b | First: ${if(bytes.isNotEmpty()) bytes[0] else -1}")
+                        val firstByte = if (bytes.isNotEmpty()) bytes[0] else -1
                         
                         // Check for Handshake Reply
                         if (bytes.isNotEmpty() && bytes[0] == NexpadProtocol.PACKET_TYPE_CONNECTED) {
                             if (!isHandshakeComplete) {
                                 isHandshakeComplete = true
+                                val tConnected = android.os.SystemClock.elapsedRealtime() - benchmarkStartTimeMs
+                                var resolvedName: String? = null
+                                if (bytes.size >= 2) {
+                                    val nameLen = bytes[1].toInt() and 0xFF
+                                    if (bytes.size >= 2 + nameLen) {
+                                        resolvedName = String(bytes, 2, nameLen, Charsets.UTF_8).trim()
+                                    }
+                                }
+                                if (!resolvedName.isNullOrBlank()) {
+                                    onServerNameResolved?.invoke(resolvedName)
+                                }
                                 onConnectionStateChanged?.invoke(true)
-                                onStatusChanged?.invoke("Connected to ${serverAddress?.hostString}")
-                                android.util.Log.d("NEXPAD", "🤝 Handshake successful!")
+                                onStatusChanged?.invoke("Connected to ${resolvedName ?: serverAddress?.hostString}")
+                                android.util.Log.d("NEXPAD", "⏱️ [BENCHMARK] Step 2: ACTUAL CONNECTED! Handshake completed in ${tConnected}ms from button click! Server: $resolvedName")
                             }
                             continue
                         }
@@ -183,7 +214,7 @@ class NetworkClient : IGamepadConnection {
                                     if (rttSamples < 100) rttSamples++
                                     
                                     val now = System.currentTimeMillis()
-                                    if (rttSamples > 0 && (now - lastRttLogTime > 1000)) {
+                                    if (rttSamples == 1 || (now - lastRttLogTime > 1000)) {
                                         lastRttLogTime = now
                                         
                                         var minRtt = Double.MAX_VALUE
@@ -207,7 +238,15 @@ class NetworkClient : IGamepadConnection {
                                         
                                         val lossPctFloat = feedback.packetLossPct / 255f
                                         onNetworkPerformanceUpdated?.invoke(avgRtt.toLong(), jitterMs.toFloat(), lossPctFloat)
-                                        android.util.Log.d("NEXPAD", logMsg)
+                                        
+                                        if (!firstPingLogged) {
+                                            firstPingLogged = true
+                                            val tFirstPing = android.os.SystemClock.elapsedRealtime() - benchmarkStartTimeMs
+                                            val inputLag = ((avgRtt + 1) / 2).toLong().coerceAtLeast(1L)
+                                            android.util.Log.d("NEXPAD", "⏱️ [BENCHMARK] Step 3: FIRST PING & LATENCY DATA RECEIVED! RTT: ${avgRtt.toLong()}ms | Input Lag: ${inputLag}ms | Jitter: ±${String.format("%.1f", jitterMs)}ms | Total elapsed from button click: ${tFirstPing}ms")
+                                        } else {
+                                            android.util.Log.d("NEXPAD", logMsg)
+                                        }
                                     }
                                 }
                             }

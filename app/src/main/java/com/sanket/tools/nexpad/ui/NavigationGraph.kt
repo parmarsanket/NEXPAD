@@ -25,6 +25,9 @@ fun NavigationGraph(
         composable("settings") {
             SettingsScreen(navController = navController, layoutManager = layoutManager, viewModel = viewModel, sharedPref = sharedPref)
         }
+        composable("connections") {
+            ConnectionScreen(navController = navController, viewModel = viewModel)
+        }
         composable("editor") {
             HudEditorScreen(navController = navController, layoutManager = layoutManager)
         }

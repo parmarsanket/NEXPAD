@@ -22,13 +22,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.asCoroutineDispatcher
 enum class ConnectionType(val displayName: String) {
     WIFI("Wi-Fi"),
-    USB("USB"),
+    USB_TETHERING("USB Tethering"),
+    USB("USB (Direct)"),
     BT("Bluetooth"),
     UNKNOWN("Unknown")
 }
 
 data class ConnectionStats(
     val transport: ConnectionType = ConnectionType.UNKNOWN,
+    val serverDeviceName: String? = null,
     val signalDbm: Int? = null,
     val signalLevel: Int? = null, // 0 to 4
     val rxLinkSpeedMbps: Int? = null,
@@ -79,19 +81,17 @@ class GamepadNetworkManager(
     }
 
     fun switchToAoaConnection() {
-        if (isUsbDebuggingEnabled()) {
-            android.util.Log.w("NEXPAD", "Refusing AOA switch: USB Debugging is ON. ADB has exclusive priority.")
-            return
-        }
         disconnect()
         connection.close()
         connection = AoaAccessoryConnection(context)
-        _connectionStats.value = _connectionStats.value.copy(transport = ConnectionType.USB)
+        _connectedServerName.value = "NEXPAD PC (Direct USB)"
+        _connectionStats.value = _connectionStats.value.copy(transport = ConnectionType.USB, serverDeviceName = "NEXPAD PC (Direct USB)")
         setupConnectionCallbacks()
         scope.launch { connection.connect("aoa", 0) }
     }
 
-    fun switchToAdbConnection() {
+    fun switchToAdbConnection(serverName: String? = null) {
+        val resolvedName = serverName ?: "PC via USB ADB"
         if (!isUsbDebuggingEnabled()) {
             android.util.Log.w("NEXPAD", "Refusing ADB switch: USB Debugging is OFF.")
             _connectionStatus.value = "USB Debugging is OFF"
@@ -100,7 +100,8 @@ class GamepadNetworkManager(
         disconnect()
         connection.close()
         connection = com.sanket.tools.nexpad.network.AdbBridgeConnection(context)
-        _connectionStats.value = _connectionStats.value.copy(transport = ConnectionType.USB)
+        _connectedServerName.value = resolvedName
+        _connectionStats.value = _connectionStats.value.copy(transport = ConnectionType.USB, serverDeviceName = resolvedName)
         setupConnectionCallbacks()
         scope.launch { connection.connect("adb", 0) }
     }
@@ -124,11 +125,12 @@ class GamepadNetworkManager(
         }
     }
 
-    fun switchToBluetoothConnection(deviceAddress: String) {
+    fun switchToBluetoothConnection(deviceAddress: String, deviceName: String? = null) {
         disconnect()
         connection.close()
         connection = com.sanket.tools.nexpad.network.BluetoothRfcommConnection(context)
-        _connectionStats.value = _connectionStats.value.copy(transport = ConnectionType.BT)
+        _connectedServerName.value = deviceName
+        _connectionStats.value = _connectionStats.value.copy(transport = ConnectionType.BT, serverDeviceName = deviceName)
         setupConnectionCallbacks()
         scope.launch { connection.connect(deviceAddress, 0) }
     }
@@ -138,6 +140,9 @@ class GamepadNetworkManager(
 
     private var transmitJob: Job? = null
     
+    private val _connectedServerName = MutableStateFlow<String?>(null)
+    val connectedServerName: StateFlow<String?> = _connectedServerName.asStateFlow()
+
     private val _isConnected = MutableStateFlow(false)
     val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
 
@@ -164,16 +169,26 @@ class GamepadNetworkManager(
             scope.launch {
                 _isConnected.value = connected
                 if (connected) {
-                    if (connection is NetworkClient) acquireWifiLock()
+                    if (connection is NetworkClient) {
+                        acquireWifiLock()
+                        if (_connectionStats.value.transport == ConnectionType.UNKNOWN) {
+                            _connectionStats.value = _connectionStats.value.copy(transport = ConnectionType.WIFI)
+                        }
+                    }
                     startTransmitting()
                     startSignalPolling()
                 } else {
                     releaseWifiLock()
                     transmitJob?.cancel()
                     signalPollJob?.cancel()
+                    _connectedServerName.value = null
                     _connectionStats.value = ConnectionStats()
                 }
             }
+        }
+        connection.onServerNameResolved = { name: String ->
+            _connectedServerName.value = name
+            _connectionStats.value = _connectionStats.value.copy(serverDeviceName = name)
         }
         connection.onStatusChanged = { status ->
             _connectionStatus.value = status
@@ -190,14 +205,18 @@ class GamepadNetworkManager(
         }
     }
 
-    private fun detectNetworkType() {
+    private fun detectNetworkType(address: String? = null) {
+        if (address != null && com.sanket.tools.nexpad.network.NetworkInterfaceHelper.isUsbTetheringAddress(address)) {
+            _connectionStats.value = _connectionStats.value.copy(transport = ConnectionType.USB_TETHERING)
+            return
+        }
         try {
             val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
             val network = cm.activeNetwork
             val caps = cm.getNetworkCapabilities(network)
             val type = when {
                 caps == null -> ConnectionType.WIFI
-                caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET) -> ConnectionType.USB
+                caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET) -> ConnectionType.USB_TETHERING
                 caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_BLUETOOTH) -> ConnectionType.BT
                 else -> ConnectionType.WIFI // Covers Wi-Fi, Cellular, etc.
             }
@@ -207,20 +226,38 @@ class GamepadNetworkManager(
         }
     }
 
-    fun connect(address: String, port: Int) {
+    fun connect(address: String, port: Int, serverName: String? = null) {
+        val t0 = android.os.SystemClock.elapsedRealtime()
+        android.util.Log.d("NEXPAD", "⏱️ [BENCHMARK] Step 0: GamepadNetworkManager.connect CALLED for $address:$port ($serverName) on thread ${Thread.currentThread().name}")
+        if (serverName != null) {
+            _connectedServerName.value = serverName
+        }
+
+        // IMMEDIATELY acquire WifiLock & WakeLock so the Wi-Fi radio does not enter 802.11 power-save sleep
+        acquireWifiLock()
+        android.util.Log.d("NEXPAD", "⏱️ [BENCHMARK] WifiLock & WakeLock acquired immediately at t=${android.os.SystemClock.elapsedRealtime() - t0}ms")
+
+        val isTethering = com.sanket.tools.nexpad.network.NetworkInterfaceHelper.isUsbTetheringAddress(address)
+        val initialType = if (isTethering) ConnectionType.USB_TETHERING else ConnectionType.WIFI
+        _connectionStats.value = _connectionStats.value.copy(transport = initialType, serverDeviceName = serverName)
         if (connection !is NetworkClient) {
             disconnect()
             connection.close()
             connection = NetworkClient()
-            _connectionStats.value = _connectionStats.value.copy(transport = ConnectionType.WIFI)
             setupConnectionCallbacks()
         }
-        detectNetworkType()
+        detectNetworkType(address)
+
+        (connection as? NetworkClient)?.benchmarkStartTimeMs = t0
+
         scope.launch {
             try {
+                android.util.Log.d("NEXPAD", "⏱️ [BENCHMARK] Calling connection.connect($address, $port) at t=${android.os.SystemClock.elapsedRealtime() - t0}ms")
                 connection.connect(address, port)
+                android.util.Log.d("NEXPAD", "⏱️ [BENCHMARK] connection.connect($address, $port) returned at t=${android.os.SystemClock.elapsedRealtime() - t0}ms")
             } catch (e: Exception) {
                 e.printStackTrace()
+                releaseWifiLock()
                 _isConnected.value = false
                 _connectionStatus.value = e.message ?: "Connection failed"
             }

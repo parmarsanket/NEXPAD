@@ -88,6 +88,7 @@ class BluetoothRfcommConnection(private val context: Context) : IGamepadConnecti
     override var onStatusChanged: ((String) -> Unit)? = null
     override var onDiagnosticLog: ((String) -> Unit)? = null
     override var onNetworkPerformanceUpdated: ((latencyMs: Long, jitterMs: Float, packetLoss: Float) -> Unit)? = null
+    override var onServerNameResolved: ((String) -> Unit)? = null
 
     @SuppressLint("MissingPermission")
     override suspend fun connect(address: String, port: Int) {
@@ -186,13 +187,32 @@ class BluetoothRfcommConnection(private val context: Context) : IGamepadConnecti
                 isConnected = true
                 callbackScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+                // Send initial in-band handshake packet so Desktop receives the friendly device name
+                try {
+                    val modelName = android.os.Build.MODEL ?: "Android Device"
+                    val nameBytes = modelName.toByteArray(Charsets.UTF_8)
+                    val safeLen = nameBytes.size.coerceAtMost(255)
+                    val handshake = ByteArray(3 + safeLen)
+                    handshake[0] = NexpadProtocol.PACKET_TYPE_CONNECT
+                    handshake[1] = 3 // ConnectionType = 3 (Bluetooth)
+                    handshake[2] = safeLen.toByte()
+                    System.arraycopy(nameBytes, 0, handshake, 3, safeLen)
+                    socket.outputStream.write(handshake)
+                    socket.outputStream.flush()
+                    Log.d(TAG, "Sent Bluetooth CONNECT handshake with model: $modelName")
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to send initial BT handshake: ${e.message}")
+                }
+
                 // Start dedicated Real-Time TX and RX threads
                 txThread = Thread({ runTxLoop() }, "NEXPAD-BT-TX").apply { start() }
                 rxThread = Thread({ runRxLoop() }, "NEXPAD-BT-RX").apply { start() }
 
+                val resolvedPcName = try { device.name } catch (_: SecurityException) { null } ?: "Windows PC"
+                onServerNameResolved?.invoke(resolvedPcName)
                 onConnectionStateChanged?.invoke(true)
-                onStatusChanged?.invoke("Connected via Bluetooth")
-                Log.d(TAG, "Connected to Bluetooth PC ($address) successfully")
+                onStatusChanged?.invoke("Connected to $resolvedPcName via Bluetooth")
+                Log.d(TAG, "Connected to Bluetooth PC $resolvedPcName ($address) successfully")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to connect to Bluetooth PC", e)
                 onStatusChanged?.invoke("Bluetooth connection failed: ${e.message}")
