@@ -2,23 +2,44 @@ package com.sanket.tools.nexpad.ui
 
 import android.content.SharedPreferences
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import android.annotation.SuppressLint
-import android.bluetooth.BluetoothAdapter
-import android.content.Intent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.ui.platform.LocalContext
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
@@ -31,7 +52,7 @@ fun SettingsScreen(
 ) {
     val isConnected by viewModel.isConnected.collectAsState()
     val diagnosticLog by viewModel.diagnosticLog.collectAsState()
-    
+
     var ipAddress by remember { mutableStateOf(sharedPref.getString("LAST_IP", "") ?: "") }
     var profile by remember { mutableStateOf(layoutManager.getActiveProfile()) }
 
@@ -46,8 +67,13 @@ fun SettingsScreen(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { navController.popBackStack() }) {
-                Text("⬅️", fontSize = 24.sp, color = Color.White)
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White
+                )
             }
+            Spacer(modifier = Modifier.width(8.dp))
             Text("Settings", fontSize = 24.sp, color = Color.White)
         }
 
@@ -68,7 +94,7 @@ fun SettingsScreen(
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
-                    focusedBorderColor = Color(0xFF00E676),
+                    focusedBorderColor = NeonPalette.Green,
                     unfocusedBorderColor = Color.DarkGray
                 )
             )
@@ -85,7 +111,7 @@ fun SettingsScreen(
                     }
                 },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isConnected) Color.Red else Color(0xFF00C853)
+                    containerColor = if (isConnected) NeonPalette.Red else Color(0xFF00C853)
                 )
             ) {
                 Text(if (isConnected) "Disconnect" else "Connect")
@@ -114,15 +140,13 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.weight(1f))
             Switch(
                 checked = profile.isRgbEnabled,
-                onCheckedChange = { 
+                onCheckedChange = {
                     profile = profile.copy(isRgbEnabled = it)
                     layoutManager.saveProfile(profile)
                 },
-                colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF00E676), checkedTrackColor = Color.DarkGray)
+                colors = SwitchDefaults.colors(checkedThumbColor = NeonPalette.Green, checkedTrackColor = Color.DarkGray)
             )
         }
-
-
 
         var rumbleIntensity by remember { mutableFloatStateOf(sharedPref.getFloat("RUMBLE_INTENSITY", 1.0f)) }
 
@@ -137,18 +161,18 @@ fun SettingsScreen(
         }
         Slider(
             value = rumbleIntensity,
-            onValueChange = { 
-                rumbleIntensity = it 
+            onValueChange = {
+                rumbleIntensity = it
                 sharedPref.edit().putFloat("RUMBLE_INTENSITY", it).apply()
             },
             valueRange = 0f..1.0f,
-            colors = SliderDefaults.colors(thumbColor = Color(0xFF00E676), activeTrackColor = Color(0xFF00E676))
+            colors = SliderDefaults.colors(thumbColor = NeonPalette.Green, activeTrackColor = NeonPalette.Green)
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         var rumbleMode by remember { mutableStateOf(sharedPref.getString("RUMBLE_MODE", "min") ?: "min") }
-        
+
         Text("Rumble Mode (Stereo Mix)", color = Color.LightGray)
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -160,7 +184,7 @@ fun SettingsScreen(
                 "avg" to "Avg",
                 "min" to "Min"
             )
-            
+
             modes.forEach { (id, label) ->
                 val isSelected = rumbleMode == id
                 Button(
@@ -170,7 +194,7 @@ fun SettingsScreen(
                     },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isSelected) Color(0xFF00E676) else Color.DarkGray,
+                        containerColor = if (isSelected) NeonPalette.Green else Color.DarkGray,
                         contentColor = if (isSelected) Color.Black else Color.White
                     )
                 ) {
@@ -178,7 +202,7 @@ fun SettingsScreen(
                 }
             }
         }
-        
+
         // Gyro settings have been moved to the Desktop app.
     }
 }

@@ -275,93 +275,13 @@ fun GamepadScreen(
                     .scale(position.scale)
                     .alpha(position.opacity)
             ) {
-                when {
-                    key == "LS" -> RealisticJoystick(
-                        isLeft = true,
-                        isConnected = isConnected,
-                        viewModel = viewModel,
-                        isRgbEnabled = profile.isRgbEnabled
-                    )
-                    key == "RS" -> RealisticJoystick(
-                        isLeft = false,
-                        isConnected = isConnected,
-                        viewModel = viewModel,
-                        isRgbEnabled = profile.isRgbEnabled
-                    )
-                    key == "DPAD" -> RealisticDPad(
-                        isConnected = isConnected,
-                        viewModel = viewModel,
-                        isRgbEnabled = profile.isRgbEnabled
-                    )
-                    key == "LT" || key == "RT" -> RealisticTrigger(
-                        key = key,
-                        isConnected = isConnected,
-                        onVibrate = safeOnVibrate,
-                        viewModel = viewModel,
-                        isRgbEnabled = profile.isRgbEnabled
-                    )
-                    key == "LB" || key == "RB" -> RealisticBumper(
-                        key = key,
-                        isConnected = isConnected,
-                        onVibrate = safeOnVibrate,
-                        viewModel = viewModel,
-                        isRgbEnabled = profile.isRgbEnabled
-                    )
-                    key == "A" -> RealisticButton(
-                        key = "A",
-                        buttonColor = Color(0xFF00C853),
-                        isConnected = isConnected,
-                        onVibrate = safeOnVibrate,
-                        viewModel = viewModel,
-                        isRgbEnabled = profile.isRgbEnabled
-                    )
-                    key == "B" -> RealisticButton(
-                        key = "B",
-                        buttonColor = Color(0xFFD50000),
-                        isConnected = isConnected,
-                        onVibrate = safeOnVibrate,
-                        viewModel = viewModel,
-                        isRgbEnabled = profile.isRgbEnabled
-                    )
-                    key == "X" -> RealisticButton(
-                        key = "X",
-                        buttonColor = Color(0xFF2962FF),
-                        isConnected = isConnected,
-                        onVibrate = safeOnVibrate,
-                        viewModel = viewModel,
-                        isRgbEnabled = profile.isRgbEnabled
-                    )
-                    key == "Y" -> RealisticButton(
-                        key = "Y",
-                        buttonColor = Color(0xFFFFD600),
-                        isConnected = isConnected,
-                        onVibrate = safeOnVibrate,
-                        viewModel = viewModel,
-                        isRgbEnabled = profile.isRgbEnabled
-                    )
-                    key in listOf("MENU", "VIEW", "XBOX", "SHARE", "SCREENSHOT") -> RealisticSystemButton(
-                        key = key,
-                        isConnected = isConnected,
-                        onVibrate = safeOnVibrate,
-                        viewModel = viewModel,
-                        isRgbEnabled = profile.isRgbEnabled
-                    )
-                    key in listOf("M1", "M2", "M3", "M4", "PROFILE", "TURBO") -> RealisticMacroButton(
-                        key = key,
-                        isConnected = isConnected,
-                        onVibrate = safeOnVibrate,
-                        viewModel = viewModel,
-                        isRgbEnabled = profile.isRgbEnabled
-                    )
-                    else -> RealisticButton(
-                        key = key,
-                        buttonColor = Color.Gray,
-                        isConnected = isConnected,
-                        onVibrate = safeOnVibrate,
-                        viewModel = viewModel,
-                        isRgbEnabled = profile.isRgbEnabled
-                    )
-                }
+                com.sanket.tools.nexpad.ui.components.controller.ControllerElementRenderer(
+                    key = key,
+                    isConnected = isConnected,
+                    isRgbEnabled = profile.isRgbEnabled,
+                    viewModel = viewModel,
+                    onVibrate = safeOnVibrate
+                )
             }
         }
     }

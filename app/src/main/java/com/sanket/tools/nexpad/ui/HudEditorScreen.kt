@@ -103,93 +103,13 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
                     ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
                 )
                 // The Button Component
-                when {
-                    key == "LS" -> RealisticJoystick(
-                        isLeft = true,
-                        isConnected = false,
-                        viewModel = dummyViewModel,
-                        isRgbEnabled = profile.isRgbEnabled
-                    )
-                    key == "RS" -> RealisticJoystick(
-                        isLeft = false,
-                        isConnected = false,
-                        viewModel = dummyViewModel,
-                        isRgbEnabled = profile.isRgbEnabled
-                    )
-                    key == "DPAD" -> RealisticDPad(
-                        isConnected = false,
-                        viewModel = dummyViewModel,
-                        isRgbEnabled = profile.isRgbEnabled
-                    )
-                    key == "LT" || key == "RT" -> RealisticTrigger(
-                        key = key,
-                        isConnected = false,
-                        onVibrate = {},
-                        viewModel = dummyViewModel,
-                        isRgbEnabled = profile.isRgbEnabled
-                    )
-                    key == "LB" || key == "RB" -> RealisticBumper(
-                        key = key,
-                        isConnected = false,
-                        onVibrate = {},
-                        viewModel = dummyViewModel,
-                        isRgbEnabled = profile.isRgbEnabled
-                    )
-                    key == "A" -> RealisticButton(
-                        key = "A",
-                        buttonColor = Color(0xFF00C853),
-                        isConnected = false,
-                        onVibrate = {},
-                        viewModel = dummyViewModel,
-                        isRgbEnabled = profile.isRgbEnabled
-                    )
-                    key == "B" -> RealisticButton(
-                        key = "B",
-                        buttonColor = Color(0xFFD50000),
-                        isConnected = false,
-                        onVibrate = {},
-                        viewModel = dummyViewModel,
-                        isRgbEnabled = profile.isRgbEnabled
-                    )
-                    key == "X" -> RealisticButton(
-                        key = "X",
-                        buttonColor = Color(0xFF2962FF),
-                        isConnected = false,
-                        onVibrate = {},
-                        viewModel = dummyViewModel,
-                        isRgbEnabled = profile.isRgbEnabled
-                    )
-                    key == "Y" -> RealisticButton(
-                        key = "Y",
-                        buttonColor = Color(0xFFFFD600),
-                        isConnected = false,
-                        onVibrate = {},
-                        viewModel = dummyViewModel,
-                        isRgbEnabled = profile.isRgbEnabled
-                    )
-                    key in listOf("MENU", "VIEW", "XBOX", "SHARE", "SCREENSHOT") -> RealisticSystemButton(
-                        key = key,
-                        isConnected = false,
-                        onVibrate = {},
-                        viewModel = dummyViewModel,
-                        isRgbEnabled = profile.isRgbEnabled
-                    )
-                    key in listOf("M1", "M2", "M3", "M4", "PROFILE", "TURBO") -> RealisticMacroButton(
-                        key = key,
-                        isConnected = false,
-                        onVibrate = {},
-                        viewModel = dummyViewModel,
-                        isRgbEnabled = profile.isRgbEnabled
-                    )
-                    else -> RealisticButton(
-                        key = key,
-                        buttonColor = Color.Gray,
-                        isConnected = false,
-                        onVibrate = {},
-                        viewModel = dummyViewModel,
-                        isRgbEnabled = profile.isRgbEnabled
-                    )
-                }
+                com.sanket.tools.nexpad.ui.components.controller.ControllerElementRenderer(
+                    key = key,
+                    isConnected = false,
+                    isRgbEnabled = profile.isRgbEnabled,
+                    viewModel = dummyViewModel,
+                    onVibrate = {}
+                )
 
                 // Glass Shield Overlay to block game logic + show selection box
                 Box(
