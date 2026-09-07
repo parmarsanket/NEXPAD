@@ -11,19 +11,23 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.sanket.tools.nexpad.ui.components.*
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.roundToInt
-import android.os.Vibrator
 import android.os.Build
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import android.os.VibrationEffect
+import com.sanket.tools.nexpad.ui.components.controller.RealisticBumper
+import com.sanket.tools.nexpad.ui.components.controller.RealisticButton
+import com.sanket.tools.nexpad.ui.components.controller.RealisticDPad
+import com.sanket.tools.nexpad.ui.components.controller.RealisticJoystick
+import com.sanket.tools.nexpad.ui.components.controller.RealisticMacroButton
+import com.sanket.tools.nexpad.ui.components.controller.RealisticSystemButton
+import com.sanket.tools.nexpad.ui.components.controller.RealisticTrigger
 import com.sanket.tools.nexpad.utils.LockScreenOrientation
 import kotlin.math.pow
 
@@ -272,18 +276,91 @@ fun GamepadScreen(
                     .alpha(position.opacity)
             ) {
                 when {
-                    key == "LS" -> RealisticJoystick(isLeft = true, isConnected = isConnected, viewModel = viewModel, isRgbEnabled = profile.isRgbEnabled)
-                    key == "RS" -> RealisticJoystick(isLeft = false, isConnected = isConnected, viewModel = viewModel, isRgbEnabled = profile.isRgbEnabled)
-                    key == "DPAD" -> RealisticDPad(isConnected = isConnected, viewModel = viewModel, isRgbEnabled = profile.isRgbEnabled)
-                    key == "LT" || key == "RT" -> RealisticTrigger(key = key, isConnected = isConnected, onVibrate = safeOnVibrate, viewModel = viewModel, isRgbEnabled = profile.isRgbEnabled)
-                    key == "LB" || key == "RB" -> RealisticBumper(key = key, isConnected = isConnected, onVibrate = safeOnVibrate, viewModel = viewModel, isRgbEnabled = profile.isRgbEnabled)
-                    key == "A" -> RealisticButton(key = "A", buttonColor = Color(0xFF00C853), isConnected = isConnected, onVibrate = safeOnVibrate, viewModel = viewModel, isRgbEnabled = profile.isRgbEnabled)
-                    key == "B" -> RealisticButton(key = "B", buttonColor = Color(0xFFD50000), isConnected = isConnected, onVibrate = safeOnVibrate, viewModel = viewModel, isRgbEnabled = profile.isRgbEnabled)
-                    key == "X" -> RealisticButton(key = "X", buttonColor = Color(0xFF2962FF), isConnected = isConnected, onVibrate = safeOnVibrate, viewModel = viewModel, isRgbEnabled = profile.isRgbEnabled)
-                    key == "Y" -> RealisticButton(key = "Y", buttonColor = Color(0xFFFFD600), isConnected = isConnected, onVibrate = safeOnVibrate, viewModel = viewModel, isRgbEnabled = profile.isRgbEnabled)
-                    key in listOf("MENU", "VIEW", "XBOX", "SHARE", "SCREENSHOT") -> RealisticSystemButton(key = key, isConnected = isConnected, onVibrate = safeOnVibrate, viewModel = viewModel, isRgbEnabled = profile.isRgbEnabled)
-                    key in listOf("M1", "M2", "M3", "M4", "PROFILE", "TURBO") -> RealisticMacroButton(key = key, isConnected = isConnected, onVibrate = safeOnVibrate, viewModel = viewModel, isRgbEnabled = profile.isRgbEnabled)
-                    else -> RealisticButton(key = key, buttonColor = Color.Gray, isConnected = isConnected, onVibrate = safeOnVibrate, viewModel = viewModel, isRgbEnabled = profile.isRgbEnabled)
+                    key == "LS" -> RealisticJoystick(
+                        isLeft = true,
+                        isConnected = isConnected,
+                        viewModel = viewModel,
+                        isRgbEnabled = profile.isRgbEnabled
+                    )
+                    key == "RS" -> RealisticJoystick(
+                        isLeft = false,
+                        isConnected = isConnected,
+                        viewModel = viewModel,
+                        isRgbEnabled = profile.isRgbEnabled
+                    )
+                    key == "DPAD" -> RealisticDPad(
+                        isConnected = isConnected,
+                        viewModel = viewModel,
+                        isRgbEnabled = profile.isRgbEnabled
+                    )
+                    key == "LT" || key == "RT" -> RealisticTrigger(
+                        key = key,
+                        isConnected = isConnected,
+                        onVibrate = safeOnVibrate,
+                        viewModel = viewModel,
+                        isRgbEnabled = profile.isRgbEnabled
+                    )
+                    key == "LB" || key == "RB" -> RealisticBumper(
+                        key = key,
+                        isConnected = isConnected,
+                        onVibrate = safeOnVibrate,
+                        viewModel = viewModel,
+                        isRgbEnabled = profile.isRgbEnabled
+                    )
+                    key == "A" -> RealisticButton(
+                        key = "A",
+                        buttonColor = Color(0xFF00C853),
+                        isConnected = isConnected,
+                        onVibrate = safeOnVibrate,
+                        viewModel = viewModel,
+                        isRgbEnabled = profile.isRgbEnabled
+                    )
+                    key == "B" -> RealisticButton(
+                        key = "B",
+                        buttonColor = Color(0xFFD50000),
+                        isConnected = isConnected,
+                        onVibrate = safeOnVibrate,
+                        viewModel = viewModel,
+                        isRgbEnabled = profile.isRgbEnabled
+                    )
+                    key == "X" -> RealisticButton(
+                        key = "X",
+                        buttonColor = Color(0xFF2962FF),
+                        isConnected = isConnected,
+                        onVibrate = safeOnVibrate,
+                        viewModel = viewModel,
+                        isRgbEnabled = profile.isRgbEnabled
+                    )
+                    key == "Y" -> RealisticButton(
+                        key = "Y",
+                        buttonColor = Color(0xFFFFD600),
+                        isConnected = isConnected,
+                        onVibrate = safeOnVibrate,
+                        viewModel = viewModel,
+                        isRgbEnabled = profile.isRgbEnabled
+                    )
+                    key in listOf("MENU", "VIEW", "XBOX", "SHARE", "SCREENSHOT") -> RealisticSystemButton(
+                        key = key,
+                        isConnected = isConnected,
+                        onVibrate = safeOnVibrate,
+                        viewModel = viewModel,
+                        isRgbEnabled = profile.isRgbEnabled
+                    )
+                    key in listOf("M1", "M2", "M3", "M4", "PROFILE", "TURBO") -> RealisticMacroButton(
+                        key = key,
+                        isConnected = isConnected,
+                        onVibrate = safeOnVibrate,
+                        viewModel = viewModel,
+                        isRgbEnabled = profile.isRgbEnabled
+                    )
+                    else -> RealisticButton(
+                        key = key,
+                        buttonColor = Color.Gray,
+                        isConnected = isConnected,
+                        onVibrate = safeOnVibrate,
+                        viewModel = viewModel,
+                        isRgbEnabled = profile.isRgbEnabled
+                    )
                 }
             }
         }

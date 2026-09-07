@@ -1,5 +1,6 @@
-package com.sanket.tools.nexpad.ui.components
+package com.sanket.tools.nexpad.ui.components.controller
 
+import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -24,6 +25,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
+import kotlinx.coroutines.delay
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
@@ -91,19 +93,19 @@ fun RealisticJoystick(
                     detectTapGestures(
                         onTap = {
                             val buttonName = if (isLeft) "L3" else "R3"
-                            android.util.Log.d("NEXPAD_DEBUG", "Single Tap -> Triggered $buttonName")
+                            Log.d("NEXPAD_DEBUG", "Single Tap -> Triggered $buttonName")
                             coroutineScope.launch {
                                 viewModel.updateButton(buttonName, true)
-                                kotlinx.coroutines.delay(100.milliseconds)
+                                delay(100.milliseconds)
                                 viewModel.updateButton(buttonName, false)
                             }
                         },
                         onDoubleTap = {
                             val buttonName = if (isLeft) "L3" else "R3"
-                            android.util.Log.d("NEXPAD_DEBUG", "Double Tap -> Triggered $buttonName")
+                            Log.d("NEXPAD_DEBUG", "Double Tap -> Triggered $buttonName")
                             coroutineScope.launch {
                                 viewModel.updateButton(buttonName, true)
-                                kotlinx.coroutines.delay(300.milliseconds) // longer hold for double tap
+                                delay(300.milliseconds) // longer hold for double tap
                                 viewModel.updateButton(buttonName, false)
                             }
                         }

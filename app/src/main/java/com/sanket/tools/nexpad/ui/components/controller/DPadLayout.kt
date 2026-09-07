@@ -1,4 +1,4 @@
-package com.sanket.tools.nexpad.ui.components
+package com.sanket.tools.nexpad.ui.components.controller
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row

@@ -1,61 +1,59 @@
-package com.sanket.tools.nexpad.ui.components
+package com.sanket.tools.nexpad.ui.components.controller
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
 @Composable
-fun GamepadButton(
-    text: String,
+fun RealisticSystemButton(
+    key: String,
     isConnected: Boolean,
     onVibrate: () -> Unit,
     viewModel: GamepadViewModel,
-    modifier: Modifier = Modifier
+    isRgbEnabled: Boolean
 ) {
     var isPressed by remember { mutableStateOf(false) }
-    
+
+    val shadow = if (isRgbEnabled) {
+        Modifier.shadow(10.dp, CircleShape, ambientColor = Color.White, spotColor = Color.White)
+    } else {
+        Modifier.shadow(4.dp, CircleShape)
+    }
+
     Box(
-        modifier = modifier
-            .padding(4.dp)
-            .size(64.dp)
-            .background(
-                color = if (isPressed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                shape = CircleShape
-            )
-            .pointerInput(isConnected) {
+        modifier = Modifier
+            .size(60.dp)
+            .then(shadow)
+            .clip(CircleShape)
+            .background(if (isPressed) Color.DarkGray else Color(0xFF2B2B2B))
+            .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = {
                         if (isConnected) onVibrate()
                         isPressed = true
-                        viewModel.updateButton(text, true)
+                        viewModel.updateButton(key, true)
                         tryAwaitRelease()
                         isPressed = false
-                        viewModel.updateButton(text, false)
+                        viewModel.updateButton(key, false)
                     }
                 )
             },
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = text, 
-            color = if (isPressed) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.Bold
-        )
+        Text(key.take(1), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
     }
 }

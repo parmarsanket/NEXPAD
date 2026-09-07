@@ -1,4 +1,4 @@
-package com.sanket.tools.nexpad.ui.components
+package com.sanket.tools.nexpad.ui.components.controller
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
