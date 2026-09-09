@@ -68,26 +68,33 @@ fun NxprcCanvasRenderer(
         label = "nxprc_press_y"
     )
 
+    val needsPulse = document.animations.idleType == "PULSE"
+    val needsRotation = document.animations.idleType == "ROTATE"
     val infiniteTransition = rememberInfiniteTransition(label = "nxprc_idle")
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 1.0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(document.animations.idleDurationMs, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse"
-    )
 
-    val rotateAngle by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(4000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "rotate"
-    )
+    val pulseAlpha = if (needsPulse) {
+        infiniteTransition.animateFloat(
+            initialValue = 0.4f,
+            targetValue = 1.0f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(document.animations.idleDurationMs, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "pulse"
+        ).value
+    } else 0.8f
+
+    val rotateAngle = if (needsRotation) {
+        infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(4000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "rotate"
+        ).value
+    } else 0f
 
     val widthDp = overrideSizeDp ?: document.manifest.widthDp
     val heightDp = overrideSizeDp ?: document.manifest.heightDp
@@ -119,124 +126,253 @@ fun NxprcCanvasRenderer(
     ) {
         Canvas(modifier = Modifier.size(widthDp.dp, heightDp.dp)) {
             scale(scaleAnim) {
+                val buttonW = size.minDimension * 0.90f
+                val buttonH = size.minDimension * 0.90f
+                val buttonLeft = (size.width - buttonW) / 2f
+                val buttonTop = (size.height - buttonH) / 2f + pressOffsetYAnim * density
                 val centerOffset = Offset(size.width / 2f, size.height / 2f + pressOffsetYAnim * density)
+
+                val primaryBox = document.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>().firstOrNull()
+                val primaryShape = document.canvas.layers.filterIsInstance<CanvasLayer.GradientShape>().firstOrNull()
+                val rootShapeType = (primaryBox?.shapeType?.uppercase() ?: primaryShape?.shapeType?.uppercase() ?: "ROUNDED_RECT")
+                val rootIsOval = rootShapeType == "OVAL"
+                val rootIsPolygon = rootShapeType == "POLYGON" || rootShapeType == "PATH" || (primaryBox?.pathData?.isNotBlank() == true)
+                val rootTl = (primaryBox?.cornerRadiusTopLeft ?: primaryShape?.cornerRadius ?: 14f) * density
+                val rootTr = (primaryBox?.cornerRadiusTopRight ?: primaryShape?.cornerRadius ?: 14f) * density
+                val rootBr = (primaryBox?.cornerRadiusBottomRight ?: primaryShape?.cornerRadius ?: 14f) * density
+                val rootBl = (primaryBox?.cornerRadiusBottomLeft ?: primaryShape?.cornerRadius ?: 14f) * density
+
+                val rootClipShape = Path().apply {
+                    if (rootIsPolygon && primaryBox != null && primaryBox.pathData.isNotBlank()) {
+                        addPath(buildScaledPath(primaryBox.pathData, Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH)))
+                    } else if (rootShapeType == "HEXAGON") {
+                        addPath(buildRegularPolygonPath(6, Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH)))
+                    } else if (rootShapeType == "OCTAGON") {
+                        addPath(buildRegularPolygonPath(8, Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH)))
+                    } else if (rootIsOval) {
+                        addOval(Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH))
+                    } else {
+                        addRoundRect(
+                            androidx.compose.ui.geometry.RoundRect(
+                                rect = Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH),
+                                topLeft = CornerRadius(rootTl, rootTl),
+                                topRight = CornerRadius(rootTr, rootTr),
+                                bottomRight = CornerRadius(rootBr, rootBr),
+                                bottomLeft = CornerRadius(rootBl, rootBl)
+                            )
+                        )
+                    }
+                }
 
                 document.canvas.layers.forEach { layer ->
                     when (layer) {
                         is CanvasLayer.BoxLayer -> {
-                            val pivot = Offset(size.width * layer.originXRatio, size.height * layer.originYRatio)
+                            val boxWidth = buttonW * layer.widthRatio
+                            val boxHeight = buttonH * layer.heightRatio
+                            val boxLeft = buttonLeft + layer.offsetXRatio * buttonW
+                            val boxTop = buttonTop + layer.offsetYRatio * buttonH
+
+                            val pivot = Offset(boxLeft + boxWidth * layer.originXRatio, boxTop + boxHeight * layer.originYRatio)
                             val rotAngle = if (layer.isRotating && document.animations.idleType == "ROTATE") rotateAngle else layer.rotationDegrees
 
-                            withTransform({
-                                translate(left = layer.offsetXRatio * size.width, top = layer.offsetYRatio * size.height)
-                                rotate(rotAngle, pivot = pivot)
-                                scale(scaleX = layer.scaleX, scaleY = layer.scaleY, pivot = pivot)
-                            }) {
-                                val baseRadius = size.minDimension / 2f
-                                val shapeRadius = baseRadius * 0.90f
-                                val layerAlpha = layer.opacity.coerceIn(0f, 1f)
-                                val cornerRadiusPx = layer.cornerRadiusTopLeft * density
+                            val isPolygon = layer.shapeType.uppercase() == "POLYGON" || layer.shapeType.uppercase() == "PATH" || layer.pathData.isNotBlank() || layer.polygonSides >= 3
+                            val isHexagon = layer.shapeType.uppercase() == "HEXAGON" || layer.polygonSides == 6
+                            val isOctagon = layer.shapeType.uppercase() == "OCTAGON" || layer.polygonSides == 8
+                            val isOval = layer.shapeType.uppercase() == "OVAL"
+                            val layerAlpha = layer.opacity.coerceIn(0f, 1f)
+                            val tl = layer.cornerRadiusTopLeft * density
+                            val tr = layer.cornerRadiusTopRight * density
+                            val br = layer.cornerRadiusBottomRight * density
+                            val bl = layer.cornerRadiusBottomLeft * density
+                            val hasVariableCorners = !isOval && !isPolygon && (tr != tl || br != tl || bl != tl)
 
-                                // 1. Outset box shadows
-                                layer.boxShadows.filter { !it.isInset }.forEach { shadow ->
-                                    val shadowOffset = Offset(shadow.offsetX * density, shadow.offsetY * density)
-                                    val sColor = Color(shadow.color)
-                                    if (layer.shapeType.uppercase() == "OVAL") {
-                                        val shadowRadius = (shapeRadius + shadow.spreadRadius * density).coerceAtLeast(0f)
-                                        drawCircle(
-                                            color = sColor.copy(alpha = sColor.alpha * layerAlpha),
-                                            radius = shadowRadius,
-                                            center = Offset(centerOffset.x + shadowOffset.x, centerOffset.y + shadowOffset.y)
-                                        )
-                                    } else {
-                                        val spreadPx = shadow.spreadRadius * density
-                                        drawRoundRect(
-                                            color = sColor.copy(alpha = sColor.alpha * layerAlpha),
-                                            topLeft = Offset(centerOffset.x - shapeRadius + shadowOffset.x - spreadPx, centerOffset.y - shapeRadius + shadowOffset.y - spreadPx),
-                                            size = Size((shapeRadius + spreadPx) * 2f, (shapeRadius + spreadPx) * 2f),
-                                            cornerRadius = CornerRadius(cornerRadiusPx + spreadPx, cornerRadiusPx + spreadPx)
-                                        )
-                                    }
-                                }
-                                // 2. Main surface
-                                val allBrushes = if (layer.fills.isNotEmpty()) {
-                                    layer.fills.map { createBrush(it, size) }
+                            val polygonPath by lazy {
+                                if (isHexagon) {
+                                    buildRegularPolygonPath(6, Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight))
+                                } else if (isOctagon) {
+                                    buildRegularPolygonPath(8, Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight))
+                                } else if (layer.polygonSides >= 3) {
+                                    buildRegularPolygonPath(layer.polygonSides, Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight))
+                                } else if (layer.pathData.isNotBlank()) {
+                                    buildScaledPath(layer.pathData, Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight))
                                 } else {
-                                    listOf(createBrush(layer.fill, size))
+                                    Path()
                                 }
+                            }
 
-                                allBrushes.forEach { b ->
-                                    if (layer.shapeType.uppercase() == "OVAL") {
-                                        drawCircle(brush = b, radius = shapeRadius, center = centerOffset, alpha = layerAlpha)
-                                    } else {
-                                        drawRoundRect(
-                                            brush = b,
-                                            cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
-                                            alpha = layerAlpha
+                            val variablePath by lazy {
+                                Path().apply {
+                                    addRoundRect(
+                                        androidx.compose.ui.geometry.RoundRect(
+                                            rect = Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight),
+                                            topLeft = CornerRadius(tl, tl),
+                                            topRight = CornerRadius(tr, tr),
+                                            bottomRight = CornerRadius(br, br),
+                                            bottomLeft = CornerRadius(bl, bl)
                                         )
-                                    }
+                                    )
                                 }
+                            }
 
-                                layer.stroke?.let { st ->
-                                    val stColor = Color(st.color)
-                                    if (layer.shapeType.uppercase() == "OVAL") {
-                                        drawCircle(
-                                            color = stColor.copy(alpha = stColor.alpha * layerAlpha),
-                                            radius = shapeRadius,
-                                            center = centerOffset,
-                                            style = Stroke(width = st.width * density)
-                                        )
-                                    } else {
-                                        drawRoundRect(
-                                            color = stColor.copy(alpha = stColor.alpha * layerAlpha),
-                                            cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
-                                            style = Stroke(width = st.width * density)
-                                        )
-                                    }
-                                }
-                                // 3. Inset box shadows (smooth clipped perimeter rim)
-                                val insets = layer.boxShadows.filter { it.isInset }
-                                if (insets.isNotEmpty()) {
-                                    val shapeClipPath = Path().apply {
-                                        if (layer.shapeType.uppercase() == "OVAL") {
-                                            addOval(Rect(centerOffset.x - shapeRadius, centerOffset.y - shapeRadius, centerOffset.x + shapeRadius, centerOffset.y + shapeRadius))
-                                        } else {
-                                            addRoundRect(
-                                                androidx.compose.ui.geometry.RoundRect(
-                                                    left = centerOffset.x - shapeRadius,
-                                                    top = centerOffset.y - shapeRadius,
-                                                    right = centerOffset.x + shapeRadius,
-                                                    bottom = centerOffset.y + shapeRadius,
-                                                    radiusX = cornerRadiusPx,
-                                                    radiusY = cornerRadiusPx
+                            val drawBox: () -> Unit = {
+                                withTransform({
+                                    if (rotAngle != 0f) rotate(rotAngle, pivot = pivot)
+                                    if (layer.scaleX != 1f || layer.scaleY != 1f) scale(scaleX = layer.scaleX, scaleY = layer.scaleY, pivot = pivot)
+                                }) {
+                                    // 1. Outset box shadows
+                                    layer.boxShadows.filter { !it.isInset }.forEach { shadow ->
+                                        val shadowOffset = Offset(shadow.offsetX * density, shadow.offsetY * density)
+                                        val sColor = Color(shadow.color)
+                                        val spreadPx = shadow.spreadRadius * density
+                                        if (isPolygon) {
+                                            drawPath(polygonPath, color = sColor.copy(alpha = sColor.alpha * layerAlpha))
+                                        } else if (isOval) {
+                                            drawOval(
+                                                color = sColor.copy(alpha = sColor.alpha * layerAlpha),
+                                                topLeft = Offset(boxLeft + shadowOffset.x - spreadPx, boxTop + shadowOffset.y - spreadPx),
+                                                size = Size(boxWidth + spreadPx * 2f, boxHeight + spreadPx * 2f)
+                                            )
+                                        } else if (hasVariableCorners) {
+                                            val shadowPath = Path().apply {
+                                                addRoundRect(
+                                                    androidx.compose.ui.geometry.RoundRect(
+                                                        rect = Rect(
+                                                            boxLeft + shadowOffset.x - spreadPx,
+                                                            boxTop + shadowOffset.y - spreadPx,
+                                                            boxLeft + boxWidth + shadowOffset.x + spreadPx,
+                                                            boxTop + boxHeight + shadowOffset.y + spreadPx
+                                                        ),
+                                                        topLeft = CornerRadius(tl + spreadPx, tl + spreadPx),
+                                                        topRight = CornerRadius(tr + spreadPx, tr + spreadPx),
+                                                        bottomRight = CornerRadius(br + spreadPx, br + spreadPx),
+                                                        bottomLeft = CornerRadius(bl + spreadPx, bl + spreadPx)
+                                                    )
                                                 )
+                                            }
+                                            drawPath(shadowPath, color = sColor.copy(alpha = sColor.alpha * layerAlpha))
+                                        } else {
+                                            drawRoundRect(
+                                                color = sColor.copy(alpha = sColor.alpha * layerAlpha),
+                                                topLeft = Offset(boxLeft + shadowOffset.x - spreadPx, boxTop + shadowOffset.y - spreadPx),
+                                                size = Size(boxWidth + spreadPx * 2f, boxHeight + spreadPx * 2f),
+                                                cornerRadius = CornerRadius(tl + spreadPx, tl + spreadPx)
                                             )
                                         }
                                     }
-                                    clipPath(shapeClipPath) {
-                                        insets.forEach { shadow ->
-                                            val inColor = Color(shadow.color)
-                                            val sOffset = Offset(shadow.offsetX * density, shadow.offsetY * density)
-                                            val strokeW = (shadow.blurRadius.takeIf { it > 0f } ?: 3.5f) * density
-                                            if (layer.shapeType.uppercase() == "OVAL") {
-                                                drawCircle(
-                                                    color = inColor.copy(alpha = inColor.alpha * layerAlpha),
-                                                    radius = shapeRadius,
-                                                    center = Offset(centerOffset.x + sOffset.x, centerOffset.y + sOffset.y),
-                                                    style = Stroke(width = strokeW * 1.5f)
-                                                )
+
+                                    // 2. Main surface fills (stacked bottom-to-top)
+                                    val allBrushes = if (layer.fills.isNotEmpty()) {
+                                        layer.fills.map { createBrush(it, Size(boxWidth, boxHeight), Offset(boxLeft, boxTop)) }
+                                    } else {
+                                        listOf(createBrush(layer.fill, Size(boxWidth, boxHeight), Offset(boxLeft, boxTop)))
+                                    }
+
+                                    allBrushes.forEach { b ->
+                                        if (isPolygon) {
+                                            drawPath(polygonPath, brush = b, alpha = layerAlpha)
+                                        } else if (isOval) {
+                                            drawOval(
+                                                brush = b,
+                                                topLeft = Offset(boxLeft, boxTop),
+                                                size = Size(boxWidth, boxHeight),
+                                                alpha = layerAlpha
+                                            )
+                                        } else if (hasVariableCorners) {
+                                            drawPath(variablePath, brush = b, alpha = layerAlpha)
+                                        } else {
+                                            drawRoundRect(
+                                                brush = b,
+                                                topLeft = Offset(boxLeft, boxTop),
+                                                size = Size(boxWidth, boxHeight),
+                                                cornerRadius = CornerRadius(tl, tl),
+                                                alpha = layerAlpha
+                                            )
+                                        }
+                                    }
+
+                                    // 3. Stroke / Border
+                                    layer.stroke?.let { st ->
+                                        val stColor = Color(st.color)
+                                        val stWidth = st.width * density
+                                        if (isPolygon) {
+                                            drawPath(polygonPath, color = stColor.copy(alpha = stColor.alpha * layerAlpha), style = Stroke(width = stWidth))
+                                        } else if (isOval) {
+                                            drawOval(
+                                                color = stColor.copy(alpha = stColor.alpha * layerAlpha),
+                                                topLeft = Offset(boxLeft, boxTop),
+                                                size = Size(boxWidth, boxHeight),
+                                                style = Stroke(width = stWidth)
+                                            )
+                                        } else if (hasVariableCorners) {
+                                            drawPath(variablePath, color = stColor.copy(alpha = stColor.alpha * layerAlpha), style = Stroke(width = stWidth))
+                                        } else {
+                                            drawRoundRect(
+                                                color = stColor.copy(alpha = stColor.alpha * layerAlpha),
+                                                topLeft = Offset(boxLeft, boxTop),
+                                                size = Size(boxWidth, boxHeight),
+                                                cornerRadius = CornerRadius(tl, tl),
+                                                style = Stroke(width = stWidth)
+                                            )
+                                        }
+                                    }
+
+                                    // 4. Inset box shadows
+                                    val insets = layer.boxShadows.filter { it.isInset }
+                                    if (insets.isNotEmpty()) {
+                                        val shapeClipPath = Path().apply {
+                                            if (isPolygon) {
+                                                addPath(polygonPath)
+                                            } else if (isOval) {
+                                                addOval(Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight))
+                                            } else if (hasVariableCorners) {
+                                                addPath(variablePath)
                                             } else {
-                                                drawRoundRect(
-                                                    color = inColor.copy(alpha = inColor.alpha * layerAlpha),
-                                                    topLeft = Offset(centerOffset.x - shapeRadius + sOffset.x, centerOffset.y - shapeRadius + sOffset.y),
-                                                    size = Size(shapeRadius * 2f, shapeRadius * 2f),
-                                                    cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
-                                                    style = Stroke(width = strokeW * 1.5f)
+                                                addRoundRect(
+                                                    androidx.compose.ui.geometry.RoundRect(
+                                                        left = boxLeft,
+                                                        top = boxTop,
+                                                        right = boxLeft + boxWidth,
+                                                        bottom = boxTop + boxHeight,
+                                                        radiusX = tl,
+                                                        radiusY = tl
+                                                    )
                                                 )
+                                            }
+                                        }
+                                        clipPath(shapeClipPath) {
+                                            insets.forEach { shadow ->
+                                                val inColor = Color(shadow.color)
+                                                val sOffset = Offset(shadow.offsetX * density, shadow.offsetY * density)
+                                                val strokeW = (shadow.blurRadius.takeIf { it > 0f } ?: 3.5f) * density
+                                                if (isOval) {
+                                                    drawOval(
+                                                        color = inColor.copy(alpha = inColor.alpha * layerAlpha),
+                                                        topLeft = Offset(boxLeft + sOffset.x, boxTop + sOffset.y),
+                                                        size = Size(boxWidth, boxHeight),
+                                                        style = Stroke(width = strokeW * 1.5f)
+                                                    )
+                                                } else {
+                                                    drawRoundRect(
+                                                        color = inColor.copy(alpha = inColor.alpha * layerAlpha),
+                                                        topLeft = Offset(boxLeft + sOffset.x, boxTop + sOffset.y),
+                                                        size = Size(boxWidth, boxHeight),
+                                                        cornerRadius = CornerRadius(tl, tl),
+                                                        style = Stroke(width = strokeW * 1.5f)
+                                                    )
+                                                }
                                             }
                                         }
                                     }
                                 }
+                            }
+
+                            val isRootLayer = layer == document.canvas.layers.firstOrNull() || (layer.widthRatio >= 1.0f && layer.heightRatio >= 1.0f)
+                            if (!isRootLayer && (layer.clipToBounds || document.canvas.clipToBounds)) {
+                                clipPath(rootClipShape) {
+                                    drawBox()
+                                }
+                            } else {
+                                drawBox()
                             }
                         }
                         is CanvasLayer.BezelSocket -> {
@@ -280,8 +416,25 @@ fun NxprcCanvasRenderer(
                             val pivot = Offset(layer.originXRatio * size.width, layer.originYRatio * size.height)
 
                             val drawShape: () -> Unit = {
-                                when (layer.shapeType.uppercase()) {
-                                    "OVAL" -> {
+                                val shapeType = layer.shapeType.uppercase()
+                                when {
+                                    shapeType == "HEXAGON" -> {
+                                        val polyPath = buildRegularPolygonPath(6, Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH))
+                                        drawPath(polyPath, brush = brush, alpha = shapeAlpha)
+                                        layer.stroke?.let { st ->
+                                            val stColor = Color(st.color)
+                                            drawPath(polyPath, color = stColor.copy(alpha = stColor.alpha * shapeAlpha), style = Stroke(width = st.width * density))
+                                        }
+                                    }
+                                    shapeType == "OCTAGON" -> {
+                                        val polyPath = buildRegularPolygonPath(8, Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH))
+                                        drawPath(polyPath, brush = brush, alpha = shapeAlpha)
+                                        layer.stroke?.let { st ->
+                                            val stColor = Color(st.color)
+                                            drawPath(polyPath, color = stColor.copy(alpha = stColor.alpha * shapeAlpha), style = Stroke(width = st.width * density))
+                                        }
+                                    }
+                                    shapeType == "OVAL" -> {
                                         drawCircle(brush = brush, radius = shapeRadius, center = centerOffset, alpha = shapeAlpha)
                                         layer.stroke?.let { st ->
                                             val stColor = Color(st.color)
@@ -291,22 +444,6 @@ fun NxprcCanvasRenderer(
                                                 center = centerOffset,
                                                 style = Stroke(width = st.width * density)
                                             )
-                                        }
-                                    }
-                                    "HEXAGON" -> {
-                                        val hexPath = createRegularPolygonPath(size, 6)
-                                        drawPath(path = hexPath, brush = brush, alpha = shapeAlpha)
-                                        layer.stroke?.let { st ->
-                                            val stColor = Color(st.color)
-                                            drawPath(path = hexPath, color = stColor.copy(alpha = stColor.alpha * shapeAlpha), style = Stroke(width = st.width * density))
-                                        }
-                                    }
-                                    "OCTAGON" -> {
-                                        val octaPath = createRegularPolygonPath(size, 8)
-                                        drawPath(path = octaPath, brush = brush, alpha = shapeAlpha)
-                                        layer.stroke?.let { st ->
-                                            val stColor = Color(st.color)
-                                            drawPath(path = octaPath, color = stColor.copy(alpha = stColor.alpha * shapeAlpha), style = Stroke(width = st.width * density))
                                         }
                                     }
                                     else -> {
@@ -366,21 +503,21 @@ fun NxprcCanvasRenderer(
                             )
                         }
                         is CanvasLayer.GlossReflection -> {
-                            val drawGloss: () -> Unit = {
-                                val glossW = size.width * layer.widthRatio
-                                val glossH = size.height * layer.heightRatio
-                                val glossLeft = size.width * layer.offsetXRatio
-                                val glossTop = size.height * layer.offsetYRatio
-                                val glossCenter = Offset(glossLeft + glossW / 2f, glossTop + glossH / 2f)
+                            val glossW = buttonW * layer.widthRatio
+                            val glossH = buttonH * layer.heightRatio
+                            val glossLeft = buttonLeft + buttonW * layer.offsetXRatio
+                            val glossTop = buttonTop + buttonH * layer.offsetYRatio
+                            val glossCenter = Offset(glossLeft + glossW / 2f, glossTop + glossH / 2f)
 
+                            val drawGloss: () -> Unit = {
                                 rotate(layer.rotationDegrees, pivot = glossCenter) {
                                     val blurSpread = layer.blurRadius * density
                                     val effectiveRadius = (glossW / 2f + blurSpread).coerceAtLeast(1f)
                                     val glossBrush = Brush.radialGradient(
                                         listOf(
-                                            Color.White.copy(alpha = 0.35f * layer.alpha),
-                                            Color.White.copy(alpha = 0.12f * layer.alpha),
-                                            Color.White.copy(alpha = 0.02f * layer.alpha),
+                                            Color.White.copy(alpha = 0.55f * layer.alpha),
+                                            Color.White.copy(alpha = 0.25f * layer.alpha),
+                                            Color.White.copy(alpha = 0.05f * layer.alpha),
                                             Color.Transparent
                                         ),
                                         center = glossCenter,
@@ -395,29 +532,7 @@ fun NxprcCanvasRenderer(
                             }
 
                             if (document.canvas.clipToBounds) {
-                                val clipPath = Path().apply {
-                                    val r = size.minDimension / 2f * 0.88f
-                                    val isOval = document.canvas.layers.filterIsInstance<CanvasLayer.GradientShape>().firstOrNull()?.shapeType?.uppercase() == "OVAL" ||
-                                            document.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>().firstOrNull()?.shapeType?.uppercase() == "OVAL"
-                                    if (isOval) {
-                                        addOval(Rect(centerOffset.x - r, centerOffset.y - r, centerOffset.x + r, centerOffset.y + r))
-                                    } else {
-                                        val cr = (document.canvas.layers.filterIsInstance<CanvasLayer.GradientShape>().firstOrNull()?.cornerRadius
-                                            ?: document.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>().firstOrNull()?.cornerRadiusTopLeft
-                                            ?: 14f) * density
-                                        addRoundRect(
-                                            androidx.compose.ui.geometry.RoundRect(
-                                                left = centerOffset.x - r,
-                                                top = centerOffset.y - r,
-                                                right = centerOffset.x + r,
-                                                bottom = centerOffset.y + r,
-                                                radiusX = cr,
-                                                radiusY = cr
-                                            )
-                                        )
-                                    }
-                                }
-                                clipPath(clipPath) {
+                                clipPath(rootClipShape) {
                                     drawGloss()
                                 }
                             } else {
@@ -427,21 +542,27 @@ fun NxprcCanvasRenderer(
                         is CanvasLayer.VectorPath -> {
                             val brush = createBrush(layer.fill, size)
                             val angle = if (layer.isRotating && document.animations.idleType == "ROTATE") rotateAngle else layer.rotationDegrees
+                            val targetRect = Rect(
+                                buttonLeft + buttonW * layer.offsetXRatio,
+                                buttonTop + buttonH * layer.offsetYRatio,
+                                buttonLeft + buttonW * (layer.offsetXRatio + layer.scale),
+                                buttonTop + buttonH * (layer.offsetYRatio + layer.scale)
+                            )
+                            val vectorPath = if (layer.pathData.isNotBlank()) {
+                                buildScaledPath(layer.pathData, targetRect)
+                            } else null
+
                             rotate(angle, pivot = centerOffset) {
-                                if (layer.pathData.isNotBlank()) {
-                                    try {
-                                        val nodes = PathParser().parsePathString(layer.pathData).toNodes()
-                                        val path = Path()
-                                        PathParser().addPathNodes(nodes).toPath(path)
-                                        drawPath(path = path, brush = brush)
-                                        layer.stroke?.let { st ->
-                                            drawPath(path = path, color = Color(st.color), style = Stroke(width = st.width * density))
-                                        }
-                                    } catch (_: Exception) {
-                                        drawCircle(brush = brush, radius = size.minDimension / 2f * 0.75f)
+                                if (vectorPath != null) {
+                                    drawPath(path = vectorPath, brush = brush)
+                                    layer.stroke?.let { st ->
+                                        drawPath(path = vectorPath, color = Color(st.color), style = Stroke(width = st.width * density))
                                     }
                                 } else {
                                     drawCircle(brush = brush, radius = size.minDimension / 2f * 0.75f)
+                                    layer.stroke?.let { st ->
+                                        drawCircle(color = Color(st.color), radius = size.minDimension / 2f * 0.75f, style = Stroke(width = st.width * density))
+                                    }
                                 }
                             }
                         }
@@ -467,6 +588,7 @@ fun NxprcCanvasRenderer(
         val scaleFactor = buttonMinDim / viewBox
         val baseFontSp = glyph?.fontSizeSp ?: textLayer?.fontSizeSp ?: (viewBox * 0.32f)
         val fontSp = (baseFontSp * scaleFactor).sp
+        val rootBox = remember(document) { document.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>().firstOrNull() }
         val fontWeight = if (textLayer != null && textLayer.fontWeight >= 900) FontWeight.Black else FontWeight.Bold
 
         Box(
@@ -475,6 +597,7 @@ fun NxprcCanvasRenderer(
                 scaleX = scaleAnim
                 scaleY = scaleAnim
                 translationY = pressOffsetYAnim * density
+                rotationZ = rootBox?.rotationDegrees ?: 0f
             }
         ) {
             val extraShadows = glyph?.textShadows ?: textLayer?.textShadows ?: emptyList()
@@ -522,23 +645,32 @@ fun NxprcCanvasRenderer(
     }
 }
 
-private fun createBrush(fill: FillBrush, size: Size): Brush {
+private fun createBrush(fill: FillBrush, size: Size, topLeft: Offset = Offset.Zero): Brush {
     return when (fill) {
         is FillBrush.Solid -> SolidColor(Color(fill.color))
         is FillBrush.LinearGradient -> {
+            val angleRad = Math.toRadians((fill.angleDegrees - 90.0))
+            val cx = topLeft.x + size.width / 2f
+            val cy = topLeft.y + size.height / 2f
+            val halfLen = Math.hypot(size.width.toDouble(), size.height.toDouble()).toFloat() / 2f
+            val cos = Math.cos(angleRad).toFloat()
+            val sin = Math.sin(angleRad).toFloat()
+            val start = Offset(cx - cos * halfLen, cy - sin * halfLen)
+            val end = Offset(cx + cos * halfLen, cy + sin * halfLen)
+
             if (fill.stops.isNotEmpty() && fill.stops.size == fill.colors.size) {
                 val colorStops = fill.colors.indices.map { i ->
                     fill.stops[i] to Color(fill.colors[i])
                 }.toTypedArray()
-                Brush.linearGradient(colorStops = colorStops)
+                Brush.linearGradient(colorStops = colorStops, start = start, end = end)
             } else {
-                Brush.linearGradient(fill.colors.map { Color(it) })
+                Brush.linearGradient(fill.colors.map { Color(it) }, start = start, end = end)
             }
         }
         is FillBrush.RadialGradient -> {
-            val cx = size.width * fill.centerXRatio
-            val cy = size.height * fill.centerYRatio
-            val maxR = size.minDimension * fill.radiusRatio * 1.6f
+            val cx = topLeft.x + size.width * fill.centerXRatio
+            val cy = topLeft.y + size.height * fill.centerYRatio
+            val maxR = size.minDimension * fill.radiusRatio * 1.5f
             if (fill.stops.isNotEmpty() && fill.stops.size == fill.colors.size) {
                 val colorStops = fill.colors.indices.map { i ->
                     fill.stops[i] to Color(fill.colors[i])
@@ -546,19 +678,19 @@ private fun createBrush(fill: FillBrush, size: Size): Brush {
                 Brush.radialGradient(
                     colorStops = colorStops,
                     center = Offset(cx, cy),
-                    radius = maxR
+                    radius = maxR.coerceAtLeast(1f)
                 )
             } else {
                 Brush.radialGradient(
                     colors = fill.colors.map { Color(it) },
                     center = Offset(cx, cy),
-                    radius = maxR
+                    radius = maxR.coerceAtLeast(1f)
                 )
             }
         }
         is FillBrush.SweepGradient -> {
-            val cx = size.width * fill.centerXRatio
-            val cy = size.height * fill.centerYRatio
+            val cx = topLeft.x + size.width * fill.centerXRatio
+            val cy = topLeft.y + size.height * fill.centerYRatio
             Brush.sweepGradient(
                 colors = fill.colors.map { Color(it) },
                 center = Offset(cx, cy)
@@ -575,23 +707,56 @@ private fun isDarkColor(color: Long): Boolean {
     return brightness < 50
 }
 
-private fun createRegularPolygonPath(size: Size, sides: Int): Path {
+internal fun buildScaledPath(svgData: String, targetRect: Rect): Path {
     val path = Path()
-    val radius = size.minDimension / 2f * 0.92f
-    val cx = size.width / 2f
-    val cy = size.height / 2f
-    val angleStep = (2 * PI / sides).toFloat()
-    val initialAngle = (-PI / 2).toFloat()
+    if (svgData.isBlank()) return path
+
+    val tokens = svgData.trim().split(java.util.regex.Pattern.compile("[,\\s]+")).filter { it.isNotEmpty() }
+    var i = 0
+    while (i < tokens.size) {
+        val tok = tokens[i].uppercase()
+        when (tok) {
+            "M" -> {
+                if (i + 2 < tokens.size) {
+                    val x = targetRect.left + ((tokens[i + 1].toFloatOrNull() ?: 0f) / 100f) * targetRect.width
+                    val y = targetRect.top + ((tokens[i + 2].toFloatOrNull() ?: 0f) / 100f) * targetRect.height
+                    path.moveTo(x, y)
+                    i += 3
+                } else i++
+            }
+            "L" -> {
+                if (i + 2 < tokens.size) {
+                    val x = targetRect.left + ((tokens[i + 1].toFloatOrNull() ?: 0f) / 100f) * targetRect.width
+                    val y = targetRect.top + ((tokens[i + 2].toFloatOrNull() ?: 0f) / 100f) * targetRect.height
+                    path.lineTo(x, y)
+                    i += 3
+                } else i++
+            }
+            "Z" -> {
+                path.close()
+                i++
+            }
+            else -> i++
+        }
+    }
+    return path
+}
+
+internal fun buildRegularPolygonPath(sides: Int, targetRect: Rect): Path {
+    val path = Path()
+    if (sides < 3) return path
+    val cx = targetRect.center.x
+    val cy = targetRect.center.y
+    val rx = targetRect.width / 2f
+    val ry = targetRect.height / 2f
+    val angleStep = (2.0 * Math.PI / sides)
+    val startAngle = -Math.PI / 2.0 // start at top
 
     for (i in 0 until sides) {
-        val angle = initialAngle + i * angleStep
-        val x = cx + radius * cos(angle)
-        val y = cy + radius * sin(angle)
-        if (i == 0) {
-            path.moveTo(x, y)
-        } else {
-            path.lineTo(x, y)
-        }
+        val a = startAngle + i * angleStep
+        val x = (cx + rx * Math.cos(a)).toFloat()
+        val y = (cy + ry * Math.sin(a)).toFloat()
+        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
     }
     path.close()
     return path

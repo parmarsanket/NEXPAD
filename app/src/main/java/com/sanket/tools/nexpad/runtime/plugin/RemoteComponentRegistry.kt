@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpad.runtime.plugin
+package com.sanket.tools.nexpad.runtime.plugin
 
 import android.content.Context
 import android.net.Uri
@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Registry and offline storage manager for imported .nxprc Remote Composable components.
@@ -18,6 +19,9 @@ class RemoteComponentRegistry private constructor(private val context: Context) 
         if (!exists()) mkdirs()
     }
 
+    private val fileCache = ConcurrentHashMap<String, Pair<Long, NxprcDocument>>()
+    private val idIndex = ConcurrentHashMap<String, NxprcDocument>()
+
     private val _loadedComponents = MutableStateFlow<List<NxprcDocument>>(emptyList())
     val loadedComponents: StateFlow<List<NxprcDocument>> = _loadedComponents.asStateFlow()
 
@@ -25,24 +29,45 @@ class RemoteComponentRegistry private constructor(private val context: Context) 
         reloadAll()
     }
 
+    @Synchronized
     fun reloadAll() {
+        val currentFiles = remoteDir.listFiles { file -> file.extension.lowercase() == "nxprc" } ?: emptyArray()
+        val currentFileNames = currentFiles.map { it.name }.toSet()
+
+        // Evict deleted files from cache
+        fileCache.keys.retainAll(currentFileNames)
+
         val list = mutableListOf<NxprcDocument>()
-        remoteDir.listFiles { file -> file.extension.lowercase() == "nxprc" }?.forEach { file ->
+        for (file in currentFiles) {
             try {
-                val bytes = file.readBytes()
-                val result = NxprcDocument.decodeFromBytes(bytes)
-                result.getOrNull()?.let { doc ->
+                val lastMod = file.lastModified()
+                val cached = fileCache[file.name]
+                val doc = if (cached != null && cached.first == lastMod) {
+                    cached.second
+                } else {
+                    val bytes = file.readBytes()
+                    val result = NxprcDocument.decodeFromBytes(bytes)
+                    result.getOrNull()?.also { decoded ->
+                        fileCache[file.name] = Pair(lastMod, decoded)
+                    }
+                }
+                if (doc != null) {
                     list.add(doc)
                 }
             } catch (_: Exception) {
                 // Ignore corrupt or invalid files safely
             }
         }
+
+        idIndex.clear()
+        list.forEach { doc ->
+            idIndex[doc.manifest.id] = doc
+        }
         _loadedComponents.value = list
     }
 
     fun getComponent(id: String): NxprcDocument? {
-        return _loadedComponents.value.find { it.manifest.id == id }
+        return idIndex[id]
     }
 
     /**
