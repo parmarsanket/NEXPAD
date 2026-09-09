@@ -348,15 +348,19 @@ fun HeroOptionCard(option: HeroConnectionOption) {
                 }
             }
 
-            Button(
+            OutlinedButton (
                 onClick = option.onConnect,
                 modifier = Modifier.fillMaxWidth().height(44.dp),
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan)
+                border = BorderStroke(
+                    width = 1.dp,
+                    color = NeonPalette.Cyan.copy(alpha = 0.5f)
+                ),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = NeonPalette.Cyan
+                )
             ) {
                 Text(
                     option.buttonText,
-                    color = Color.Black,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.labelLarge
                 )
