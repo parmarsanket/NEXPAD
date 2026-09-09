@@ -98,8 +98,7 @@ fun ControllerElementRenderer(
             key = "X",
             buttonColor = Color(0xFF2962FF),
             isConnected = isConnected,
-            onVibrate = onVi
-                    brate,
+            onVibrate = onVibrate,
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled
         )
