@@ -25,8 +25,9 @@ fun ControllerElementRenderer(
     customComponentId: String? = null
 ) {
     val context = LocalContext.current
-    val customDef = remember(customComponentId) {
-        customComponentId?.let { ComponentRegistry.getInstance(context).getComponent(it) }
+    val isDefaultNative = customComponentId == null || customComponentId.startsWith("builtin.default_")
+    val customDef = remember(customComponentId, isDefaultNative) {
+        if (isDefaultNative) null else ComponentRegistry.getInstance(context).getComponent(customComponentId)
     }
 
     if (customDef != null) {
@@ -61,6 +62,14 @@ fun ControllerElementRenderer(
         )
         key == "DPAD" -> RealisticDPad(
             isConnected = isConnected,
+            viewModel = viewModel,
+            isRgbEnabled = isRgbEnabled,
+            onVibrate = onVibrate
+        )
+        key in listOf("UP", "DOWN", "LEFT", "RIGHT") -> RealisticDPadButton(
+            direction = key,
+            isConnected = isConnected,
+            onVibrate = onVibrate,
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled
         )

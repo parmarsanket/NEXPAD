@@ -29,27 +29,37 @@ fun RealisticBumper(
     isConnected: Boolean,
     onVibrate: () -> Unit,
     viewModel: GamepadViewModel,
-    isRgbEnabled: Boolean
+    isRgbEnabled: Boolean,
+    modifier: Modifier = Modifier
 ) {
     var isPressed by remember { mutableStateOf(false) }
+    val isLeft = key.uppercase() == "LB"
+
+    val bumperShape = if (isLeft) {
+        RoundedCornerShape(topStart = 40.dp, topEnd = 14.dp, bottomStart = 14.dp, bottomEnd = 8.dp)
+    } else {
+        RoundedCornerShape(topStart = 14.dp, topEnd = 40.dp, bottomStart = 8.dp, bottomEnd = 14.dp)
+    }
 
     val gradient = Brush.verticalGradient(
-        colors = listOf(Color(0xFF424242), Color(0xFF1E1E1E)),
+        colors = listOf(Color(0xFF424242), Color(0xFF1A1A1A)),
         startY = 0f,
         endY = 100f
     )
 
     val rgbShadow = if (isRgbEnabled) {
-        Modifier.shadow(12.dp, RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp, bottomStart = 10.dp, bottomEnd = 10.dp), spotColor = Color.Cyan, ambientColor = Color.Blue)
+        val spot = if (isLeft) Color(0xFF7C3AED) else Color(0xFF00E5FF)
+        val ambient = if (isLeft) Color(0xFFA78BFA) else Color(0xFF10B981)
+        Modifier.shadow(12.dp, bumperShape, spotColor = spot, ambientColor = ambient)
     } else {
-        Modifier.shadow(8.dp, RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp, bottomStart = 10.dp, bottomEnd = 10.dp))
+        Modifier.shadow(8.dp, bumperShape)
     }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(160.dp, 60.dp)
             .then(rgbShadow)
-            .clip(RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp, bottomStart = 10.dp, bottomEnd = 10.dp))
+            .clip(bumperShape)
             .background(if (isPressed) Color(0xFF111111) else Color.Transparent)
             .background(if (isPressed) Brush.verticalGradient(listOf(Color.Black, Color.DarkGray)) else gradient)
             .pointerInput(Unit) {
@@ -67,13 +77,20 @@ fun RealisticBumper(
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize().padding(4.dp)) {
+            val startX = if (isLeft) 24f else 10f
+            val endX = if (isLeft) size.width - 10f else size.width - 24f
             drawLine(
-                color = Color.White.copy(alpha = 0.2f),
-                start = Offset(10f, 10f),
-                end = Offset(size.width - 10f, 10f),
+                color = Color.White.copy(alpha = 0.25f),
+                start = Offset(startX, 10f),
+                end = Offset(endX, 10f),
                 strokeWidth = 2f
             )
         }
-        Text(key, color = Color.White.copy(alpha = 0.7f), fontWeight = FontWeight.Bold, fontSize = 18.sp)
+        val labelColor = if (isRgbEnabled) {
+            if (isLeft) Color(0xFFA78BFA) else Color(0xFF00E5FF)
+        } else {
+            Color.White.copy(alpha = 0.75f)
+        }
+        Text(key, color = labelColor, fontWeight = FontWeight.Bold, fontSize = 18.sp)
     }
 }

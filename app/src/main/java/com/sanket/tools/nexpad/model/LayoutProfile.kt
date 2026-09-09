@@ -9,7 +9,15 @@ data class LayoutProfile(
     val isRgbEnabled: Boolean = true,
     val positions: Map<String, Position> = standardElitePositions(),
     val description: String = ""
-)
+) {
+    fun toHudElements(): List<HudElement> = positions.mapNotNull { (key, pos) ->
+        HudElement.fromPosition(key, pos)
+    }
+
+    fun withUpdatedElements(elements: List<HudElement>): LayoutProfile = copy(
+        positions = elements.associate { it.control.key to it.toPosition() }
+    )
+}
 
 @Serializable
 data class Position(
@@ -29,9 +37,13 @@ fun standardElitePositions(): Map<String, Position> {
         "RT" to Position(0.920f, 0.055f, scale = 1.18f),
         "RB" to Position(0.920f, 0.375f, scale = 0.95f),
 
-        // Left Thumbstick & D-Pad
+        // Left Thumbstick & D-Pad (Cross & Discrete Buttons)
         "LS" to Position(0.115f, 0.740f, scale = 1.05f),
         "DPAD" to Position(0.320f, 0.740f, scale = 1.10f),
+        "UP" to Position(0.320f, 0.650f, scale = 0.85f),
+        "DOWN" to Position(0.320f, 0.830f, scale = 0.85f),
+        "LEFT" to Position(0.260f, 0.740f, scale = 0.85f),
+        "RIGHT" to Position(0.380f, 0.740f, scale = 0.85f),
 
         // Right Stick
         "RS" to Position(0.895f, 0.740f, scale = 1.05f),

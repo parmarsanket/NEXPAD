@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -79,13 +80,27 @@ fun VirtualControllerScreen(
                     }
                 },
                 actions = {
+                    OutlinedButton(
+                        onClick = { navController.navigate("button_studio?mode=select") },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Purple),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Purple.copy(alpha = 0.7f)),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.padding(end = 6.dp).height(36.dp)
+                    ) {
+                        Icon(Icons.Rounded.Palette, contentDescription = null, tint = NeonPalette.Purple, modifier = Modifier.size(15.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Studio Builder", color = NeonPalette.Purple, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    }
+
                     Button(
                         onClick = { showAddDialog = true },
                         colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan),
                         shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.padding(end = 8.dp)
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier.padding(end = 8.dp).height(36.dp)
                     ) {
-                        Icon(Icons.Rounded.Add, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Rounded.Add, contentDescription = null, tint = Color.Black, modifier = Modifier.size(15.dp))
                         Spacer(Modifier.width(4.dp))
                         Text("Add Custom", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
@@ -131,6 +146,10 @@ fun VirtualControllerScreen(
                             layoutManager.setActiveProfile(profile.name)
                             navController.navigate("editor")
                         },
+                        onOpenStudio = {
+                            layoutManager.setActiveProfile(profile.name)
+                            navController.navigate("button_studio")
+                        },
                         onDuplicate = {
                             profileToDuplicate = profile
                         },
@@ -155,14 +174,22 @@ fun VirtualControllerScreen(
         AddCustomLayoutDialog(
             defaults = getDefaultLayoutProfiles(),
             onDismiss = { showAddDialog = false },
-            onCreate = { name, baseTemplate, selectedButtons ->
+            onCreate = { name, baseTemplate, selectedButtons, openStudioImmediately ->
                 val newProfile = layoutManager.createCustomProfile(
                     name = name,
                     baseProfile = baseTemplate,
                     selectedButtons = selectedButtons
                 )
                 showAddDialog = false
+                layoutManager.setActiveProfile(newProfile.name)
                 Toast.makeText(context, "Created layout '$name'", Toast.LENGTH_SHORT).show()
+                if (openStudioImmediately) {
+                    navController.navigate("button_studio?mode=select&profileName=${android.net.Uri.encode(name)}")
+                }
+            },
+            onDesignInStudio = { name ->
+                showAddDialog = false
+                navController.navigate("button_studio?mode=select&profileName=${android.net.Uri.encode(name)}")
             }
         )
     }
@@ -335,6 +362,7 @@ private fun LayoutProfileCard(
     onSetActive: () -> Unit,
     onPlay: () -> Unit,
     onEditHud: () -> Unit,
+    onOpenStudio: () -> Unit,
     onDuplicate: () -> Unit,
     onReset: () -> Unit,
     onDelete: () -> Unit
@@ -543,6 +571,19 @@ private fun LayoutProfileCard(
                     Text("HUD", fontSize = 12.sp)
                 }
 
+                OutlinedButton(
+                    onClick = onOpenStudio,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Purple),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Purple.copy(alpha = 0.6f)),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    Icon(Icons.Rounded.Palette, contentDescription = null, tint = NeonPalette.Purple, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Studio", fontSize = 12.sp, color = NeonPalette.Purple, fontWeight = FontWeight.SemiBold)
+                }
+
                 IconButton(
                     onClick = onDuplicate,
                     modifier = Modifier.size(36.dp)
@@ -605,10 +646,12 @@ private fun LayoutProfileCard(
 private fun AddCustomLayoutDialog(
     defaults: List<LayoutProfile>,
     onDismiss: () -> Unit,
-    onCreate: (name: String, baseTemplate: LayoutProfile, selectedButtons: Set<String>) -> Unit
+    onCreate: (name: String, baseTemplate: LayoutProfile, selectedButtons: Set<String>, openStudio: Boolean) -> Unit,
+    onDesignInStudio: (name: String) -> Unit
 ) {
     var layoutName by remember { mutableStateOf("") }
     var selectedTemplateIndex by remember { mutableIntStateOf(0) }
+    var openInStudio by remember { mutableStateOf(false) }
     val currentTemplate = defaults.getOrElse(selectedTemplateIndex) { defaults.first() }
 
     val allTemplateKeys = remember(currentTemplate) { currentTemplate.positions.keys.toList() }
@@ -646,6 +689,37 @@ private fun AddCustomLayoutDialog(
                             unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
                         )
                     )
+                }
+
+                // Interactive Studio Builder Launch Option
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable {
+                            val finalName = layoutName.trim().ifEmpty { "Custom Layout ${System.currentTimeMillis() % 1000}" }
+                            onDesignInStudio(finalName)
+                        },
+                    shape = RoundedCornerShape(12.dp),
+                    color = NeonPalette.Purple.copy(alpha = 0.15f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Purple.copy(alpha = 0.6f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Icon(Icons.Rounded.Palette, contentDescription = null, tint = NeonPalette.Purple, modifier = Modifier.size(22.dp))
+                            Column {
+                                Text("Interactive Studio Builder 🎨", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
+                                Text("Pick button skins with Vertical Navigation Rail", fontSize = 10.sp, color = Color.LightGray)
+                            }
+                        }
+                        Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, tint = NeonPalette.Purple, modifier = Modifier.size(16.dp))
+                    }
                 }
 
                 // Base Template Picker
@@ -735,6 +809,28 @@ private fun AddCustomLayoutDialog(
                         }
                     }
                 }
+
+                // Option to customize in Button Studio
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { openInStudio = !openInStudio }
+                        .padding(vertical = 4.dp, horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = openInStudio,
+                        onCheckedChange = { openInStudio = it },
+                        colors = CheckboxDefaults.colors(checkedColor = NeonPalette.Purple)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "Open Button Studio to customize skins after creation",
+                        fontSize = 12.sp,
+                        color = Color.LightGray
+                    )
+                }
             }
         },
         confirmButton = {
@@ -742,7 +838,7 @@ private fun AddCustomLayoutDialog(
                 onClick = {
                     val finalName = layoutName.trim().ifEmpty { "Custom Layout ${System.currentTimeMillis() % 1000}" }
                     val activeKeys = selectedButtons.filterValues { it }.keys.toSet()
-                    onCreate(finalName, currentTemplate, activeKeys)
+                    onCreate(finalName, currentTemplate, activeKeys, openInStudio)
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan)
             ) {

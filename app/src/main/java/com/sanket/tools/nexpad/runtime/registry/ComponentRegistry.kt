@@ -43,6 +43,7 @@ class ComponentRegistry private constructor(private val context: Context) {
                 // Ignore corrupt or invalid files safely
             }
         }
+
         _installedComponents.value = list
     }
 

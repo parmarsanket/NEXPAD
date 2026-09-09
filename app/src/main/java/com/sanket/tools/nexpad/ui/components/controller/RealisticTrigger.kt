@@ -30,27 +30,37 @@ fun RealisticTrigger(
     isConnected: Boolean,
     onVibrate: () -> Unit,
     viewModel: GamepadViewModel,
-    isRgbEnabled: Boolean
+    isRgbEnabled: Boolean,
+    modifier: Modifier = Modifier
 ) {
     var isPressed by remember { mutableStateOf(false) }
+    val isLeft = key.uppercase() == "LT"
+
+    val triggerShape = if (isLeft) {
+        RoundedCornerShape(topStart = 16.dp, topEnd = 8.dp, bottomStart = 50.dp, bottomEnd = 24.dp)
+    } else {
+        RoundedCornerShape(topStart = 8.dp, topEnd = 16.dp, bottomStart = 24.dp, bottomEnd = 50.dp)
+    }
 
     val gradient = Brush.verticalGradient(
-        colors = listOf(Color(0xFF222222), Color(0xFF000000)),
+        colors = listOf(Color(0xFF262626), Color(0xFF0A0A0A)),
         startY = 0f,
         endY = 200f
     )
 
     val rgbShadow = if (isRgbEnabled) {
-        Modifier.shadow(16.dp, RoundedCornerShape(bottomStart = 50.dp, bottomEnd = 50.dp, topStart = 10.dp, topEnd = 10.dp), spotColor = Color.Magenta, ambientColor = Color.Red)
+        val spot = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF0055)
+        val ambient = if (isLeft) Color(0xFF0052CC) else Color(0xFFCC0044)
+        Modifier.shadow(16.dp, triggerShape, spotColor = spot, ambientColor = ambient)
     } else {
-        Modifier.shadow(12.dp, RoundedCornerShape(bottomStart = 50.dp, bottomEnd = 50.dp, topStart = 10.dp, topEnd = 10.dp))
+        Modifier.shadow(12.dp, triggerShape)
     }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(100.dp, 160.dp)
             .then(rgbShadow)
-            .clip(RoundedCornerShape(bottomStart = 50.dp, bottomEnd = 50.dp, topStart = 10.dp, topEnd = 10.dp))
+            .clip(triggerShape)
             .background(if (isPressed) Color.Black else Color.Transparent)
             .background(gradient)
             .pointerInput(Unit) {
@@ -74,6 +84,11 @@ fun RealisticTrigger(
                 topLeft = Offset(0f, size.height / 2)
             )
         }
-        Text(key, color = Color.White.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 24.sp, modifier = Modifier.padding(bottom = 20.dp))
+        val labelColor = if (isRgbEnabled) {
+            if (isLeft) Color(0xFF00E5FF).copy(alpha = 0.85f) else Color(0xFFFF0055).copy(alpha = 0.85f)
+        } else {
+            Color.White.copy(alpha = 0.65f)
+        }
+        Text(key, color = labelColor, fontWeight = FontWeight.Bold, fontSize = 24.sp, modifier = Modifier.padding(bottom = 20.dp))
     }
 }

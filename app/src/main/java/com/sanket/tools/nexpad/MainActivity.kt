@@ -10,39 +10,18 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.lifecycle.ViewModelProvider
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.rememberScrollableState
-import androidx.compose.foundation.gestures.scrollable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import com.sanket.tools.nexpad.sensors.MotionSensorManager
-import com.sanket.tools.nexpad.ui.GamepadScreen
-import com.sanket.tools.nexpad.ui.theme.NEXPADTheme
-import com.sanket.tools.nexpad.ui.NavigationGraph
-import androidx.lifecycle.lifecycleScope
-import com.sanket.tools.nexpad.runtime.network.FtpTransferReceiver
+import androidx.lifecycle.ViewModelProvider
 import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
+import com.sanket.tools.nexpad.sensors.MotionSensorManager
+import com.sanket.tools.nexpad.ui.NavigationGraph
+import com.sanket.tools.nexpad.ui.theme.NEXPADTheme
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
@@ -52,7 +31,6 @@ class MainActivity : ComponentActivity() {
     private lateinit var motionSensorManager: MotionSensorManager
     private lateinit var vibrator: Vibrator
     private lateinit var layoutManager: LayoutManager
-    private var ftpTransferReceiver: FtpTransferReceiver? = null
     private var reloadReceiver: android.content.BroadcastReceiver? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -74,9 +52,6 @@ class MainActivity : ComponentActivity() {
         if (intent?.action == android.hardware.usb.UsbManager.ACTION_USB_ACCESSORY_ATTACHED) {
             viewModel.checkAoaAccessory()
         }
-
-        // Start FTP File Transfer Receiver for Desktop Component Transfer
-        ftpTransferReceiver = FtpTransferReceiver(this, lifecycleScope).apply { start() }
 
         // Register broadcast receiver for Desktop ADB push reload
         val receiver = object : android.content.BroadcastReceiver() {
@@ -152,31 +127,6 @@ class MainActivity : ComponentActivity() {
 
     }
 
-//    private fun vibrateDevice() {
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-//            vibrator.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
-//        } else {
-//            @Suppress("DEPRECATION")
-//            vibrator.vibrate(50)
-//        }
-//    }
-//
-//    private fun triggerRumble(leftMotor: Int, rightMotor: Int) {
-//        val intensity = maxOf(leftMotor, rightMotor)
-//        if (intensity == 0) {
-//            vibrator.cancel()
-//            return
-//        }
-//
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-//            val amplitude = (intensity.toFloat() / 255f * 255).toInt()
-//            vibrator.vibrate(VibrationEffect.createOneShot(200, amplitude))
-//        } else {
-//            @Suppress("DEPRECATION")
-//            vibrator.vibrate(200)
-//        }
-//    }
-
     override fun onResume() {
         super.onResume()
         viewModel.checkAoaAccessory()
@@ -197,7 +147,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        ftpTransferReceiver?.stop()
         reloadReceiver?.let {
             try { unregisterReceiver(it) } catch (_: Exception) {}
         }

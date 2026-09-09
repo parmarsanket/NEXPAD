@@ -31,10 +31,30 @@ fun NavigationGraph(
         composable("editor") {
             HudEditorScreen(navController = navController, layoutManager = layoutManager)
         }
-        composable("button_studio") {
+        composable(
+            route = "button_studio?mode={mode}&profileName={profileName}",
+            arguments = listOf(
+                androidx.navigation.navArgument("mode") {
+                    type = androidx.navigation.NavType.StringType
+                    defaultValue = "manage"
+                },
+                androidx.navigation.navArgument("profileName") {
+                    type = androidx.navigation.NavType.StringType
+                    defaultValue = ""
+                }
+            )
+        ) { backStackEntry ->
+            val modeArg = backStackEntry.arguments?.getString("mode") ?: "manage"
+            val profileNameArg = backStackEntry.arguments?.getString("profileName") ?: ""
             com.sanket.tools.nexpad.ui.studio.ButtonStudioScreen(
                 navController = navController,
-                layoutManager = layoutManager
+                layoutManager = layoutManager,
+                initialMode = if (modeArg.equals("select", ignoreCase = true)) {
+                    com.sanket.tools.nexpad.ui.studio.model.ButtonStudioMode.SELECTION
+                } else {
+                    com.sanket.tools.nexpad.ui.studio.model.ButtonStudioMode.MANAGE
+                },
+                targetProfileName = profileNameArg
             )
         }
         composable("virtual_controller") {

@@ -86,6 +86,219 @@ object DefaultComponents {
         size = NxpSize(widthDp = 76, heightDp = 76)
     )
 
+    val SCIFI_HEX_Y = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.scifi_hex_y",
+            name = "Sci-Fi Hex Y",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "BUTTON",
+            defaultControl = "Y",
+            description = "Canary yellow holographic hexagonal action button."
+        ),
+        geometry = NxpGeometry(type = "Polygon", sides = 6, cornerRadius = 10f),
+        visual = NxpVisual(
+            fillColor = "#261F00",
+            opacity = 0.90f,
+            borderColor = "#FFD600",
+            borderWidth = 2.5f,
+            glowColor = "#FFD600",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(
+            scale = 0.86f,
+            rotation = 3f,
+            fillColor = "#FFD600",
+            borderColor = "#FFFFFF",
+            glowRadius = 20f,
+            springDamping = 0.55f,
+            springStiffness = 750f
+        ),
+        label = NxpLabel(
+            text = "Y",
+            color = "#FFD600",
+            pressedColor = "#000000",
+            fontSize = 24f
+        ),
+        size = NxpSize(widthDp = 76, heightDp = 76)
+    )
+
+    val SCIFI_HEX_X = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.scifi_hex_x",
+            name = "Sci-Fi Hex X",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "BUTTON",
+            defaultControl = "X",
+            description = "Cobalt blue holographic hexagonal action button."
+        ),
+        geometry = NxpGeometry(type = "Polygon", sides = 6, cornerRadius = 10f),
+        visual = NxpVisual(
+            fillColor = "#0D1B2A",
+            opacity = 0.90f,
+            borderColor = "#00B4D8",
+            borderWidth = 2.5f,
+            glowColor = "#00B4D8",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(
+            scale = 0.86f,
+            rotation = -3f,
+            fillColor = "#00B4D8",
+            borderColor = "#FFFFFF",
+            glowRadius = 20f,
+            springDamping = 0.55f,
+            springStiffness = 750f
+        ),
+        label = NxpLabel(
+            text = "X",
+            color = "#00B4D8",
+            pressedColor = "#0D1B2A",
+            fontSize = 24f
+        ),
+        size = NxpSize(widthDp = 76, heightDp = 76)
+    )
+
+    val SCIFI_HEX_B = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.scifi_hex_b",
+            name = "Sci-Fi Hex B",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "BUTTON",
+            defaultControl = "B",
+            description = "Crimson red holographic hexagonal action button."
+        ),
+        geometry = NxpGeometry(type = "Polygon", sides = 6, cornerRadius = 10f),
+        visual = NxpVisual(
+            fillColor = "#1F0A12",
+            opacity = 0.90f,
+            borderColor = "#FF0055",
+            borderWidth = 2.5f,
+            glowColor = "#FF0055",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(
+            scale = 0.86f,
+            rotation = -3f,
+            fillColor = "#FF0055",
+            borderColor = "#FFFFFF",
+            glowRadius = 20f,
+            springDamping = 0.55f,
+            springStiffness = 750f
+        ),
+        label = NxpLabel(
+            text = "B",
+            color = "#FF0055",
+            pressedColor = "#FFFFFF",
+            fontSize = 24f
+        ),
+        size = NxpSize(widthDp = 76, heightDp = 76)
+    )
+
+    val CYBER_OCTA_Y = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.cyber_octa_y",
+            name = "Cyber Octa Y",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "BUTTON",
+            defaultControl = "Y",
+            description = "Neon amber octagonal heavy action button."
+        ),
+        geometry = NxpGeometry(type = "Polygon", sides = 8, cornerRadius = 8f),
+        visual = NxpVisual(
+            fillColor = "#261700",
+            opacity = 0.90f,
+            borderColor = "#FFB703",
+            borderWidth = 2.5f,
+            glowColor = "#FFB703",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(
+            scale = 0.86f,
+            fillColor = "#FFB703",
+            borderColor = "#FFFFFF",
+            glowRadius = 20f
+        ),
+        label = NxpLabel(
+            text = "Y",
+            color = "#FFB703",
+            pressedColor = "#000000",
+            fontSize = 24f
+        ),
+        size = NxpSize(widthDp = 76, heightDp = 76)
+    )
+
+    val CYBER_OCTA_X = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.cyber_octa_x",
+            name = "Cyber Octa X",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "BUTTON",
+            defaultControl = "X",
+            description = "Neon sapphire octagonal action button."
+        ),
+        geometry = NxpGeometry(type = "Polygon", sides = 8, cornerRadius = 8f),
+        visual = NxpVisual(
+            fillColor = "#0B1528",
+            opacity = 0.90f,
+            borderColor = "#3A86FF",
+            borderWidth = 2.5f,
+            glowColor = "#3A86FF",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(
+            scale = 0.86f,
+            fillColor = "#3A86FF",
+            borderColor = "#FFFFFF",
+            glowRadius = 20f
+        ),
+        label = NxpLabel(
+            text = "X",
+            color = "#3A86FF",
+            pressedColor = "#0B1528",
+            fontSize = 24f
+        ),
+        size = NxpSize(widthDp = 76, heightDp = 76)
+    )
+
+    val CYBER_OCTA_A = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.cyber_octa_a",
+            name = "Cyber Octa A",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "BUTTON",
+            defaultControl = "A",
+            description = "Neon turquoise octagonal primary action button."
+        ),
+        geometry = NxpGeometry(type = "Polygon", sides = 8, cornerRadius = 8f),
+        visual = NxpVisual(
+            fillColor = "#05201A",
+            opacity = 0.90f,
+            borderColor = "#00F5D4",
+            borderWidth = 2.5f,
+            glowColor = "#00F5D4",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(
+            scale = 0.86f,
+            fillColor = "#00F5D4",
+            borderColor = "#FFFFFF",
+            glowRadius = 20f
+        ),
+        label = NxpLabel(
+            text = "A",
+            color = "#00F5D4",
+            pressedColor = "#05201A",
+            fontSize = 24f
+        ),
+        size = NxpSize(widthDp = 76, heightDp = 76)
+    )
+
     val NEON_MATRIX_JOYSTICK = NxpComponentDef(
         manifest = NxpManifest(
             id = "builtin.neon_matrix_ls",
@@ -405,7 +618,103 @@ object DefaultComponents {
             pressedColor = "#000000",
             fontSize = 14f
         ),
-        size = NxpSize(widthDp = 120, heightDp = 120)
+        size = NxpSize(widthDp = 140, heightDp = 140)
+    )
+
+    val CYBER_DPAD_UP = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.cyber_dpad_up",
+            name = "Cyber D-Pad Up",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "DPAD",
+            defaultControl = "UP",
+            description = "Neon turquoise directional UP cap button."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
+        visual = NxpVisual(
+            fillColor = "#0B1A24",
+            opacity = 0.90f,
+            borderColor = "#2DD4BF",
+            borderWidth = 2f,
+            glowColor = "#2DD4BF",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.88f, fillColor = "#2DD4BF", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "▲", color = "#2DD4BF", pressedColor = "#000000", fontSize = 22f),
+        size = NxpSize(widthDp = 72, heightDp = 72)
+    )
+
+    val CYBER_DPAD_DOWN = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.cyber_dpad_down",
+            name = "Cyber D-Pad Down",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "DPAD",
+            defaultControl = "DOWN",
+            description = "Neon turquoise directional DOWN cap button."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
+        visual = NxpVisual(
+            fillColor = "#0B1A24",
+            opacity = 0.90f,
+            borderColor = "#2DD4BF",
+            borderWidth = 2f,
+            glowColor = "#2DD4BF",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.88f, fillColor = "#2DD4BF", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "▼", color = "#2DD4BF", pressedColor = "#000000", fontSize = 22f),
+        size = NxpSize(widthDp = 72, heightDp = 72)
+    )
+
+    val CYBER_DPAD_LEFT = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.cyber_dpad_left",
+            name = "Cyber D-Pad Left",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "DPAD",
+            defaultControl = "LEFT",
+            description = "Neon turquoise directional LEFT cap button."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
+        visual = NxpVisual(
+            fillColor = "#0B1A24",
+            opacity = 0.90f,
+            borderColor = "#2DD4BF",
+            borderWidth = 2f,
+            glowColor = "#2DD4BF",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.88f, fillColor = "#2DD4BF", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "◀", color = "#2DD4BF", pressedColor = "#000000", fontSize = 22f),
+        size = NxpSize(widthDp = 72, heightDp = 72)
+    )
+
+    val CYBER_DPAD_RIGHT = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.cyber_dpad_right",
+            name = "Cyber D-Pad Right",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "DPAD",
+            defaultControl = "RIGHT",
+            description = "Neon turquoise directional RIGHT cap button."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
+        visual = NxpVisual(
+            fillColor = "#0B1A24",
+            opacity = 0.90f,
+            borderColor = "#2DD4BF",
+            borderWidth = 2f,
+            glowColor = "#2DD4BF",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.88f, fillColor = "#2DD4BF", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "▶", color = "#2DD4BF", pressedColor = "#000000", fontSize = 22f),
+        size = NxpSize(widthDp = 72, heightDp = 72)
     )
 
     val NEXUS_ORB_HOME = NxpComponentDef(
@@ -725,6 +1034,102 @@ object DefaultComponents {
         size = NxpSize(widthDp = 140, heightDp = 140)
     )
 
+    val DEFAULT_DPAD_UP = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_up",
+            name = "Default D-Pad Up (▲)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "DPAD",
+            defaultControl = "UP",
+            description = "Standard tactile directional UP button."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
+        visual = NxpVisual(
+            fillColor = "#1F1F1F",
+            opacity = 0.95f,
+            borderColor = "#4ADE80",
+            borderWidth = 2f,
+            glowColor = "#4ADE80",
+            glowRadius = 8f
+        ),
+        pressed = NxpPressedState(scale = 0.88f, fillColor = "#4ADE80", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "▲", color = "#4ADE80", pressedColor = "#000000", fontSize = 22f),
+        size = NxpSize(widthDp = 72, heightDp = 72)
+    )
+
+    val DEFAULT_DPAD_DOWN = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_down",
+            name = "Default D-Pad Down (▼)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "DPAD",
+            defaultControl = "DOWN",
+            description = "Standard tactile directional DOWN button."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
+        visual = NxpVisual(
+            fillColor = "#1F1F1F",
+            opacity = 0.95f,
+            borderColor = "#4ADE80",
+            borderWidth = 2f,
+            glowColor = "#4ADE80",
+            glowRadius = 8f
+        ),
+        pressed = NxpPressedState(scale = 0.88f, fillColor = "#4ADE80", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "▼", color = "#4ADE80", pressedColor = "#000000", fontSize = 22f),
+        size = NxpSize(widthDp = 72, heightDp = 72)
+    )
+
+    val DEFAULT_DPAD_LEFT = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_left",
+            name = "Default D-Pad Left (◀)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "DPAD",
+            defaultControl = "LEFT",
+            description = "Standard tactile directional LEFT button."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
+        visual = NxpVisual(
+            fillColor = "#1F1F1F",
+            opacity = 0.95f,
+            borderColor = "#4ADE80",
+            borderWidth = 2f,
+            glowColor = "#4ADE80",
+            glowRadius = 8f
+        ),
+        pressed = NxpPressedState(scale = 0.88f, fillColor = "#4ADE80", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "◀", color = "#4ADE80", pressedColor = "#000000", fontSize = 22f),
+        size = NxpSize(widthDp = 72, heightDp = 72)
+    )
+
+    val DEFAULT_DPAD_RIGHT = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_right",
+            name = "Default D-Pad Right (▶)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "DPAD",
+            defaultControl = "RIGHT",
+            description = "Standard tactile directional RIGHT button."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
+        visual = NxpVisual(
+            fillColor = "#1F1F1F",
+            opacity = 0.95f,
+            borderColor = "#4ADE80",
+            borderWidth = 2f,
+            glowColor = "#4ADE80",
+            glowRadius = 8f
+        ),
+        pressed = NxpPressedState(scale = 0.88f, fillColor = "#4ADE80", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "▶", color = "#4ADE80", pressedColor = "#000000", fontSize = 22f),
+        size = NxpSize(widthDp = 72, heightDp = 72)
+    )
+
     val DEFAULT_TRIGGER_LT = NxpComponentDef(
         manifest = NxpManifest(
             id = "builtin.default_lt",
@@ -1022,6 +1427,10 @@ object DefaultComponents {
         DEFAULT_STICK_LS,
         DEFAULT_STICK_RS,
         DEFAULT_DPAD,
+        DEFAULT_DPAD_UP,
+        DEFAULT_DPAD_DOWN,
+        DEFAULT_DPAD_LEFT,
+        DEFAULT_DPAD_RIGHT,
         DEFAULT_TRIGGER_LT,
         DEFAULT_TRIGGER_RT,
         DEFAULT_BUMPER_LB,
@@ -1037,7 +1446,13 @@ object DefaultComponents {
 
         // Custom Cyber / Sci-Fi Variant Skins
         SCIFI_HEX_ATTACK,
+        SCIFI_HEX_Y,
+        SCIFI_HEX_X,
+        SCIFI_HEX_B,
         CYBER_OCTA_BURST,
+        CYBER_OCTA_Y,
+        CYBER_OCTA_X,
+        CYBER_OCTA_A,
         NEON_DIAMOND_X,
         PLASMA_TRIANGLE_Y,
         CYBER_BUMPER_LB,
@@ -1047,6 +1462,10 @@ object DefaultComponents {
         NEON_MATRIX_JOYSTICK,
         CYBER_VORTEX_RS,
         HOLO_CROSS_DPAD,
+        CYBER_DPAD_UP,
+        CYBER_DPAD_DOWN,
+        CYBER_DPAD_LEFT,
+        CYBER_DPAD_RIGHT,
         NEXUS_ORB_HOME,
         TACTICAL_SLIM_MENU,
         MACRO_PILL_M1

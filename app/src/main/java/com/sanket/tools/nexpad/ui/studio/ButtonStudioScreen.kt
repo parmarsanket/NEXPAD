@@ -2,11 +2,10 @@ package com.sanket.tools.nexpad.ui.studio
 
 import android.content.Context
 import android.widget.Toast
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
@@ -18,203 +17,96 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.sanket.tools.nexpad.model.Position
 import com.sanket.tools.nexpad.model.defaultPositions
-import com.sanket.tools.nexpad.runtime.engine.NxpComposeInterpreter
-import com.sanket.tools.nexpad.runtime.model.NexPadControl
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
-import com.sanket.tools.nexpad.runtime.model.SandboxInputTarget
 import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
-import com.sanket.tools.nexpad.ui.components.controller.ControllerElementRenderer
 import com.sanket.tools.nexpad.ui.components.effects.CyberGrid
 import com.sanket.tools.nexpad.ui.components.effects.ScanLine
+import com.sanket.tools.nexpad.ui.studio.components.*
+import com.sanket.tools.nexpad.ui.studio.model.*
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
 /**
- * Categorization for Button Studio buttons:
- * - DEFAULT: Native realistic controller component from ui/components/controller/
- * - SVG: Cyber / Vector / Geometric polygon skin
- * - PLUGIN: Dynamic Compose / AI imported JSON plugin
+ * High-performance, modular Button Studio Screen.
+ * Supports dual modes:
+ * - MANAGER: Browse, test in sandbox, import AI JSON, copy JSON, delete custom buttons.
+ * - BUILDER (SELECTION): Pick one skin per control type, build custom layout, proceed to HUD.
  */
-enum class ButtonStudioType(val label: String, val badgeColor: Color, val badgeBg: Color) {
-    DEFAULT("DEFAULT", Color(0xFF00E5FF), Color(0x2200E5FF)),
-    SVG("SVG / VECTOR", Color(0xFF39FF14), Color(0x2239FF14)),
-    PLUGIN("PLUGIN / NXP", Color(0xFFB400FF), Color(0x22B400FF))
-}
-
-fun getButtonStudioType(def: NxpComponentDef): ButtonStudioType {
-    val id = def.manifest.id
-    return when {
-        id.startsWith("builtin.default_") -> ButtonStudioType.DEFAULT
-        id.startsWith("builtin.") -> ButtonStudioType.SVG
-        else -> ButtonStudioType.PLUGIN
-    }
-}
-
-data class StudioSubFilter(
-    val id: String,
-    val label: String,
-    val targetKey: String?
-)
-
-data class StudioCategory(
-    val id: String,
-    val title: String,
-    val keys: Set<String>,
-    val subFilters: List<StudioSubFilter>
-)
-
-val STUDIO_CATEGORIES = listOf(
-    StudioCategory(
-        id = "ABXY",
-        title = "ABXY Buttons",
-        keys = setOf("A", "B", "X", "Y"),
-        subFilters = listOf(
-            StudioSubFilter("ALL", "All ABXY", null),
-            StudioSubFilter("A", "A (Green)", "A"),
-            StudioSubFilter("B", "B (Red)", "B"),
-            StudioSubFilter("X", "X (Blue)", "X"),
-            StudioSubFilter("Y", "Y (Yellow)", "Y")
-        )
-    ),
-    StudioCategory(
-        id = "DPAD",
-        title = "D-Pad",
-        keys = setOf("DPAD"),
-        subFilters = listOf(
-            StudioSubFilter("ALL", "Directional Cross", "DPAD")
-        )
-    ),
-    StudioCategory(
-        id = "STICKS",
-        title = "Thumbsticks",
-        keys = setOf("LS", "RS"),
-        subFilters = listOf(
-            StudioSubFilter("ALL", "Both Sticks", null),
-            StudioSubFilter("LS", "Left Stick (LS)", "LS"),
-            StudioSubFilter("RS", "Right Stick (RS)", "RS")
-        )
-    ),
-    StudioCategory(
-        id = "TRIGGERS",
-        title = "Triggers",
-        keys = setOf("LT", "RT"),
-        subFilters = listOf(
-            StudioSubFilter("ALL", "Both Triggers", null),
-            StudioSubFilter("LT", "Left Trigger (LT)", "LT"),
-            StudioSubFilter("RT", "Right Trigger (RT)", "RT")
-        )
-    ),
-    StudioCategory(
-        id = "BUMPERS",
-        title = "Bumpers",
-        keys = setOf("LB", "RB"),
-        subFilters = listOf(
-            StudioSubFilter("ALL", "Both Bumpers", null),
-            StudioSubFilter("LB", "Left Bumper (LB)", "LB"),
-            StudioSubFilter("RB", "Right Bumper (RB)", "RB")
-        )
-    ),
-    StudioCategory(
-        id = "HOME",
-        title = "Home (Xbox)",
-        keys = setOf("XBOX", "HOME", "GUIDE"),
-        subFilters = listOf(
-            StudioSubFilter("ALL", "Xbox Guide", "XBOX")
-        )
-    ),
-    StudioCategory(
-        id = "SYSTEM",
-        title = "System",
-        keys = setOf("VIEW", "MENU", "SHARE", "BACK", "START"),
-        subFilters = listOf(
-            StudioSubFilter("ALL", "All System", null),
-            StudioSubFilter("VIEW", "View / Back", "VIEW"),
-            StudioSubFilter("MENU", "Menu / Pause", "MENU"),
-            StudioSubFilter("SHARE", "Share / Capture", "SHARE")
-        )
-    ),
-    StudioCategory(
-        id = "MACROS",
-        title = "Macro Paddles",
-        keys = setOf("M1", "M2", "M3", "M4", "PROFILE", "TURBO"),
-        subFilters = listOf(
-            StudioSubFilter("ALL", "All Macros", null),
-            StudioSubFilter("M1", "Paddle M1", "M1"),
-            StudioSubFilter("M2", "Paddle M2", "M2"),
-            StudioSubFilter("M3", "Paddle M3", "M3"),
-            StudioSubFilter("M4", "Paddle M4", "M4")
-        )
-    ),
-    StudioCategory(
-        id = "ALL",
-        title = "All Controls",
-        keys = emptySet(),
-        subFilters = emptyList()
-    )
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ButtonStudioScreen(
     navController: NavController,
-    layoutManager: LayoutManager? = null
+    layoutManager: LayoutManager?,
+    initialMode: ButtonStudioMode = ButtonStudioMode.MANAGE,
+    targetProfileName: String = ""
 ) {
     val context = LocalContext.current
-    val clipboardManager = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
     val registry = remember { ComponentRegistry.getInstance(context) }
     val components by registry.installedComponents.collectAsState()
     val dummyViewModel = viewModel<GamepadViewModel>()
 
-    // Default selected category is ABXY buttons
-    var selectedCategory by remember { mutableStateOf("ABXY") }
-    var selectedSubFilter by remember { mutableStateOf("ALL") }
+    // Current Studio Mode
+    var currentMode by remember { mutableStateOf(initialMode) }
 
-    var previewTarget by remember { mutableStateOf<NxpComponentDef?>(null) }
+    var selectedCategory by remember { mutableStateOf(STUDIO_CATEGORIES.first()) }
+    var selectedSubFilter by remember { mutableStateOf<StudioSubFilter?>(null) }
     var showImportDialog by remember { mutableStateOf(false) }
+    var previewTarget by remember { mutableStateOf<NxpComponentDef?>(null) }
 
-    // Reset subfilter when category changes
-    LaunchedEffect(selectedCategory) {
-        selectedSubFilter = "ALL"
-    }
-
-    val activeCategory = remember(selectedCategory) {
-        STUDIO_CATEGORIES.find { it.id == selectedCategory } ?: STUDIO_CATEGORIES.first()
-    }
-
-    val filteredComponents = remember(components, selectedCategory, selectedSubFilter) {
-        val targetKey = if (selectedSubFilter != "ALL") selectedSubFilter else null
-
-        if (selectedCategory == "ALL") {
-            components
-        } else {
-            components.filter { def ->
-                val control = def.manifest.defaultControl.uppercase()
-                if (targetKey != null) {
-                    control == targetKey
-                } else {
-                    activeCategory.keys.contains(control)
-                }
+    // Map of active controls (controlKey -> Boolean) in Builder mode
+    val activeControls = remember {
+        mutableStateMapOf<String, Boolean>().apply {
+            listOf("A", "B", "X", "Y", "LS", "RS", "DPAD", "LT", "RT", "LB", "RB", "XBOX", "VIEW", "MENU").forEach {
+                put(it, true)
             }
         }
     }
 
-    val activeProfileName = remember(layoutManager) {
-        layoutManager?.getActiveProfile()?.name ?: "Active Layout"
+    // Map of chosen skin IDs (controlKey -> skinId)
+    val chosenSkins = remember { mutableStateMapOf<String, String?>() }
+
+    // Selected Group theme IDs (defaults to Classic Xbox)
+    var chosenAbxyThemeId by remember { mutableStateOf("group.classic_xbox") }
+    var chosenTriggerThemeId by remember { mutableStateOf("group.triggers_classic") }
+    var chosenBumperThemeId by remember { mutableStateOf("group.bumpers_classic") }
+    var chosenStickThemeId by remember { mutableStateOf("group.sticks_classic") }
+
+    // Filter components matching the active category (excluding individual controls for grouped categories)
+    val filteredComponents = remember(components, selectedCategory, selectedSubFilter) {
+        components.filter { def ->
+            val control = def.manifest.defaultControl.uppercase()
+            val category = def.manifest.category.uppercase()
+
+            // Omit individual controls for grouped categories in favor of cohesive themes
+            if (control in setOf("A", "B", "X", "Y", "LT", "RT", "LB", "RB", "LS", "RS")) return@filter false
+
+            if (selectedCategory.id == "ALL") return@filter true
+
+            val matchesCategory = selectedCategory.keys.any { k ->
+                k.uppercase() == control || category == selectedCategory.id
+            }
+            if (!matchesCategory) return@filter false
+
+            val sub = selectedSubFilter
+            if (sub == null || sub.targetKey == null) {
+                true
+            } else {
+                control == sub.targetKey.uppercase()
+            }
+        }
     }
 
     Scaffold(
@@ -222,18 +114,41 @@ fun ButtonStudioScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text(
-                            "Button Studio",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Black,
-                                color = NeonPalette.Cyan
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                "Button Studio",
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontWeight = FontWeight.Black,
+                                    color = NeonPalette.Cyan
+                                )
                             )
-                        )
+                            // Mode Badge
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = if (currentMode == ButtonStudioMode.SELECTION) NeonPalette.Cyan.copy(alpha = 0.2f) else NeonPalette.Purple.copy(alpha = 0.2f),
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.dp,
+                                    if (currentMode == ButtonStudioMode.SELECTION) NeonPalette.Cyan else NeonPalette.Purple
+                                )
+                            ) {
+                                Text(
+                                    if (currentMode == ButtonStudioMode.SELECTION) "LAYOUT BUILDER" else "MANAGER",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (currentMode == ButtonStudioMode.SELECTION) NeonPalette.Cyan else NeonPalette.Purple,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+
                         Text(
-                            "Select & customize buttons • Place directly on HUD",
+                            if (currentMode == ButtonStudioMode.SELECTION) {
+                                if (targetProfileName.isNotBlank()) "Selecting controls for '$targetProfileName'" else "Configure custom button layout"
+                            } else {
+                                "Pick, test, or import controller skins"
+                            },
                             style = MaterialTheme.typography.bodySmall.copy(
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 11.sp
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         )
                     }
@@ -248,173 +163,410 @@ fun ButtonStudioScreen(
                     }
                 },
                 actions = {
-                    Button(
-                        onClick = { showImportDialog = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan),
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                        modifier = Modifier.padding(end = 8.dp)
+                    // Mode Switcher Toggle
+                    OutlinedButton(
+                        onClick = {
+                            currentMode = if (currentMode == ButtonStudioMode.MANAGE) {
+                                ButtonStudioMode.SELECTION
+                            } else {
+                                ButtonStudioMode.MANAGE
+                            }
+                        },
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.height(34.dp)
                     ) {
-                        Icon(Icons.Rounded.Add, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                        Icon(
+                            if (currentMode == ButtonStudioMode.MANAGE) Icons.Rounded.DesignServices else Icons.Rounded.Build,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = NeonPalette.Cyan
+                        )
                         Spacer(Modifier.width(4.dp))
-                        Text("Import AI", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Text(
+                            if (currentMode == ButtonStudioMode.MANAGE) "Switch to Builder" else "Switch to Manager",
+                            fontSize = 11.sp
+                        )
+                    }
+
+                    if (currentMode == ButtonStudioMode.MANAGE) {
+                        Spacer(Modifier.width(6.dp))
+                        Button(
+                            onClick = { showImportDialog = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Purple),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            modifier = Modifier
+                                .height(34.dp)
+                                .padding(end = 8.dp)
+                        ) {
+                            Icon(Icons.Rounded.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(2.dp))
+                            Text("Import JSON", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f)
                 )
             )
         },
+        bottomBar = {
+            if (currentMode == ButtonStudioMode.SELECTION) {
+                SelectionModeBottomBar(
+                    activeCount = activeControls.values.count { it },
+                    totalCount = 19,
+                    onProceedToHud = {
+                        val layoutName = targetProfileName.trim().ifEmpty {
+                            "Custom Layout ${System.currentTimeMillis() % 1000}"
+                        }
+                        if (layoutManager != null) {
+                            val activeKeys = activeControls.filterValues { it }.keys
+                            val defaults = defaultPositions()
+
+                            val positions = activeKeys.associateWith { key ->
+                                val basePos = defaults[key] ?: Position(0.5f, 0.5f)
+                                basePos.copy(customComponentId = chosenSkins[key])
+                            }
+
+                            val base = layoutManager.getActiveProfile()
+                            val newProfile = layoutManager.createCustomProfile(
+                                name = layoutName,
+                                baseProfile = base,
+                                selectedButtons = activeKeys
+                            ).copy(
+                                positions = positions,
+                                description = "Custom Layout designed in Button Studio (${activeKeys.size} controls)"
+                            )
+
+                            layoutManager.saveProfile(newProfile)
+                            layoutManager.setActiveProfile(newProfile.name)
+
+                            Toast.makeText(
+                                context,
+                                "Created '$layoutName' with ${activeKeys.size} controls. Place and size on HUD!",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                        navController.navigate("editor")
+                    }
+                )
+            }
+        },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
             CyberGrid(modifier = Modifier.matchParentSize())
             ScanLine(modifier = Modifier.matchParentSize())
 
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                // 1. Controller Button Name Slider (Horizontal Scroll, ABXY default)
-                Row(
+            Row(modifier = Modifier.fillMaxSize()) {
+                // 1. Sleek Vertical Navigation Rail (Slider on Left)
+                StudioVerticalRail(
+                    categories = STUDIO_CATEGORIES,
+                    selectedCategoryId = selectedCategory.id,
+                    onSelectCategory = { cat ->
+                        selectedCategory = cat
+                        selectedSubFilter = cat.subFilters.firstOrNull()
+                    },
+                    mode = currentMode,
+                    activeCountForCategory = { cat ->
+                        cat.keys.count { activeControls[it] == true }
+                    },
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    STUDIO_CATEGORIES.forEach { category ->
-                        val isSelected = selectedCategory == category.id
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { selectedCategory = category.id },
-                            label = {
-                                Text(
-                                    category.title,
-                                    fontSize = 12.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                )
-                            },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = NeonPalette.Cyan.copy(alpha = 0.2f),
-                                selectedLabelColor = NeonPalette.Cyan
-                            )
-                        )
-                    }
-                }
+                        .width(78.dp)
+                        .fillMaxHeight()
+                )
 
-                // 2. Sub-filter chips row (e.g. A, B, X, Y buttons)
-                if (activeCategory.subFilters.size > 1) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        activeCategory.subFilters.forEach { sub ->
-                            val isSubSelected = selectedSubFilter == sub.id
-                            AssistChip(
-                                onClick = { selectedSubFilter = sub.id },
-                                label = {
-                                    Text(
-                                        sub.label,
-                                        fontSize = 11.sp,
-                                        fontWeight = if (isSubSelected) FontWeight.Bold else FontWeight.Normal
-                                    )
-                                },
-                                colors = AssistChipDefaults.assistChipColors(
-                                    containerColor = if (isSubSelected) NeonPalette.Cyan.copy(alpha = 0.25f) else Color(0xFF141923),
-                                    labelColor = if (isSubSelected) NeonPalette.Cyan else Color.LightGray
-                                ),
-                                border = AssistChipDefaults.assistChipBorder(
-                                    borderColor = if (isSubSelected) NeonPalette.Cyan else Color.White.copy(alpha = 0.15f),
-                                    enabled = true
-                                )
-                            )
-                        }
-                    }
-                }
+                VerticalDivider(color = Color.White.copy(alpha = 0.08f))
 
-                // 3. Status Bar showing active layout target
-                Row(
+                // 2. Right Content Area: Sub-filters + Responsive Grid
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF0F172A))
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
                 ) {
-                    Text(
-                        text = "Target Layout: $activeProfileName",
-                        color = Color.LightGray,
-                        fontSize = 11.sp
-                    )
-                    Text(
-                        text = "${filteredComponents.size} available styles",
-                        color = NeonPalette.Cyan,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                // 4. Empty State if no buttons match
-                if (filteredComponents.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                    // Sub-filter Chips Row (if category has multiple options)
+                    if (selectedCategory.subFilters.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(bottom = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Rounded.DesignServices, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(48.dp))
-                            Text("No buttons available for this category yet.", color = Color.Gray, fontSize = 14.sp)
-                            OutlinedButton(
-                                onClick = { showImportDialog = true },
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Cyan)
-                            ) {
-                                Text("Import AI Component")
+                            selectedCategory.subFilters.forEach { filter ->
+                                val isSelected = selectedSubFilter?.id == filter.id
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = { selectedSubFilter = filter },
+                                    label = {
+                                        Text(
+                                            filter.label,
+                                            fontSize = 11.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = NeonPalette.Cyan.copy(alpha = 0.22f),
+                                        selectedLabelColor = NeonPalette.Cyan,
+                                        containerColor = Color.White.copy(alpha = 0.05f),
+                                        labelColor = Color.LightGray
+                                    ),
+                                    border = FilterChipDefaults.filterChipBorder(
+                                        enabled = true,
+                                        selected = isSelected,
+                                        borderColor = Color.White.copy(alpha = 0.15f),
+                                        selectedBorderColor = NeonPalette.Cyan
+                                    ),
+                                    modifier = Modifier.height(30.dp)
+                                )
                             }
                         }
                     }
-                } else {
-                    // 5. Grid View: 2 columns showing button previews
+
+                    // 2-Column Responsive Grid
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(2),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        contentPadding = PaddingValues(bottom = 16.dp)
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        items(filteredComponents, key = { it.manifest.id }) { def ->
-                            StudioGridCard(
-                                def = def,
-                                dummyViewModel = dummyViewModel,
-                                onUseInHud = {
-                                    applyButtonToHud(def, layoutManager, navController, context)
-                                },
-                                onTest = { previewTarget = def },
-                                onExport = {
-                                    val json = registry.exportToJson(def.manifest.id)
-                                    if (json != null) {
-                                        clipboardManager.setText(AnnotatedString(json))
-                                        Toast.makeText(context, "JSON copied to clipboard!", Toast.LENGTH_SHORT).show()
-                                    }
-                                },
-                                onDelete = {
-                                    val deleted = registry.deleteComponent(def.manifest.id)
-                                    if (deleted) {
-                                        Toast.makeText(context, "Deleted ${def.manifest.name}", Toast.LENGTH_SHORT).show()
-                                    }
+                        when (selectedCategory.id) {
+                            "ABXY" -> {
+                                items(
+                                    items = ABXY_GROUP_THEMES,
+                                    key = { it.id },
+                                    span = { GridItemSpan(2) }
+                                ) { theme ->
+                                    val isThemeSelected = chosenAbxyThemeId == theme.id &&
+                                            listOf("A", "B", "X", "Y").all { activeControls[it] == true }
+
+                                    AbxyDiamondGroupCard(
+                                        theme = theme,
+                                        mode = currentMode,
+                                        isSelected = isThemeSelected,
+                                        dummyViewModel = dummyViewModel,
+                                        onSelectGroup = {
+                                            if (isThemeSelected) {
+                                                listOf("A", "B", "X", "Y").forEach { key -> activeControls[key] = false }
+                                                Toast.makeText(context, "Excluded ABXY Group from layout", Toast.LENGTH_SHORT).show()
+                                            } else {
+                                                chosenAbxyThemeId = theme.id
+                                                listOf("A", "B", "X", "Y").forEach { key ->
+                                                    activeControls[key] = true
+                                                    chosenSkins[key] = theme.skinMap[key]
+                                                }
+                                                Toast.makeText(context, "Selected ${theme.name} (All 4 Buttons)", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        onUseInHud = {
+                                            if (layoutManager != null) {
+                                                val profile = layoutManager.getActiveProfile()
+                                                val positions = profile.positions.toMutableMap()
+                                                val defaults = defaultPositions()
+                                                listOf("A", "B", "X", "Y").forEach { key ->
+                                                    val pos = positions[key] ?: defaults[key] ?: Position(0.5f, 0.5f)
+                                                    positions[key] = pos.copy(customComponentId = theme.skinMap[key])
+                                                }
+                                                layoutManager.saveProfile(profile.copy(positions = positions))
+                                                layoutManager.pendingSelectedKey = "A"
+                                                Toast.makeText(context, "Applied ${theme.name} (4 buttons) to '${profile.name}'", Toast.LENGTH_SHORT).show()
+                                            }
+                                            navController.navigate("editor")
+                                        }
+                                    )
                                 }
-                            )
+                            }
+                            "TRIGGERS" -> {
+                                items(
+                                    items = TRIGGER_GROUP_THEMES,
+                                    key = { it.id },
+                                    span = { GridItemSpan(2) }
+                                ) { theme ->
+                                    val isThemeSelected = chosenTriggerThemeId == theme.id &&
+                                            listOf("LT", "RT").all { activeControls[it] == true }
+
+                                    PairedGroupCard(
+                                        theme = theme,
+                                        category = "TRIGGERS",
+                                        mode = currentMode,
+                                        isSelected = isThemeSelected,
+                                        dummyViewModel = dummyViewModel,
+                                        onSelectGroup = {
+                                            if (isThemeSelected) {
+                                                listOf("LT", "RT").forEach { key -> activeControls[key] = false }
+                                                Toast.makeText(context, "Excluded Triggers (LT & RT) from layout", Toast.LENGTH_SHORT).show()
+                                            } else {
+                                                chosenTriggerThemeId = theme.id
+                                                listOf("LT", "RT").forEach { key ->
+                                                    activeControls[key] = true
+                                                    chosenSkins[key] = theme.skinMap[key]
+                                                }
+                                                Toast.makeText(context, "Selected ${theme.name} (LT & RT)", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        onUseInHud = {
+                                            if (layoutManager != null) {
+                                                val profile = layoutManager.getActiveProfile()
+                                                val positions = profile.positions.toMutableMap()
+                                                val defaults = defaultPositions()
+                                                listOf("LT", "RT").forEach { key ->
+                                                    val pos = positions[key] ?: defaults[key] ?: Position(0.5f, 0.5f)
+                                                    positions[key] = pos.copy(customComponentId = theme.skinMap[key])
+                                                }
+                                                layoutManager.saveProfile(profile.copy(positions = positions))
+                                                layoutManager.pendingSelectedKey = "LT"
+                                                Toast.makeText(context, "Applied ${theme.name} to '${profile.name}'", Toast.LENGTH_SHORT).show()
+                                            }
+                                            navController.navigate("editor")
+                                        }
+                                    )
+                                }
+                            }
+                            "BUMPERS" -> {
+                                items(
+                                    items = BUMPER_GROUP_THEMES,
+                                    key = { it.id },
+                                    span = { GridItemSpan(2) }
+                                ) { theme ->
+                                    val isThemeSelected = chosenBumperThemeId == theme.id &&
+                                            listOf("LB", "RB").all { activeControls[it] == true }
+
+                                    PairedGroupCard(
+                                        theme = theme,
+                                        category = "BUMPERS",
+                                        mode = currentMode,
+                                        isSelected = isThemeSelected,
+                                        dummyViewModel = dummyViewModel,
+                                        onSelectGroup = {
+                                            if (isThemeSelected) {
+                                                listOf("LB", "RB").forEach { key -> activeControls[key] = false }
+                                                Toast.makeText(context, "Excluded Bumpers (LB & RB) from layout", Toast.LENGTH_SHORT).show()
+                                            } else {
+                                                chosenBumperThemeId = theme.id
+                                                listOf("LB", "RB").forEach { key ->
+                                                    activeControls[key] = true
+                                                    chosenSkins[key] = theme.skinMap[key]
+                                                }
+                                                Toast.makeText(context, "Selected ${theme.name} (LB & RB)", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        onUseInHud = {
+                                            if (layoutManager != null) {
+                                                val profile = layoutManager.getActiveProfile()
+                                                val positions = profile.positions.toMutableMap()
+                                                val defaults = defaultPositions()
+                                                listOf("LB", "RB").forEach { key ->
+                                                    val pos = positions[key] ?: defaults[key] ?: Position(0.5f, 0.5f)
+                                                    positions[key] = pos.copy(customComponentId = theme.skinMap[key])
+                                                }
+                                                layoutManager.saveProfile(profile.copy(positions = positions))
+                                                layoutManager.pendingSelectedKey = "LB"
+                                                Toast.makeText(context, "Applied ${theme.name} to '${profile.name}'", Toast.LENGTH_SHORT).show()
+                                            }
+                                            navController.navigate("editor")
+                                        }
+                                    )
+                                }
+                            }
+                            "STICKS" -> {
+                                items(
+                                    items = STICK_GROUP_THEMES,
+                                    key = { it.id },
+                                    span = { GridItemSpan(2) }
+                                ) { theme ->
+                                    val isThemeSelected = chosenStickThemeId == theme.id &&
+                                            listOf("LS", "RS").all { activeControls[it] == true }
+
+                                    PairedGroupCard(
+                                        theme = theme,
+                                        category = "STICKS",
+                                        mode = currentMode,
+                                        isSelected = isThemeSelected,
+                                        dummyViewModel = dummyViewModel,
+                                        onSelectGroup = {
+                                            if (isThemeSelected) {
+                                                listOf("LS", "RS").forEach { key -> activeControls[key] = false }
+                                                Toast.makeText(context, "Excluded Sticks (LS & RS) from layout", Toast.LENGTH_SHORT).show()
+                                            } else {
+                                                chosenStickThemeId = theme.id
+                                                listOf("LS", "RS").forEach { key ->
+                                                    activeControls[key] = true
+                                                    chosenSkins[key] = theme.skinMap[key]
+                                                }
+                                                Toast.makeText(context, "Selected ${theme.name} (LS & RS)", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        onUseInHud = {
+                                            if (layoutManager != null) {
+                                                val profile = layoutManager.getActiveProfile()
+                                                val positions = profile.positions.toMutableMap()
+                                                val defaults = defaultPositions()
+                                                listOf("LS", "RS").forEach { key ->
+                                                    val pos = positions[key] ?: defaults[key] ?: Position(0.5f, 0.5f)
+                                                    positions[key] = pos.copy(customComponentId = theme.skinMap[key])
+                                                }
+                                                layoutManager.saveProfile(profile.copy(positions = positions))
+                                                layoutManager.pendingSelectedKey = "LS"
+                                                Toast.makeText(context, "Applied ${theme.name} to '${profile.name}'", Toast.LENGTH_SHORT).show()
+                                            }
+                                            navController.navigate("editor")
+                                        }
+                                    )
+                                }
+                            }
+                            else -> {
+                                // Non-Group Controls (D-Pad, Home, System, Macros, All)
+                                items(filteredComponents, key = { it.manifest.id }) { def ->
+                                    val targetKey = def.manifest.defaultControl.uppercase()
+                                    val isControlActive = activeControls[targetKey] == true
+                                    val isSkinSelected = chosenSkins[targetKey] == def.manifest.id ||
+                                            (resolveButtonSourceType(def) == ButtonStudioType.DEFAULT && chosenSkins[targetKey] == null)
+
+                                    StudioGridCard(
+                                        def = def,
+                                        mode = currentMode,
+                                        isSelectedInBuilder = isControlActive && isSkinSelected,
+                                        dummyViewModel = dummyViewModel,
+                                        onToggleSelectInBuilder = {
+                                            if (isControlActive && isSkinSelected) {
+                                                activeControls[targetKey] = false
+                                                Toast.makeText(context, "Excluded $targetKey from layout", Toast.LENGTH_SHORT).show()
+                                            } else {
+                                                activeControls[targetKey] = true
+                                                chosenSkins[targetKey] = if (resolveButtonSourceType(def) == ButtonStudioType.DEFAULT) null else def.manifest.id
+                                                Toast.makeText(context, "Selected ${def.manifest.name} for $targetKey", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        onUseInHud = {
+                                            applyButtonToHud(def, layoutManager, navController, context)
+                                        },
+                                        onTest = { previewTarget = def },
+                                        onExport = {
+                                            val json = registry.exportToJson(def.manifest.id)
+                                            if (json != null) {
+                                                clipboard.nativeClipboard.setPrimaryClip(android.content.ClipData.newPlainText("NXP JSON", json))
+                                                Toast.makeText(context, "JSON copied to clipboard!", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        onDelete = {
+                                            val deleted = registry.deleteComponent(def.manifest.id)
+                                            if (deleted) {
+                                                Toast.makeText(context, "Deleted ${def.manifest.name}", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -449,218 +601,6 @@ fun ButtonStudioScreen(
 }
 
 /**
- * Grid Card displaying button preview, DEFAULT/SVG/PLUGIN badge, and Use in HUD button
- */
-@Composable
-private fun StudioGridCard(
-    def: NxpComponentDef,
-    dummyViewModel: GamepadViewModel,
-    onUseInHud: () -> Unit,
-    onTest: () -> Unit,
-    onExport: () -> Unit,
-    onDelete: () -> Unit
-) {
-    val isBuiltIn = def.manifest.id.startsWith("builtin.")
-    val type = remember(def.manifest.id) { getButtonStudioType(def) }
-    val dummyTarget = remember { SandboxInputTarget() }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(14.dp)),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF0C1322))
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // Header Row: Title + Type Badge
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = def.manifest.name,
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        fontSize = 12.sp
-                    ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-
-                // Type Badge (DEFAULT, SVG, PLUGIN)
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(type.badgeBg)
-                        .border(1.dp, type.badgeColor.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
-                        .padding(horizontal = 5.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = type.label,
-                        color = type.badgeColor,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                }
-            }
-
-            // Interactive Live Preview Stage
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(96.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0xFF040810))
-                    .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(10.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                val controlKey = def.manifest.defaultControl.uppercase()
-                val maxDim = maxOf(def.size.widthDp, def.size.heightDp).toFloat()
-                val previewScale = if (maxDim > 64f) 64f / maxDim else 1.0f
-
-                Box(
-                    modifier = Modifier.graphicsLayer {
-                        scaleX = previewScale
-                        scaleY = previewScale
-                    },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (type == ButtonStudioType.DEFAULT) {
-                        // Render authentic native controller button from ui/components/controller
-                        ControllerElementRenderer(
-                            key = controlKey,
-                            isConnected = false,
-                            isRgbEnabled = true,
-                            viewModel = dummyViewModel,
-                            onVibrate = {},
-                            customComponentId = null
-                        )
-                    } else {
-                        // Render NXP / SVG / Plugin definition
-                        val control = when {
-                            def.manifest.category.equals("JOYSTICK", ignoreCase = true) ->
-                                NexPadControl.Stick(isLeft = !controlKey.contains("R"))
-                            def.manifest.category.equals("TRIGGER", ignoreCase = true) ->
-                                NexPadControl.Trigger(key = controlKey)
-                            else ->
-                                NexPadControl.Button(controlKey)
-                        }
-                        NxpComposeInterpreter(
-                            definition = def,
-                            assignedControl = control,
-                            isConnected = false,
-                            inputTarget = dummyTarget
-                        )
-                    }
-                }
-            }
-
-            // Target Control Information
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Target: ${def.manifest.defaultControl}",
-                    color = NeonPalette.Cyan,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                Text(
-                    text = if (isBuiltIn) "Core Preset" else "by ${def.manifest.author}",
-                    color = Color.Gray,
-                    fontSize = 10.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            // Action: USE IN HUD (Places button on layout and opens HUD Editor)
-            Button(
-                onClick = onUseInHud,
-                colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan),
-                shape = RoundedCornerShape(8.dp),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(32.dp)
-            ) {
-                Icon(
-                    Icons.Rounded.DashboardCustomize,
-                    contentDescription = null,
-                    tint = Color.Black,
-                    modifier = Modifier.size(14.dp)
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    "Use in HUD",
-                    color = Color.Black,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            // Auxiliary Actions (Sandbox, Copy JSON, Delete)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    IconButton(
-                        onClick = onTest,
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Icon(
-                            Icons.Rounded.PlayArrow,
-                            contentDescription = "Test in Sandbox",
-                            tint = NeonPalette.Cyan,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-
-                    IconButton(
-                        onClick = onExport,
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Icon(
-                            Icons.Rounded.ContentCopy,
-                            contentDescription = "Copy JSON",
-                            tint = Color.LightGray,
-                            modifier = Modifier.size(14.dp)
-                        )
-                    }
-                }
-
-                if (!isBuiltIn) {
-                    IconButton(
-                        onClick = onDelete,
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Icon(
-                            Icons.Rounded.DeleteOutline,
-                            contentDescription = "Delete",
-                            tint = Color(0xFFFF5252),
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
  * Places the selected button with its skin onto the active profile,
  * selects it in LayoutManager, and opens HudEditorScreen.
  */
@@ -671,7 +611,7 @@ private fun applyButtonToHud(
     context: Context
 ) {
     val targetKey = def.manifest.defaultControl.uppercase()
-    val type = getButtonStudioType(def)
+    val type = resolveButtonSourceType(def)
     val customId = if (type == ButtonStudioType.DEFAULT) null else def.manifest.id
 
     if (layoutManager != null) {
