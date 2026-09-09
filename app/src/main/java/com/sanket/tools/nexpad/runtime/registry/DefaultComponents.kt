@@ -512,7 +512,530 @@ object DefaultComponents {
         size = NxpSize(widthDp = 58, heightDp = 32)
     )
 
+    // =========================================================================
+    // 19 DEFAULT CONTROLLER BUTTONS (Authentic Realistic Xbox Elite Elements)
+    // Non-deletable core system controls matching the physical controller layout.
+    // =========================================================================
+
+    val DEFAULT_BUTTON_A = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_a",
+            name = "Default Button A (Green)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "BUTTON",
+            defaultControl = "A",
+            description = "Standard tactile action button with emerald green illumination."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#1F1F1F",
+            opacity = 0.95f,
+            borderColor = "#00C853",
+            borderWidth = 2.5f,
+            glowColor = "#00C853",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(
+            scale = 0.88f,
+            fillColor = "#00C853",
+            borderColor = "#FFFFFF",
+            glowRadius = 18f
+        ),
+        label = NxpLabel(
+            text = "A",
+            color = "#00C853",
+            pressedColor = "#000000",
+            fontSize = 28f
+        ),
+        size = NxpSize(widthDp = 80, heightDp = 80)
+    )
+
+    val DEFAULT_BUTTON_B = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_b",
+            name = "Default Button B (Red)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "BUTTON",
+            defaultControl = "B",
+            description = "Standard tactile action button with crimson red illumination."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#1F1F1F",
+            opacity = 0.95f,
+            borderColor = "#D50000",
+            borderWidth = 2.5f,
+            glowColor = "#D50000",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(
+            scale = 0.88f,
+            fillColor = "#D50000",
+            borderColor = "#FFFFFF",
+            glowRadius = 18f
+        ),
+        label = NxpLabel(
+            text = "B",
+            color = "#D50000",
+            pressedColor = "#FFFFFF",
+            fontSize = 28f
+        ),
+        size = NxpSize(widthDp = 80, heightDp = 80)
+    )
+
+    val DEFAULT_BUTTON_X = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_x",
+            name = "Default Button X (Blue)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "BUTTON",
+            defaultControl = "X",
+            description = "Standard tactile action button with cobalt blue illumination."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#1F1F1F",
+            opacity = 0.95f,
+            borderColor = "#2962FF",
+            borderWidth = 2.5f,
+            glowColor = "#2962FF",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(
+            scale = 0.88f,
+            fillColor = "#2962FF",
+            borderColor = "#FFFFFF",
+            glowRadius = 18f
+        ),
+        label = NxpLabel(
+            text = "X",
+            color = "#2962FF",
+            pressedColor = "#FFFFFF",
+            fontSize = 28f
+        ),
+        size = NxpSize(widthDp = 80, heightDp = 80)
+    )
+
+    val DEFAULT_BUTTON_Y = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_y",
+            name = "Default Button Y (Yellow)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "BUTTON",
+            defaultControl = "Y",
+            description = "Standard tactile action button with canary yellow illumination."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#1F1F1F",
+            opacity = 0.95f,
+            borderColor = "#FFD600",
+            borderWidth = 2.5f,
+            glowColor = "#FFD600",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(
+            scale = 0.88f,
+            fillColor = "#FFD600",
+            borderColor = "#FFFFFF",
+            glowRadius = 18f
+        ),
+        label = NxpLabel(
+            text = "Y",
+            color = "#FFD600",
+            pressedColor = "#000000",
+            fontSize = 28f
+        ),
+        size = NxpSize(widthDp = 80, heightDp = 80)
+    )
+
+    val DEFAULT_STICK_LS = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_ls",
+            name = "Default Left Stick (LS)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "JOYSTICK",
+            defaultControl = "LS",
+            description = "Dual-ring analog movement stick with textured concave grip and L3 click."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#151515",
+            opacity = 0.92f,
+            borderColor = "#00E5FF",
+            borderWidth = 2f,
+            glowColor = "#00E5FF",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(fillColor = "#00E5FF"),
+        interaction = NxpInteraction(type = "Joystick", deadzone = 0.05f),
+        size = NxpSize(widthDp = 150, heightDp = 150)
+    )
+
+    val DEFAULT_STICK_RS = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_rs",
+            name = "Default Right Stick (RS)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "JOYSTICK",
+            defaultControl = "RS",
+            description = "High-precision aiming analog thumbstick with responsive centering and R3 click."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#151515",
+            opacity = 0.92f,
+            borderColor = "#FF007F",
+            borderWidth = 2f,
+            glowColor = "#FF007F",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(fillColor = "#FF007F"),
+        interaction = NxpInteraction(type = "Joystick", deadzone = 0.05f),
+        size = NxpSize(widthDp = 150, heightDp = 150)
+    )
+
+    val DEFAULT_DPAD = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_dpad",
+            name = "Default D-Pad (Directional Cross)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "DPAD",
+            defaultControl = "DPAD",
+            description = "Standard 4-way mechanical directional cross pad."
+        ),
+        geometry = NxpGeometry(type = "Polygon", sides = 8, cornerRadius = 8f),
+        visual = NxpVisual(
+            fillColor = "#1A1A1A",
+            opacity = 0.92f,
+            borderColor = "#4ADE80",
+            borderWidth = 2f,
+            glowColor = "#4ADE80",
+            glowRadius = 8f
+        ),
+        pressed = NxpPressedState(fillColor = "#4ADE80"),
+        label = NxpLabel(text = "＋", color = "#4ADE80", pressedColor = "#000000", fontSize = 28f),
+        size = NxpSize(widthDp = 140, heightDp = 140)
+    )
+
+    val DEFAULT_TRIGGER_LT = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_lt",
+            name = "Default Left Trigger (LT)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "TRIGGER",
+            defaultControl = "LT",
+            description = "Contoured analog shoulder trigger with full travel resistance."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 24f),
+        visual = NxpVisual(
+            fillColor = "#151515",
+            opacity = 0.92f,
+            borderColor = "#3B82F6",
+            borderWidth = 2.5f,
+            glowColor = "#3B82F6",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.92f, fillColor = "#3B82F6", borderColor = "#FFFFFF"),
+        interaction = NxpInteraction(type = "Trigger"),
+        label = NxpLabel(text = "LT", color = "#3B82F6", pressedColor = "#FFFFFF", fontSize = 22f),
+        size = NxpSize(widthDp = 100, heightDp = 160)
+    )
+
+    val DEFAULT_TRIGGER_RT = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_rt",
+            name = "Default Right Trigger (RT)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "TRIGGER",
+            defaultControl = "RT",
+            description = "Contoured analog shoulder trigger with quick accelerator response."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 24f),
+        visual = NxpVisual(
+            fillColor = "#151515",
+            opacity = 0.92f,
+            borderColor = "#EF4444",
+            borderWidth = 2.5f,
+            glowColor = "#EF4444",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.92f, fillColor = "#EF4444", borderColor = "#FFFFFF"),
+        interaction = NxpInteraction(type = "Trigger"),
+        label = NxpLabel(text = "RT", color = "#EF4444", pressedColor = "#FFFFFF", fontSize = 22f),
+        size = NxpSize(widthDp = 100, heightDp = 160)
+    )
+
+    val DEFAULT_BUMPER_LB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_lb",
+            name = "Default Left Bumper (LB)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "BUMPER",
+            defaultControl = "LB",
+            description = "Aerodynamic shoulder bumper with crisp mechanical microswitch click."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 16f),
+        visual = NxpVisual(
+            fillColor = "#1E1E1E",
+            opacity = 0.92f,
+            borderColor = "#06B6D4",
+            borderWidth = 2f,
+            glowColor = "#06B6D4",
+            glowRadius = 8f
+        ),
+        pressed = NxpPressedState(scale = 0.94f, fillColor = "#06B6D4", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "LB", color = "#06B6D4", pressedColor = "#000000", fontSize = 18f),
+        size = NxpSize(widthDp = 160, heightDp = 60)
+    )
+
+    val DEFAULT_BUMPER_RB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_rb",
+            name = "Default Right Bumper (RB)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "BUMPER",
+            defaultControl = "RB",
+            description = "Aerodynamic shoulder bumper with crisp mechanical microswitch click."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 16f),
+        visual = NxpVisual(
+            fillColor = "#1E1E1E",
+            opacity = 0.92f,
+            borderColor = "#06B6D4",
+            borderWidth = 2f,
+            glowColor = "#06B6D4",
+            glowRadius = 8f
+        ),
+        pressed = NxpPressedState(scale = 0.94f, fillColor = "#06B6D4", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "RB", color = "#06B6D4", pressedColor = "#000000", fontSize = 18f),
+        size = NxpSize(widthDp = 160, heightDp = 60)
+    )
+
+    val DEFAULT_HOME_XBOX = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_xbox",
+            name = "Default Xbox Guide (Home)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "HOME",
+            defaultControl = "XBOX",
+            description = "Iconic centered Xbox guide button with luminous white badge."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#181818",
+            opacity = 0.95f,
+            borderColor = "#FFFFFF",
+            borderWidth = 2f,
+            glowColor = "#FFFFFF",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(scale = 0.88f, fillColor = "#FFFFFF", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "X", color = "#FFFFFF", pressedColor = "#000000", fontSize = 24f),
+        size = NxpSize(widthDp = 60, heightDp = 60)
+    )
+
+    val DEFAULT_SYSTEM_VIEW = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_view",
+            name = "Default View Button (V)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "SYSTEM",
+            defaultControl = "VIEW",
+            description = "Xbox View / Back system navigation button."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#262626",
+            opacity = 0.90f,
+            borderColor = "#94A3B8",
+            borderWidth = 1.5f
+        ),
+        pressed = NxpPressedState(scale = 0.88f, fillColor = "#94A3B8"),
+        label = NxpLabel(text = "V", color = "#FFFFFF", pressedColor = "#000000", fontSize = 18f),
+        size = NxpSize(widthDp = 60, heightDp = 60)
+    )
+
+    val DEFAULT_SYSTEM_MENU = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_menu",
+            name = "Default Menu Button (M)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "SYSTEM",
+            defaultControl = "MENU",
+            description = "Xbox Menu / Pause system navigation button."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#262626",
+            opacity = 0.90f,
+            borderColor = "#94A3B8",
+            borderWidth = 1.5f
+        ),
+        pressed = NxpPressedState(scale = 0.88f, fillColor = "#94A3B8"),
+        label = NxpLabel(text = "M", color = "#FFFFFF", pressedColor = "#000000", fontSize = 18f),
+        size = NxpSize(widthDp = 60, heightDp = 60)
+    )
+
+    val DEFAULT_SYSTEM_SHARE = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_share",
+            name = "Default Share Button (S)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "SYSTEM",
+            defaultControl = "SHARE",
+            description = "Xbox Share / Screenshot capture system button."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#262626",
+            opacity = 0.90f,
+            borderColor = "#94A3B8",
+            borderWidth = 1.5f
+        ),
+        pressed = NxpPressedState(scale = 0.88f, fillColor = "#94A3B8"),
+        label = NxpLabel(text = "S", color = "#FFFFFF", pressedColor = "#000000", fontSize = 18f),
+        size = NxpSize(widthDp = 60, heightDp = 60)
+    )
+
+    val DEFAULT_MACRO_M1 = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_m1",
+            name = "Default Macro Paddle M1",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "MACRO",
+            defaultControl = "M1",
+            description = "Standard ergonomic programmable macro paddle M1."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 16f),
+        visual = NxpVisual(
+            fillColor = "#1C1C1E",
+            opacity = 0.92f,
+            borderColor = "#FACC15",
+            borderWidth = 1.5f,
+            glowColor = "#FACC15",
+            glowRadius = 6f
+        ),
+        pressed = NxpPressedState(scale = 0.92f, fillColor = "#FACC15", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "M1", color = "#FACC15", pressedColor = "#000000", fontSize = 14f),
+        size = NxpSize(widthDp = 80, heightDp = 40)
+    )
+
+    val DEFAULT_MACRO_M2 = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_m2",
+            name = "Default Macro Paddle M2",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "MACRO",
+            defaultControl = "M2",
+            description = "Standard ergonomic programmable macro paddle M2."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 16f),
+        visual = NxpVisual(
+            fillColor = "#1C1C1E",
+            opacity = 0.92f,
+            borderColor = "#FACC15",
+            borderWidth = 1.5f,
+            glowColor = "#FACC15",
+            glowRadius = 6f
+        ),
+        pressed = NxpPressedState(scale = 0.92f, fillColor = "#FACC15", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "M2", color = "#FACC15", pressedColor = "#000000", fontSize = 14f),
+        size = NxpSize(widthDp = 80, heightDp = 40)
+    )
+
+    val DEFAULT_MACRO_M3 = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_m3",
+            name = "Default Macro Paddle M3",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "MACRO",
+            defaultControl = "M3",
+            description = "Standard ergonomic programmable macro paddle M3."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 16f),
+        visual = NxpVisual(
+            fillColor = "#1C1C1E",
+            opacity = 0.92f,
+            borderColor = "#FACC15",
+            borderWidth = 1.5f,
+            glowColor = "#FACC15",
+            glowRadius = 6f
+        ),
+        pressed = NxpPressedState(scale = 0.92f, fillColor = "#FACC15", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "M3", color = "#FACC15", pressedColor = "#000000", fontSize = 14f),
+        size = NxpSize(widthDp = 80, heightDp = 40)
+    )
+
+    val DEFAULT_MACRO_M4 = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_m4",
+            name = "Default Macro Paddle M4",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "MACRO",
+            defaultControl = "M4",
+            description = "Standard ergonomic programmable macro paddle M4."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 16f),
+        visual = NxpVisual(
+            fillColor = "#1C1C1E",
+            opacity = 0.92f,
+            borderColor = "#FACC15",
+            borderWidth = 1.5f,
+            glowColor = "#FACC15",
+            glowRadius = 6f
+        ),
+        pressed = NxpPressedState(scale = 0.92f, fillColor = "#FACC15", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "M4", color = "#FACC15", pressedColor = "#000000", fontSize = 14f),
+        size = NxpSize(widthDp = 80, heightDp = 40)
+    )
+
+    /**
+     * All built-in presets: 19 Default Controller Buttons first, followed by Custom/Cyberpunk skins.
+     * All entries are non-deletable core presets.
+     */
     val ALL_PRESETS = listOf(
+        // 19 Default Controller Elements (Always Top Priority)
+        DEFAULT_BUTTON_A,
+        DEFAULT_BUTTON_B,
+        DEFAULT_BUTTON_X,
+        DEFAULT_BUTTON_Y,
+        DEFAULT_STICK_LS,
+        DEFAULT_STICK_RS,
+        DEFAULT_DPAD,
+        DEFAULT_TRIGGER_LT,
+        DEFAULT_TRIGGER_RT,
+        DEFAULT_BUMPER_LB,
+        DEFAULT_BUMPER_RB,
+        DEFAULT_HOME_XBOX,
+        DEFAULT_SYSTEM_VIEW,
+        DEFAULT_SYSTEM_MENU,
+        DEFAULT_SYSTEM_SHARE,
+        DEFAULT_MACRO_M1,
+        DEFAULT_MACRO_M2,
+        DEFAULT_MACRO_M3,
+        DEFAULT_MACRO_M4,
+
+        // Custom Cyber / Sci-Fi Variant Skins
         SCIFI_HEX_ATTACK,
         CYBER_OCTA_BURST,
         NEON_DIAMOND_X,

@@ -3,6 +3,7 @@ package com.sanket.tools.nexpad.utils
 import android.content.Context
 import com.sanket.tools.nexpad.model.LayoutProfile
 import com.sanket.tools.nexpad.model.Position
+import com.sanket.tools.nexpad.model.defaultPositions
 import com.sanket.tools.nexpad.model.getDefaultLayoutProfiles
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,6 +15,9 @@ class LayoutManager(private val context: Context) {
     private val prefs = context.getSharedPreferences("NEXPAD_LAYOUTS_V3", Context.MODE_PRIVATE)
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
+    /** Ephemeral key indicating which button should be selected/focused when opening HUD editor */
+    var pendingSelectedKey: String? = null
+
     private val _profilesFlow = MutableStateFlow<List<LayoutProfile>>(emptyList())
     val profilesFlow: StateFlow<List<LayoutProfile>> = _profilesFlow.asStateFlow()
 
@@ -23,6 +27,16 @@ class LayoutManager(private val context: Context) {
 
     private fun refreshProfilesFlow() {
         _profilesFlow.value = getAllProfiles()
+    }
+
+    /** Applies a button skin (or default) to the active profile and pre-selects it for HUD editing */
+    fun applyButtonSkinToActiveProfile(key: String, customComponentId: String?) {
+        val active = getActiveProfile()
+        val posMap = active.positions.toMutableMap()
+        val currentPos = posMap[key] ?: defaultPositions()[key] ?: Position(0.5f, 0.5f)
+        posMap[key] = currentPos.copy(customComponentId = customComponentId)
+        saveProfile(active.copy(positions = posMap))
+        pendingSelectedKey = key
     }
 
     /** Returns all available profiles: 5 default layouts (with any saved overrides) plus user custom layouts. */

@@ -110,10 +110,13 @@ fun SandboxPreviewModal(
                         .background(Color(0xFF040810)),
                     contentAlignment = Alignment.Center
                 ) {
-                    val control = if (componentDef.manifest.category.equals("JOYSTICK", ignoreCase = true)) {
-                        NexPadControl.Stick(isLeft = true)
-                    } else {
-                        NexPadControl.Button(componentDef.manifest.defaultControl)
+                    val control = when {
+                        componentDef.manifest.category.equals("JOYSTICK", ignoreCase = true) ->
+                            NexPadControl.Stick(isLeft = !componentDef.manifest.defaultControl.contains("R", ignoreCase = true))
+                        componentDef.manifest.category.equals("TRIGGER", ignoreCase = true) ->
+                            NexPadControl.Trigger(key = componentDef.manifest.defaultControl)
+                        else ->
+                            NexPadControl.Button(componentDef.manifest.defaultControl)
                     }
 
                     NxpComposeInterpreter(

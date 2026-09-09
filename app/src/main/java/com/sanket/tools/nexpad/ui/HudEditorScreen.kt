@@ -47,7 +47,15 @@ fun HudEditorScreen(navController: NavController, layoutManager: LayoutManager) 
     }
     val dummyViewModel = androidx.lifecycle.viewmodel.compose.viewModel<GamepadViewModel>()
 
-    var selectedKey by remember { mutableStateOf<String?>(null) }
+    var selectedKey by remember {
+        val initial = layoutManager.pendingSelectedKey
+        layoutManager.pendingSelectedKey = null
+        if (initial != null && !positions.containsKey(initial)) {
+            val defPos = defaultPositions()[initial] ?: Position(0.5f, 0.5f)
+            positions[initial] = defPos
+        }
+        mutableStateOf<String?>(initial)
+    }
     var showAddDialog by remember { mutableStateOf(false) }
 
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
