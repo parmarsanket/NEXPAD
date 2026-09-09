@@ -38,15 +38,15 @@ fun standardElitePositions(): Map<String, Position> {
 
         // Center System Cluster
         "XBOX" to Position(0.500f, 0.080f, scale = 1.15f),
-        "VIEW" to Position(0.430f, 0.220f, scale = 0.70f),
-        "MENU" to Position(0.500f, 0.220f, scale = 0.70f),
-        "SHARE" to Position(0.570f, 0.220f, scale = 0.70f),
+        "VIEW" to Position(0.430f, 0.230f, scale = 0.70f),
+        "MENU" to Position(0.500f, 0.230f, scale = 0.70f),
+        "SHARE" to Position(0.570f, 0.230f, scale = 0.70f),
 
         // Center Macro Cluster
-        "M2" to Position(0.380f, 0.350f, scale = 0.75f),
-        "M4" to Position(0.460f, 0.350f, scale = 0.75f),
-        "M3" to Position(0.540f, 0.350f, scale = 0.75f),
-        "M1" to Position(0.620f, 0.350f, scale = 0.75f)
+        "M2" to Position(0.380f, 0.360f, scale = 0.75f),
+        "M4" to Position(0.460f, 0.360f, scale = 0.75f),
+        "M3" to Position(0.540f, 0.360f, scale = 0.75f),
+        "M1" to Position(0.620f, 0.360f, scale = 0.75f)
     )
 
     // Face Buttons: Aspect-ratio corrected isotropic diamond cluster
@@ -67,88 +67,103 @@ fun standardElitePositions(): Map<String, Position> {
 fun defaultPositions(): Map<String, Position> = standardElitePositions()
 
 /** Default Layout 2: FPS Tactical Pro with quick triggers, elevated sticks & macro paddles. */
-fun fpsTacticalPositions(): Map<String, Position> = mapOf(
-    "LT" to Position(0.10f, 0.08f, scale = 1.35f),
-    "LB" to Position(0.10f, 0.28f, scale = 1.1f),
-    "RT" to Position(0.90f, 0.08f, scale = 1.35f),
-    "RB" to Position(0.90f, 0.28f, scale = 1.1f),
-    "LS" to Position(0.16f, 0.62f, scale = 1.55f),
-    "RS" to Position(0.84f, 0.62f, scale = 1.55f),
-    "DPAD" to Position(0.32f, 0.76f, scale = 1.35f),
-    "Y" to Position(0.68f, 0.60f, scale = 1.1f),
-    "X" to Position(0.60f, 0.72f, scale = 1.1f),
-    "B" to Position(0.76f, 0.72f, scale = 1.1f),
-    "A" to Position(0.68f, 0.84f, scale = 1.1f),
-    "XBOX" to Position(0.50f, 0.10f, scale = 1.2f),
-    "VIEW" to Position(0.43f, 0.24f, scale = 0.75f),
-    "MENU" to Position(0.57f, 0.24f, scale = 0.75f),
-    "M1" to Position(0.78f, 0.42f, scale = 0.9f),
-    "M2" to Position(0.68f, 0.42f, scale = 0.9f),
-    "M3" to Position(0.22f, 0.42f, scale = 0.9f),
-    "M4" to Position(0.32f, 0.42f, scale = 0.9f)
-)
+fun fpsTacticalPositions(): Map<String, Position> {
+    val positions = mutableMapOf(
+        "LT" to Position(0.080f, 0.055f, scale = 1.18f),
+        "LB" to Position(0.080f, 0.375f, scale = 0.95f),
+        "RT" to Position(0.920f, 0.055f, scale = 1.18f),
+        "RB" to Position(0.920f, 0.375f, scale = 0.95f),
+        "LS" to Position(0.120f, 0.680f, scale = 1.10f),
+        "RS" to Position(0.880f, 0.680f, scale = 1.10f),
+        "DPAD" to Position(0.330f, 0.760f, scale = 1.05f),
+        "M3" to Position(0.260f, 0.400f, scale = 0.80f),
+        "M4" to Position(0.340f, 0.400f, scale = 0.80f),
+        "M2" to Position(0.660f, 0.400f, scale = 0.80f),
+        "M1" to Position(0.740f, 0.400f, scale = 0.80f),
+        "XBOX" to Position(0.500f, 0.080f, scale = 1.15f),
+        "VIEW" to Position(0.440f, 0.220f, scale = 0.70f),
+        "MENU" to Position(0.560f, 0.220f, scale = 0.70f)
+    )
+    positions.putAll(
+        LayoutMetrics.createDiamondCluster(
+            centerX = 0.680f,
+            centerY = 0.760f,
+            radiusDp = 50.0f,
+            scale = 0.78f
+        )
+    )
+    return positions
+}
 
 /** Default Layout 3: MOBA & Action RPG with curved ability arc and skill shortcuts. */
 fun mobaActionPositions(): Map<String, Position> = mapOf(
-    "LS" to Position(0.16f, 0.68f, scale = 1.55f),
-    "RS" to Position(0.50f, 0.75f, scale = 1.4f),
-    "DPAD" to Position(0.16f, 0.28f, scale = 1.3f),
-    "A" to Position(0.78f, 0.78f, scale = 1.2f),
-    "B" to Position(0.88f, 0.64f, scale = 1.15f),
-    "X" to Position(0.70f, 0.64f, scale = 1.15f),
-    "Y" to Position(0.80f, 0.50f, scale = 1.2f),
-    "M1" to Position(0.65f, 0.38f, scale = 0.9f),
-    "M2" to Position(0.78f, 0.32f, scale = 0.9f),
-    "M3" to Position(0.90f, 0.36f, scale = 0.9f),
-    "M4" to Position(0.35f, 0.38f, scale = 0.9f),
-    "LB" to Position(0.10f, 0.08f, scale = 1.1f),
-    "LT" to Position(0.24f, 0.08f, scale = 1.2f),
-    "RB" to Position(0.76f, 0.08f, scale = 1.1f),
-    "RT" to Position(0.90f, 0.08f, scale = 1.2f),
-    "XBOX" to Position(0.50f, 0.10f, scale = 1.2f),
-    "VIEW" to Position(0.43f, 0.24f, scale = 0.75f),
-    "MENU" to Position(0.57f, 0.24f, scale = 0.75f)
+    "LT" to Position(0.080f, 0.055f, scale = 1.18f),
+    "LB" to Position(0.080f, 0.375f, scale = 0.95f),
+    "RT" to Position(0.920f, 0.055f, scale = 1.18f),
+    "RB" to Position(0.920f, 0.375f, scale = 0.95f),
+    "LS" to Position(0.120f, 0.720f, scale = 1.15f),
+    "DPAD" to Position(0.320f, 0.720f, scale = 1.05f),
+    "A" to Position(0.730f, 0.800f, scale = 0.90f),
+    "X" to Position(0.620f, 0.740f, scale = 0.82f),
+    "Y" to Position(0.660f, 0.560f, scale = 0.82f),
+    "B" to Position(0.760f, 0.600f, scale = 0.85f),
+    "RS" to Position(0.895f, 0.720f, scale = 1.05f),
+    "M4" to Position(0.360f, 0.360f, scale = 0.75f),
+    "M1" to Position(0.450f, 0.360f, scale = 0.75f),
+    "M2" to Position(0.550f, 0.360f, scale = 0.75f),
+    "M3" to Position(0.640f, 0.360f, scale = 0.75f),
+    "XBOX" to Position(0.500f, 0.080f, scale = 1.15f),
+    "VIEW" to Position(0.430f, 0.220f, scale = 0.70f),
+    "MENU" to Position(0.570f, 0.220f, scale = 0.70f)
 )
 
 /** Default Layout 4: Racing & Simulation with wide analog triggers and paddle shifters. */
-fun racingSimPositions(): Map<String, Position> = mapOf(
-    "LT" to Position(0.12f, 0.35f, scale = 1.45f),
-    "RT" to Position(0.88f, 0.35f, scale = 1.45f),
-    "LB" to Position(0.12f, 0.12f, scale = 1.2f),
-    "RB" to Position(0.88f, 0.12f, scale = 1.2f),
-    "LS" to Position(0.20f, 0.74f, scale = 1.6f),
-    "RS" to Position(0.80f, 0.74f, scale = 1.4f),
-    "A" to Position(0.65f, 0.70f, scale = 1.1f),
-    "B" to Position(0.65f, 0.54f, scale = 1.1f),
-    "Y" to Position(0.52f, 0.54f, scale = 1.1f),
-    "X" to Position(0.52f, 0.70f, scale = 1.1f),
-    "DPAD" to Position(0.38f, 0.74f, scale = 1.3f),
-    "M1" to Position(0.36f, 0.42f, scale = 0.85f),
-    "M2" to Position(0.45f, 0.42f, scale = 0.85f),
-    "M3" to Position(0.55f, 0.42f, scale = 0.85f),
-    "M4" to Position(0.64f, 0.42f, scale = 0.85f),
-    "XBOX" to Position(0.50f, 0.10f, scale = 1.2f),
-    "VIEW" to Position(0.42f, 0.25f, scale = 0.75f),
-    "MENU" to Position(0.58f, 0.25f, scale = 0.75f)
-)
+fun racingSimPositions(): Map<String, Position> {
+    val positions = mutableMapOf(
+        "LT" to Position(0.080f, 0.055f, scale = 1.18f),
+        "LB" to Position(0.080f, 0.375f, scale = 0.95f),
+        "RT" to Position(0.920f, 0.055f, scale = 1.18f),
+        "RB" to Position(0.920f, 0.375f, scale = 0.95f),
+        "LS" to Position(0.120f, 0.740f, scale = 1.15f),
+        "DPAD" to Position(0.320f, 0.740f, scale = 1.05f),
+        "RS" to Position(0.895f, 0.740f, scale = 1.10f),
+        "M1" to Position(0.360f, 0.380f, scale = 0.75f),
+        "M2" to Position(0.450f, 0.380f, scale = 0.75f),
+        "M3" to Position(0.550f, 0.380f, scale = 0.75f),
+        "M4" to Position(0.640f, 0.380f, scale = 0.75f),
+        "XBOX" to Position(0.500f, 0.080f, scale = 1.15f),
+        "VIEW" to Position(0.430f, 0.220f, scale = 0.70f),
+        "MENU" to Position(0.570f, 0.220f, scale = 0.70f)
+    )
+    positions.putAll(
+        LayoutMetrics.createDiamondCluster(
+            centerX = 0.675f,
+            centerY = 0.720f,
+            radiusDp = 52.0f,
+            scale = 0.82f
+        )
+    )
+    return positions
+}
 
 /** Default Layout 5: Retro Arcade & Fighter with 6-button fightstick grid and 8-way D-Pad. */
 fun retroArcadePositions(): Map<String, Position> = mapOf(
-    "DPAD" to Position(0.20f, 0.55f, scale = 1.7f),
-    "LS" to Position(0.35f, 0.80f, scale = 1.2f),
-    "X" to Position(0.63f, 0.44f, scale = 1.15f),
-    "Y" to Position(0.75f, 0.40f, scale = 1.15f),
-    "RB" to Position(0.87f, 0.44f, scale = 1.15f),
-    "A" to Position(0.63f, 0.68f, scale = 1.15f),
-    "B" to Position(0.75f, 0.64f, scale = 1.15f),
-    "RT" to Position(0.87f, 0.68f, scale = 1.15f),
-    "LB" to Position(0.10f, 0.15f, scale = 1.15f),
-    "LT" to Position(0.90f, 0.15f, scale = 1.15f),
-    "M1" to Position(0.63f, 0.88f, scale = 0.9f),
-    "M2" to Position(0.75f, 0.88f, scale = 0.9f),
-    "VIEW" to Position(0.42f, 0.20f, scale = 0.8f),
-    "MENU" to Position(0.58f, 0.20f, scale = 0.8f),
-    "XBOX" to Position(0.50f, 0.08f, scale = 1.2f)
+    "LT" to Position(0.080f, 0.055f, scale = 1.18f),
+    "LB" to Position(0.080f, 0.375f, scale = 0.95f),
+    "DPAD" to Position(0.140f, 0.720f, scale = 1.15f),
+    "LS" to Position(0.340f, 0.720f, scale = 1.05f),
+    "X" to Position(0.580f, 0.550f, scale = 0.82f),
+    "Y" to Position(0.690f, 0.520f, scale = 0.82f),
+    "RB" to Position(0.820f, 0.500f, scale = 0.75f),
+    "A" to Position(0.580f, 0.780f, scale = 0.82f),
+    "B" to Position(0.690f, 0.750f, scale = 0.82f),
+    "RT" to Position(0.820f, 0.820f, scale = 0.75f),
+    "RS" to Position(0.895f, 0.260f, scale = 0.85f),
+    "M1" to Position(0.360f, 0.360f, scale = 0.75f),
+    "M2" to Position(0.460f, 0.360f, scale = 0.75f),
+    "VIEW" to Position(0.430f, 0.180f, scale = 0.75f),
+    "MENU" to Position(0.570f, 0.180f, scale = 0.75f),
+    "XBOX" to Position(0.500f, 0.080f, scale = 1.15f)
 )
 
 /** Returns the 5 non-deletable default layout profiles. */
