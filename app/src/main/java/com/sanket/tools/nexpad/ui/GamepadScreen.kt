@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
+import androidx.compose.ui.layout.layout
 import kotlin.math.roundToInt
 import android.os.Build
 import kotlinx.coroutines.launch
@@ -38,10 +39,6 @@ fun GamepadScreen(
     onBack: () -> Unit,
     onVibrate: () -> Unit
 ) {
-    val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp.dp.value
-    val screenHeight = configuration.screenHeightDp.dp.value
-
     val profile = layoutManager.getActiveProfile()
     val isConnected by viewModel.isConnected.collectAsState()
     
@@ -247,11 +244,14 @@ fun GamepadScreen(
         }
     }
     
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
+        val screenWidthPx = maxOf(constraints.maxWidth, constraints.maxHeight).toFloat()
+        val screenHeightPx = minOf(constraints.maxWidth, constraints.maxHeight).toFloat()
+
         // Back Button & Connection Status
         Row(
             modifier = Modifier.align(Alignment.TopStart).padding(16.dp),
@@ -264,14 +264,18 @@ fun GamepadScreen(
             Text(if (isConnected) "🟢 Connected" else "🔴 Disconnected", color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.labelMedium)
         }
 
-        // Render mapped components
+        // Render mapped components with center-based placement
         profile.positions.forEach { (key, position) ->
-            val offsetX = (position.xRatio * screenWidth).roundToInt()
-            val offsetY = (position.yRatio * screenHeight).roundToInt()
-            
             Box(
                 modifier = Modifier
-                    .offset { IntOffset(offsetX, offsetY) }
+                    .layout { measurable, childConstraints ->
+                        val placeable = measurable.measure(childConstraints)
+                        val x = (position.xRatio * screenWidthPx - placeable.width / 2f).roundToInt()
+                        val y = (position.yRatio * screenHeightPx - placeable.height / 2f).roundToInt()
+                        layout(placeable.width, placeable.height) {
+                            placeable.placeRelative(x, y)
+                        }
+                    }
                     .scale(position.scale)
                     .alpha(position.opacity)
             ) {
@@ -280,7 +284,8 @@ fun GamepadScreen(
                     isConnected = isConnected,
                     isRgbEnabled = profile.isRgbEnabled,
                     viewModel = viewModel,
-                    onVibrate = safeOnVibrate
+                    onVibrate = safeOnVibrate,
+                    customComponentId = position.customComponentId
                 )
             }
         }

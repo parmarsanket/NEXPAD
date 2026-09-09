@@ -28,31 +28,32 @@ import com.sanket.tools.nexpad.ui.components.button.PlayButton
 import com.sanket.tools.nexpad.ui.components.card.InnerLayoutCard
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
-data class LayoutOption(
-    val title: String,
-    val subtitle: String
-)
-
-val defaultLayoutOptions = listOf(
-    LayoutOption("Classic Pro", "Layout 1"),
-    LayoutOption("FPS Master", "Layout 2"),
-    LayoutOption("Racing Sim", "Layout 3"),
-    LayoutOption("Advance 1", "Layout 4"),
-    LayoutOption("Advance 2", "Layout 5"),
-    LayoutOption("Advance 3", "Layout 6"),
-)
+import com.sanket.tools.nexpad.model.LayoutProfile
+import com.sanket.tools.nexpad.model.getDefaultLayoutProfiles
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VShapedPanel(
-    options: List<LayoutOption> = defaultLayoutOptions,
+    profiles: List<LayoutProfile> = emptyList(),
+    activeProfileName: String = "",
+    onProfileSelected: (LayoutProfile) -> Unit = {},
     onPlayClick: () -> Unit
 ) {
-    var selectedIndex by remember { mutableIntStateOf(0) }
-    val state = rememberCarouselState { options.size }
+    val effectiveProfiles = remember(profiles) {
+        if (profiles.isNotEmpty()) profiles else getDefaultLayoutProfiles()
+    }
+    val initialIndex = remember(effectiveProfiles, activeProfileName) {
+        val idx = effectiveProfiles.indexOfFirst { it.name.equals(activeProfileName, ignoreCase = true) }
+        if (idx >= 0) idx else 0
+    }
+    val state = rememberCarouselState(initialItem = initialIndex) { effectiveProfiles.size }
 
     LaunchedEffect(state.currentItem) {
-        selectedIndex = state.currentItem
+        if (effectiveProfiles.isNotEmpty()) {
+            val validIdx = state.currentItem.coerceIn(0, effectiveProfiles.lastIndex)
+            val selected = effectiveProfiles[validIdx]
+            onProfileSelected(selected)
+        }
     }
 
     Box(
@@ -74,12 +75,14 @@ fun VShapedPanel(
                 itemSpacing = 8.dp,
                 contentPadding = PaddingValues(horizontal = 16.dp)
             ) { index ->
-                val item = options[index]
+                val profile = effectiveProfiles[index]
+                val subtitle = if (profile.isDefault) "DEFAULT ${index + 1}" else "CUSTOM"
                 InnerLayoutCard(
                     modifier = Modifier.fillMaxSize().padding(4.dp),
-                    title = item.title,
-                    subtitle = item.subtitle,
-                    isSelected = selectedIndex == index,
+                    title = profile.name,
+                    subtitle = subtitle,
+                    isSelected = state.currentItem == index,
+                    isDefault = profile.isDefault
                 )
             }
             Box(

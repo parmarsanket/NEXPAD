@@ -13,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.DashboardCustomize
 import androidx.compose.material.icons.rounded.Hub
+import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -59,6 +60,8 @@ fun HomeScreen(
     val isUsbCableConnected by viewModel.isUsbCableConnected.collectAsState()
     val isAdbAvailable by viewModel.isAdbAvailable.collectAsState()
     val adbServerName by viewModel.adbServerName.collectAsState()
+    val profiles by layoutManager.profilesFlow.collectAsState()
+    val activeProfile = layoutManager.getActiveProfile()
 
     LaunchedEffect(isConnected) {
         if (!isConnected) {
@@ -122,6 +125,13 @@ fun HomeScreen(
                 HeaderRow(isConnected = isConnected)
 
                 VShapedPanel(
+                    profiles = profiles,
+                    activeProfileName = activeProfile.name,
+                    onProfileSelected = { selected ->
+                        if (selected.name != activeProfile.name) {
+                            layoutManager.setActiveProfile(selected.name)
+                        }
+                    },
                     onPlayClick = { navController.navigate("gamepad") }
                 )
 
@@ -166,7 +176,7 @@ fun HomeScreen(
                             label = "Virtual Controller",
                             icon = Icons.Rounded.SportsEsports,
                             iconColor = MaterialTheme.colorScheme.primary,
-                            onClick = { navController.navigate("gamepad") },
+                            onClick = { navController.navigate("virtual_controller") },
                             modifier = Modifier.weight(1f)
                         )
                         CommandButton(
@@ -182,18 +192,30 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         CommandButton(
+                            label = "Button Studio",
+                            icon = Icons.Rounded.Palette,
+                            iconColor = NeonPalette.Purple,
+                            onClick = { navController.navigate("button_studio") },
+                            modifier = Modifier.weight(1f)
+                        )
+                        CommandButton(
                             label = "HUD Editor",
                             icon = Icons.Rounded.DashboardCustomize,
                             iconColor = MaterialTheme.colorScheme.secondary,
                             onClick = { navController.navigate("editor") },
                             modifier = Modifier.weight(1f)
                         )
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         CommandButton(
                             label = "Settings",
                             icon = Icons.Rounded.Settings,
                             iconColor = MaterialTheme.colorScheme.primaryContainer,
                             onClick = { navController.navigate("settings") },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }

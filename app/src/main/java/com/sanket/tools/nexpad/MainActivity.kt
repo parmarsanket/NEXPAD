@@ -40,6 +40,9 @@ import com.sanket.tools.nexpad.sensors.MotionSensorManager
 import com.sanket.tools.nexpad.ui.GamepadScreen
 import com.sanket.tools.nexpad.ui.theme.NEXPADTheme
 import com.sanket.tools.nexpad.ui.NavigationGraph
+import androidx.lifecycle.lifecycleScope
+import com.sanket.tools.nexpad.runtime.network.FtpTransferReceiver
+import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
@@ -49,6 +52,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var motionSensorManager: MotionSensorManager
     private lateinit var vibrator: Vibrator
     private lateinit var layoutManager: LayoutManager
+    private var ftpTransferReceiver: FtpTransferReceiver? = null
+    private var reloadReceiver: android.content.BroadcastReceiver? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,6 +73,24 @@ class MainActivity : ComponentActivity() {
 
         if (intent?.action == android.hardware.usb.UsbManager.ACTION_USB_ACCESSORY_ATTACHED) {
             viewModel.checkAoaAccessory()
+        }
+
+        // Start FTP File Transfer Receiver for Desktop Component Transfer
+        ftpTransferReceiver = FtpTransferReceiver(this, lifecycleScope).apply { start() }
+
+        // Register broadcast receiver for Desktop ADB push reload
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: android.content.Intent?) {
+                ComponentRegistry.getInstance(this@MainActivity).reloadAll()
+                android.widget.Toast.makeText(this@MainActivity, "⚡ Components reloaded from Desktop!", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+        reloadReceiver = receiver
+        val filter = android.content.IntentFilter("com.sanket.tools.nexpad.RELOAD_COMPONENTS")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
+        } else {
+            registerReceiver(receiver, filter)
         }
 
         val sharedPref = getSharedPreferences("nexpad_prefs", MODE_PRIVATE)
@@ -169,6 +192,14 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         if (intent.action == android.hardware.usb.UsbManager.ACTION_USB_ACCESSORY_ATTACHED) {
             viewModel.checkAoaAccessory()
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        ftpTransferReceiver?.stop()
+        reloadReceiver?.let {
+            try { unregisterReceiver(it) } catch (_: Exception) {}
         }
     }
 }

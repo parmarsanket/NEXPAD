@@ -4,9 +4,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import com.sanket.tools.nexpad.runtime.engine.NxpComposeInterpreter
+import com.sanket.tools.nexpad.runtime.model.NexPadControl
+import com.sanket.tools.nexpad.runtime.model.asInputTarget
+import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
+
 /**
  * Unified renderer for individual controller elements (joysticks, triggers, bumpers, dpad, buttons).
- * Eliminates redundant layout branching across GamepadScreen and HudEditorScreen.
+ * Supports both built-in realistic elements and dynamic custom NXP components.
  */
 @Composable
 fun ControllerElementRenderer(
@@ -14,8 +21,31 @@ fun ControllerElementRenderer(
     isConnected: Boolean,
     isRgbEnabled: Boolean,
     viewModel: GamepadViewModel,
-    onVibrate: () -> Unit = {}
+    onVibrate: () -> Unit = {},
+    customComponentId: String? = null
 ) {
+    val context = LocalContext.current
+    val customDef = remember(customComponentId) {
+        customComponentId?.let { ComponentRegistry.getInstance(context).getComponent(it) }
+    }
+
+    if (customDef != null) {
+        val targetControl = when {
+            key == "LS" -> NexPadControl.Stick(isLeft = true)
+            key == "RS" -> NexPadControl.Stick(isLeft = false)
+            key == "LT" || key == "RT" -> NexPadControl.Trigger(key)
+            key in listOf("UP", "DOWN", "LEFT", "RIGHT") -> NexPadControl.DPad(key)
+            else -> NexPadControl.Button(key)
+        }
+        NxpComposeInterpreter(
+            definition = customDef,
+            assignedControl = targetControl,
+            isConnected = isConnected,
+            inputTarget = viewModel.asInputTarget(onVibrate)
+        )
+        return
+    }
+
     when {
         key == "LS" -> RealisticJoystick(
             isLeft = true,

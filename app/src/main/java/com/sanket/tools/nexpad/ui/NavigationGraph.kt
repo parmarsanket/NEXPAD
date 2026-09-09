@@ -31,6 +31,12 @@ fun NavigationGraph(
         composable("editor") {
             HudEditorScreen(navController = navController, layoutManager = layoutManager)
         }
+        composable("button_studio") {
+            com.sanket.tools.nexpad.ui.studio.ButtonStudioScreen(navController = navController)
+        }
+        composable("virtual_controller") {
+            VirtualControllerScreen(navController = navController, layoutManager = layoutManager)
+        }
         composable("gamepad") {
             GamepadScreen(
                 viewModel = viewModel,

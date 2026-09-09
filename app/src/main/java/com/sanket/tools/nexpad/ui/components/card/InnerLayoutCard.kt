@@ -41,7 +41,8 @@ fun InnerLayoutCard(
     modifier: Modifier = Modifier,
     title: String,
     subtitle: String,
-    isSelected: Boolean
+    isSelected: Boolean,
+    isDefault: Boolean = true
 ) {
     val width by animateDpAsState(
         targetValue = if (isSelected) 140.dp else 100.dp,
