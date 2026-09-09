@@ -93,7 +93,21 @@ Every controller element in NEXPAD has a calibrated base composable size:
 
 ---
 
-## 5. Algorithmic API (`LayoutMetrics.kt`)
+## 5. Genre-Specific Layout Specifications (Defaults 1–5)
+
+All 5 default profiles are verified with **0 overlaps** via programmatic collision detection:
+
+| Profile | Target Genre | Key Ergonomic Feature |
+| :--- | :--- | :--- |
+| **Default 1: Standard Elite** | Universal / Action | Precision isotropic diamond, stacked triggers/bumpers, centered macro cluster. |
+| **Default 2: FPS Tactical Pro** | Competitive Shooters | Hair triggers, elevated movement/aim sticks, rear paddles for slide/jump (`M1`–`M4`). |
+| **Default 3: MOBA & Action RPG** | MOBAs & Hack-and-Slash | Ergonomic ability attack arc (`A`, `X`, `Y`, `B`), right skillshot aim stick, quick item macros. |
+| **Default 4: Racing & Simulation** | Racing & Simulators | Wide analog throttle/brake triggers, paddle shifters, dedicated handbrake & nitrous buttons. |
+| **Default 5: Retro Arcade & Fighter** | Fighting Games & Emulators | Classic 6-button curved fightstick grid (`LP`, `MP`, `HP`, `LK`, `MK`, `HK`) and 8-way D-Pad. |
+
+---
+
+## 6. Algorithmic API (`LayoutMetrics.kt`)
 
 Developers and AI agents creating new profiles should use the programmatic utilities in `LayoutMetrics`:
 
