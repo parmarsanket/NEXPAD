@@ -2,6 +2,8 @@ package com.sanket.tools.nexpad.ui.studio
 
 import android.content.Context
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -29,6 +31,7 @@ import androidx.navigation.NavController
 import com.sanket.tools.nexpad.model.Position
 import com.sanket.tools.nexpad.model.defaultPositions
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
+import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
 import com.sanket.tools.nexpad.ui.components.effects.CyberGrid
 import com.sanket.tools.nexpad.ui.components.effects.ScanLine
@@ -84,16 +87,32 @@ fun ButtonStudioScreen(
     var chosenBumperThemeId by remember { mutableStateOf("group.bumpers_classic") }
     var chosenStickThemeId by remember { mutableStateOf("group.sticks_classic") }
 
-    // Filter components matching the active category (excluding individual controls for grouped categories)
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            val result = RemoteComponentRegistry.getInstance(context).importFromUri(context, uri)
+            result.onSuccess { doc ->
+                Toast.makeText(context, "Imported ${doc.manifest.name} (.nxprc)!", Toast.LENGTH_SHORT).show()
+            }.onFailure { err ->
+                Toast.makeText(context, "Failed to import .nxprc: ${err.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    // Filter components matching the active category
     val filteredComponents = remember(components, selectedCategory, selectedSubFilter) {
         components.filter { def ->
             val control = def.manifest.defaultControl.uppercase()
             val category = def.manifest.category.uppercase()
 
-            // Omit individual controls for grouped categories in favor of cohesive themes
-            if (control in setOf("A", "B", "X", "Y", "LT", "RT", "LB", "RB", "LS", "RS")) return@filter false
-
             if (selectedCategory.id == "ALL") return@filter true
+
+            // For grouped tabs (ABXY, TRIGGERS, BUMPERS, STICKS), built-in presets are grouped into themes.
+            // Custom plugins and remote .nxprc buttons always remain visible.
+            if (def.manifest.id.startsWith("builtin.") && control in setOf("A", "B", "X", "Y", "LT", "RT", "LB", "RB", "LS", "RS")) {
+                return@filter false
+            }
 
             val matchesCategory = selectedCategory.keys.any { k ->
                 k.uppercase() == control || category == selectedCategory.id
@@ -192,6 +211,21 @@ fun ButtonStudioScreen(
                     }
 
                     if (currentMode == ButtonStudioMode.MANAGE) {
+                        Spacer(Modifier.width(6.dp))
+                        Button(
+                            onClick = {
+                                filePickerLauncher.launch(arrayOf("*/*"))
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9100)),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            modifier = Modifier.height(34.dp)
+                        ) {
+                            Icon(Icons.Rounded.FileUpload, contentDescription = null, tint = Color.Black, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Import .nxprc", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+
                         Spacer(Modifier.width(6.dp))
                         Button(
                             onClick = { showImportDialog = true },

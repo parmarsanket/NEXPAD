@@ -22,7 +22,8 @@ enum class ButtonStudioMode(val label: String) {
 enum class ButtonStudioType(val label: String, val badgeColor: Color, val badgeBg: Color) {
     DEFAULT("DEFAULT", Color(0xFF00E5FF), Color(0x2200E5FF)),
     SVG("SVG / VECTOR", Color(0xFF39FF14), Color(0x2239FF14)),
-    PLUGIN("PLUGIN / NXP", Color(0xFFB400FF), Color(0x22B400FF))
+    PLUGIN("PLUGIN / NXP", Color(0xFFB400FF), Color(0x22B400FF)),
+    REMOTE_COMPOSE("REMOTE / RC", Color(0xFFFF9100), Color(0x22FF9100))
 }
 
 /**
@@ -37,6 +38,7 @@ fun resolveButtonSourceType(def: NxpComponentDef): ButtonStudioType =
 fun resolveButtonSourceType(id: String?): ButtonStudioType {
     if (id == null) return ButtonStudioType.DEFAULT
     return when {
+        id.startsWith("rc.") -> ButtonStudioType.REMOTE_COMPOSE
         id.startsWith("builtin.default_") -> ButtonStudioType.DEFAULT
         id.startsWith("builtin.") -> ButtonStudioType.SVG
         else -> ButtonStudioType.PLUGIN

@@ -6,9 +6,11 @@ import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import com.sanket.tools.nexpad.runtime.engine.NxprcCanvasRenderer
 import com.sanket.tools.nexpad.runtime.engine.NxpComposeInterpreter
 import com.sanket.tools.nexpad.runtime.model.NexPadControl
 import com.sanket.tools.nexpad.runtime.model.asInputTarget
+import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
 
 /**
@@ -26,6 +28,28 @@ fun ControllerElementRenderer(
 ) {
     val context = LocalContext.current
     val isDefaultNative = customComponentId == null || customComponentId.startsWith("builtin.default_")
+
+    if (customComponentId != null && customComponentId.startsWith("rc.")) {
+        val remoteRegistry = remember { RemoteComponentRegistry.getInstance(context) }
+        val remoteDoc = remember(customComponentId) { remoteRegistry.getComponent(customComponentId) }
+        if (remoteDoc != null) {
+            val targetControl = when {
+                key == "LS" -> NexPadControl.Stick(isLeft = true)
+                key == "RS" -> NexPadControl.Stick(isLeft = false)
+                key == "LT" || key == "RT" -> NexPadControl.Trigger(key)
+                key in listOf("UP", "DOWN", "LEFT", "RIGHT") -> NexPadControl.DPad(key)
+                else -> NexPadControl.Button(key)
+            }
+            NxprcCanvasRenderer(
+                document = remoteDoc,
+                assignedControl = targetControl,
+                isConnected = isConnected,
+                inputTarget = viewModel.asInputTarget(onVibrate)
+            )
+            return
+        }
+    }
+
     val customDef = remember(customComponentId, isDefaultNative) {
         if (isDefaultNative) null else ComponentRegistry.getInstance(context).getComponent(customComponentId)
     }

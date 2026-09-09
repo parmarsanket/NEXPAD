@@ -2,6 +2,9 @@ package com.sanket.tools.nexpad.runtime.registry
 
 import android.content.Context
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
+import com.sanket.tools.nexpad.runtime.model.NxpManifest
+import com.sanket.tools.nexpad.runtime.model.NxpSize
+import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -44,6 +47,31 @@ class ComponentRegistry private constructor(private val context: Context) {
             }
         }
 
+        // 3. Bridge remote .nxprc components
+        try {
+            val remoteRegistry = RemoteComponentRegistry.getInstance(context)
+            remoteRegistry.loadedComponents.value.forEach { doc ->
+                val bridgedDef = NxpComponentDef(
+                    manifest = NxpManifest(
+                        id = doc.manifest.id,
+                        name = doc.manifest.name,
+                        author = doc.manifest.author,
+                        version = doc.manifest.version,
+                        category = doc.manifest.category,
+                        defaultControl = doc.manifest.defaultControl,
+                        description = doc.manifest.description
+                    ),
+                    size = NxpSize(
+                        widthDp = doc.manifest.widthDp,
+                        heightDp = doc.manifest.heightDp
+                    )
+                )
+                list.add(bridgedDef)
+            }
+        } catch (_: Exception) {
+            // Safe fallback
+        }
+
         _installedComponents.value = list
     }
 
@@ -80,6 +108,9 @@ class ComponentRegistry private constructor(private val context: Context) {
 
     fun deleteComponent(id: String): Boolean {
         if (id.startsWith("builtin.")) return false // Cannot delete system presets
+        if (id.startsWith("rc.")) {
+            return RemoteComponentRegistry.getInstance(context).deleteComponent(id)
+        }
 
         val safeFileName = id.replace(Regex("[^a-zA-Z0-9_.-]"), "_") + ".json"
         val targetFile = File(componentsDir, safeFileName)

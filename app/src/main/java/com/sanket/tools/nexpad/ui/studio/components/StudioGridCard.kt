@@ -16,12 +16,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.runtime.engine.NxprcCanvasRenderer
 import com.sanket.tools.nexpad.runtime.engine.NxpComposeInterpreter
 import com.sanket.tools.nexpad.runtime.model.NexPadControl
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
 import com.sanket.tools.nexpad.runtime.model.SandboxInputTarget
+import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import com.sanket.tools.nexpad.ui.components.controller.ControllerElementRenderer
 import com.sanket.tools.nexpad.ui.studio.model.ButtonStudioMode
 import com.sanket.tools.nexpad.ui.studio.model.ButtonStudioType
@@ -45,6 +48,7 @@ fun StudioGridCard(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val isBuiltIn = def.manifest.id.startsWith("builtin.")
     val type = remember(def.manifest.id) { resolveButtonSourceType(def) }
     val dummyTarget = remember { SandboxInputTarget() }
@@ -83,7 +87,7 @@ fun StudioGridCard(
                     modifier = Modifier.weight(1f)
                 )
 
-                // Type Badge (DEFAULT, SVG, PLUGIN)
+                // Type Badge (DEFAULT, SVG, PLUGIN, REMOTE_COMPOSE)
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(4.dp))
@@ -130,6 +134,33 @@ fun StudioGridCard(
                             onVibrate = {},
                             customComponentId = null
                         )
+                    } else if (type == ButtonStudioType.REMOTE_COMPOSE) {
+                        val doc = remember(def.manifest.id) {
+                            RemoteComponentRegistry.getInstance(context).getComponent(def.manifest.id)
+                        }
+                        if (doc != null) {
+                            NxprcCanvasRenderer(
+                                document = doc,
+                                assignedControl = NexPadControl.Button(controlKey),
+                                isConnected = false,
+                                inputTarget = dummyTarget
+                            )
+                        } else {
+                            val control = when {
+                                def.manifest.category.equals("JOYSTICK", ignoreCase = true) ->
+                                    NexPadControl.Stick(isLeft = !controlKey.contains("R"))
+                                def.manifest.category.equals("TRIGGER", ignoreCase = true) ->
+                                    NexPadControl.Trigger(key = controlKey)
+                                else ->
+                                    NexPadControl.Button(controlKey)
+                            }
+                            NxpComposeInterpreter(
+                                definition = def,
+                                assignedControl = control,
+                                isConnected = false,
+                                inputTarget = dummyTarget
+                            )
+                        }
                     } else {
                         val control = when {
                             def.manifest.category.equals("JOYSTICK", ignoreCase = true) ->

@@ -20,10 +20,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.platform.LocalContext
+import com.sanket.tools.nexpad.runtime.engine.NxprcCanvasRenderer
 import com.sanket.tools.nexpad.runtime.engine.NxpComposeInterpreter
 import com.sanket.tools.nexpad.runtime.model.NexPadControl
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
 import com.sanket.tools.nexpad.runtime.model.SandboxInputTarget
+import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 @Composable
@@ -110,6 +113,12 @@ fun SandboxPreviewModal(
                         .background(Color(0xFF040810)),
                     contentAlignment = Alignment.Center
                 ) {
+                    val context = LocalContext.current
+                    val isRemote = componentDef.manifest.id.startsWith("rc.")
+                    val remoteDoc = remember(componentDef.manifest.id) {
+                        if (isRemote) RemoteComponentRegistry.getInstance(context).getComponent(componentDef.manifest.id) else null
+                    }
+
                     val control = when {
                         componentDef.manifest.category.equals("JOYSTICK", ignoreCase = true) ->
                             NexPadControl.Stick(isLeft = !componentDef.manifest.defaultControl.contains("R", ignoreCase = true))
@@ -119,12 +128,22 @@ fun SandboxPreviewModal(
                             NexPadControl.Button(componentDef.manifest.defaultControl)
                     }
 
-                    NxpComposeInterpreter(
-                        definition = componentDef,
-                        assignedControl = control,
-                        isConnected = true,
-                        inputTarget = sandboxTarget
-                    )
+                    if (remoteDoc != null) {
+                        NxprcCanvasRenderer(
+                            document = remoteDoc,
+                            assignedControl = control,
+                            isConnected = true,
+                            inputTarget = sandboxTarget,
+                            overrideSizeDp = 140
+                        )
+                    } else {
+                        NxpComposeInterpreter(
+                            definition = componentDef,
+                            assignedControl = control,
+                            isConnected = true,
+                            inputTarget = sandboxTarget
+                        )
+                    }
                 }
 
                 // Telemetry Card
