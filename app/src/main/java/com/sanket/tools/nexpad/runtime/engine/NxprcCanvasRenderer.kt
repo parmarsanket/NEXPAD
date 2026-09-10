@@ -324,24 +324,29 @@ fun NxprcCanvasRenderer(
                                     layer.stroke?.let { st ->
                                         val stColor = Color(st.color)
                                         val stWidth = st.width * density
+                                        val strokeStyle = if (st.isDashed) {
+                                            Stroke(width = stWidth, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f * density, 6f * density), 0f))
+                                        } else {
+                                            Stroke(width = stWidth)
+                                        }
                                         if (isPolygon) {
-                                            drawPath(polygonPath, color = stColor.copy(alpha = stColor.alpha * layerAlpha), style = Stroke(width = stWidth))
+                                            drawPath(polygonPath, color = stColor.copy(alpha = stColor.alpha * layerAlpha), style = strokeStyle)
                                         } else if (isOval) {
                                             drawOval(
                                                 color = stColor.copy(alpha = stColor.alpha * layerAlpha),
                                                 topLeft = Offset(boxLeft, boxTop),
                                                 size = Size(boxWidth, boxHeight),
-                                                style = Stroke(width = stWidth)
+                                                style = strokeStyle
                                             )
                                         } else if (hasVariableCorners) {
-                                            drawPath(variablePath, color = stColor.copy(alpha = stColor.alpha * layerAlpha), style = Stroke(width = stWidth))
+                                            drawPath(variablePath, color = stColor.copy(alpha = stColor.alpha * layerAlpha), style = strokeStyle)
                                         } else {
                                             drawRoundRect(
                                                 color = stColor.copy(alpha = stColor.alpha * layerAlpha),
                                                 topLeft = Offset(boxLeft, boxTop),
                                                 size = Size(boxWidth, boxHeight),
                                                 cornerRadius = CornerRadius(tl, tl),
-                                                style = Stroke(width = stWidth)
+                                                style = strokeStyle
                                             )
                                         }
                                     }
@@ -473,7 +478,13 @@ fun NxprcCanvasRenderer(
                                         drawPath(polyPath, brush = brush, alpha = shapeAlpha)
                                         layer.stroke?.let { st ->
                                             val stColor = Color(st.color)
-                                            drawPath(polyPath, color = stColor.copy(alpha = stColor.alpha * shapeAlpha), style = Stroke(width = st.width * density))
+                                            val stWidth = st.width * density
+                                            val strokeStyle = if (st.isDashed) {
+                                                Stroke(width = stWidth, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f * density, 6f * density), 0f))
+                                            } else {
+                                                Stroke(width = stWidth)
+                                            }
+                                            drawPath(polyPath, color = stColor.copy(alpha = stColor.alpha * shapeAlpha), style = strokeStyle)
                                         }
                                     }
                                     shapeType == "OCTAGON" -> {
@@ -481,18 +492,30 @@ fun NxprcCanvasRenderer(
                                         drawPath(polyPath, brush = brush, alpha = shapeAlpha)
                                         layer.stroke?.let { st ->
                                             val stColor = Color(st.color)
-                                            drawPath(polyPath, color = stColor.copy(alpha = stColor.alpha * shapeAlpha), style = Stroke(width = st.width * density))
+                                            val stWidth = st.width * density
+                                            val strokeStyle = if (st.isDashed) {
+                                                Stroke(width = stWidth, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f * density, 6f * density), 0f))
+                                            } else {
+                                                Stroke(width = stWidth)
+                                            }
+                                            drawPath(polyPath, color = stColor.copy(alpha = stColor.alpha * shapeAlpha), style = strokeStyle)
                                         }
                                     }
                                     shapeType == "OVAL" -> {
                                         drawOval(brush = brush, topLeft = Offset(shapeLeft, shapeTop), size = shapeSize, alpha = shapeAlpha)
                                         layer.stroke?.let { st ->
                                             val stColor = Color(st.color)
+                                            val stWidth = st.width * density
+                                            val strokeStyle = if (st.isDashed) {
+                                                Stroke(width = stWidth, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f * density, 6f * density), 0f))
+                                            } else {
+                                                Stroke(width = stWidth)
+                                            }
                                             drawOval(
                                                 color = stColor.copy(alpha = stColor.alpha * shapeAlpha),
                                                 topLeft = Offset(shapeLeft, shapeTop),
                                                 size = shapeSize,
-                                                style = Stroke(width = st.width * density)
+                                                style = strokeStyle
                                             )
                                         }
                                     }
@@ -506,12 +529,18 @@ fun NxprcCanvasRenderer(
                                         )
                                         layer.stroke?.let { st ->
                                             val stColor = Color(st.color)
+                                            val stWidth = st.width * density
+                                            val strokeStyle = if (st.isDashed) {
+                                                Stroke(width = stWidth, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f * density, 6f * density), 0f))
+                                            } else {
+                                                Stroke(width = stWidth)
+                                            }
                                             drawRoundRect(
                                                 color = stColor.copy(alpha = stColor.alpha * shapeAlpha),
                                                 topLeft = Offset(shapeLeft, shapeTop),
                                                 size = shapeSize,
                                                 cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
-                                                style = Stroke(width = st.width * density)
+                                                style = strokeStyle
                                             )
                                         }
                                     }
@@ -644,67 +673,110 @@ fun NxprcCanvasRenderer(
                 }
             }
 
-        // Center text glyph with embossed 3D lighting and tactile synchronization
+        // Center text glyph or multi-text layers with embossed 3D lighting and tactile synchronization
         val glyph = remember(document) { document.canvas.layers.filterIsInstance<CanvasLayer.CenterGlyph>().firstOrNull() }
-        val textLayer = remember(document) { document.canvas.layers.filterIsInstance<CanvasLayer.TextLayer>().firstOrNull() }
-        val centerText = glyph?.text ?: textLayer?.text ?: document.manifest.defaultControl
-        val textColor = glyph?.textColor ?: textLayer?.textColor ?: 0xFFF5F5F5L
-
+        val textLayers = remember(document) { document.canvas.layers.filterIsInstance<CanvasLayer.TextLayer>() }
         val viewBox = document.canvas.viewBoxWidth.coerceAtLeast(1f)
-        val buttonMinDim = minOf(widthDp, heightDp).toFloat()
-        val scaleFactor = buttonMinDim / viewBox
-        val baseFontSp = glyph?.fontSizeSp ?: textLayer?.fontSizeSp ?: (viewBox * 0.32f)
-        val fontSp = (baseFontSp * scaleFactor).sp
+        val viewBoxH = document.canvas.viewBoxHeight.coerceAtLeast(1f)
+        val viewScale = minOf(widthDp.toFloat() / viewBox, heightDp.toFloat() / viewBoxH)
+        val buttonW = viewBox * viewScale
+        val buttonH = viewBoxH * viewScale
+        val scaleFactor = viewScale
         val rootBox = remember(document) { document.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>().firstOrNull() }
-        val fontWeight = if (textLayer != null && textLayer.fontWeight >= 900) FontWeight.Black else FontWeight.Bold
 
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.graphicsLayer {
-                rotationZ = rootBox?.effectiveTransform?.rotationDegrees ?: 0f
-            }
-        ) {
-            val extraShadows = glyph?.textShadows ?: textLayer?.textShadows ?: emptyList()
-            if (extraShadows.isNotEmpty()) {
-                extraShadows.forEach { ts ->
+        if (textLayers.isNotEmpty()) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(widthDp.dp, heightDp.dp)
+                    .graphicsLayer {
+                        rotationZ = rootBox?.effectiveTransform?.rotationDegrees ?: 0f
+                    }
+            ) {
+                textLayers.forEach { tl ->
+                    val fontSp = (tl.fontSizeSp * scaleFactor).sp
+                    val fontWeight = if (tl.fontWeight >= 900) FontWeight.Black else if (tl.fontWeight >= 700) FontWeight.Bold else FontWeight.Normal
+                    val offX = (tl.offsetXRatio * buttonW).dp
+                    val offY = (tl.offsetYRatio * buttonH).dp
+
+                    if (tl.textShadows.isNotEmpty()) {
+                        tl.textShadows.forEach { ts ->
+                            Text(
+                                text = tl.text,
+                                color = Color(ts.color),
+                                fontSize = fontSp,
+                                fontWeight = fontWeight,
+                                modifier = Modifier.offset(
+                                    x = offX + (ts.offsetX * scaleFactor).dp,
+                                    y = offY + (ts.offsetY * scaleFactor).dp
+                                )
+                            )
+                        }
+                    }
                     Text(
-                        text = centerText,
-                        color = Color(ts.color),
+                        text = tl.text,
+                        color = Color(tl.textColor),
                         fontSize = fontSp,
                         fontWeight = fontWeight,
-                        modifier = Modifier.offset(
-                            x = (ts.offsetX * scaleFactor).dp,
-                            y = (ts.offsetY * scaleFactor).dp
+                        modifier = Modifier.offset(x = offX, y = offY)
+                    )
+                }
+            }
+        } else if (glyph != null || document.canvas.layers.any { it is CanvasLayer.CenterGlyph }) {
+            val centerText = glyph?.text ?: document.manifest.defaultControl
+            val textColor = glyph?.textColor ?: 0xFFF5F5F5L
+            val baseFontSp = glyph?.fontSizeSp ?: (viewBox * 0.32f)
+            val fontSp = (baseFontSp * scaleFactor).sp
+            val fontWeight = FontWeight.Bold
+
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.graphicsLayer {
+                    rotationZ = rootBox?.effectiveTransform?.rotationDegrees ?: 0f
+                }
+            ) {
+                val extraShadows = glyph?.textShadows ?: emptyList()
+                if (extraShadows.isNotEmpty()) {
+                    extraShadows.forEach { ts ->
+                        Text(
+                            text = centerText,
+                            color = Color(ts.color),
+                            fontSize = fontSp,
+                            fontWeight = fontWeight,
+                            modifier = Modifier.offset(
+                                x = (ts.offsetX * scaleFactor).dp,
+                                y = (ts.offsetY * scaleFactor).dp
+                            )
                         )
-                    )
+                    }
+                } else {
+                    glyph?.shadowColor?.let { sc ->
+                        Text(
+                            text = centerText,
+                            color = Color(sc),
+                            fontSize = fontSp,
+                            fontWeight = fontWeight,
+                            modifier = Modifier.offset(y = (glyph.shadowOffsetY * scaleFactor).dp)
+                        )
+                    }
+                    glyph?.highlightColor?.let { hc ->
+                        Text(
+                            text = centerText,
+                            color = Color(hc),
+                            fontSize = fontSp,
+                            fontWeight = fontWeight,
+                            modifier = Modifier.offset(y = (-1f * scaleFactor).dp)
+                        )
+                    }
                 }
-            } else {
-                glyph?.shadowColor?.let { sc ->
-                    Text(
-                        text = centerText,
-                        color = Color(sc),
-                        fontSize = fontSp,
-                        fontWeight = fontWeight,
-                        modifier = Modifier.offset(y = (glyph.shadowOffsetY * scaleFactor).dp)
-                    )
-                }
-                glyph?.highlightColor?.let { hc ->
-                    Text(
-                        text = centerText,
-                        color = Color(hc),
-                        fontSize = fontSp,
-                        fontWeight = fontWeight,
-                        modifier = Modifier.offset(y = (-1f * scaleFactor).dp)
-                    )
-                }
+                // Foreground text
+                Text(
+                    text = centerText,
+                    color = Color(textColor),
+                    fontSize = fontSp,
+                    fontWeight = fontWeight
+                )
             }
-            // Foreground text
-            Text(
-                text = centerText,
-                color = Color(textColor),
-                fontSize = fontSp,
-                fontWeight = fontWeight
-            )
         }
     }
 }
