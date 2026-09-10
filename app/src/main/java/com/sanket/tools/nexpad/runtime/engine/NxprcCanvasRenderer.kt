@@ -1,5 +1,6 @@
 package com.sanket.tools.nexpad.runtime.engine
 
+import android.os.Build
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -141,8 +142,17 @@ fun NxprcCanvasRenderer(
             },
         contentAlignment = Alignment.Center
     ) {
-        Canvas(modifier = Modifier.size(widthDp.dp, heightDp.dp)) {
-            scale(scaleAnim) {
+        Box(
+            modifier = Modifier
+                .size(widthDp.dp, heightDp.dp)
+                .graphicsLayer {
+                    scaleX = scaleAnim
+                    scaleY = scaleAnim
+                    translationY = pressOffsetYAnim * density
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.size(widthDp.dp, heightDp.dp)) {
                 // Match the CSS document viewBox instead of applying a fixed
                 // 90% scale. This keeps Android and Desktop previews aligned.
                 val viewBoxW = document.canvas.viewBoxWidth.coerceAtLeast(1f)
@@ -151,8 +161,8 @@ fun NxprcCanvasRenderer(
                 val buttonW = viewBoxW * viewScale
                 val buttonH = viewBoxH * viewScale
                 val buttonLeft = (size.width - buttonW) / 2f
-                val buttonTop = (size.height - buttonH) / 2f + pressOffsetYAnim * density
-                val centerOffset = Offset(size.width / 2f, size.height / 2f + pressOffsetYAnim * density)
+                val buttonTop = (size.height - buttonH) / 2f
+                val centerOffset = Offset(size.width / 2f, size.height / 2f)
 
                 val primaryBox = document.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>().firstOrNull()
                 val primaryShape = document.canvas.layers.filterIsInstance<CanvasLayer.GradientShape>().firstOrNull()
@@ -189,19 +199,21 @@ fun NxprcCanvasRenderer(
                 document.canvas.layers.forEach { layer ->
                     when (layer) {
                         is CanvasLayer.BoxLayer -> {
+                            val transform = layer.effectiveTransform
+                            val effects = layer.effectiveEffects
                             val boxWidth = buttonW * layer.widthRatio
                             val boxHeight = buttonH * layer.heightRatio
-                            val boxLeft = buttonLeft + layer.offsetXRatio * buttonW
-                            val boxTop = buttonTop + layer.offsetYRatio * buttonH
+                            val boxLeft = buttonLeft + transform.offsetXRatio * buttonW
+                            val boxTop = buttonTop + transform.offsetYRatio * buttonH
 
-                            val pivot = Offset(boxLeft + boxWidth * layer.originXRatio, boxTop + boxHeight * layer.originYRatio)
-                            val rotAngle = if (layer.isRotating && document.animations.idleType == "ROTATE") rotateAngle else layer.rotationDegrees
+                            val pivot = Offset(boxLeft + boxWidth * transform.originXRatio, boxTop + boxHeight * transform.originYRatio)
+                            val rotAngle = if (transform.isRotating && document.animations.idleType == "ROTATE") rotateAngle else transform.rotationDegrees
 
                             val isPolygon = layer.shapeType.uppercase() == "POLYGON" || layer.shapeType.uppercase() == "PATH" || layer.pathData.isNotBlank() || layer.polygonSides >= 3
                             val isHexagon = layer.shapeType.uppercase() == "HEXAGON" || layer.polygonSides == 6
                             val isOctagon = layer.shapeType.uppercase() == "OCTAGON" || layer.polygonSides == 8
                             val isOval = layer.shapeType.uppercase() == "OVAL"
-                            val layerAlpha = layer.opacity.coerceIn(0f, 1f)
+                            val layerAlpha = effects.opacity.coerceIn(0f, 1f)
                             val tl = layer.cornerRadiusTopLeft * density
                             val tr = layer.cornerRadiusTopRight * density
                             val br = layer.cornerRadiusBottomRight * density
@@ -235,7 +247,7 @@ fun NxprcCanvasRenderer(
                             val drawBox: () -> Unit = {
                                 withTransform({
                                     if (rotAngle != 0f) rotate(rotAngle, pivot = pivot)
-                                    if (layer.scaleX != 1f || layer.scaleY != 1f) scale(scaleX = layer.scaleX, scaleY = layer.scaleY, pivot = pivot)
+                                    if (transform.scaleX != 1f || transform.scaleY != 1f) scale(scaleX = transform.scaleX, scaleY = transform.scaleY, pivot = pivot)
                                 }) {
                                     // 1. Outset box shadows
                                     layer.boxShadows.filter { !it.isInset }.forEach { shadow ->
@@ -385,7 +397,7 @@ fun NxprcCanvasRenderer(
                             }
 
                             val drawFilteredBox: () -> Unit = {
-                                val colorFilter = createNxprcColorFilter(layer.filter)
+                                val colorFilter = createNxprcColorFilter(effects.filter)
                                 if (colorFilter == null) {
                                     drawBox()
                                 } else {
@@ -439,17 +451,19 @@ fun NxprcCanvasRenderer(
                             )
                         }
                         is CanvasLayer.GradientShape -> {
+                            val transform = layer.effectiveTransform
+                            val effects = layer.effectiveEffects
                             val shapeW = buttonW * layer.widthRatio
                             val shapeH = buttonH * layer.heightRatio
-                            val shapeLeft = buttonLeft + buttonW * layer.offsetXRatio
-                            val shapeTop = buttonTop + buttonH * layer.offsetYRatio
+                            val shapeLeft = buttonLeft + buttonW * transform.offsetXRatio
+                            val shapeTop = buttonTop + buttonH * transform.offsetYRatio
                             val shapeSize = Size(shapeW, shapeH)
                             val brush = createBrush(layer.fill, shapeSize, Offset(shapeLeft, shapeTop))
                             val cornerRadiusPx = layer.cornerRadius * density
-                            val shapeAlpha = layer.opacity.coerceIn(0f, 1f)
+                            val shapeAlpha = effects.opacity.coerceIn(0f, 1f)
 
-                            val hasTransform = layer.rotationDegrees != 0f || layer.scaleX != 1f || layer.scaleY != 1f
-                            val pivot = Offset(shapeLeft + layer.originXRatio * shapeW, shapeTop + layer.originYRatio * shapeH)
+                            val hasTransform = transform.hasTransform
+                            val pivot = Offset(shapeLeft + transform.originXRatio * shapeW, shapeTop + transform.originYRatio * shapeH)
 
                             val drawShape: () -> Unit = {
                                 val shapeType = layer.shapeType.uppercase()
@@ -505,7 +519,7 @@ fun NxprcCanvasRenderer(
                             }
 
                             val drawFilteredShape: () -> Unit = {
-                                val colorFilter = createNxprcColorFilter(layer.filter)
+                                val colorFilter = createNxprcColorFilter(effects.filter)
                                 if (colorFilter == null) {
                                     drawShape()
                                 } else {
@@ -521,8 +535,8 @@ fun NxprcCanvasRenderer(
 
                             if (hasTransform) {
                                 withTransform({
-                                    scale(layer.scaleX, layer.scaleY, pivot = pivot)
-                                    rotate(layer.rotationDegrees, pivot = pivot)
+                                    scale(transform.scaleX, transform.scaleY, pivot = pivot)
+                                    rotate(transform.rotationDegrees, pivot = pivot)
                                 }) {
                                     drawFilteredShape()
                                 }
@@ -629,7 +643,6 @@ fun NxprcCanvasRenderer(
                     }
                 }
             }
-        }
 
         // Center text glyph with embossed 3D lighting and tactile synchronization
         val glyph = remember(document) { document.canvas.layers.filterIsInstance<CanvasLayer.CenterGlyph>().firstOrNull() }
@@ -648,10 +661,7 @@ fun NxprcCanvasRenderer(
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier.graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
-                translationY = pressOffsetYAnim * density
-                rotationZ = rootBox?.rotationDegrees ?: 0f
+                rotationZ = rootBox?.effectiveTransform?.rotationDegrees ?: 0f
             }
         ) {
             val extraShadows = glyph?.textShadows ?: textLayer?.textShadows ?: emptyList()
@@ -697,6 +707,7 @@ fun NxprcCanvasRenderer(
             )
         }
     }
+}
 }
 
 private fun createBrush(fill: FillBrush, size: Size, topLeft: Offset = Offset.Zero): Brush {
