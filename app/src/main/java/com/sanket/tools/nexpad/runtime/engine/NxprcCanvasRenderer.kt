@@ -426,33 +426,47 @@ fun NxprcCanvasRenderer(
                             }
                         }
                         is CanvasLayer.BezelSocket -> {
-                            val baseRadius = size.minDimension / 2f
+                            val baseRadius = minOf(buttonW, buttonH) / 2f
                             // 1. Soft bottom drop shadow
                             drawCircle(
                                 color = Color(layer.shadowColor),
-                                radius = baseRadius * 0.96f,
-                                center = Offset(centerOffset.x, centerOffset.y + baseRadius * 0.08f)
+                                radius = baseRadius * 0.98f,
+                                center = Offset(centerOffset.x, centerOffset.y + baseRadius * 0.05f)
                             )
                             // 2. Solid bezel well
                             drawCircle(
                                 color = Color(layer.outerBezelColor),
-                                radius = baseRadius * 0.96f,
+                                radius = baseRadius * 0.98f,
                                 center = centerOffset
                             )
                             // 3. Bezel rim stroke
                             drawCircle(
                                 color = Color(layer.outerBevelStroke),
-                                radius = baseRadius * 0.96f,
+                                radius = baseRadius * 0.98f,
                                 center = centerOffset,
-                                style = Stroke(width = 2.5f * density)
+                                style = Stroke(width = 2f * density)
                             )
                         }
                         is CanvasLayer.GlowRing -> {
                             val alpha = if (layer.pulseEnabled && document.animations.idleType == "PULSE") pulseAlpha else 0.8f
-                            val glowColor = Color(layer.glowColor).copy(alpha = alpha * 0.4f)
+                            val glowColor = Color(layer.glowColor)
+                            val buttonRadius = minOf(buttonW, buttonH) / 2f
+                            val blurPx = (layer.blurRadius * density).coerceAtLeast(8f)
+                            val totalRadius = (buttonRadius + blurPx).coerceAtMost(size.minDimension / 2f)
+                            val innerRatio = (buttonRadius / totalRadius).coerceIn(0.1f, 0.85f)
                             drawCircle(
-                                color = glowColor,
-                                radius = size.minDimension / 2f * 0.96f
+                                brush = Brush.radialGradient(
+                                    colorStops = arrayOf(
+                                        0.0f to glowColor.copy(alpha = alpha * 0.35f),
+                                        innerRatio to glowColor.copy(alpha = alpha * 0.28f),
+                                        (innerRatio + (1f - innerRatio) * 0.5f) to glowColor.copy(alpha = alpha * 0.10f),
+                                        1.0f to Color.Transparent
+                                    ),
+                                    center = centerOffset,
+                                    radius = totalRadius
+                                ),
+                                radius = totalRadius,
+                                center = centerOffset
                             )
                         }
                         is CanvasLayer.GradientShape -> {
