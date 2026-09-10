@@ -19,6 +19,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.ViewModelProvider
 import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
+import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import com.sanket.tools.nexpad.sensors.MotionSensorManager
 import com.sanket.tools.nexpad.ui.NavigationGraph
 import com.sanket.tools.nexpad.ui.theme.NEXPADTheme
@@ -57,11 +58,15 @@ class MainActivity : ComponentActivity() {
         val receiver = object : android.content.BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: android.content.Intent?) {
                 ComponentRegistry.getInstance(this@MainActivity).reloadAll()
+                RemoteComponentRegistry.getInstance(this@MainActivity).reloadAll()
                 android.widget.Toast.makeText(this@MainActivity, "⚡ Components reloaded from Desktop!", android.widget.Toast.LENGTH_SHORT).show()
             }
         }
         reloadReceiver = receiver
-        val filter = android.content.IntentFilter("com.sanket.tools.nexpad.RELOAD_COMPONENTS")
+        val filter = android.content.IntentFilter().apply {
+            addAction("com.sanket.tools.nexpad.RELOAD_COMPONENTS")
+            addAction("com.sanket.tools.nexpad.RELOAD_REMOTE_COMPONENTS")
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
         } else {

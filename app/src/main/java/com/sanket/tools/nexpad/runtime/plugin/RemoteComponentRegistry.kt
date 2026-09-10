@@ -18,6 +18,11 @@ class RemoteComponentRegistry private constructor(private val context: Context) 
     private val remoteDir = File(context.filesDir, "nxp_remote").apply {
         if (!exists()) mkdirs()
     }
+    private val externalRemoteDir: File? = try {
+        context.getExternalFilesDir("nxp_remote")?.apply { if (!exists()) mkdirs() }
+    } catch (_: Exception) {
+        null
+    }
 
     private val fileCache = ConcurrentHashMap<String, Pair<Long, NxprcDocument>>()
     private val idIndex = ConcurrentHashMap<String, NxprcDocument>()
@@ -31,7 +36,9 @@ class RemoteComponentRegistry private constructor(private val context: Context) 
 
     @Synchronized
     fun reloadAll() {
-        val currentFiles = remoteDir.listFiles { file -> file.extension.lowercase() == "nxprc" } ?: emptyArray()
+        val internalFiles = remoteDir.listFiles { file -> file.extension.lowercase() == "nxprc" } ?: emptyArray()
+        val externalFiles = externalRemoteDir?.listFiles { file -> file.extension.lowercase() == "nxprc" } ?: emptyArray()
+        val currentFiles = (internalFiles.toList() + externalFiles.toList()).distinctBy { it.name }
         val currentFileNames = currentFiles.map { it.name }.toSet()
 
         // Evict deleted files from cache

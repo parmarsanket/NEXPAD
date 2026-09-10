@@ -34,6 +34,23 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
+private fun createNxprcColorFilter(filter: FilterDef): ColorFilter? {
+    val brightness = filter.brightness.coerceAtLeast(0f)
+    val saturation = filter.saturation.coerceAtLeast(0f)
+    if (brightness == 1f && saturation == 1f) return null
+
+    val inv = 1f - saturation
+    val r = 0.213f * inv
+    val g = 0.715f * inv
+    val b = 0.072f * inv
+    return ColorFilter.colorMatrix(ColorMatrix(floatArrayOf(
+        brightness * (r + saturation), brightness * g, brightness * b, 0f, 0f,
+        brightness * r, brightness * (g + saturation), brightness * b, 0f, 0f,
+        brightness * r, brightness * g, brightness * (b + saturation), 0f, 0f,
+        0f, 0f, 0f, 1f, 0f
+    )))
+}
+
 /**
  * Unlimited Vector Canvas & Animation Renderer for .nxprc packages.
  * Play Store 100% compliant: Pure native Compose vector canvas rendering
@@ -126,8 +143,13 @@ fun NxprcCanvasRenderer(
     ) {
         Canvas(modifier = Modifier.size(widthDp.dp, heightDp.dp)) {
             scale(scaleAnim) {
-                val buttonW = size.minDimension * 0.90f
-                val buttonH = size.minDimension * 0.90f
+                // Match the CSS document viewBox instead of applying a fixed
+                // 90% scale. This keeps Android and Desktop previews aligned.
+                val viewBoxW = document.canvas.viewBoxWidth.coerceAtLeast(1f)
+                val viewBoxH = document.canvas.viewBoxHeight.coerceAtLeast(1f)
+                val viewScale = minOf(size.width / viewBoxW, size.height / viewBoxH)
+                val buttonW = viewBoxW * viewScale
+                val buttonH = viewBoxH * viewScale
                 val buttonLeft = (size.width - buttonW) / 2f
                 val buttonTop = (size.height - buttonH) / 2f + pressOffsetYAnim * density
                 val centerOffset = Offset(size.width / 2f, size.height / 2f + pressOffsetYAnim * density)
@@ -186,32 +208,28 @@ fun NxprcCanvasRenderer(
                             val bl = layer.cornerRadiusBottomLeft * density
                             val hasVariableCorners = !isOval && !isPolygon && (tr != tl || br != tl || bl != tl)
 
-                            val polygonPath by lazy {
-                                if (isHexagon) {
-                                    buildRegularPolygonPath(6, Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight))
-                                } else if (isOctagon) {
-                                    buildRegularPolygonPath(8, Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight))
-                                } else if (layer.polygonSides >= 3) {
-                                    buildRegularPolygonPath(layer.polygonSides, Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight))
-                                } else if (layer.pathData.isNotBlank()) {
-                                    buildScaledPath(layer.pathData, Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight))
-                                } else {
-                                    Path()
-                                }
+                            val polygonPath = if (layer.pathData.isNotBlank()) {
+                                buildScaledPath(layer.pathData, Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight))
+                            } else if (isHexagon) {
+                                buildRegularPolygonPath(6, Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight))
+                            } else if (isOctagon) {
+                                buildRegularPolygonPath(8, Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight))
+                            } else if (layer.polygonSides >= 3) {
+                                buildRegularPolygonPath(layer.polygonSides, Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight))
+                            } else {
+                                Path()
                             }
 
-                            val variablePath by lazy {
-                                Path().apply {
-                                    addRoundRect(
-                                        androidx.compose.ui.geometry.RoundRect(
-                                            rect = Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight),
-                                            topLeft = CornerRadius(tl, tl),
-                                            topRight = CornerRadius(tr, tr),
-                                            bottomRight = CornerRadius(br, br),
-                                            bottomLeft = CornerRadius(bl, bl)
-                                        )
+                            val variablePath = Path().apply {
+                                addRoundRect(
+                                    androidx.compose.ui.geometry.RoundRect(
+                                        rect = Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight),
+                                        topLeft = CornerRadius(tl, tl),
+                                        topRight = CornerRadius(tr, tr),
+                                        bottomRight = CornerRadius(br, br),
+                                        bottomLeft = CornerRadius(bl, bl)
                                     )
-                                }
+                                )
                             }
 
                             val drawBox: () -> Unit = {
@@ -366,13 +384,28 @@ fun NxprcCanvasRenderer(
                                 }
                             }
 
+                            val drawFilteredBox: () -> Unit = {
+                                val colorFilter = createNxprcColorFilter(layer.filter)
+                                if (colorFilter == null) {
+                                    drawBox()
+                                } else {
+                                    val paint = Paint().apply { this.colorFilter = colorFilter }
+                                    drawContext.canvas.saveLayer(
+                                        Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight),
+                                        paint
+                                    )
+                                    drawBox()
+                                    drawContext.canvas.restore()
+                                }
+                            }
+
                             val isRootLayer = layer == document.canvas.layers.firstOrNull() || (layer.widthRatio >= 1.0f && layer.heightRatio >= 1.0f)
                             if (!isRootLayer && (layer.clipToBounds || document.canvas.clipToBounds)) {
                                 clipPath(rootClipShape) {
-                                    drawBox()
+                                    drawFilteredBox()
                                 }
                             } else {
-                                drawBox()
+                                drawFilteredBox()
                             }
                         }
                         is CanvasLayer.BezelSocket -> {
@@ -406,20 +439,23 @@ fun NxprcCanvasRenderer(
                             )
                         }
                         is CanvasLayer.GradientShape -> {
-                            val brush = createBrush(layer.fill, size)
+                            val shapeW = buttonW * layer.widthRatio
+                            val shapeH = buttonH * layer.heightRatio
+                            val shapeLeft = buttonLeft + buttonW * layer.offsetXRatio
+                            val shapeTop = buttonTop + buttonH * layer.offsetYRatio
+                            val shapeSize = Size(shapeW, shapeH)
+                            val brush = createBrush(layer.fill, shapeSize, Offset(shapeLeft, shapeTop))
                             val cornerRadiusPx = layer.cornerRadius * density
-                            val baseRadius = size.minDimension / 2f
-                            val shapeRadius = baseRadius * 0.88f
                             val shapeAlpha = layer.opacity.coerceIn(0f, 1f)
 
-                            val hasTransform = layer.rotationDegrees != 0f || layer.scaleX != 1f || layer.scaleY != 1f || layer.offsetXRatio != 0f || layer.offsetYRatio != 0f
-                            val pivot = Offset(layer.originXRatio * size.width, layer.originYRatio * size.height)
+                            val hasTransform = layer.rotationDegrees != 0f || layer.scaleX != 1f || layer.scaleY != 1f
+                            val pivot = Offset(shapeLeft + layer.originXRatio * shapeW, shapeTop + layer.originYRatio * shapeH)
 
                             val drawShape: () -> Unit = {
                                 val shapeType = layer.shapeType.uppercase()
                                 when {
                                     shapeType == "HEXAGON" -> {
-                                        val polyPath = buildRegularPolygonPath(6, Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH))
+                                        val polyPath = buildRegularPolygonPath(6, Rect(shapeLeft, shapeTop, shapeLeft + shapeW, shapeTop + shapeH))
                                         drawPath(polyPath, brush = brush, alpha = shapeAlpha)
                                         layer.stroke?.let { st ->
                                             val stColor = Color(st.color)
@@ -427,7 +463,7 @@ fun NxprcCanvasRenderer(
                                         }
                                     }
                                     shapeType == "OCTAGON" -> {
-                                        val polyPath = buildRegularPolygonPath(8, Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH))
+                                        val polyPath = buildRegularPolygonPath(8, Rect(shapeLeft, shapeTop, shapeLeft + shapeW, shapeTop + shapeH))
                                         drawPath(polyPath, brush = brush, alpha = shapeAlpha)
                                         layer.stroke?.let { st ->
                                             val stColor = Color(st.color)
@@ -435,13 +471,13 @@ fun NxprcCanvasRenderer(
                                         }
                                     }
                                     shapeType == "OVAL" -> {
-                                        drawCircle(brush = brush, radius = shapeRadius, center = centerOffset, alpha = shapeAlpha)
+                                        drawOval(brush = brush, topLeft = Offset(shapeLeft, shapeTop), size = shapeSize, alpha = shapeAlpha)
                                         layer.stroke?.let { st ->
                                             val stColor = Color(st.color)
-                                            drawCircle(
+                                            drawOval(
                                                 color = stColor.copy(alpha = stColor.alpha * shapeAlpha),
-                                                radius = shapeRadius,
-                                                center = centerOffset,
+                                                topLeft = Offset(shapeLeft, shapeTop),
+                                                size = shapeSize,
                                                 style = Stroke(width = st.width * density)
                                             )
                                         }
@@ -449,6 +485,8 @@ fun NxprcCanvasRenderer(
                                     else -> {
                                         drawRoundRect(
                                             brush = brush,
+                                            topLeft = Offset(shapeLeft, shapeTop),
+                                            size = shapeSize,
                                             cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
                                             alpha = shapeAlpha
                                         )
@@ -456,6 +494,8 @@ fun NxprcCanvasRenderer(
                                             val stColor = Color(st.color)
                                             drawRoundRect(
                                                 color = stColor.copy(alpha = stColor.alpha * shapeAlpha),
+                                                topLeft = Offset(shapeLeft, shapeTop),
+                                                size = shapeSize,
                                                 cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
                                                 style = Stroke(width = st.width * density)
                                             )
@@ -464,16 +504,30 @@ fun NxprcCanvasRenderer(
                                 }
                             }
 
+                            val drawFilteredShape: () -> Unit = {
+                                val colorFilter = createNxprcColorFilter(layer.filter)
+                                if (colorFilter == null) {
+                                    drawShape()
+                                } else {
+                                    val paint = Paint().apply { this.colorFilter = colorFilter }
+                                    drawContext.canvas.saveLayer(
+                                        Rect(shapeLeft, shapeTop, shapeLeft + shapeW, shapeTop + shapeH),
+                                        paint
+                                    )
+                                    drawShape()
+                                    drawContext.canvas.restore()
+                                }
+                            }
+
                             if (hasTransform) {
                                 withTransform({
-                                    translate(layer.offsetXRatio * size.width, layer.offsetYRatio * size.height)
                                     scale(layer.scaleX, layer.scaleY, pivot = pivot)
                                     rotate(layer.rotationDegrees, pivot = pivot)
                                 }) {
-                                    drawShape()
+                                    drawFilteredShape()
                                 }
                             } else {
-                                drawShape()
+                                drawFilteredShape()
                             }
                         }
                         is CanvasLayer.InnerShadow -> {
@@ -578,8 +632,8 @@ fun NxprcCanvasRenderer(
         }
 
         // Center text glyph with embossed 3D lighting and tactile synchronization
-        val glyph = document.canvas.layers.filterIsInstance<CanvasLayer.CenterGlyph>().firstOrNull()
-        val textLayer = document.canvas.layers.filterIsInstance<CanvasLayer.TextLayer>().firstOrNull()
+        val glyph = remember(document) { document.canvas.layers.filterIsInstance<CanvasLayer.CenterGlyph>().firstOrNull() }
+        val textLayer = remember(document) { document.canvas.layers.filterIsInstance<CanvasLayer.TextLayer>().firstOrNull() }
         val centerText = glyph?.text ?: textLayer?.text ?: document.manifest.defaultControl
         val textColor = glyph?.textColor ?: textLayer?.textColor ?: 0xFFF5F5F5L
 
@@ -670,7 +724,8 @@ private fun createBrush(fill: FillBrush, size: Size, topLeft: Offset = Offset.Ze
         is FillBrush.RadialGradient -> {
             val cx = topLeft.x + size.width * fill.centerXRatio
             val cy = topLeft.y + size.height * fill.centerYRatio
-            val maxR = size.minDimension * fill.radiusRatio * 1.5f
+            // radiusRatio already includes CSS background-size scaling.
+            val maxR = size.minDimension * fill.radiusRatio
             if (fill.stops.isNotEmpty() && fill.stops.size == fill.colors.size) {
                 val colorStops = fill.colors.indices.map { i ->
                     fill.stops[i] to Color(fill.colors[i])
