@@ -247,49 +247,67 @@ fun NxprcCanvasRenderer(
                                 )
                             }
 
+                            val needsOffscreen = effects.compositingStrategy == com.sanket.tools.nexpad.nxprc.CompositingStrategy.OFFSCREEN ||
+                                (layerAlpha < 1.0f && (layer.fills.size > 1 || layer.boxShadows.isNotEmpty()))
+                            val subAlpha = if (needsOffscreen) 1.0f else layerAlpha
+
                             val drawBox: () -> Unit = {
                                 withTransform({
                                     if (rotAngle != 0f) rotate(rotAngle, pivot = pivot)
                                     if (transform.scaleX != 1f || transform.scaleY != 1f) scale(scaleX = transform.scaleX, scaleY = transform.scaleY, pivot = pivot)
                                 }) {
-                                    // 1. Outset box shadows
+                                    // 1. Outset box shadows with multi-shell Gaussian blur approximation
                                     layer.boxShadows.filter { !it.isInset }.forEach { shadow ->
                                         val shadowOffset = Offset(shadow.offsetX * pxPerUnit, shadow.offsetY * pxPerUnit)
                                         val sColor = Color(shadow.color)
                                         val spreadPx = shadow.spreadRadius * pxPerUnit
-                                        if (isPolygon) {
-                                            drawPath(polygonPath, color = sColor.copy(alpha = sColor.alpha * layerAlpha))
-                                        } else if (isOval) {
-                                            drawOval(
-                                                color = sColor.copy(alpha = sColor.alpha * layerAlpha),
-                                                topLeft = Offset(boxLeft + shadowOffset.x - spreadPx, boxTop + shadowOffset.y - spreadPx),
-                                                size = Size(boxWidth + spreadPx * 2f, boxHeight + spreadPx * 2f)
-                                            )
-                                        } else if (hasVariableCorners) {
-                                            val shadowPath = Path().apply {
-                                                addRoundRect(
-                                                    androidx.compose.ui.geometry.RoundRect(
-                                                        rect = Rect(
-                                                            boxLeft + shadowOffset.x - spreadPx,
-                                                            boxTop + shadowOffset.y - spreadPx,
-                                                            boxLeft + boxWidth + shadowOffset.x + spreadPx,
-                                                            boxTop + boxHeight + shadowOffset.y + spreadPx
-                                                        ),
-                                                        topLeft = CornerRadius(tl + spreadPx, tl + spreadPx),
-                                                        topRight = CornerRadius(tr + spreadPx, tr + spreadPx),
-                                                        bottomRight = CornerRadius(br + spreadPx, br + spreadPx),
-                                                        bottomLeft = CornerRadius(bl + spreadPx, bl + spreadPx)
+                                        val blurPx = shadow.blurRadius * pxPerUnit
+
+                                        val steps = if (blurPx > 0.5f) 4 else 1
+                                        for (step in 1..steps) {
+                                            val frac = if (steps > 1) step.toFloat() / steps else 0f
+                                            val currentExtent = spreadPx + blurPx * frac
+                                            val stepAlpha = if (steps > 1) {
+                                                sColor.alpha * subAlpha * ((1.0f - frac * 0.7f) / steps)
+                                            } else {
+                                                sColor.alpha * subAlpha
+                                            }
+                                            val currentColor = sColor.copy(alpha = stepAlpha)
+
+                                            if (isPolygon) {
+                                                drawPath(polygonPath, color = currentColor)
+                                            } else if (isOval) {
+                                                drawOval(
+                                                    color = currentColor,
+                                                    topLeft = Offset(boxLeft + shadowOffset.x - currentExtent, boxTop + shadowOffset.y - currentExtent),
+                                                    size = Size(boxWidth + currentExtent * 2f, boxHeight + currentExtent * 2f)
+                                                )
+                                            } else if (hasVariableCorners) {
+                                                val shadowPath = Path().apply {
+                                                    addRoundRect(
+                                                        androidx.compose.ui.geometry.RoundRect(
+                                                            rect = Rect(
+                                                                boxLeft + shadowOffset.x - currentExtent,
+                                                                boxTop + shadowOffset.y - currentExtent,
+                                                                boxLeft + boxWidth + shadowOffset.x + currentExtent,
+                                                                boxTop + boxHeight + shadowOffset.y + currentExtent
+                                                            ),
+                                                            topLeft = CornerRadius(tl + currentExtent, tl + currentExtent),
+                                                            topRight = CornerRadius(tr + currentExtent, tr + currentExtent),
+                                                            bottomRight = CornerRadius(br + currentExtent, br + currentExtent),
+                                                            bottomLeft = CornerRadius(bl + currentExtent, bl + currentExtent)
+                                                        )
                                                     )
+                                                }
+                                                drawPath(shadowPath, color = currentColor)
+                                            } else {
+                                                drawRoundRect(
+                                                    color = currentColor,
+                                                    topLeft = Offset(boxLeft + shadowOffset.x - currentExtent, boxTop + shadowOffset.y - currentExtent),
+                                                    size = Size(boxWidth + currentExtent * 2f, boxHeight + currentExtent * 2f),
+                                                    cornerRadius = CornerRadius(tl + currentExtent, tl + currentExtent)
                                                 )
                                             }
-                                            drawPath(shadowPath, color = sColor.copy(alpha = sColor.alpha * layerAlpha))
-                                        } else {
-                                            drawRoundRect(
-                                                color = sColor.copy(alpha = sColor.alpha * layerAlpha),
-                                                topLeft = Offset(boxLeft + shadowOffset.x - spreadPx, boxTop + shadowOffset.y - spreadPx),
-                                                size = Size(boxWidth + spreadPx * 2f, boxHeight + spreadPx * 2f),
-                                                cornerRadius = CornerRadius(tl + spreadPx, tl + spreadPx)
-                                            )
                                         }
                                     }
 
@@ -302,23 +320,23 @@ fun NxprcCanvasRenderer(
 
                                     allBrushes.forEach { b ->
                                         if (isPolygon) {
-                                            drawPath(polygonPath, brush = b, alpha = layerAlpha)
+                                            drawPath(polygonPath, brush = b, alpha = subAlpha)
                                         } else if (isOval) {
                                             drawOval(
                                                 brush = b,
                                                 topLeft = Offset(boxLeft, boxTop),
                                                 size = Size(boxWidth, boxHeight),
-                                                alpha = layerAlpha
+                                                alpha = subAlpha
                                             )
                                         } else if (hasVariableCorners) {
-                                            drawPath(variablePath, brush = b, alpha = layerAlpha)
+                                            drawPath(variablePath, brush = b, alpha = subAlpha)
                                         } else {
                                             drawRoundRect(
                                                 brush = b,
                                                 topLeft = Offset(boxLeft, boxTop),
                                                 size = Size(boxWidth, boxHeight),
                                                 cornerRadius = CornerRadius(tl, tl),
-                                                alpha = layerAlpha
+                                                alpha = subAlpha
                                             )
                                         }
                                     }
@@ -406,10 +424,13 @@ fun NxprcCanvasRenderer(
 
                             val drawFilteredBox: () -> Unit = {
                                 val colorFilter = createNxprcColorFilter(effects.filter)
-                                if (colorFilter == null) {
+                                if (colorFilter == null && !needsOffscreen) {
                                     drawBox()
                                 } else {
-                                    val paint = Paint().apply { this.colorFilter = colorFilter }
+                                    val paint = Paint().apply {
+                                        if (colorFilter != null) this.colorFilter = colorFilter
+                                        if (needsOffscreen) this.alpha = layerAlpha
+                                    }
                                     drawContext.canvas.saveLayer(
                                         Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight),
                                         paint
@@ -746,11 +767,16 @@ fun NxprcCanvasRenderer(
             val fontSp = (baseFontSp * scaleFactor).sp
             val fontWeight = FontWeight.Bold
 
+            val offX = ((glyph?.offsetXRatio ?: 0f) * buttonW).dp
+            val offY = ((glyph?.offsetYRatio ?: 0f) * buttonH).dp
+
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier.graphicsLayer {
-                    rotationZ = rootBox?.effectiveTransform?.rotationDegrees ?: 0f
-                }
+                modifier = Modifier
+                    .offset(x = offX, y = offY)
+                    .graphicsLayer {
+                        rotationZ = rootBox?.effectiveTransform?.rotationDegrees ?: 0f
+                    }
             ) {
                 val extraShadows = glyph?.textShadows ?: emptyList()
                 if (extraShadows.isNotEmpty()) {
@@ -797,6 +823,29 @@ fun NxprcCanvasRenderer(
         }
     }
 }
+}
+
+private fun sampleGradientColor(colors: List<Long>, stops: List<Float>, pos: Float): Color {
+    if (colors.isEmpty()) return Color.Transparent
+    if (colors.size == 1) return Color(colors[0])
+    val clamped = pos.coerceIn(0f, 1f)
+    var idx = 0
+    while (idx < stops.size - 1 && stops[idx + 1] < clamped) {
+        idx++
+    }
+    if (idx >= stops.size - 1) return Color(colors.last())
+    val s0 = stops[idx]
+    val s1 = stops[idx + 1]
+    val range = (s1 - s0).coerceAtLeast(0.0001f)
+    val t = ((clamped - s0) / range).coerceIn(0f, 1f)
+    val c1 = Color(colors[idx])
+    val c2 = Color(colors[idx + 1])
+    return Color(
+        red = c1.red + (c2.red - c1.red) * t,
+        green = c1.green + (c2.green - c1.green) * t,
+        blue = c1.blue + (c2.blue - c1.blue) * t,
+        alpha = c1.alpha + (c2.alpha - c1.alpha) * t
+    )
 }
 
 private fun createBrush(fill: FillBrush, size: Size, topLeft: Offset = Offset.Zero): Brush {
@@ -846,10 +895,26 @@ private fun createBrush(fill: FillBrush, size: Size, topLeft: Offset = Offset.Ze
         is FillBrush.SweepGradient -> {
             val cx = topLeft.x + size.width * fill.centerXRatio
             val cy = topLeft.y + size.height * fill.centerYRatio
-            Brush.sweepGradient(
-                colors = fill.colors.map { Color(it) },
-                center = Offset(cx, cy)
-            )
+            if (fill.startAngleDegrees != 0f && fill.colors.size >= 2) {
+                val shift = ((fill.startAngleDegrees % 360f + 360f) % 360f) / 360f
+                val n = fill.colors.size
+                val rawStops = if (fill.stops.size == n) fill.stops else List(n) { it.toFloat() / (n - 1) }
+                val samples = 36
+                val sampleStops = FloatArray(samples + 1) { it.toFloat() / samples }
+                val colorStops = sampleStops.map { s ->
+                    val origPos = (s - shift + 1.0f) % 1.0f
+                    s to sampleGradientColor(fill.colors, rawStops, origPos)
+                }.toTypedArray()
+                Brush.sweepGradient(
+                    colorStops = colorStops,
+                    center = Offset(cx, cy)
+                )
+            } else {
+                Brush.sweepGradient(
+                    colors = fill.colors.map { Color(it) },
+                    center = Offset(cx, cy)
+                )
+            }
         }
     }
 }
