@@ -164,15 +164,18 @@ fun NxprcCanvasRenderer(
                 val buttonTop = (size.height - buttonH) / 2f
                 val centerOffset = Offset(size.width / 2f, size.height / 2f)
 
+                val pxPerUnit = viewScale
+                val scaleRatio = (pxPerUnit / density).coerceAtLeast(0.01f)
+
                 val primaryBox = document.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>().firstOrNull()
                 val primaryShape = document.canvas.layers.filterIsInstance<CanvasLayer.GradientShape>().firstOrNull()
                 val rootShapeType = (primaryBox?.shapeType?.uppercase() ?: primaryShape?.shapeType?.uppercase() ?: "ROUNDED_RECT")
                 val rootIsOval = rootShapeType == "OVAL"
                 val rootIsPolygon = rootShapeType == "POLYGON" || rootShapeType == "PATH" || (primaryBox?.pathData?.isNotBlank() == true)
-                val rootTl = (primaryBox?.cornerRadiusTopLeft ?: primaryShape?.cornerRadius ?: 14f) * density
-                val rootTr = (primaryBox?.cornerRadiusTopRight ?: primaryShape?.cornerRadius ?: 14f) * density
-                val rootBr = (primaryBox?.cornerRadiusBottomRight ?: primaryShape?.cornerRadius ?: 14f) * density
-                val rootBl = (primaryBox?.cornerRadiusBottomLeft ?: primaryShape?.cornerRadius ?: 14f) * density
+                val rootTl = (primaryBox?.cornerRadiusTopLeft ?: primaryShape?.cornerRadius ?: 14f) * pxPerUnit
+                val rootTr = (primaryBox?.cornerRadiusTopRight ?: primaryShape?.cornerRadius ?: 14f) * pxPerUnit
+                val rootBr = (primaryBox?.cornerRadiusBottomRight ?: primaryShape?.cornerRadius ?: 14f) * pxPerUnit
+                val rootBl = (primaryBox?.cornerRadiusBottomLeft ?: primaryShape?.cornerRadius ?: 14f) * pxPerUnit
 
                 val rootClipShape = Path().apply {
                     if (rootIsPolygon && primaryBox != null && primaryBox.pathData.isNotBlank()) {
@@ -214,10 +217,10 @@ fun NxprcCanvasRenderer(
                             val isOctagon = layer.shapeType.uppercase() == "OCTAGON" || layer.polygonSides == 8
                             val isOval = layer.shapeType.uppercase() == "OVAL"
                             val layerAlpha = effects.opacity.coerceIn(0f, 1f)
-                            val tl = layer.cornerRadiusTopLeft * density
-                            val tr = layer.cornerRadiusTopRight * density
-                            val br = layer.cornerRadiusBottomRight * density
-                            val bl = layer.cornerRadiusBottomLeft * density
+                            val tl = layer.cornerRadiusTopLeft * pxPerUnit
+                            val tr = layer.cornerRadiusTopRight * pxPerUnit
+                            val br = layer.cornerRadiusBottomRight * pxPerUnit
+                            val bl = layer.cornerRadiusBottomLeft * pxPerUnit
                             val hasVariableCorners = !isOval && !isPolygon && (tr != tl || br != tl || bl != tl)
 
                             val polygonPath = if (layer.pathData.isNotBlank()) {
@@ -251,9 +254,9 @@ fun NxprcCanvasRenderer(
                                 }) {
                                     // 1. Outset box shadows
                                     layer.boxShadows.filter { !it.isInset }.forEach { shadow ->
-                                        val shadowOffset = Offset(shadow.offsetX * density, shadow.offsetY * density)
+                                        val shadowOffset = Offset(shadow.offsetX * pxPerUnit, shadow.offsetY * pxPerUnit)
                                         val sColor = Color(shadow.color)
-                                        val spreadPx = shadow.spreadRadius * density
+                                        val spreadPx = shadow.spreadRadius * pxPerUnit
                                         if (isPolygon) {
                                             drawPath(polygonPath, color = sColor.copy(alpha = sColor.alpha * layerAlpha))
                                         } else if (isOval) {
@@ -323,9 +326,9 @@ fun NxprcCanvasRenderer(
                                     // 3. Stroke / Border
                                     layer.stroke?.let { st ->
                                         val stColor = Color(st.color)
-                                        val stWidth = st.width * density
+                                        val stWidth = st.width * pxPerUnit
                                         val strokeStyle = if (st.isDashed) {
-                                            Stroke(width = stWidth, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f * density, 6f * density), 0f))
+                                            Stroke(width = stWidth, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f * pxPerUnit, 6f * pxPerUnit), 0f))
                                         } else {
                                             Stroke(width = stWidth)
                                         }
@@ -377,8 +380,8 @@ fun NxprcCanvasRenderer(
                                         clipPath(shapeClipPath) {
                                             insets.forEach { shadow ->
                                                 val inColor = Color(shadow.color)
-                                                val sOffset = Offset(shadow.offsetX * density, shadow.offsetY * density)
-                                                val strokeW = (shadow.blurRadius.takeIf { it > 0f } ?: 3.5f) * density
+                                                val sOffset = Offset(shadow.offsetX * pxPerUnit, shadow.offsetY * pxPerUnit)
+                                                val strokeW = (shadow.blurRadius.takeIf { it > 0f } ?: 3.5f) * pxPerUnit
                                                 if (isOval) {
                                                     drawOval(
                                                         color = inColor.copy(alpha = inColor.alpha * layerAlpha),
@@ -444,14 +447,14 @@ fun NxprcCanvasRenderer(
                                 color = Color(layer.outerBevelStroke),
                                 radius = baseRadius * 0.98f,
                                 center = centerOffset,
-                                style = Stroke(width = 2f * density)
+                                style = Stroke(width = 2f * pxPerUnit)
                             )
                         }
                         is CanvasLayer.GlowRing -> {
                             val alpha = if (layer.pulseEnabled && document.animations.idleType == "PULSE") pulseAlpha else 0.8f
                             val glowColor = Color(layer.glowColor)
                             val buttonRadius = minOf(buttonW, buttonH) / 2f
-                            val blurPx = (layer.blurRadius * density).coerceAtLeast(8f)
+                            val blurPx = (layer.blurRadius * pxPerUnit).coerceAtLeast(8f * scaleRatio)
                             val totalRadius = (buttonRadius + blurPx).coerceAtMost(size.minDimension / 2f)
                             val innerRatio = (buttonRadius / totalRadius).coerceIn(0.1f, 0.85f)
                             drawCircle(
@@ -478,7 +481,7 @@ fun NxprcCanvasRenderer(
                             val shapeTop = buttonTop + buttonH * transform.offsetYRatio
                             val shapeSize = Size(shapeW, shapeH)
                             val brush = createBrush(layer.fill, shapeSize, Offset(shapeLeft, shapeTop))
-                            val cornerRadiusPx = layer.cornerRadius * density
+                            val cornerRadiusPx = layer.cornerRadius * pxPerUnit
                             val shapeAlpha = effects.opacity.coerceIn(0f, 1f)
 
                             val hasTransform = transform.hasTransform
@@ -492,9 +495,9 @@ fun NxprcCanvasRenderer(
                                         drawPath(polyPath, brush = brush, alpha = shapeAlpha)
                                         layer.stroke?.let { st ->
                                             val stColor = Color(st.color)
-                                            val stWidth = st.width * density
+                                            val stWidth = st.width * pxPerUnit
                                             val strokeStyle = if (st.isDashed) {
-                                                Stroke(width = stWidth, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f * density, 6f * density), 0f))
+                                                Stroke(width = stWidth, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f * pxPerUnit, 6f * pxPerUnit), 0f))
                                             } else {
                                                 Stroke(width = stWidth)
                                             }
@@ -506,9 +509,9 @@ fun NxprcCanvasRenderer(
                                         drawPath(polyPath, brush = brush, alpha = shapeAlpha)
                                         layer.stroke?.let { st ->
                                             val stColor = Color(st.color)
-                                            val stWidth = st.width * density
+                                            val stWidth = st.width * pxPerUnit
                                             val strokeStyle = if (st.isDashed) {
-                                                Stroke(width = stWidth, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f * density, 6f * density), 0f))
+                                                Stroke(width = stWidth, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f * pxPerUnit, 6f * pxPerUnit), 0f))
                                             } else {
                                                 Stroke(width = stWidth)
                                             }
@@ -519,9 +522,9 @@ fun NxprcCanvasRenderer(
                                         drawOval(brush = brush, topLeft = Offset(shapeLeft, shapeTop), size = shapeSize, alpha = shapeAlpha)
                                         layer.stroke?.let { st ->
                                             val stColor = Color(st.color)
-                                            val stWidth = st.width * density
+                                            val stWidth = st.width * pxPerUnit
                                             val strokeStyle = if (st.isDashed) {
-                                                Stroke(width = stWidth, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f * density, 6f * density), 0f))
+                                                Stroke(width = stWidth, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f * pxPerUnit, 6f * pxPerUnit), 0f))
                                             } else {
                                                 Stroke(width = stWidth)
                                             }
@@ -543,9 +546,9 @@ fun NxprcCanvasRenderer(
                                         )
                                         layer.stroke?.let { st ->
                                             val stColor = Color(st.color)
-                                            val stWidth = st.width * density
+                                            val stWidth = st.width * pxPerUnit
                                             val strokeStyle = if (st.isDashed) {
-                                                Stroke(width = stWidth, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f * density, 6f * density), 0f))
+                                                Stroke(width = stWidth, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f * pxPerUnit, 6f * pxPerUnit), 0f))
                                             } else {
                                                 Stroke(width = stWidth)
                                             }
@@ -600,7 +603,7 @@ fun NxprcCanvasRenderer(
                                 useCenter = false,
                                 topLeft = arcTopLeft,
                                 size = arcSize,
-                                style = Stroke(width = layer.strokeWidth * density)
+                                style = Stroke(width = layer.strokeWidth * pxPerUnit)
                             )
                             // Bottom dark curved shadow
                             drawArc(
@@ -610,7 +613,7 @@ fun NxprcCanvasRenderer(
                                 useCenter = false,
                                 topLeft = arcTopLeft,
                                 size = arcSize,
-                                style = Stroke(width = layer.strokeWidth * density)
+                                style = Stroke(width = layer.strokeWidth * pxPerUnit)
                             )
                         }
                         is CanvasLayer.GlossReflection -> {
@@ -622,7 +625,7 @@ fun NxprcCanvasRenderer(
 
                             val drawGloss: () -> Unit = {
                                 rotate(layer.rotationDegrees, pivot = glossCenter) {
-                                    val blurSpread = layer.blurRadius * density
+                                    val blurSpread = layer.blurRadius * pxPerUnit
                                     val effectiveRadius = (glossW / 2f + blurSpread).coerceAtLeast(1f)
                                     val glossBrush = Brush.radialGradient(
                                         listOf(
@@ -667,12 +670,12 @@ fun NxprcCanvasRenderer(
                                 if (vectorPath != null) {
                                     drawPath(path = vectorPath, brush = brush)
                                     layer.stroke?.let { st ->
-                                        drawPath(path = vectorPath, color = Color(st.color), style = Stroke(width = st.width * density))
+                                        drawPath(path = vectorPath, color = Color(st.color), style = Stroke(width = st.width * pxPerUnit))
                                     }
                                 } else {
                                     drawCircle(brush = brush, radius = size.minDimension / 2f * 0.75f)
                                     layer.stroke?.let { st ->
-                                        drawCircle(color = Color(st.color), radius = size.minDimension / 2f * 0.75f, style = Stroke(width = st.width * density))
+                                        drawCircle(color = Color(st.color), radius = size.minDimension / 2f * 0.75f, style = Stroke(width = st.width * pxPerUnit))
                                     }
                                 }
                             }
@@ -860,10 +863,32 @@ private fun isDarkColor(color: Long): Boolean {
 }
 
 internal fun buildScaledPath(svgData: String, targetRect: Rect): Path {
-    val path = Path()
-    if (svgData.isBlank()) return path
+    val trimmed = svgData.trim()
+    if (trimmed.isBlank()) return Path()
 
-    val tokens = svgData.trim().split(java.util.regex.Pattern.compile("[,\\s]+")).filter { it.isNotEmpty() }
+    // 1. Android core graphics PathParser with exact Matrix transformation
+    try {
+        val androidPath = androidx.core.graphics.PathParser.createPathFromPathData(trimmed)
+        if (androidPath != null) {
+            val bounds = android.graphics.RectF()
+            androidPath.computeBounds(bounds, true)
+            if (bounds.width() > 0.001f && bounds.height() > 0.001f) {
+                val matrix = android.graphics.Matrix().apply {
+                    postTranslate(-bounds.left, -bounds.top)
+                    postScale(targetRect.width / bounds.width(), targetRect.height / bounds.height())
+                    postTranslate(targetRect.left, targetRect.top)
+                }
+                androidPath.transform(matrix)
+                return androidPath.asComposePath()
+            }
+        }
+    } catch (_: Throwable) {
+        // Fall back to manual token parser below
+    }
+
+    // 2. Percentage tokenizer fallback (supports M, L, Z normalized 0..100)
+    val path = Path()
+    val tokens = trimmed.split(java.util.regex.Pattern.compile("[,\\s]+")).filter { it.isNotEmpty() }
     var i = 0
     while (i < tokens.size) {
         val tok = tokens[i].uppercase()
