@@ -353,12 +353,24 @@ fun NxprcCanvasRenderer(
                                         if (isPolygon) {
                                             drawPath(polygonPath, color = stColor.copy(alpha = stColor.alpha * layerAlpha), style = strokeStyle)
                                         } else if (isOval) {
-                                            drawOval(
-                                                color = stColor.copy(alpha = stColor.alpha * layerAlpha),
-                                                topLeft = Offset(boxLeft, boxTop),
-                                                size = Size(boxWidth, boxHeight),
-                                                style = strokeStyle
-                                            )
+                                            if (st.isTopOnly) {
+                                                drawArc(
+                                                    color = stColor.copy(alpha = stColor.alpha * layerAlpha),
+                                                    startAngle = 180f,
+                                                    sweepAngle = 180f,
+                                                    useCenter = false,
+                                                    topLeft = Offset(boxLeft, boxTop),
+                                                    size = Size(boxWidth, boxHeight),
+                                                    style = strokeStyle
+                                                )
+                                            } else {
+                                                drawOval(
+                                                    color = stColor.copy(alpha = stColor.alpha * layerAlpha),
+                                                    topLeft = Offset(boxLeft, boxTop),
+                                                    size = Size(boxWidth, boxHeight),
+                                                    style = strokeStyle
+                                                )
+                                            }
                                         } else if (hasVariableCorners) {
                                             drawPath(variablePath, color = stColor.copy(alpha = stColor.alpha * layerAlpha), style = strokeStyle)
                                         } else {
@@ -549,12 +561,24 @@ fun NxprcCanvasRenderer(
                                             } else {
                                                 Stroke(width = stWidth)
                                             }
-                                            drawOval(
-                                                color = stColor.copy(alpha = stColor.alpha * shapeAlpha),
-                                                topLeft = Offset(shapeLeft, shapeTop),
-                                                size = shapeSize,
-                                                style = strokeStyle
-                                            )
+                                            if (st.isTopOnly) {
+                                                drawArc(
+                                                    color = stColor.copy(alpha = stColor.alpha * shapeAlpha),
+                                                    startAngle = 180f,
+                                                    sweepAngle = 180f,
+                                                    useCenter = false,
+                                                    topLeft = Offset(shapeLeft, shapeTop),
+                                                    size = shapeSize,
+                                                    style = strokeStyle
+                                                )
+                                            } else {
+                                                drawOval(
+                                                    color = stColor.copy(alpha = stColor.alpha * shapeAlpha),
+                                                    topLeft = Offset(shapeLeft, shapeTop),
+                                                    size = shapeSize,
+                                                    style = strokeStyle
+                                                )
+                                            }
                                         }
                                     }
                                     else -> {
