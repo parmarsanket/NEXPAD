@@ -1,6 +1,8 @@
 package com.sanket.tools.nexpad.ui.components.controller
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
@@ -29,6 +31,14 @@ fun ControllerElementRenderer(
     val context = LocalContext.current
     val isDefaultNative = customComponentId == null || customComponentId.startsWith("builtin.default_")
 
+    val feedback by viewModel.feedbackFlow.collectAsState(initial = null)
+    val rumbleIntensity = remember(feedback) {
+        val fb = feedback
+        if (fb != null && (fb.leftMotorSpeed > 0 || fb.rightMotorSpeed > 0)) {
+            maxOf(fb.leftMotorSpeed, fb.rightMotorSpeed) / 255f
+        } else 0f
+    }
+
     if (customComponentId != null && customComponentId.startsWith("rc.")) {
         val remoteRegistry = remember { RemoteComponentRegistry.getInstance(context) }
         val remoteDoc = remember(customComponentId) { remoteRegistry.getComponent(customComponentId) }
@@ -44,7 +54,8 @@ fun ControllerElementRenderer(
                 document = remoteDoc,
                 assignedControl = targetControl,
                 isConnected = isConnected,
-                inputTarget = viewModel.asInputTarget(onVibrate)
+                inputTarget = viewModel.asInputTarget(onVibrate),
+                rumbleIntensity = rumbleIntensity
             )
             return
         }

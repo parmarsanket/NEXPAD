@@ -5,6 +5,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
@@ -31,9 +32,37 @@ import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.runtime.model.NexPadControl
 import com.sanket.tools.nexpad.runtime.model.NexPadInputTarget
 import com.sanket.tools.nexpad.nxprc.*
+import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+
+private fun createHueRotateColorMatrix(degrees: Float): ColorMatrix {
+    val rad = Math.toRadians(degrees.toDouble()).toFloat()
+    val cosVal = kotlin.math.cos(rad)
+    val sinVal = kotlin.math.sin(rad)
+    val lumR = 0.213f
+    val lumG = 0.715f
+    val lumB = 0.072f
+    return ColorMatrix(floatArrayOf(
+        lumR + cosVal * (1f - lumR) + sinVal * (-lumR),
+        lumG + cosVal * (-lumG) + sinVal * (-lumG),
+        lumB + cosVal * (-lumB) + sinVal * (1f - lumB),
+        0f, 0f,
+
+        lumR + cosVal * (-lumR) + sinVal * 0.143f,
+        lumG + cosVal * (1f - lumG) + sinVal * 0.140f,
+        lumB + cosVal * (-lumB) + sinVal * (-0.283f),
+        0f, 0f,
+
+        lumR + cosVal * (-lumR) + sinVal * (-(1f - lumR)),
+        lumG + cosVal * (-lumG) + sinVal * lumG,
+        lumB + cosVal * (1f - lumB) + sinVal * lumB,
+        0f, 0f,
+
+        0f, 0f, 0f, 1f, 0f
+    ))
+}
 
 private fun createNxprcColorFilter(filter: FilterDef): ColorFilter? {
     val brightness = filter.brightness.coerceAtLeast(0f)
@@ -64,9 +93,11 @@ fun NxprcCanvasRenderer(
     isConnected: Boolean,
     inputTarget: NexPadInputTarget,
     modifier: Modifier = Modifier,
-    overrideSizeDp: Int? = null
+    overrideSizeDp: Int? = null,
+    rumbleIntensity: Float = 0f
 ) {
     var isPressed by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
     val scaleAnim by animateFloatAsState(
         targetValue = if (isPressed) document.animations.pressScale else 1f,
@@ -86,8 +117,18 @@ fun NxprcCanvasRenderer(
         label = "nxprc_press_y"
     )
 
+    val isStick = assignedControl is NexPadControl.Stick
+    val stick = assignedControl as? NexPadControl.Stick
+    val thumbOffsetX = remember { androidx.compose.animation.core.Animatable(0f) }
+    val thumbOffsetY = remember { androidx.compose.animation.core.Animatable(0f) }
+
+    val isTrigger = assignedControl is NexPadControl.Trigger
+    val trigger = assignedControl as? NexPadControl.Trigger
+    val pullProgress = remember { androidx.compose.animation.core.Animatable(0f) }
+
     val needsPulse = document.animations.idleType == "PULSE"
     val needsRotation = document.animations.idleType == "ROTATE"
+    val needsRgbCycle = document.animations.idleType == "RGB_CYCLE"
     val infiniteTransition = rememberInfiniteTransition(label = "nxprc_idle")
 
     val pulseAlpha = if (needsPulse) {
@@ -114,6 +155,33 @@ fun NxprcCanvasRenderer(
         ).value
     } else 0f
 
+    val rgbHueAngle = if (needsRgbCycle) {
+        infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(maxOf(document.animations.idleDurationMs, 2000), easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "rgb_cycle"
+        ).value
+    } else 0f
+
+    val rumbleActive = rumbleIntensity > 0f && document.animations.enableGameRumble
+    val rumblePhase = if (rumbleActive) {
+        infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 6.28318f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(70, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "rumble"
+        ).value
+    } else 0f
+    val rumbleShakeX = if (rumbleActive) (sin(rumblePhase * 3f) * 3.5f * rumbleIntensity * document.animations.rumbleIntensity) else 0f
+    val rumbleShakeY = if (rumbleActive) (cos(rumblePhase * 4f) * 3.5f * rumbleIntensity * document.animations.rumbleIntensity) else 0f
+
     val widthDp = overrideSizeDp ?: document.manifest.widthDp
     val heightDp = overrideSizeDp ?: document.manifest.heightDp
 
@@ -126,10 +194,67 @@ fun NxprcCanvasRenderer(
         }
     }
 
-    Box(
-        modifier = modifier
-            .size(widthDp.dp, heightDp.dp)
-            .pointerInput(document.manifest.id, assignedControl) {
+    val gestureModifier = when {
+        isStick && stick != null -> {
+            Modifier.pointerInput(document.manifest.id, assignedControl) {
+                detectDragGestures(
+                    onDragEnd = {
+                        coroutineScope.launch {
+                            launch { thumbOffsetX.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
+                            launch { thumbOffsetY.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
+                        }
+                        inputTarget.onStickMove(stick, 0f, 0f)
+                    },
+                    onDragCancel = {
+                        coroutineScope.launch {
+                            launch { thumbOffsetX.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
+                            launch { thumbOffsetY.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
+                        }
+                        inputTarget.onStickMove(stick, 0f, 0f)
+                    }
+                ) { change, dragAmount ->
+                    change.consume()
+                    val maxRadius = (widthDp * 1.5f) * 0.55f
+                    val newX = thumbOffsetX.value + dragAmount.x
+                    val newY = thumbOffsetY.value + dragAmount.y
+                    val dist = kotlin.math.hypot(newX, newY)
+                    val (clampedX, clampedY) = if (dist > maxRadius) {
+                        val angle = kotlin.math.atan2(newY, newX)
+                        Pair(cos(angle) * maxRadius, sin(angle) * maxRadius)
+                    } else {
+                        Pair(newX, newY)
+                    }
+                    coroutineScope.launch {
+                        thumbOffsetX.snapTo(clampedX)
+                        thumbOffsetY.snapTo(clampedY)
+                    }
+                    val normX = (clampedX / maxRadius).coerceIn(-1f, 1f)
+                    val normY = (-clampedY / maxRadius).coerceIn(-1f, 1f)
+                    inputTarget.onStickMove(stick, normX, normY)
+                }
+            }
+        }
+        isTrigger && trigger != null -> {
+            Modifier.pointerInput(document.manifest.id, assignedControl) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    isPressed = true
+                    coroutineScope.launch {
+                        pullProgress.animateTo(1f, spring(stiffness = 900f, dampingRatio = 0.7f))
+                    }
+                    inputTarget.onTriggerMove(trigger, 1f)
+
+                    val upOrCancel = waitForUpOrCancellation()
+                    isPressed = false
+                    coroutineScope.launch {
+                        pullProgress.animateTo(0f, spring(stiffness = 700f, dampingRatio = 0.7f))
+                    }
+                    inputTarget.onTriggerMove(trigger, 0f)
+                }
+            }
+        }
+        else -> {
+            Modifier.pointerInput(document.manifest.id, assignedControl) {
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false)
                     isPressed = true
@@ -139,7 +264,14 @@ fun NxprcCanvasRenderer(
                     isPressed = false
                     inputTarget.onButtonRelease(buttonControl)
                 }
-            },
+            }
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .size(widthDp.dp, heightDp.dp)
+            .then(gestureModifier),
         contentAlignment = Alignment.Center
     ) {
         Box(
@@ -148,7 +280,11 @@ fun NxprcCanvasRenderer(
                 .graphicsLayer {
                     scaleX = scaleAnim
                     scaleY = scaleAnim
-                    translationY = pressOffsetYAnim * density
+                    translationX = thumbOffsetX.value + rumbleShakeX
+                    translationY = thumbOffsetY.value + (pressOffsetYAnim * density) + (pullProgress.value * document.animations.triggerMaxPullDepth * density) + rumbleShakeY
+                    if (needsRgbCycle) {
+                        colorFilter = ColorFilter.colorMatrix(createHueRotateColorMatrix(rgbHueAngle))
+                    }
                 },
             contentAlignment = Alignment.Center
         ) {
