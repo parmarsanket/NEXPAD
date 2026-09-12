@@ -13,17 +13,13 @@
      HISTORY.md         ROADMAP.md       ARCHITECTURE.md
      "Where we         "Where we're       "How it
       came from"          going"           works"
-          │
-          ▼
-      Git Tags
-  (v0.1 ──► v0.36)
 ```
 
 ---
 
 ## 🧭 Documentation Pillars
 
-- 📖 **[`HISTORY.md`](./HISTORY.md)** — **Where We Came From**: Chronological timeline of all 36 milestones from `v0.1` (Genesis) to `v0.36` (Universal Timeline Track Engine).
+- 📖 **[`HISTORY.md`](./HISTORY.md)** — **Where We Came From**: Chronological timeline of all 36 development branches from Genesis (`init`) to the Universal Timeline Track Engine.
 - 🗺️ **[`ROADMAP.md`](./ROADMAP.md)** — **Where We're Going**: Bluetooth LE HID, dynamic marketplace, and micro-second haptics.
 - 🏛️ **[`ARCHITECTURE.md`](./ARCHITECTURE.md)** — **How It Works**: High-speed binary UDP pipeline, AOA USB streaming, NXPRC Compose Canvas rendering, and sensor math.
 
