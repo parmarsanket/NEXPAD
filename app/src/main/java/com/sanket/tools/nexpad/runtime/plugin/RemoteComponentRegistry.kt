@@ -71,11 +71,6 @@ class RemoteComponentRegistry private constructor(private val context: Context) 
             idIndex[doc.manifest.id] = doc
         }
         _loadedComponents.value = list
-        try {
-            ComponentRegistry.getInstance(context).reloadAll()
-        } catch (_: Exception) {
-            // Guard during initial construction
-        }
     }
 
     fun getComponent(id: String): NxprcDocument? {

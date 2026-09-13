@@ -18,6 +18,10 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import com.sanket.tools.nexpad.sensors.MotionSensorManager
@@ -57,9 +61,13 @@ class MainActivity : ComponentActivity() {
         // Register broadcast receiver for Desktop ADB push reload
         val receiver = object : android.content.BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: android.content.Intent?) {
-                RemoteComponentRegistry.getInstance(this@MainActivity).reloadAll()
-                ComponentRegistry.getInstance(this@MainActivity).reloadAll()
-                android.widget.Toast.makeText(this@MainActivity, "⚡ Components reloaded from Desktop!", android.widget.Toast.LENGTH_SHORT).show()
+                lifecycleScope.launch(Dispatchers.IO) {
+                    RemoteComponentRegistry.getInstance(this@MainActivity).reloadAll()
+                    ComponentRegistry.getInstance(this@MainActivity).reloadAll()
+                    withContext(Dispatchers.Main) {
+                        android.widget.Toast.makeText(this@MainActivity, "⚡ Components reloaded from Desktop!", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
             }
         }
         reloadReceiver = receiver

@@ -147,13 +147,15 @@ fun NxprcCanvasRenderer(
         label = "nxprc_press_y"
     )
 
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+
     val isStick = assignedControl is NexPadControl.Stick ||
             document.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
             document.manifest.defaultControl.uppercase() in listOf("LS", "RS")
     val stick = (assignedControl as? NexPadControl.Stick)
         ?: NexPadControl.Stick(isLeft = document.manifest.defaultControl.uppercase() != "RS" && document.manifest.defaultControl.uppercase() != "R3")
-    val thumbOffsetX = remember { androidx.compose.animation.core.Animatable(0f) }
-    val thumbOffsetY = remember { androidx.compose.animation.core.Animatable(0f) }
+    var thumbOffsetX by remember { mutableFloatStateOf(0f) }
+    var thumbOffsetY by remember { mutableFloatStateOf(0f) }
 
     val isTrigger = assignedControl is NexPadControl.Trigger
     val trigger = assignedControl as? NexPadControl.Trigger
@@ -283,48 +285,74 @@ fun NxprcCanvasRenderer(
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     isPressed = true
-                    val maxRadius = widthDp * 0.32f * density
-                    var hasDragged = false
-                    val touchSlopSq = 16f * density * density
+                    val maxRadius = widthDp * 0.28f * density
+                    val deadzoneRadius = 6f * density
+                    val startTime = System.currentTimeMillis()
+                    var maxDistEver = 0f
 
+                    val centerX = size.width / 2f
+                    val centerY = size.height / 2f
+
+                    fun updateStickDeflection(rawPos: Offset) {
+                        val vecX = rawPos.x - centerX
+                        val vecY = rawPos.y - centerY
+                        val dist = kotlin.math.hypot(vecX, vecY)
+                        if (dist > maxDistEver) {
+                            maxDistEver = dist
+                        }
+
+                        val (clampedX, clampedY) = if (dist > maxRadius) {
+                            val angle = kotlin.math.atan2(vecY, vecX)
+                            Pair(cos(angle) * maxRadius, sin(angle) * maxRadius)
+                        } else {
+                            Pair(vecX, vecY)
+                        }
+
+                        thumbOffsetX = clampedX
+                        thumbOffsetY = clampedY
+
+                        val normX = if (dist < deadzoneRadius) 0f else (clampedX / maxRadius).coerceIn(-1f, 1f)
+                        val normY = if (dist < deadzoneRadius) 0f else (-clampedY / maxRadius).coerceIn(-1f, 1f)
+                        inputTarget.onStickMove(stick, normX, normY)
+                    }
+
+                    // 1. Immediate touch down deflection
+                    updateStickDeflection(down.position)
+
+                    // 2. Continuous 60/120Hz tracking loop
                     while (true) {
                         val event = awaitPointerEvent()
                         val change = event.changes.firstOrNull { it.id == down.id }
                         if (change == null || !change.pressed) break
-                        val dragAmount = change.position - change.previousPosition
-                        if (dragAmount.x * dragAmount.x + dragAmount.y * dragAmount.y > 0.25f) {
-                            change.consume()
-                            val newX = thumbOffsetX.value + dragAmount.x
-                            val newY = thumbOffsetY.value + dragAmount.y
-                            val dist = kotlin.math.hypot(newX, newY)
-                            if (dist * dist > touchSlopSq) {
-                                hasDragged = true
-                            }
-                            val (clampedX, clampedY) = if (dist > maxRadius) {
-                                val angle = kotlin.math.atan2(newY, newX)
-                                Pair(cos(angle) * maxRadius, sin(angle) * maxRadius)
-                            } else {
-                                Pair(newX, newY)
-                            }
-                            coroutineScope.launch {
-                                thumbOffsetX.snapTo(clampedX)
-                                thumbOffsetY.snapTo(clampedY)
-                            }
-                            val normX = (clampedX / maxRadius).coerceIn(-1f, 1f)
-                            val normY = (-clampedY / maxRadius).coerceIn(-1f, 1f)
-                            inputTarget.onStickMove(stick, normX, normY)
-                        }
+                        change.consume()
+                        updateStickDeflection(change.position)
                     }
 
+                    // 3. Release: reset input and spring back to center
                     isPressed = false
                     coroutineScope.launch {
-                        launch { thumbOffsetX.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
-                        launch { thumbOffsetY.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
+                        val animX = androidx.compose.animation.core.Animatable(thumbOffsetX)
+                        val animY = androidx.compose.animation.core.Animatable(thumbOffsetY)
+                        val springSpec = spring<Float>(
+                            stiffness = document.animations.joystickSpringTension,
+                            dampingRatio = 0.65f
+                        )
+                        launch {
+                            animX.animateTo(0f, springSpec) {
+                                thumbOffsetX = value
+                            }
+                        }
+                        launch {
+                            animY.animateTo(0f, springSpec) {
+                                thumbOffsetY = value
+                            }
+                        }
                     }
                     inputTarget.onStickMove(stick, 0f, 0f)
 
-                    // If released without significant dragging: actuate L3/R3 axial thumbstick click!
-                    if (!hasDragged) {
+                    // 4. Axial L3/R3 thumbstick click on short tap near center
+                    val touchDuration = System.currentTimeMillis() - startTime
+                    if (maxDistEver < 12f * density && touchDuration < 300) {
                         inputTarget.triggerHaptic()
                         coroutineScope.launch {
                             inputTarget.onButtonPress(buttonControl)
@@ -431,17 +459,20 @@ fun NxprcCanvasRenderer(
             .then(gestureModifier),
         contentAlignment = Alignment.Center
     ) {
+        val isTwoStageStick = isStick && document.canvas.capLayerIndices.isNotEmpty()
+        val capIndicesSet = remember(document) { document.canvas.capLayerIndices.toSet() }
+
         Box(
             modifier = Modifier
                 .size(widthDp.dp, heightDp.dp)
                 .graphicsLayer {
                     val finalScale = scaleAnim * trackScale
-                    scaleX = finalScale
-                    scaleY = finalScale
+                    scaleX = if (isTwoStageStick) 1f else finalScale
+                    scaleY = if (isTwoStageStick) 1f else finalScale
                     rotationZ = if (hasDynamicTracks) trackRotation else 0f
                     alpha = if (hasDynamicTracks) trackOpacity.coerceIn(0f, 1f) else 1f
-                    translationX = thumbOffsetX.value + rumbleShakeX + (trackTranslateX * density)
-                    translationY = thumbOffsetY.value + (pressOffsetYAnim * density) + (pullProgress.value * document.animations.triggerMaxPullDepth * density) + rumbleShakeY + (trackTranslateY * density)
+                    translationX = (if (isTwoStageStick) 0f else thumbOffsetX) + rumbleShakeX + (trackTranslateX * density)
+                    translationY = (if (isTwoStageStick) 0f else thumbOffsetY) + (pressOffsetYAnim * density) + (pullProgress.value * document.animations.triggerMaxPullDepth * density) + rumbleShakeY + (trackTranslateY * density)
 
                     val activeHueAngle = if (hasDynamicTracks && trackHueAngle != 0f) {
                         trackHueAngle
@@ -502,7 +533,8 @@ fun NxprcCanvasRenderer(
                     }
                 }
 
-                document.canvas.layers.forEach { layer ->
+                val finalScale = scaleAnim * trackScale
+                val drawSingleLayer: androidx.compose.ui.graphics.drawscope.DrawScope.(CanvasLayer) -> Unit = { layer ->
                     when (layer) {
                         is CanvasLayer.BoxLayer -> {
                             val transform = layer.effectiveTransform
@@ -1036,6 +1068,20 @@ fun NxprcCanvasRenderer(
                         }
                     }
                 }
+
+                document.canvas.layers.forEachIndexed { layerIdx, layer ->
+                    val isCap = isTwoStageStick && layerIdx in capIndicesSet
+                    if (isCap) {
+                        withTransform({
+                            translate(left = thumbOffsetX, top = thumbOffsetY)
+                            scale(scaleX = finalScale, scaleY = finalScale, pivot = centerOffset)
+                        }) {
+                            drawSingleLayer(layer)
+                        }
+                    } else {
+                        drawSingleLayer(layer)
+                    }
+                }
             }
 
         // Center text glyph or multi-text layers with embossed 3D lighting and tactile synchronization
@@ -1061,8 +1107,11 @@ fun NxprcCanvasRenderer(
                 textLayers.forEach { tl ->
                     val fontSp = (tl.fontSizeSp * scaleFactor).sp
                     val fontWeight = if (tl.fontWeight >= 900) FontWeight.Black else if (tl.fontWeight >= 700) FontWeight.Bold else FontWeight.Normal
-                    val offX = (tl.offsetXRatio * buttonW).dp
-                    val offY = (tl.offsetYRatio * buttonH).dp
+                    val isLayerCap = isTwoStageStick && document.canvas.layers.indexOf(tl).let { it != -1 && it in capIndicesSet }
+                    val stickShiftX = if (isLayerCap) (thumbOffsetX / density).dp else 0.dp
+                    val stickShiftY = if (isLayerCap) (thumbOffsetY / density).dp else 0.dp
+                    val offX = (tl.offsetXRatio * buttonW).dp + stickShiftX
+                    val offY = (tl.offsetYRatio * buttonH).dp + stickShiftY
 
                     if (tl.textShadows.isNotEmpty()) {
                         tl.textShadows.forEach { ts ->
@@ -1094,8 +1143,10 @@ fun NxprcCanvasRenderer(
             val fontSp = (baseFontSp * scaleFactor).sp
             val fontWeight = FontWeight.Bold
 
-            val offX = ((glyph?.offsetXRatio ?: 0f) * buttonW).dp
-            val offY = ((glyph?.offsetYRatio ?: 0f) * buttonH).dp
+            val stickShiftX = if (isTwoStageStick) (thumbOffsetX / density).dp else 0.dp
+            val stickShiftY = if (isTwoStageStick) (thumbOffsetY / density).dp else 0.dp
+            val offX = ((glyph?.offsetXRatio ?: 0f) * buttonW).dp + stickShiftX
+            val offY = ((glyph?.offsetYRatio ?: 0f) * buttonH).dp + stickShiftY
 
             Box(
                 contentAlignment = Alignment.Center,
@@ -1103,6 +1154,11 @@ fun NxprcCanvasRenderer(
                     .offset(x = offX, y = offY)
                     .graphicsLayer {
                         rotationZ = rootBox?.effectiveTransform?.rotationDegrees ?: 0f
+                        if (isTwoStageStick) {
+                            val finalScale = scaleAnim * trackScale
+                            scaleX = finalScale
+                            scaleY = finalScale
+                        }
                     }
             ) {
                 val extraShadows = glyph?.textShadows ?: emptyList()
