@@ -45,10 +45,12 @@ fun ControllerElementRenderer(
         val remoteDoc = remember(customComponentId, loadedDocs) { remoteRegistry.getComponent(customComponentId) }
         if (remoteDoc != null) {
             val targetControl = when {
-                key == "LS" -> NexPadControl.Stick(isLeft = true)
-                key == "RS" -> NexPadControl.Stick(isLeft = false)
-                key == "LT" || key == "RT" -> NexPadControl.Trigger(key)
-                key in listOf("UP", "DOWN", "LEFT", "RIGHT") -> NexPadControl.DPad(key)
+                key.equals("LS", ignoreCase = true) || key.equals("L3", ignoreCase = true) -> NexPadControl.Stick(isLeft = true)
+                key.equals("RS", ignoreCase = true) || key.equals("R3", ignoreCase = true) -> NexPadControl.Stick(isLeft = false)
+                key.equals("LT", ignoreCase = true) || key.equals("RT", ignoreCase = true) -> NexPadControl.Trigger(key.uppercase())
+                key.uppercase() in listOf("UP", "DOWN", "LEFT", "RIGHT") -> NexPadControl.DPad(key.uppercase())
+                remoteDoc.manifest.category.equals("JOYSTICK", ignoreCase = true) ->
+                    NexPadControl.Stick(isLeft = remoteDoc.manifest.defaultControl.uppercase() != "RS" && remoteDoc.manifest.defaultControl.uppercase() != "R3")
                 else -> NexPadControl.Button(key)
             }
             NxprcCanvasRenderer(

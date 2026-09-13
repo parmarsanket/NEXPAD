@@ -147,8 +147,11 @@ fun NxprcCanvasRenderer(
         label = "nxprc_press_y"
     )
 
-    val isStick = assignedControl is NexPadControl.Stick
-    val stick = assignedControl as? NexPadControl.Stick
+    val isStick = assignedControl is NexPadControl.Stick ||
+            document.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
+            document.manifest.defaultControl.uppercase() in listOf("LS", "RS")
+    val stick = (assignedControl as? NexPadControl.Stick)
+        ?: NexPadControl.Stick(isLeft = document.manifest.defaultControl.uppercase() != "RS" && document.manifest.defaultControl.uppercase() != "R3")
     val thumbOffsetX = remember { androidx.compose.animation.core.Animatable(0f) }
     val thumbOffsetY = remember { androidx.compose.animation.core.Animatable(0f) }
 
@@ -277,40 +280,58 @@ fun NxprcCanvasRenderer(
     val gestureModifier = when {
         isStick && stick != null -> {
             Modifier.pointerInput(document.manifest.id, assignedControl) {
-                detectDragGestures(
-                    onDragEnd = {
-                        coroutineScope.launch {
-                            launch { thumbOffsetX.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
-                            launch { thumbOffsetY.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    isPressed = true
+                    val maxRadius = widthDp * 0.32f * density
+                    var hasDragged = false
+                    val touchSlopSq = 16f * density * density
+
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id }
+                        if (change == null || !change.pressed) break
+                        val dragAmount = change.position - change.previousPosition
+                        if (dragAmount.x * dragAmount.x + dragAmount.y * dragAmount.y > 0.25f) {
+                            change.consume()
+                            val newX = thumbOffsetX.value + dragAmount.x
+                            val newY = thumbOffsetY.value + dragAmount.y
+                            val dist = kotlin.math.hypot(newX, newY)
+                            if (dist * dist > touchSlopSq) {
+                                hasDragged = true
+                            }
+                            val (clampedX, clampedY) = if (dist > maxRadius) {
+                                val angle = kotlin.math.atan2(newY, newX)
+                                Pair(cos(angle) * maxRadius, sin(angle) * maxRadius)
+                            } else {
+                                Pair(newX, newY)
+                            }
+                            coroutineScope.launch {
+                                thumbOffsetX.snapTo(clampedX)
+                                thumbOffsetY.snapTo(clampedY)
+                            }
+                            val normX = (clampedX / maxRadius).coerceIn(-1f, 1f)
+                            val normY = (-clampedY / maxRadius).coerceIn(-1f, 1f)
+                            inputTarget.onStickMove(stick, normX, normY)
                         }
-                        inputTarget.onStickMove(stick, 0f, 0f)
-                    },
-                    onDragCancel = {
-                        coroutineScope.launch {
-                            launch { thumbOffsetX.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
-                            launch { thumbOffsetY.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
-                        }
-                        inputTarget.onStickMove(stick, 0f, 0f)
                     }
-                ) { change, dragAmount ->
-                    change.consume()
-                    val maxRadius = (widthDp * 1.5f) * 0.55f
-                    val newX = thumbOffsetX.value + dragAmount.x
-                    val newY = thumbOffsetY.value + dragAmount.y
-                    val dist = kotlin.math.hypot(newX, newY)
-                    val (clampedX, clampedY) = if (dist > maxRadius) {
-                        val angle = kotlin.math.atan2(newY, newX)
-                        Pair(cos(angle) * maxRadius, sin(angle) * maxRadius)
-                    } else {
-                        Pair(newX, newY)
-                    }
+
+                    isPressed = false
                     coroutineScope.launch {
-                        thumbOffsetX.snapTo(clampedX)
-                        thumbOffsetY.snapTo(clampedY)
+                        launch { thumbOffsetX.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
+                        launch { thumbOffsetY.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
                     }
-                    val normX = (clampedX / maxRadius).coerceIn(-1f, 1f)
-                    val normY = (-clampedY / maxRadius).coerceIn(-1f, 1f)
-                    inputTarget.onStickMove(stick, normX, normY)
+                    inputTarget.onStickMove(stick, 0f, 0f)
+
+                    // If released without significant dragging: actuate L3/R3 axial thumbstick click!
+                    if (!hasDragged) {
+                        inputTarget.triggerHaptic()
+                        coroutineScope.launch {
+                            inputTarget.onButtonPress(buttonControl)
+                            kotlinx.coroutines.delay(100)
+                            inputTarget.onButtonRelease(buttonControl)
+                        }
+                    }
                 }
             }
         }
