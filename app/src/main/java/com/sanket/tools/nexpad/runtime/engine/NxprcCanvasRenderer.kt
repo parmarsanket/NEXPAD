@@ -270,6 +270,10 @@ fun NxprcCanvasRenderer(
         }
     }
 
+    val isDpadCross = (assignedControl is NexPadControl.Button && (assignedControl.key.equals("DPAD", ignoreCase = true) || document.manifest.defaultControl.equals("DPAD", ignoreCase = true))) ||
+            (document.manifest.category.equals("DPAD", ignoreCase = true) && assignedControl is NexPadControl.Button && assignedControl.key.equals("DPAD", ignoreCase = true)) ||
+            (document.manifest.id.contains("dpad_cross", ignoreCase = true))
+
     val gestureModifier = when {
         isStick && stick != null -> {
             Modifier.pointerInput(document.manifest.id, assignedControl) {
@@ -326,6 +330,62 @@ fun NxprcCanvasRenderer(
                         pullProgress.animateTo(0f, spring(stiffness = 700f, dampingRatio = 0.7f))
                     }
                     inputTarget.onTriggerMove(trigger, 0f)
+                }
+            }
+        }
+        isDpadCross -> {
+            Modifier.pointerInput(document.manifest.id, assignedControl) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    down.consume()
+                    isPressed = true
+                    var activeDirs = emptySet<String>()
+
+                    fun evaluateOffset(pos: Offset) {
+                        val center = Offset(size.width / 2f, size.height / 2f)
+                        val dx = pos.x - center.x
+                        val dy = pos.y - center.y
+                        val dist = kotlin.math.hypot(dx, dy)
+                        val deadzone = size.width * 0.12f
+                        val maxRadius = size.width * 0.70f
+
+                        val newDirs = if (dist < deadzone || dist > maxRadius) {
+                            emptySet()
+                        } else {
+                            val angle = Math.toDegrees(kotlin.math.atan2(dy.toDouble(), dx.toDouble()))
+                            val dirs = mutableSetOf<String>()
+                            if (angle in -157.5..-22.5) dirs.add("UP")
+                            if (angle in 22.5..157.5) dirs.add("DOWN")
+                            if (angle in -67.5..67.5) dirs.add("RIGHT")
+                            if (angle < -112.5 || angle > 112.5) dirs.add("LEFT")
+                            dirs
+                        }
+
+                        if (newDirs != activeDirs) {
+                            val added = newDirs - activeDirs
+                            val removed = activeDirs - newDirs
+                            removed.forEach { dir -> inputTarget.onButtonRelease(NexPadControl.Button(dir)) }
+                            added.forEach { dir ->
+                                inputTarget.triggerHaptic()
+                                inputTarget.onButtonPress(NexPadControl.Button(dir))
+                            }
+                            activeDirs = newDirs
+                        }
+                    }
+
+                    try {
+                        evaluateOffset(down.position)
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val pointer = event.changes.firstOrNull { it.id == down.id }
+                            if (pointer == null || !pointer.pressed) break
+                            pointer.consume()
+                            evaluateOffset(pointer.position)
+                        }
+                    } finally {
+                        activeDirs.forEach { dir -> inputTarget.onButtonRelease(NexPadControl.Button(dir)) }
+                        isPressed = false
+                    }
                 }
             }
         }

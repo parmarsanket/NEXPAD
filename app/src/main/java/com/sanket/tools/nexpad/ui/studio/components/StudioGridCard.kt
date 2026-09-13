@@ -8,6 +8,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -135,8 +137,10 @@ fun StudioGridCard(
                             customComponentId = null
                         )
                     } else if (type == ButtonStudioType.REMOTE_COMPOSE) {
-                        val doc = remember(def.manifest.id) {
-                            RemoteComponentRegistry.getInstance(context).getComponent(def.manifest.id)
+                        val remoteRegistry = remember { RemoteComponentRegistry.getInstance(context) }
+                        val loadedDocs by remoteRegistry.loadedComponents.collectAsState()
+                        val doc = remember(def.manifest.id, loadedDocs) {
+                            remoteRegistry.getComponent(def.manifest.id)
                         }
                         if (doc != null) {
                             NxprcCanvasRenderer(

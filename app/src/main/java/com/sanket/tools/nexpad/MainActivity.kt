@@ -57,8 +57,8 @@ class MainActivity : ComponentActivity() {
         // Register broadcast receiver for Desktop ADB push reload
         val receiver = object : android.content.BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: android.content.Intent?) {
-                ComponentRegistry.getInstance(this@MainActivity).reloadAll()
                 RemoteComponentRegistry.getInstance(this@MainActivity).reloadAll()
+                ComponentRegistry.getInstance(this@MainActivity).reloadAll()
                 android.widget.Toast.makeText(this@MainActivity, "⚡ Components reloaded from Desktop!", android.widget.Toast.LENGTH_SHORT).show()
             }
         }

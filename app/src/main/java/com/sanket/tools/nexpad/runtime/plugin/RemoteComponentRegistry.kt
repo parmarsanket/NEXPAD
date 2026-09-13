@@ -71,6 +71,11 @@ class RemoteComponentRegistry private constructor(private val context: Context) 
             idIndex[doc.manifest.id] = doc
         }
         _loadedComponents.value = list
+        try {
+            ComponentRegistry.getInstance(context).reloadAll()
+        } catch (_: Exception) {
+            // Guard during initial construction
+        }
     }
 
     fun getComponent(id: String): NxprcDocument? {
@@ -133,7 +138,10 @@ class RemoteComponentRegistry private constructor(private val context: Context) 
     fun deleteComponent(id: String): Boolean {
         val safeFileName = id.replace(Regex("[^a-zA-Z0-9_.-]"), "_") + ".nxprc"
         val targetFile = File(remoteDir, safeFileName)
-        val deleted = if (targetFile.exists()) targetFile.delete() else false
+        val internalDeleted = if (targetFile.exists()) targetFile.delete() else false
+        val extFile = externalRemoteDir?.let { File(it, safeFileName) }
+        val externalDeleted = if (extFile != null && extFile.exists()) extFile.delete() else false
+        val deleted = internalDeleted || externalDeleted
         if (deleted) {
             reloadAll()
             ComponentRegistry.getInstance(context).reloadAll()

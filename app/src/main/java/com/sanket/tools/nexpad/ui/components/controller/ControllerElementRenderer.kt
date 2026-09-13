@@ -41,7 +41,8 @@ fun ControllerElementRenderer(
 
     if (customComponentId != null && customComponentId.startsWith("rc.")) {
         val remoteRegistry = remember { RemoteComponentRegistry.getInstance(context) }
-        val remoteDoc = remember(customComponentId) { remoteRegistry.getComponent(customComponentId) }
+        val loadedDocs by remoteRegistry.loadedComponents.collectAsState()
+        val remoteDoc = remember(customComponentId, loadedDocs) { remoteRegistry.getComponent(customComponentId) }
         if (remoteDoc != null) {
             val targetControl = when {
                 key == "LS" -> NexPadControl.Stick(isLeft = true)

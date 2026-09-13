@@ -280,7 +280,7 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun applyButtonState(buttonName: String, isPressed: Boolean) {
-        when (buttonName) {
+        when (buttonName.uppercase()) {
             "A" -> inputState.btnA = isPressed
             "B" -> inputState.btnB = isPressed
             "X" -> inputState.btnX = isPressed
@@ -289,15 +289,15 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
             "DOWN" -> inputState.dpadDown = isPressed
             "LEFT" -> inputState.dpadLeft = isPressed
             "RIGHT" -> inputState.dpadRight = isPressed
-            "LB" -> inputState.btnL1 = isPressed
-            "RB" -> inputState.btnR1 = isPressed
-            "LT" -> inputState.triggerL2 = if (isPressed) 1f else 0f
-            "RT" -> inputState.triggerR2 = if (isPressed) 1f else 0f
-            "L3" -> inputState.btnL3 = isPressed
-            "R3" -> inputState.btnR3 = isPressed
-            "MENU" -> inputState.btnStart = isPressed
-            "VIEW" -> inputState.btnSelect = isPressed
-            "XBOX" -> inputState.btnGuide = isPressed
+            "LB", "L1" -> inputState.btnL1 = isPressed
+            "RB", "R1" -> inputState.btnR1 = isPressed
+            "LT", "L2" -> inputState.triggerL2 = if (isPressed) 1f else 0f
+            "RT", "R2" -> inputState.triggerR2 = if (isPressed) 1f else 0f
+            "L3", "LS" -> inputState.btnL3 = isPressed
+            "R3", "RS" -> inputState.btnR3 = isPressed
+            "MENU", "START" -> inputState.btnStart = isPressed
+            "VIEW", "BACK", "SELECT" -> inputState.btnSelect = isPressed
+            "XBOX", "GUIDE", "HOME" -> inputState.btnGuide = isPressed
             "SHARE" -> inputState.btnShare = isPressed
             "SCREENSHOT" -> inputState.btnScreenshot = isPressed
             "M1" -> inputState.btnM1 = isPressed
