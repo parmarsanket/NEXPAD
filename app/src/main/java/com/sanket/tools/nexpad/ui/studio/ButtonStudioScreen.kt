@@ -8,7 +8,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
@@ -88,12 +87,6 @@ fun ButtonStudioScreen(
     // Map of chosen skin IDs (controlKey -> skinId)
     val chosenSkins = remember { mutableStateMapOf<String, String?>() }
 
-    // Selected Group theme IDs (defaults to Classic Xbox)
-    var chosenAbxyThemeId by remember { mutableStateOf("group.classic_xbox") }
-    var chosenTriggerThemeId by remember { mutableStateOf("group.triggers_classic") }
-    var chosenBumperThemeId by remember { mutableStateOf("group.bumpers_classic") }
-    var chosenStickThemeId by remember { mutableStateOf("group.sticks_classic") }
-
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -121,7 +114,7 @@ fun ButtonStudioScreen(
             if (!matchesCategory) return@filter false
 
             val sub = selectedSubFilter
-            if (sub == null || sub.id == "ALL" || sub.id == "GROUP_THEMES") {
+            if (sub == null || sub.id == "ALL") {
                 true
             } else {
                 val target = (sub.targetKey ?: sub.id).uppercase()
@@ -403,7 +396,7 @@ fun ButtonStudioScreen(
                         }
                     }
 
-                    // Responsive Grid (Adaptive minSize = 145dp ensures cards never clip)
+                    // Responsive Grid of Individual Button Skins
                     LazyVerticalGrid(
                         columns = GridCells.Adaptive(minSize = 145.dp),
                         modifier = Modifier.fillMaxSize(),
@@ -411,241 +404,54 @@ fun ButtonStudioScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        val isGroupThemesFilter = selectedSubFilter?.id == "GROUP_THEMES"
-                        val isAllFilter = selectedSubFilter == null || selectedSubFilter?.id == "ALL"
+                        items(filteredComponents, key = { it.manifest.id }) { def ->
+                            val targetKey = def.manifest.defaultControl.uppercase()
+                            val isControlActive = activeControls[targetKey] == true
+                            val type = resolveButtonSourceType(def)
+                            val expectedCustomId = if (type == ButtonStudioType.DEFAULT) null else def.manifest.id
+                            val isSkinSelected = chosenSkins[targetKey] == def.manifest.id ||
+                                    (type == ButtonStudioType.DEFAULT && chosenSkins[targetKey] == null)
 
-                        // Group Themes Section for Cluster Categories
-                        if (isGroupThemesFilter || isAllFilter) {
-                            when (selectedCategory.id) {
-                                "ABXY" -> {
-                                    items(
-                                        items = if (isGroupThemesFilter) ABXY_GROUP_THEMES else ABXY_GROUP_THEMES.take(1),
-                                        key = { "group_${it.id}" },
-                                        span = { GridItemSpan(maxLineSpan) }
-                                    ) { theme ->
-                                        val isThemeSelected = chosenAbxyThemeId == theme.id &&
-                                                listOf("A", "B", "X", "Y").all { activeControls[it] == true }
-                                        val isApplied = activeProfile?.positions?.let { pos ->
-                                            listOf("A", "B", "X", "Y").all { k -> pos[k]?.customComponentId == theme.skinMap[k] }
-                                        } ?: false
+                            val isAppliedToProfile = activeProfile?.positions?.get(targetKey)?.customComponentId == expectedCustomId
 
-                                        AbxyDiamondGroupCard(
-                                            theme = theme,
-                                            mode = currentMode,
-                                            isSelected = isThemeSelected,
-                                            isAppliedToActiveProfile = isApplied,
-                                            dummyViewModel = dummyViewModel,
-                                            onSelectGroup = {
-                                                if (isThemeSelected) {
-                                                    listOf("A", "B", "X", "Y").forEach { key -> activeControls[key] = false }
-                                                    Toast.makeText(context, "Excluded ABXY Group from layout", Toast.LENGTH_SHORT).show()
-                                                } else {
-                                                    chosenAbxyThemeId = theme.id
-                                                    listOf("A", "B", "X", "Y").forEach { key ->
-                                                        activeControls[key] = true
-                                                        chosenSkins[key] = theme.skinMap[key]
-                                                    }
-                                                    Toast.makeText(context, "Selected ${theme.name} (All 4 Buttons)", Toast.LENGTH_SHORT).show()
-                                                }
-                                            },
-                                            onApplyToProfile = {
-                                                applyGroupThemeToProfile(theme.name, theme.skinMap, layoutManager, context)
-                                                activeProfile = layoutManager?.getActiveProfile()
-                                            },
-                                            onUseInHud = {
-                                                applyGroupThemeToProfile(theme.name, theme.skinMap, layoutManager, context)
-                                                layoutManager?.pendingSelectedKey = "A"
-                                                navController.navigate("editor")
-                                            }
-                                        )
+                            StudioGridCard(
+                                def = def,
+                                mode = currentMode,
+                                isSelectedInBuilder = isControlActive && isSkinSelected,
+                                isAppliedToActiveProfile = isAppliedToProfile,
+                                dummyViewModel = dummyViewModel,
+                                onToggleSelectInBuilder = {
+                                    if (isControlActive && isSkinSelected) {
+                                        activeControls[targetKey] = false
+                                        Toast.makeText(context, "Excluded $targetKey from layout", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        activeControls[targetKey] = true
+                                        chosenSkins[targetKey] = if (type == ButtonStudioType.DEFAULT) null else def.manifest.id
+                                        Toast.makeText(context, "Selected ${def.manifest.name} for $targetKey", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                onApplyToProfile = {
+                                    applyButtonSkinToProfile(def, layoutManager, context)
+                                    activeProfile = layoutManager?.getActiveProfile()
+                                },
+                                onUseInHud = {
+                                    applyButtonToHud(def, layoutManager, navController, context)
+                                },
+                                onTest = { previewTarget = def },
+                                onExport = {
+                                    val json = registry.exportToJson(def.manifest.id)
+                                    if (json != null) {
+                                        clipboard.nativeClipboard.setPrimaryClip(android.content.ClipData.newPlainText("NXP JSON", json))
+                                        Toast.makeText(context, "JSON copied to clipboard!", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                onDelete = {
+                                    val deleted = registry.deleteComponent(def.manifest.id)
+                                    if (deleted) {
+                                        Toast.makeText(context, "Deleted ${def.manifest.name}", Toast.LENGTH_SHORT).show()
                                     }
                                 }
-                                "TRIGGERS" -> {
-                                    items(
-                                        items = if (isGroupThemesFilter) TRIGGER_GROUP_THEMES else TRIGGER_GROUP_THEMES.take(1),
-                                        key = { "group_${it.id}" },
-                                        span = { GridItemSpan(maxLineSpan) }
-                                    ) { theme ->
-                                        val isThemeSelected = chosenTriggerThemeId == theme.id &&
-                                                listOf("LT", "RT").all { activeControls[it] == true }
-                                        val isApplied = activeProfile?.positions?.let { pos ->
-                                            listOf("LT", "RT").all { k -> pos[k]?.customComponentId == theme.skinMap[k] }
-                                        } ?: false
-
-                                        PairedGroupCard(
-                                            theme = theme,
-                                            category = "TRIGGERS",
-                                            mode = currentMode,
-                                            isSelected = isThemeSelected,
-                                            isAppliedToActiveProfile = isApplied,
-                                            dummyViewModel = dummyViewModel,
-                                            onSelectGroup = {
-                                                if (isThemeSelected) {
-                                                    listOf("LT", "RT").forEach { key -> activeControls[key] = false }
-                                                    Toast.makeText(context, "Excluded Triggers (LT & RT) from layout", Toast.LENGTH_SHORT).show()
-                                                } else {
-                                                    chosenTriggerThemeId = theme.id
-                                                    listOf("LT", "RT").forEach { key ->
-                                                        activeControls[key] = true
-                                                        chosenSkins[key] = theme.skinMap[key]
-                                                    }
-                                                    Toast.makeText(context, "Selected ${theme.name} (LT & RT)", Toast.LENGTH_SHORT).show()
-                                                }
-                                            },
-                                            onApplyToProfile = {
-                                                applyGroupThemeToProfile(theme.name, theme.skinMap, layoutManager, context)
-                                                activeProfile = layoutManager?.getActiveProfile()
-                                            },
-                                            onUseInHud = {
-                                                applyGroupThemeToProfile(theme.name, theme.skinMap, layoutManager, context)
-                                                layoutManager?.pendingSelectedKey = "LT"
-                                                navController.navigate("editor")
-                                            }
-                                        )
-                                    }
-                                }
-                                "BUMPERS" -> {
-                                    items(
-                                        items = if (isGroupThemesFilter) BUMPER_GROUP_THEMES else BUMPER_GROUP_THEMES.take(1),
-                                        key = { "group_${it.id}" },
-                                        span = { GridItemSpan(maxLineSpan) }
-                                    ) { theme ->
-                                        val isThemeSelected = chosenBumperThemeId == theme.id &&
-                                                listOf("LB", "RB").all { activeControls[it] == true }
-                                        val isApplied = activeProfile?.positions?.let { pos ->
-                                            listOf("LB", "RB").all { k -> pos[k]?.customComponentId == theme.skinMap[k] }
-                                        } ?: false
-
-                                        PairedGroupCard(
-                                            theme = theme,
-                                            category = "BUMPERS",
-                                            mode = currentMode,
-                                            isSelected = isThemeSelected,
-                                            isAppliedToActiveProfile = isApplied,
-                                            dummyViewModel = dummyViewModel,
-                                            onSelectGroup = {
-                                                if (isThemeSelected) {
-                                                    listOf("LB", "RB").forEach { key -> activeControls[key] = false }
-                                                    Toast.makeText(context, "Excluded Bumpers (LB & RB) from layout", Toast.LENGTH_SHORT).show()
-                                                } else {
-                                                    chosenBumperThemeId = theme.id
-                                                    listOf("LB", "RB").forEach { key ->
-                                                        activeControls[key] = true
-                                                        chosenSkins[key] = theme.skinMap[key]
-                                                    }
-                                                    Toast.makeText(context, "Selected ${theme.name} (LB & RB)", Toast.LENGTH_SHORT).show()
-                                                }
-                                            },
-                                            onApplyToProfile = {
-                                                applyGroupThemeToProfile(theme.name, theme.skinMap, layoutManager, context)
-                                                activeProfile = layoutManager?.getActiveProfile()
-                                            },
-                                            onUseInHud = {
-                                                applyGroupThemeToProfile(theme.name, theme.skinMap, layoutManager, context)
-                                                layoutManager?.pendingSelectedKey = "LB"
-                                                navController.navigate("editor")
-                                            }
-                                        )
-                                    }
-                                }
-                                "STICKS" -> {
-                                    items(
-                                        items = if (isGroupThemesFilter) STICK_GROUP_THEMES else STICK_GROUP_THEMES.take(1),
-                                        key = { "group_${it.id}" },
-                                        span = { GridItemSpan(maxLineSpan) }
-                                    ) { theme ->
-                                        val isThemeSelected = chosenStickThemeId == theme.id &&
-                                                listOf("LS", "RS").all { activeControls[it] == true }
-                                        val isApplied = activeProfile?.positions?.let { pos ->
-                                            listOf("LS", "RS").all { k -> pos[k]?.customComponentId == theme.skinMap[k] }
-                                        } ?: false
-
-                                        PairedGroupCard(
-                                            theme = theme,
-                                            category = "STICKS",
-                                            mode = currentMode,
-                                            isSelected = isThemeSelected,
-                                            isAppliedToActiveProfile = isApplied,
-                                            dummyViewModel = dummyViewModel,
-                                            onSelectGroup = {
-                                                if (isThemeSelected) {
-                                                    listOf("LS", "RS").forEach { key -> activeControls[key] = false }
-                                                    Toast.makeText(context, "Excluded Sticks (LS & RS) from layout", Toast.LENGTH_SHORT).show()
-                                                } else {
-                                                    chosenStickThemeId = theme.id
-                                                    listOf("LS", "RS").forEach { key ->
-                                                        activeControls[key] = true
-                                                        chosenSkins[key] = theme.skinMap[key]
-                                                    }
-                                                    Toast.makeText(context, "Selected ${theme.name} (LS & RS)", Toast.LENGTH_SHORT).show()
-                                                }
-                                            },
-                                            onApplyToProfile = {
-                                                applyGroupThemeToProfile(theme.name, theme.skinMap, layoutManager, context)
-                                                activeProfile = layoutManager?.getActiveProfile()
-                                            },
-                                            onUseInHud = {
-                                                applyGroupThemeToProfile(theme.name, theme.skinMap, layoutManager, context)
-                                                layoutManager?.pendingSelectedKey = "LS"
-                                                navController.navigate("editor")
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        // Individual Component Cards (shown when not exclusively viewing group themes)
-                        if (!isGroupThemesFilter) {
-                            items(filteredComponents, key = { it.manifest.id }) { def ->
-                                val targetKey = def.manifest.defaultControl.uppercase()
-                                val isControlActive = activeControls[targetKey] == true
-                                val type = resolveButtonSourceType(def)
-                                val expectedCustomId = if (type == ButtonStudioType.DEFAULT) null else def.manifest.id
-                                val isSkinSelected = chosenSkins[targetKey] == def.manifest.id ||
-                                        (type == ButtonStudioType.DEFAULT && chosenSkins[targetKey] == null)
-
-                                val isAppliedToProfile = activeProfile?.positions?.get(targetKey)?.customComponentId == expectedCustomId
-
-                                StudioGridCard(
-                                    def = def,
-                                    mode = currentMode,
-                                    isSelectedInBuilder = isControlActive && isSkinSelected,
-                                    isAppliedToActiveProfile = isAppliedToProfile,
-                                    dummyViewModel = dummyViewModel,
-                                    onToggleSelectInBuilder = {
-                                        if (isControlActive && isSkinSelected) {
-                                            activeControls[targetKey] = false
-                                            Toast.makeText(context, "Excluded $targetKey from layout", Toast.LENGTH_SHORT).show()
-                                        } else {
-                                            activeControls[targetKey] = true
-                                            chosenSkins[targetKey] = if (type == ButtonStudioType.DEFAULT) null else def.manifest.id
-                                            Toast.makeText(context, "Selected ${def.manifest.name} for $targetKey", Toast.LENGTH_SHORT).show()
-                                        }
-                                    },
-                                    onApplyToProfile = {
-                                        applyButtonSkinToProfile(def, layoutManager, context)
-                                        activeProfile = layoutManager?.getActiveProfile()
-                                    },
-                                    onUseInHud = {
-                                        applyButtonToHud(def, layoutManager, navController, context)
-                                    },
-                                    onTest = { previewTarget = def },
-                                    onExport = {
-                                        val json = registry.exportToJson(def.manifest.id)
-                                        if (json != null) {
-                                            clipboard.nativeClipboard.setPrimaryClip(android.content.ClipData.newPlainText("NXP JSON", json))
-                                            Toast.makeText(context, "JSON copied to clipboard!", Toast.LENGTH_SHORT).show()
-                                        }
-                                    },
-                                    onDelete = {
-                                        val deleted = registry.deleteComponent(def.manifest.id)
-                                        if (deleted) {
-                                            Toast.makeText(context, "Deleted ${def.manifest.name}", Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                )
-                            }
+                            )
                         }
                     }
                 }
@@ -702,31 +508,7 @@ private fun applyButtonSkinToProfile(
     }
 }
 
-/**
- * Applies a full group theme preset to active profile immediately.
- */
-private fun applyGroupThemeToProfile(
-    themeName: String,
-    skinMap: Map<String, String?>,
-    layoutManager: LayoutManager?,
-    context: Context
-) {
-    if (layoutManager != null) {
-        val activeProfile = layoutManager.getActiveProfile()
-        val positions = activeProfile.positions.toMutableMap()
-        val defaults = defaultPositions()
-        skinMap.forEach { (key, customId) ->
-            val existingPos = positions[key] ?: defaults[key] ?: Position(0.5f, 0.5f)
-            positions[key] = existingPos.copy(customComponentId = customId)
-        }
-        layoutManager.saveProfile(activeProfile.copy(positions = positions))
-        Toast.makeText(
-            context,
-            "Applied $themeName (${skinMap.keys.joinToString(", ")}) to '${activeProfile.name}'",
-            Toast.LENGTH_SHORT
-        ).show()
-    }
-}
+
 
 /**
  * Places the selected button with its skin onto the active profile,
