@@ -8,6 +8,11 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import com.sanket.tools.nexpad.ui.layout.adaptiveLayoutSpec
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -112,19 +117,23 @@ fun VirtualControllerScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize()) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val layout = adaptiveLayoutSpec(maxWidth, maxHeight)
+
             CyberGrid(modifier = Modifier.matchParentSize())
             ScanLine(modifier = Modifier.matchParentSize())
 
-            LazyColumn(
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(if (layout.useTwoPaneLayout) 2 else 1),
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(horizontal = layout.horizontalPadding, vertical = layout.verticalPadding),
+                verticalArrangement = Arrangement.spacedBy(layout.contentSpacing),
+                horizontalArrangement = Arrangement.spacedBy(layout.paneSpacing)
             ) {
-                // Info banner
-                item {
+                // Info banner spans full width
+                item(span = { GridItemSpan(maxLineSpan) }) {
                     LayoutHubBanner()
                 }
 

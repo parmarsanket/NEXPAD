@@ -1,6 +1,7 @@
 package com.sanket.tools.nexpad.ui.components.home
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -37,6 +38,8 @@ fun VShapedPanel(
     profiles: List<LayoutProfile> = emptyList(),
     activeProfileName: String = "",
     onProfileSelected: (LayoutProfile) -> Unit = {},
+    isCompact: Boolean = false,
+    modifier: Modifier = Modifier,
     onPlayClick: () -> Unit
 ) {
     val effectiveProfiles = remember(profiles) {
@@ -56,24 +59,33 @@ fun VShapedPanel(
         }
     }
 
+    val boxModifier = if (isCompact) {
+        Modifier.fillMaxWidth().then(modifier)
+    } else {
+        Modifier.fillMaxWidth().aspectRatio(1.1f).then(modifier)
+    }
+
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(1.1f)
+        modifier = boxModifier
     ) {
         VPanelBackground(modifier = Modifier.fillMaxSize())
 
         Column(
-            modifier = Modifier.align(Alignment.TopCenter)
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = if (isCompact) Arrangement.SpaceBetween else Arrangement.Top
         ) {
             HorizontalCenteredHeroCarousel(
                 state = state,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(221.dp)
-                    .padding(24.dp),
+                    .height(if (isCompact) 135.dp else 221.dp)
+                    .padding(
+                        horizontal = if (isCompact) 12.dp else 24.dp,
+                        vertical = if (isCompact) 6.dp else 24.dp
+                    ),
                 itemSpacing = 8.dp,
-                contentPadding = PaddingValues(horizontal = 16.dp)
+                contentPadding = PaddingValues(horizontal = if (isCompact) 8.dp else 16.dp)
             ) { index ->
                 val profile = effectiveProfiles[index]
                 val subtitle = if (profile.isDefault) "DEFAULT ${index + 1}" else "CUSTOM"
@@ -86,12 +98,14 @@ fun VShapedPanel(
                 )
             }
             Box(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false),
+                contentAlignment = Alignment.Center
             ) {
                 PlayButton(
                     modifier = Modifier
-                        .align(alignment = Alignment.Center)
-                        .padding(bottom = 24.dp),
+                        .padding(bottom = if (isCompact) 10.dp else 24.dp),
                     onClick = onPlayClick
                 )
             }

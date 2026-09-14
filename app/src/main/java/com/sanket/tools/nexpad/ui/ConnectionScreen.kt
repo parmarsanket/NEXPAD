@@ -12,9 +12,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -36,6 +38,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +46,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import com.sanket.tools.nexpad.ui.layout.adaptiveLayoutSpec
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -157,25 +161,9 @@ fun ConnectionScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-
-            // -------------------------------------------------------------
-            // 1. ACTIVE CONNECTION CARD (Prominently displayed when online)
-            // -------------------------------------------------------------
-            if (isConnected) {
-                ActiveSessionCard(
-                    stats = connectionStats,
-                    onDisconnect = { viewModel.disconnect() }
-                )
-            }
-
+    @Composable
+    fun TransportsContent() {
+        Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
             // -------------------------------------------------------------
             // 2. DISCOVERED COMPUTERS (Wi-Fi & USB Tethering)
             // -------------------------------------------------------------
@@ -411,5 +399,198 @@ fun ConnectionScreen(
 
             Spacer(Modifier.height(16.dp))
         }
+    }
+
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(innerPadding)
+    ) {
+        val layout = adaptiveLayoutSpec(maxWidth, maxHeight)
+
+        if (layout.useTwoPaneLayout) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = layout.horizontalPadding, vertical = layout.verticalPadding),
+                horizontalArrangement = Arrangement.spacedBy(layout.paneSpacing)
+            ) {
+                // Left Sticky Pane
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    if (isConnected) {
+                        ActiveSessionCard(
+                            stats = connectionStats,
+                            onDisconnect = { viewModel.disconnect() }
+                        )
+                    } else {
+                        ConnectionHubStatusCard(
+                            isUsbCableConnected = isUsbCableConnected,
+                            isAoaAttached = isAoaAttached,
+                            isAdbAvailable = isAdbAvailable,
+                            onRescan = { viewModel.startDiscovery() },
+                            onOpenBluetoothSettings = {
+                                try {
+                                    context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
+                                } catch (_: Exception) {}
+                            }
+                        )
+                    }
+                }
+
+                // Right Scrollable Pane
+                Column(
+                    modifier = Modifier
+                        .weight(1.25f)
+                        .fillMaxHeight()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(24.dp)
+                ) {
+                    TransportsContent()
+                }
+            }
+        } else {
+            // Single Column (Portrait)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = layout.horizontalPadding, vertical = layout.verticalPadding),
+                verticalArrangement = Arrangement.spacedBy(layout.contentSpacing)
+            ) {
+                if (isConnected) {
+                    ActiveSessionCard(
+                        stats = connectionStats,
+                        onDisconnect = { viewModel.disconnect() }
+                    )
+                }
+                TransportsContent()
+            }
+        }
+    }
+}
+}
+
+@Composable
+private fun ConnectionHubStatusCard(
+    isUsbCableConnected: Boolean,
+    isAoaAttached: Boolean,
+    isAdbAvailable: Boolean,
+    onRescan: () -> Unit,
+    onOpenBluetoothSettings: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = NeonPalette.DarkCard),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.3f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Link Status",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Text(
+                    "Standby",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.Yellow,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Text(
+                "Connect via local Wi-Fi, USB cable (AOA / ADB / Tethering), or Bluetooth Classic.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatusIndicatorRow(
+                    label = "USB Cable",
+                    status = if (isUsbCableConnected) "Plugged In" else "Disconnected",
+                    isGood = isUsbCableConnected
+                )
+                StatusIndicatorRow(
+                    label = "AOA Accessory",
+                    status = if (isAoaAttached) "Attached" else "Ready",
+                    isGood = isAoaAttached
+                )
+                StatusIndicatorRow(
+                    label = "ADB Server",
+                    status = if (isAdbAvailable) "Online" else "Offline",
+                    isGood = isAdbAvailable
+                )
+            }
+
+            Spacer(Modifier.height(4.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onRescan,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Cyan),
+                    border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f)),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(15.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Rescan", style = MaterialTheme.typography.labelMedium)
+                }
+
+                OutlinedButton(
+                    onClick = onOpenBluetoothSettings,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Rounded.Bluetooth, contentDescription = null, modifier = Modifier.size(15.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("BT Pair", style = MaterialTheme.typography.labelMedium)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatusIndicatorRow(label: String, status: String, isGood: Boolean) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            status,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = if (isGood) NeonPalette.Green else Color.Gray
+        )
     }
 }
