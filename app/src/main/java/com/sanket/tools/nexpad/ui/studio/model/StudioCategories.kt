@@ -4,6 +4,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.ui.graphics.vector.ImageVector
 
+import com.sanket.tools.nexpad.category.CategoryDefinition
+import com.sanket.tools.nexpad.category.CategoryManager
+import com.sanket.tools.nexpad.category.CategorySymbol
+
 data class StudioSubFilter(
     val id: String,
     val label: String,
@@ -18,87 +22,46 @@ data class StudioCategory(
     val subFilters: List<StudioSubFilter>
 )
 
-val STUDIO_CATEGORIES = listOf(
-    StudioCategory(
-        id = "ABXY",
-        title = "ABXY",
-        icon = Icons.Rounded.SportsEsports,
-        keys = setOf("A", "B", "X", "Y"),
-        subFilters = emptyList() // Group-only: 4-Button Cluster
-    ),
-    StudioCategory(
-        id = "DPAD",
-        title = "D-Pad",
-        icon = Icons.Rounded.ControlCamera,
-        keys = setOf("DPAD", "UP", "DOWN", "LEFT", "RIGHT"),
-        subFilters = listOf(
-            StudioSubFilter("ALL", "All D-Pad", null),
-            StudioSubFilter("CROSS", "Cross Pad", "DPAD"),
-            StudioSubFilter("UP", "D-Pad Up", "UP"),
-            StudioSubFilter("DOWN", "D-Pad Down", "DOWN"),
-            StudioSubFilter("LEFT", "D-Pad Left", "LEFT"),
-            StudioSubFilter("RIGHT", "D-Pad Right", "RIGHT")
-        )
-    ),
-    StudioCategory(
-        id = "STICKS",
-        title = "Sticks",
-        icon = Icons.Rounded.Album,
-        keys = setOf("LS", "RS"),
-        subFilters = emptyList() // Group-only: Left & Right Pair
-    ),
-    StudioCategory(
-        id = "TRIGGERS",
-        title = "Triggers",
-        icon = Icons.Rounded.Tune,
-        keys = setOf("LT", "RT"),
-        subFilters = emptyList() // Group-only: Left & Right Pair
-    ),
-    StudioCategory(
-        id = "BUMPERS",
-        title = "Bumpers",
-        icon = Icons.Rounded.HorizontalRule,
-        keys = setOf("LB", "RB"),
-        subFilters = emptyList() // Group-only: Left & Right Pair
-    ),
-    StudioCategory(
-        id = "HOME",
-        title = "Home",
-        icon = Icons.Rounded.Home,
-        keys = setOf("XBOX", "HOME", "GUIDE"),
-        subFilters = listOf(
-            StudioSubFilter("ALL", "Xbox Guide", "XBOX")
-        )
-    ),
-    StudioCategory(
-        id = "SYSTEM",
-        title = "System",
-        icon = Icons.Rounded.Settings,
-        keys = setOf("VIEW", "MENU", "SHARE", "BACK", "START"),
-        subFilters = listOf(
-            StudioSubFilter("ALL", "All System", null),
-            StudioSubFilter("VIEW", "View / Back", "VIEW"),
-            StudioSubFilter("MENU", "Menu / Pause", "MENU"),
-            StudioSubFilter("SHARE", "Share / Capture", "SHARE")
-        )
-    ),
-    StudioCategory(
-        id = "MACROS",
-        title = "Macros",
-        icon = Icons.Rounded.Bolt,
-        keys = setOf("M1", "M2", "M3", "M4"),
-        subFilters = listOf(
-            StudioSubFilter("ALL", "All Macros", null),
-            StudioSubFilter("M1", "Paddle M1", "M1"),
-            StudioSubFilter("M2", "Paddle M2", "M2"),
-            StudioSubFilter("M3", "Paddle M3", "M3"),
-            StudioSubFilter("M4", "Paddle M4", "M4")
-        )
-    ),
+fun CategorySymbol.asImageVector(): ImageVector = when (this) {
+    CategorySymbol.GAMEPAD -> Icons.Rounded.SportsEsports
+    CategorySymbol.DPAD -> Icons.Rounded.ControlCamera
+    CategorySymbol.STICK -> Icons.Rounded.Album
+    CategorySymbol.TRIGGER -> Icons.Rounded.Tune
+    CategorySymbol.BUMPER -> Icons.Rounded.HorizontalRule
+    CategorySymbol.HOME -> Icons.Rounded.Home
+    CategorySymbol.SYSTEM -> Icons.Rounded.Settings
+    CategorySymbol.MACRO -> Icons.Rounded.Bolt
+    CategorySymbol.ALL -> Icons.Rounded.Widgets
+}
+
+fun CategoryDefinition.toStudioCategory(): StudioCategory {
+    val filters = if (isGroupCluster) {
+        emptyList()
+    } else {
+        val allFilter = StudioSubFilter("ALL", "All $title", null)
+        val controlFilters = controls.map { ctrl ->
+            StudioSubFilter(
+                id = ctrl.key,
+                label = ctrl.label,
+                targetKey = ctrl.key
+            )
+        }
+        listOf(allFilter) + controlFilters
+    }
+    return StudioCategory(
+        id = id,
+        title = title,
+        icon = symbol.asImageVector(),
+        keys = keys,
+        subFilters = filters
+    )
+}
+
+val STUDIO_CATEGORIES: List<StudioCategory> = CategoryManager.getAllCategories().map { it.toStudioCategory() } + listOf(
     StudioCategory(
         id = "ALL",
         title = "All",
-        icon = Icons.Rounded.Widgets,
+        icon = CategorySymbol.ALL.asImageVector(),
         keys = emptySet(),
         subFilters = emptyList()
     )

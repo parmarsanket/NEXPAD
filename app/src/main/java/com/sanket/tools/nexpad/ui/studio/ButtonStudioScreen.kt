@@ -37,6 +37,7 @@ import com.sanket.tools.nexpad.ui.components.effects.CyberGrid
 import com.sanket.tools.nexpad.ui.components.effects.ScanLine
 import com.sanket.tools.nexpad.ui.studio.components.*
 import com.sanket.tools.nexpad.ui.studio.model.*
+import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
@@ -123,7 +124,8 @@ fun ButtonStudioScreen(
             if (sub == null || sub.targetKey == null) {
                 true
             } else {
-                control == sub.targetKey.uppercase()
+                val target = sub.targetKey.uppercase()
+                control == target || CategoryManager.getControl(control)?.key?.uppercase() == target
             }
         }
     }
