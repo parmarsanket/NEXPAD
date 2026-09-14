@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AddCircleOutline
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.DashboardCustomize
 import androidx.compose.material3.*
@@ -41,7 +42,7 @@ fun PairedGroupPreview(
 ) {
     Box(
         modifier = modifier
-            .size(130.dp, 95.dp)
+            .size(115.dp, 90.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(Color(0xFF040810))
             .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp)),
@@ -55,12 +56,12 @@ fun PairedGroupPreview(
             // Left Control Preview
             Box(
                 modifier = Modifier
-                    .size(54.dp, 80.dp)
+                    .size(46.dp, 70.dp)
                     .graphicsLayer {
                         when (category) {
-                            "TRIGGERS" -> { scaleX = 0.44f; scaleY = 0.44f }
-                            "BUMPERS" -> { scaleX = 0.32f; scaleY = 0.32f }
-                            else -> { scaleX = 0.34f; scaleY = 0.34f }
+                            "TRIGGERS" -> { scaleX = 0.40f; scaleY = 0.40f }
+                            "BUMPERS" -> { scaleX = 0.30f; scaleY = 0.30f }
+                            else -> { scaleX = 0.32f; scaleY = 0.32f }
                         }
                     },
                 contentAlignment = Alignment.Center
@@ -78,19 +79,19 @@ fun PairedGroupPreview(
             Text(
                 text = "⇄",
                 color = NeonPalette.Cyan.copy(alpha = 0.7f),
-                fontSize = 14.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Bold
             )
 
             // Right Control Preview
             Box(
                 modifier = Modifier
-                    .size(54.dp, 80.dp)
+                    .size(46.dp, 70.dp)
                     .graphicsLayer {
                         when (category) {
-                            "TRIGGERS" -> { scaleX = 0.44f; scaleY = 0.44f }
-                            "BUMPERS" -> { scaleX = 0.32f; scaleY = 0.32f }
-                            else -> { scaleX = 0.34f; scaleY = 0.34f }
+                            "TRIGGERS" -> { scaleX = 0.40f; scaleY = 0.40f }
+                            "BUMPERS" -> { scaleX = 0.30f; scaleY = 0.30f }
+                            else -> { scaleX = 0.32f; scaleY = 0.32f }
                         }
                     },
                 contentAlignment = Alignment.Center
@@ -117,8 +118,10 @@ fun PairedGroupCard(
     category: String,
     mode: ButtonStudioMode,
     isSelected: Boolean,
+    isAppliedToActiveProfile: Boolean = false,
     dummyViewModel: GamepadViewModel,
     onSelectGroup: () -> Unit,
+    onApplyToProfile: () -> Unit = {},
     onUseInHud: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -138,7 +141,7 @@ fun PairedGroupCard(
                 .fillMaxWidth()
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             // Left: Dual Pair Preview
             PairedGroupPreview(
@@ -153,7 +156,7 @@ fun PairedGroupCard(
             // Right: Information & Action Button
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                verticalArrangement = Arrangement.spacedBy(5.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -162,8 +165,13 @@ fun PairedGroupCard(
                 ) {
                     Text(
                         theme.name,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = Color.White)
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = Color.White),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
+
+                    Spacer(Modifier.width(6.dp))
 
                     // Type Badge
                     Surface(
@@ -182,7 +190,7 @@ fun PairedGroupCard(
                 }
 
                 Text(
-                    text = "${theme.leftKey} & ${theme.rightKey} Cohesive Pair • 98% Shared Architecture (Connection & RGB Differentiated)",
+                    text = "${theme.leftKey} & ${theme.rightKey} Paired Set",
                     color = NeonPalette.Cyan,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.SemiBold
@@ -192,7 +200,7 @@ fun PairedGroupCard(
                     theme.description,
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 15.sp,
+                    lineHeight = 14.sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -204,7 +212,7 @@ fun PairedGroupCard(
                             containerColor = if (isSelected) NeonPalette.Cyan else Color.White.copy(alpha = 0.12f)
                         ),
                         shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                         modifier = Modifier.height(32.dp)
                     ) {
                         Icon(
@@ -222,16 +230,47 @@ fun PairedGroupCard(
                         )
                     }
                 } else {
-                    Button(
-                        onClick = onUseInHud,
-                        colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                        modifier = Modifier.height(32.dp)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Rounded.DashboardCustomize, contentDescription = null, tint = Color.Black, modifier = Modifier.size(14.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Use Both in HUD", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        // Apply Pair to Profile button (stays in studio)
+                        Button(
+                            onClick = onApplyToProfile,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isAppliedToActiveProfile) NeonPalette.Cyan.copy(alpha = 0.25f) else NeonPalette.Cyan
+                            ),
+                            border = if (isAppliedToActiveProfile) androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan) else null,
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Icon(
+                                if (isAppliedToActiveProfile) Icons.Rounded.Check else Icons.Rounded.DashboardCustomize,
+                                contentDescription = null,
+                                tint = if (isAppliedToActiveProfile) NeonPalette.Cyan else Color.Black,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                if (isAppliedToActiveProfile) "Active on Profile" else "Apply Pair",
+                                color = if (isAppliedToActiveProfile) NeonPalette.Cyan else Color.Black,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        // Use in HUD button (navigates to editor)
+                        OutlinedButton(
+                            onClick = onUseInHud,
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Text("Open in HUD ➔", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                        }
                     }
                 }
             }

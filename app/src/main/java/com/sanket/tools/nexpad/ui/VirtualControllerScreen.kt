@@ -81,7 +81,7 @@ fun VirtualControllerScreen(
                 },
                 actions = {
                     OutlinedButton(
-                        onClick = { navController.navigate("button_studio?mode=select") },
+                        onClick = { navController.navigate("button_studio") },
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Purple),
                         border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Purple.copy(alpha = 0.7f)),
                         shape = RoundedCornerShape(10.dp),
@@ -90,7 +90,7 @@ fun VirtualControllerScreen(
                     ) {
                         Icon(Icons.Rounded.Palette, contentDescription = null, tint = NeonPalette.Purple, modifier = Modifier.size(15.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Studio Builder", color = NeonPalette.Purple, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Text("Button Studio", color = NeonPalette.Purple, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                     }
 
                     Button(

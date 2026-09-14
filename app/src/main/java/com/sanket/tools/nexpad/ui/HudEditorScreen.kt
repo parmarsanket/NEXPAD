@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.model.*
 import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
 import com.sanket.tools.nexpad.ui.components.controller.ControllerElementRenderer
@@ -427,8 +428,10 @@ private fun HudDockedInspector(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    val controlSpec = remember(control.key) { CategoryManager.getControl(control.key) }
+                    val emoji = controlSpec?.emoji ?: ""
                     Text(
-                        text = "${control.displayName} (${control.category.displayName})",
+                        text = "${if (emoji.isNotBlank()) "$emoji " else ""}${control.displayName} (${control.category.displayName})",
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = NeonPalette.Cyan)
                     )
 
@@ -687,8 +690,14 @@ private fun HudButtonPaletteDialog(
                 val groupedControls = GamepadControl.entries.groupBy { it.category }
 
                 groupedControls.forEach { (category, controlList) ->
+                    val catSpec = CategoryManager.getAllCategories().find {
+                        it.id.equals(category.name, ignoreCase = true) ||
+                        it.controls.any { c -> controlList.any { ctrl -> ctrl.key.equals(c.key, ignoreCase = true) } }
+                    }
+                    val catHeader = if (catSpec != null) "${catSpec.title} (${controlList.size})" else category.displayName
+
                     Text(
-                        category.displayName,
+                        catHeader,
                         style = MaterialTheme.typography.labelMedium.copy(
                             color = NeonPalette.Cyan,
                             fontWeight = FontWeight.Bold
@@ -704,7 +713,10 @@ private fun HudButtonPaletteDialog(
                         Column {
                             controlList.forEachIndexed { index, control ->
                                 val isPresent = currentElements.containsKey(control)
-                                val desc = controlDescriptions[control] ?: ""
+                                val spec = CategoryManager.getControl(control.key)
+                                val emoji = spec?.emoji ?: ""
+                                val label = spec?.label ?: control.displayName
+                                val desc = spec?.description ?: controlDescriptions[control] ?: ""
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -718,13 +730,25 @@ private fun HudButtonPaletteDialog(
                                         colors = CheckboxDefaults.colors(checkedColor = NeonPalette.Cyan)
                                     )
                                     Spacer(modifier = Modifier.width(10.dp))
+                                    if (emoji.isNotBlank()) {
+                                        Text(emoji, fontSize = 16.sp)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                    }
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            control.key,
-                                            fontSize = 14.sp,
-                                            fontWeight = if (isPresent) FontWeight.Bold else FontWeight.Normal,
-                                            color = if (isPresent) Color.White else Color.Gray
-                                        )
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                control.key,
+                                                fontSize = 14.sp,
+                                                fontWeight = if (isPresent) FontWeight.Bold else FontWeight.Normal,
+                                                color = if (isPresent) Color.White else Color.Gray
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                "• $label",
+                                                fontSize = 12.sp,
+                                                color = if (isPresent) NeonPalette.Cyan.copy(alpha = 0.8f) else Color.Gray.copy(alpha = 0.6f)
+                                            )
+                                        }
                                         Text(
                                             desc,
                                             fontSize = 10.sp,

@@ -35,15 +35,17 @@ import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
 /**
- * Grid Card displaying button preview with Dual Mode behavior for non-ABXY controls.
+ * Grid Card displaying button preview with Dual Mode behavior for individual controls.
  */
 @Composable
 fun StudioGridCard(
     def: NxpComponentDef,
     mode: ButtonStudioMode,
     isSelectedInBuilder: Boolean,
+    isAppliedToActiveProfile: Boolean = false,
     dummyViewModel: GamepadViewModel,
     onToggleSelectInBuilder: () -> Unit,
+    onApplyToProfile: () -> Unit = {},
     onUseInHud: () -> Unit,
     onTest: () -> Unit,
     onExport: () -> Unit,
@@ -244,18 +246,48 @@ fun StudioGridCard(
                     )
                 }
             } else {
-                Button(
-                    onClick = onUseInHud,
-                    colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(32.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Rounded.DashboardCustomize, contentDescription = null, tint = Color.Black, modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Use in HUD", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Button(
+                        onClick = onApplyToProfile,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isAppliedToActiveProfile) NeonPalette.Cyan.copy(alpha = 0.22f) else NeonPalette.Cyan
+                        ),
+                        border = if (isAppliedToActiveProfile) androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan) else null,
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(32.dp)
+                    ) {
+                        Icon(
+                            if (isAppliedToActiveProfile) Icons.Rounded.Check else Icons.Rounded.DashboardCustomize,
+                            contentDescription = null,
+                            tint = if (isAppliedToActiveProfile) NeonPalette.Cyan else Color.Black,
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            if (isAppliedToActiveProfile) "Active ✓" else "Apply",
+                            color = if (isAppliedToActiveProfile) NeonPalette.Cyan else Color.Black,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = onUseInHud,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Text("HUD ➔", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
 
@@ -265,19 +297,28 @@ fun StudioGridCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    IconButton(onClick = onTest, modifier = Modifier.size(28.dp)) {
-                        Icon(Icons.Rounded.PlayArrow, contentDescription = "Test in Sandbox", tint = NeonPalette.Cyan, modifier = Modifier.size(16.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    OutlinedButton(
+                        onClick = onTest,
+                        shape = RoundedCornerShape(6.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Cyan),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.4f)),
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                        modifier = Modifier.height(26.dp)
+                    ) {
+                        Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(12.dp))
+                        Spacer(Modifier.width(2.dp))
+                        Text("Test", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                     }
 
-                    IconButton(onClick = onExport, modifier = Modifier.size(28.dp)) {
-                        Icon(Icons.Rounded.ContentCopy, contentDescription = "Copy JSON", tint = Color.LightGray, modifier = Modifier.size(14.dp))
+                    IconButton(onClick = onExport, modifier = Modifier.size(26.dp)) {
+                        Icon(Icons.Rounded.ContentCopy, contentDescription = "Copy JSON", tint = Color.LightGray, modifier = Modifier.size(13.dp))
                     }
                 }
 
                 if (!isBuiltIn && mode == ButtonStudioMode.MANAGE) {
-                    IconButton(onClick = onDelete, modifier = Modifier.size(28.dp)) {
-                        Icon(Icons.Rounded.DeleteOutline, contentDescription = "Delete", tint = Color(0xFFFF5252), modifier = Modifier.size(16.dp))
+                    IconButton(onClick = onDelete, modifier = Modifier.size(26.dp)) {
+                        Icon(Icons.Rounded.DeleteOutline, contentDescription = "Delete", tint = Color(0xFFFF5252), modifier = Modifier.size(15.dp))
                     }
                 }
             }

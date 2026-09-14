@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AddCircleOutline
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.DashboardCustomize
 import androidx.compose.material3.*
@@ -29,6 +30,7 @@ import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
 /**
  * Preview stage rendering the 4-button ABXY diamond cluster in the requested visual style.
+ * Uses bounded 34dp parent containers so the 80dp buttons do not overlap each other.
  */
 @Composable
 fun AbxyDiamondPreview(
@@ -44,72 +46,94 @@ fun AbxyDiamondPreview(
             .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp)),
         contentAlignment = Alignment.Center
     ) {
-        when (style) {
-            AbxyPreviewStyle.REALISTIC_3D -> {
-                // 3D Realistic Y, X, B, A in diamond cluster
-                Box(modifier = Modifier.size(86.dp)) {
-                    Box(modifier = Modifier.align(Alignment.TopCenter).graphicsLayer { scaleX = 0.48f; scaleY = 0.48f }) {
-                        ControllerElementRenderer("Y", isConnected = false, isRgbEnabled = true, viewModel = dummyViewModel)
-                    }
-                    Box(modifier = Modifier.align(Alignment.CenterStart).graphicsLayer { scaleX = 0.48f; scaleY = 0.48f }) {
-                        ControllerElementRenderer("X", isConnected = false, isRgbEnabled = true, viewModel = dummyViewModel)
-                    }
-                    Box(modifier = Modifier.align(Alignment.CenterEnd).graphicsLayer { scaleX = 0.48f; scaleY = 0.48f }) {
-                        ControllerElementRenderer("B", isConnected = false, isRgbEnabled = true, viewModel = dummyViewModel)
-                    }
-                    Box(modifier = Modifier.align(Alignment.BottomCenter).graphicsLayer { scaleX = 0.48f; scaleY = 0.48f }) {
-                        ControllerElementRenderer("A", isConnected = false, isRgbEnabled = true, viewModel = dummyViewModel)
-                    }
-                }
-            }
-            AbxyPreviewStyle.SCIFI_HEX -> {
-                // Sci-Fi Hex Y, X, B, A
-                Box(modifier = Modifier.size(86.dp)) {
-                    Box(modifier = Modifier.align(Alignment.TopCenter).graphicsLayer { scaleX = 0.48f; scaleY = 0.48f }) {
-                        ControllerElementRenderer("Y", isConnected = false, isRgbEnabled = true, viewModel = dummyViewModel, customComponentId = "builtin.scifi_hex_y")
-                    }
-                    Box(modifier = Modifier.align(Alignment.CenterStart).graphicsLayer { scaleX = 0.48f; scaleY = 0.48f }) {
-                        ControllerElementRenderer("X", isConnected = false, isRgbEnabled = true, viewModel = dummyViewModel, customComponentId = "builtin.scifi_hex_x")
-                    }
-                    Box(modifier = Modifier.align(Alignment.CenterEnd).graphicsLayer { scaleX = 0.48f; scaleY = 0.48f }) {
-                        ControllerElementRenderer("B", isConnected = false, isRgbEnabled = true, viewModel = dummyViewModel, customComponentId = "builtin.scifi_hex_b")
-                    }
-                    Box(modifier = Modifier.align(Alignment.BottomCenter).graphicsLayer { scaleX = 0.48f; scaleY = 0.48f }) {
-                        ControllerElementRenderer("A", isConnected = false, isRgbEnabled = true, viewModel = dummyViewModel, customComponentId = "builtin.scifi_hex_a")
+        Box(
+            modifier = Modifier.size(96.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            // Y at Top
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .size(34.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .requiredSize(80.dp)
+                        .graphicsLayer { scaleX = 0.40f; scaleY = 0.40f },
+                    contentAlignment = Alignment.Center
+                ) {
+                    when (style) {
+                        AbxyPreviewStyle.REALISTIC_3D -> ControllerElementRenderer("Y", isConnected = false, isRgbEnabled = true, viewModel = dummyViewModel)
+                        AbxyPreviewStyle.SCIFI_HEX -> ControllerElementRenderer("Y", isConnected = false, isRgbEnabled = true, viewModel = dummyViewModel, customComponentId = "builtin.scifi_hex_y")
+                        AbxyPreviewStyle.CYBER_OCTA -> ControllerElementRenderer("Y", isConnected = false, isRgbEnabled = true, viewModel = dummyViewModel, customComponentId = "builtin.cyber_octa_y")
+                        AbxyPreviewStyle.GAMEPAD_BUTTON -> GamepadButton("Y", isConnected = false, onVibrate = {}, viewModel = dummyViewModel)
                     }
                 }
             }
-            AbxyPreviewStyle.CYBER_OCTA -> {
-                // Cyber Octa Y, X, B, A
-                Box(modifier = Modifier.size(86.dp)) {
-                    Box(modifier = Modifier.align(Alignment.TopCenter).graphicsLayer { scaleX = 0.48f; scaleY = 0.48f }) {
-                        ControllerElementRenderer("Y", isConnected = false, isRgbEnabled = true, viewModel = dummyViewModel, customComponentId = "builtin.cyber_octa_y")
-                    }
-                    Box(modifier = Modifier.align(Alignment.CenterStart).graphicsLayer { scaleX = 0.48f; scaleY = 0.48f }) {
-                        ControllerElementRenderer("X", isConnected = false, isRgbEnabled = true, viewModel = dummyViewModel, customComponentId = "builtin.cyber_octa_x")
-                    }
-                    Box(modifier = Modifier.align(Alignment.CenterEnd).graphicsLayer { scaleX = 0.48f; scaleY = 0.48f }) {
-                        ControllerElementRenderer("B", isConnected = false, isRgbEnabled = true, viewModel = dummyViewModel, customComponentId = "builtin.cyber_octa_b")
-                    }
-                    Box(modifier = Modifier.align(Alignment.BottomCenter).graphicsLayer { scaleX = 0.48f; scaleY = 0.48f }) {
-                        ControllerElementRenderer("A", isConnected = false, isRgbEnabled = true, viewModel = dummyViewModel, customComponentId = "builtin.cyber_octa_a")
+
+            // X at Left
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .size(34.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .requiredSize(80.dp)
+                        .graphicsLayer { scaleX = 0.40f; scaleY = 0.40f },
+                    contentAlignment = Alignment.Center
+                ) {
+                    when (style) {
+                        AbxyPreviewStyle.REALISTIC_3D -> ControllerElementRenderer("X", isConnected = false, isRgbEnabled = true, viewModel = dummyViewModel)
+                        AbxyPreviewStyle.SCIFI_HEX -> ControllerElementRenderer("X", isConnected = false, isRgbEnabled = true, viewModel = dummyViewModel, customComponentId = "builtin.scifi_hex_x")
+                        AbxyPreviewStyle.CYBER_OCTA -> ControllerElementRenderer("X", isConnected = false, isRgbEnabled = true, viewModel = dummyViewModel, customComponentId = "builtin.cyber_octa_x")
+                        AbxyPreviewStyle.GAMEPAD_BUTTON -> GamepadButton("X", isConnected = false, onVibrate = {}, viewModel = dummyViewModel)
                     }
                 }
             }
-            AbxyPreviewStyle.GAMEPAD_BUTTON -> {
-                // Minimal Flat GamepadButton from GamepadButton.kt / ABXYLayout.kt
-                Box(modifier = Modifier.size(86.dp)) {
-                    Box(modifier = Modifier.align(Alignment.TopCenter).graphicsLayer { scaleX = 0.46f; scaleY = 0.46f }) {
-                        GamepadButton("Y", isConnected = false, onVibrate = {}, viewModel = dummyViewModel)
+
+            // B at Right
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .size(34.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .requiredSize(80.dp)
+                        .graphicsLayer { scaleX = 0.40f; scaleY = 0.40f },
+                    contentAlignment = Alignment.Center
+                ) {
+                    when (style) {
+                        AbxyPreviewStyle.REALISTIC_3D -> ControllerElementRenderer("B", isConnected = false, isRgbEnabled = true, viewModel = dummyViewModel)
+                        AbxyPreviewStyle.SCIFI_HEX -> ControllerElementRenderer("B", isConnected = false, isRgbEnabled = true, viewModel = dummyViewModel, customComponentId = "builtin.scifi_hex_b")
+                        AbxyPreviewStyle.CYBER_OCTA -> ControllerElementRenderer("B", isConnected = false, isRgbEnabled = true, viewModel = dummyViewModel, customComponentId = "builtin.cyber_octa_b")
+                        AbxyPreviewStyle.GAMEPAD_BUTTON -> GamepadButton("B", isConnected = false, onVibrate = {}, viewModel = dummyViewModel)
                     }
-                    Box(modifier = Modifier.align(Alignment.CenterStart).graphicsLayer { scaleX = 0.46f; scaleY = 0.46f }) {
-                        GamepadButton("X", isConnected = false, onVibrate = {}, viewModel = dummyViewModel)
-                    }
-                    Box(modifier = Modifier.align(Alignment.CenterEnd).graphicsLayer { scaleX = 0.46f; scaleY = 0.46f }) {
-                        GamepadButton("B", isConnected = false, onVibrate = {}, viewModel = dummyViewModel)
-                    }
-                    Box(modifier = Modifier.align(Alignment.BottomCenter).graphicsLayer { scaleX = 0.46f; scaleY = 0.46f }) {
-                        GamepadButton("A", isConnected = false, onVibrate = {}, viewModel = dummyViewModel)
+                }
+            }
+
+            // A at Bottom
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .size(34.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .requiredSize(80.dp)
+                        .graphicsLayer { scaleX = 0.40f; scaleY = 0.40f },
+                    contentAlignment = Alignment.Center
+                ) {
+                    when (style) {
+                        AbxyPreviewStyle.REALISTIC_3D -> ControllerElementRenderer("A", isConnected = false, isRgbEnabled = true, viewModel = dummyViewModel)
+                        AbxyPreviewStyle.SCIFI_HEX -> ControllerElementRenderer("A", isConnected = false, isRgbEnabled = true, viewModel = dummyViewModel, customComponentId = "builtin.scifi_hex_a")
+                        AbxyPreviewStyle.CYBER_OCTA -> ControllerElementRenderer("A", isConnected = false, isRgbEnabled = true, viewModel = dummyViewModel, customComponentId = "builtin.cyber_octa_a")
+                        AbxyPreviewStyle.GAMEPAD_BUTTON -> GamepadButton("A", isConnected = false, onVibrate = {}, viewModel = dummyViewModel)
                     }
                 }
             }
@@ -119,15 +143,17 @@ fun AbxyDiamondPreview(
 
 /**
  * Cohesive 4-Button ABXY Diamond Group Card.
- * Represents ABXY as one unified cluster theme (no individual buttons).
+ * Represents ABXY as one unified cluster theme.
  */
 @Composable
 fun AbxyDiamondGroupCard(
     theme: AbxyGroupTheme,
     mode: ButtonStudioMode,
     isSelected: Boolean,
+    isAppliedToActiveProfile: Boolean = false,
     dummyViewModel: GamepadViewModel,
     onSelectGroup: () -> Unit,
+    onApplyToProfile: () -> Unit = {},
     onUseInHud: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -147,7 +173,7 @@ fun AbxyDiamondGroupCard(
                 .fillMaxWidth()
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             // Left: Diamond Cluster Preview
             AbxyDiamondPreview(
@@ -158,7 +184,7 @@ fun AbxyDiamondGroupCard(
             // Right: Information & Action Button
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                verticalArrangement = Arrangement.spacedBy(5.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -167,8 +193,13 @@ fun AbxyDiamondGroupCard(
                 ) {
                     Text(
                         theme.name,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = Color.White)
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = Color.White),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
+
+                    Spacer(Modifier.width(6.dp))
 
                     // Type Badge
                     Surface(
@@ -187,7 +218,7 @@ fun AbxyDiamondGroupCard(
                 }
 
                 Text(
-                    text = "4-Button Unified Cluster • Y (Top), X (Left), B (Right), A (Bottom)",
+                    text = "4-Button Unified Cluster • Y, X, B, A",
                     color = NeonPalette.Cyan,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.SemiBold
@@ -197,7 +228,7 @@ fun AbxyDiamondGroupCard(
                     theme.description,
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 15.sp,
+                    lineHeight = 14.sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -209,7 +240,7 @@ fun AbxyDiamondGroupCard(
                             containerColor = if (isSelected) NeonPalette.Cyan else Color.White.copy(alpha = 0.12f)
                         ),
                         shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                         modifier = Modifier.height(32.dp)
                     ) {
                         Icon(
@@ -227,16 +258,47 @@ fun AbxyDiamondGroupCard(
                         )
                     }
                 } else {
-                    Button(
-                        onClick = onUseInHud,
-                        colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                        modifier = Modifier.height(32.dp)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Rounded.DashboardCustomize, contentDescription = null, tint = Color.Black, modifier = Modifier.size(14.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Use All 4 in HUD", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        // Apply to Profile button (stays in studio)
+                        Button(
+                            onClick = onApplyToProfile,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isAppliedToActiveProfile) NeonPalette.Cyan.copy(alpha = 0.25f) else NeonPalette.Cyan
+                            ),
+                            border = if (isAppliedToActiveProfile) androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan) else null,
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Icon(
+                                if (isAppliedToActiveProfile) Icons.Rounded.Check else Icons.Rounded.DashboardCustomize,
+                                contentDescription = null,
+                                tint = if (isAppliedToActiveProfile) NeonPalette.Cyan else Color.Black,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                if (isAppliedToActiveProfile) "Active on Profile" else "Apply 4 to Profile",
+                                color = if (isAppliedToActiveProfile) NeonPalette.Cyan else Color.Black,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        // Use in HUD button (navigates to editor)
+                        OutlinedButton(
+                            onClick = onUseInHud,
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Text("Open in HUD ➔", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                        }
                     }
                 }
             }

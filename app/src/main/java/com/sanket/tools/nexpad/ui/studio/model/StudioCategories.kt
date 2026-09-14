@@ -47,25 +47,33 @@ fun CategorySymbol.asImageVector(fillColor: Color = Color.White): ImageVector {
 }
 
 fun CategoryDefinition.toStudioCategory(): StudioCategory {
-    val filters = if (isGroupCluster) {
-        emptyList()
-    } else {
-        val allFilter = StudioSubFilter("ALL", "All $title", null)
-        val controlFilters = controls.map { ctrl ->
+    val filterList = mutableListOf<StudioSubFilter>()
+    filterList.add(StudioSubFilter("ALL", "All $title", null))
+    if (isGroupCluster) {
+        val groupLabel = when (id) {
+            "ABXY" -> "💠 Cluster (ABXY)"
+            "TRIGGERS" -> "💠 Dual Triggers"
+            "BUMPERS" -> "💠 Dual Bumpers"
+            "STICKS" -> "💠 Dual Sticks"
+            else -> "💠 Group Themes"
+        }
+        filterList.add(StudioSubFilter("GROUP_THEMES", groupLabel, "GROUP_THEMES"))
+    }
+    controls.forEach { ctrl ->
+        filterList.add(
             StudioSubFilter(
                 id = ctrl.key,
                 label = if (ctrl.emoji.isNotBlank()) "${ctrl.emoji} ${ctrl.label}" else ctrl.label,
                 targetKey = ctrl.key
             )
-        }
-        listOf(allFilter) + controlFilters
+        )
     }
     return StudioCategory(
         id = id,
         title = title,
         icon = symbol.asImageVector(),
         keys = keys,
-        subFilters = filters
+        subFilters = filterList
     )
 }
 
