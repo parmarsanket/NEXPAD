@@ -250,6 +250,24 @@ class AoaAccessoryConnection(private val context: Context) : IGamepadConnection 
 
             var offset = 0
             while (offset < bytesRead) {
+                // If waiting for a new packet and detected 0xAF (FILE_SYNC_START)
+                if (rxAccumulated == 0 && rxChunkBuffer[offset] == NexpadProtocol.PACKET_TYPE_FILE_SYNC_START) {
+                    val syncResult = NxprcSyncReceiver.receiveFromStream(
+                        context = context,
+                        input = stream,
+                        initialBuffer = rxChunkBuffer,
+                        initialOffset = offset,
+                        initialLength = bytesRead - offset
+                    )
+                    if (syncResult.isSuccess) {
+                        Log.i(TAG, "⚡ [AOA] Installed & hot-reloaded plugin: ${syncResult.getOrNull()}")
+                    } else {
+                        Log.w(TAG, "⚠️ [AOA] Failed to sync plugin: ${syncResult.exceptionOrNull()?.message}")
+                    }
+                    rxAccumulated = 0
+                    break // Remaining bytes in rxChunkBuffer were consumed by receiveFromStream
+                }
+
                 val needed = FEEDBACK_PACKET_SIZE - rxAccumulated
                 val toCopy = minOf(needed, bytesRead - offset)
                 System.arraycopy(rxChunkBuffer, offset, rxAccumulator, rxAccumulated, toCopy)

@@ -6,6 +6,7 @@ import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpad.network.IGamepadConnection
 import com.sanket.tools.nexpad.network.NetworkClient
 import com.sanket.tools.nexpad.network.AoaAccessoryConnection
+import com.sanket.tools.nexpad.network.NxprcSyncServer
 import kotlinx.coroutines.CoroutineScope
 import android.net.wifi.WifiManager
 import android.os.PowerManager
@@ -67,6 +68,11 @@ class GamepadNetworkManager(
     private val inputState: GamepadInput
 ) {
     private var connection: IGamepadConnection = NetworkClient()
+    private val syncServer = NxprcSyncServer(context)
+
+    init {
+        syncServer.start(scope)
+    }
     
     private fun isUsbDebuggingEnabled(): Boolean {
         return try {

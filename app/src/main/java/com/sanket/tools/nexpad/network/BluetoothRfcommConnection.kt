@@ -291,6 +291,24 @@ class BluetoothRfcommConnection(private val context: Context) : IGamepadConnecti
 
                 var offset = 0
                 while (offset < bytesRead) {
+                    // If waiting for a new packet and detected 0xAF (FILE_SYNC_START)
+                    if (rxAccumulated == 0 && rxChunkBuffer[offset] == NexpadProtocol.PACKET_TYPE_FILE_SYNC_START) {
+                        val syncResult = NxprcSyncReceiver.receiveFromStream(
+                            context = context,
+                            input = input,
+                            initialBuffer = rxChunkBuffer,
+                            initialOffset = offset,
+                            initialLength = bytesRead - offset
+                        )
+                        if (syncResult.isSuccess) {
+                            Log.i(TAG, "⚡ [Bluetooth] Installed & hot-reloaded plugin: ${syncResult.getOrNull()}")
+                        } else {
+                            Log.w(TAG, "⚠️ [Bluetooth] Failed to sync plugin: ${syncResult.exceptionOrNull()?.message}")
+                        }
+                        rxAccumulated = 0
+                        break // Remaining bytes in rxChunkBuffer were consumed by receiveFromStream
+                    }
+
                     val needed = FEEDBACK_PACKET_SIZE - rxAccumulated
                     val available = bytesRead - offset
                     val toCopy = if (available < needed) available else needed
