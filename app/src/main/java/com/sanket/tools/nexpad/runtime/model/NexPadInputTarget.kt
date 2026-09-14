@@ -15,6 +15,17 @@ interface NexPadInputTarget {
 }
 
 /**
+ * Zero-allocation no-op target for static previews and offline testing.
+ */
+object NoOpInputTarget : NexPadInputTarget {
+    override fun onButtonPress(control: NexPadControl.Button) {}
+    override fun onButtonRelease(control: NexPadControl.Button) {}
+    override fun onStickMove(stick: NexPadControl.Stick, normX: Float, normY: Float) {}
+    override fun onTriggerMove(trigger: NexPadControl.Trigger, pressure: Float) {}
+    override fun triggerHaptic(type: String) {}
+}
+
+/**
  * Connects any NexPadInputTarget call directly into the real-time GamepadViewModel pipeline.
  */
 fun GamepadViewModel.asInputTarget(onVibrate: () -> Unit = {}): NexPadInputTarget {

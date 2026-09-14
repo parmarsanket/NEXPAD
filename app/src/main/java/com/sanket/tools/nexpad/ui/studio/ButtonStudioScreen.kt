@@ -26,7 +26,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.model.Position
@@ -40,7 +39,6 @@ import com.sanket.tools.nexpad.ui.studio.components.*
 import com.sanket.tools.nexpad.ui.studio.model.*
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.utils.LayoutManager
-import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
 /**
  * Modern, high-performance Button Studio Screen.
@@ -59,7 +57,6 @@ fun ButtonStudioScreen(
     val clipboard = LocalClipboard.current
     val registry = remember { ComponentRegistry.getInstance(context) }
     val components by registry.installedComponents.collectAsState()
-    val dummyViewModel = viewModel<GamepadViewModel>()
 
     // Current Studio Mode (MANAGE vs SELECTION)
     var currentMode by remember { mutableStateOf(initialMode) }
@@ -419,7 +416,6 @@ fun ButtonStudioScreen(
                                 mode = currentMode,
                                 isSelectedInBuilder = isControlActive && isSkinSelected,
                                 isAppliedToActiveProfile = isAppliedToProfile,
-                                dummyViewModel = dummyViewModel,
                                 onToggleSelectInBuilder = {
                                     if (isControlActive && isSkinSelected) {
                                         activeControls[targetKey] = false

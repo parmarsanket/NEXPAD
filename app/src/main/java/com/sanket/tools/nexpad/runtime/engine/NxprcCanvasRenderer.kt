@@ -124,28 +124,33 @@ fun NxprcCanvasRenderer(
     inputTarget: NexPadInputTarget,
     modifier: Modifier = Modifier,
     overrideSizeDp: Int? = null,
-    rumbleIntensity: Float = 0f
+    rumbleIntensity: Float = 0f,
+    isInteractive: Boolean = true
 ) {
     var isPressed by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    val scaleAnim by animateFloatAsState(
-        targetValue = if (isPressed) document.animations.pressScale else 1f,
-        animationSpec = spring(
-            dampingRatio = document.animations.springDamping,
-            stiffness = document.animations.springStiffness
-        ),
-        label = "nxprc_scale"
-    )
+    val scaleAnim = if (isInteractive) {
+        animateFloatAsState(
+            targetValue = if (isPressed) document.animations.pressScale else 1f,
+            animationSpec = spring(
+                dampingRatio = document.animations.springDamping,
+                stiffness = document.animations.springStiffness
+            ),
+            label = "nxprc_scale"
+        ).value
+    } else 1f
 
-    val pressOffsetYAnim by animateFloatAsState(
-        targetValue = if (isPressed) document.animations.pressOffsetY else 0f,
-        animationSpec = spring(
-            dampingRatio = document.animations.springDamping,
-            stiffness = document.animations.springStiffness
-        ),
-        label = "nxprc_press_y"
-    )
+    val pressOffsetYAnim = if (isInteractive) {
+        animateFloatAsState(
+            targetValue = if (isPressed) document.animations.pressOffsetY else 0f,
+            animationSpec = spring(
+                dampingRatio = document.animations.springDamping,
+                stiffness = document.animations.springStiffness
+            ),
+            label = "nxprc_press_y"
+        ).value
+    } else 0f
 
     val density = androidx.compose.ui.platform.LocalDensity.current.density
 
@@ -161,12 +166,15 @@ fun NxprcCanvasRenderer(
     val trigger = assignedControl as? NexPadControl.Trigger
     val pullProgress = remember { androidx.compose.animation.core.Animatable(0f) }
 
-    val needsPulse = document.animations.idleType == "PULSE"
-    val needsRotation = document.animations.idleType == "ROTATE"
-    val needsRgbCycle = document.animations.idleType == "RGB_CYCLE"
-    val infiniteTransition = rememberInfiniteTransition(label = "nxprc_idle")
+    val needsPulse = isInteractive && document.animations.idleType == "PULSE"
+    val needsRotation = isInteractive && document.animations.idleType == "ROTATE"
+    val needsRgbCycle = isInteractive && document.animations.idleType == "RGB_CYCLE"
 
-    val pulseAlpha = if (needsPulse) {
+    val infiniteTransition = if (isInteractive && (needsPulse || needsRotation || needsRgbCycle || document.animations.tracks.isNotEmpty() || (rumbleIntensity > 0f && document.animations.enableGameRumble))) {
+        rememberInfiniteTransition(label = "nxprc_idle")
+    } else null
+
+    val pulseAlpha = if (needsPulse && infiniteTransition != null) {
         infiniteTransition.animateFloat(
             initialValue = 0.4f,
             targetValue = 1.0f,
@@ -178,7 +186,7 @@ fun NxprcCanvasRenderer(
         ).value
     } else 0.8f
 
-    val rotateAngle = if (needsRotation) {
+    val rotateAngle = if (needsRotation && infiniteTransition != null) {
         infiniteTransition.animateFloat(
             initialValue = 0f,
             targetValue = 360f,
@@ -190,7 +198,7 @@ fun NxprcCanvasRenderer(
         ).value
     } else 0f
 
-    val rgbHueAngle = if (needsRgbCycle) {
+    val rgbHueAngle = if (needsRgbCycle && infiniteTransition != null) {
         infiniteTransition.animateFloat(
             initialValue = 0f,
             targetValue = 360f,
@@ -203,10 +211,10 @@ fun NxprcCanvasRenderer(
     } else 0f
 
     // Dynamic Universal Timeline Track Sampling
-    val hasDynamicTracks = document.animations.tracks.isNotEmpty()
+    val hasDynamicTracks = isInteractive && document.animations.tracks.isNotEmpty()
     val trackDurationMs = document.animations.tracks.firstOrNull()?.durationMs ?: document.animations.idleDurationMs
 
-    val timelineProgress = if (hasDynamicTracks) {
+    val timelineProgress = if (hasDynamicTracks && infiniteTransition != null) {
         infiniteTransition.animateFloat(
             initialValue = 0f,
             targetValue = 1f,
@@ -248,8 +256,8 @@ fun NxprcCanvasRenderer(
             ?.let { evaluateAnimationTrack(it, timelineProgress) } ?: 0f
     } else 0f
 
-    val rumbleActive = rumbleIntensity > 0f && document.animations.enableGameRumble
-    val rumblePhase = if (rumbleActive) {
+    val rumbleActive = isInteractive && rumbleIntensity > 0f && document.animations.enableGameRumble
+    val rumblePhase = if (rumbleActive && infiniteTransition != null) {
         infiniteTransition.animateFloat(
             initialValue = 0f,
             targetValue = 6.28318f,
@@ -279,7 +287,9 @@ fun NxprcCanvasRenderer(
             (document.manifest.category.equals("DPAD", ignoreCase = true) && assignedControl is NexPadControl.Button && assignedControl.key.equals("DPAD", ignoreCase = true)) ||
             (document.manifest.id.contains("dpad_cross", ignoreCase = true))
 
-    val gestureModifier = when {
+    val gestureModifier = if (!isInteractive) {
+        Modifier
+    } else when {
         isStick && stick != null -> {
             Modifier.pointerInput(document.manifest.id, assignedControl) {
                 awaitEachGesture {

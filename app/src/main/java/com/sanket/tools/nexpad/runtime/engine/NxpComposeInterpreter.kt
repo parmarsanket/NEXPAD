@@ -55,7 +55,8 @@ fun NxpComposeInterpreter(
     assignedControl: NexPadControl,
     isConnected: Boolean,
     inputTarget: NexPadInputTarget,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isInteractive: Boolean = true
 ) {
     val isDpadCross = definition.manifest.defaultControl.equals("DPAD", ignoreCase = true) ||
             (definition.manifest.category.equals("DPAD", ignoreCase = true) && definition.size.widthDp >= 100) ||
@@ -64,11 +65,11 @@ fun NxpComposeInterpreter(
     if (definition.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
         definition.interaction.type.equals("Joystick", ignoreCase = true)
     ) {
-        RenderNxpJoystick(definition, assignedControl, isConnected, inputTarget, modifier)
+        RenderNxpJoystick(definition, assignedControl, isConnected, inputTarget, modifier, isInteractive)
     } else if (isDpadCross) {
-        RenderNxpDPad(definition, isConnected, inputTarget, modifier)
+        RenderNxpDPad(definition, isConnected, inputTarget, modifier, isInteractive)
     } else {
-        RenderNxpButton(definition, assignedControl, isConnected, inputTarget, modifier)
+        RenderNxpButton(definition, assignedControl, isConnected, inputTarget, modifier, isInteractive)
     }
 }
 
@@ -78,7 +79,8 @@ private fun RenderNxpButton(
     control: NexPadControl,
     isConnected: Boolean,
     inputTarget: NexPadInputTarget,
-    modifier: Modifier
+    modifier: Modifier,
+    isInteractive: Boolean = true
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
@@ -86,23 +88,27 @@ private fun RenderNxpButton(
     val targetScale = if (isPressed) (pressedState?.scale ?: 0.9f) else 1.0f
     val targetRotation = if (isPressed) (pressedState?.rotation ?: 0f) else 0f
 
-    val scaleAnim by animateFloatAsState(
-        targetValue = targetScale,
-        animationSpec = spring(
-            dampingRatio = pressedState?.springDamping ?: 0.6f,
-            stiffness = pressedState?.springStiffness ?: 800f
-        ),
-        label = "nxp_scale"
-    )
+    val scaleAnim = if (isInteractive) {
+        animateFloatAsState(
+            targetValue = targetScale,
+            animationSpec = spring(
+                dampingRatio = pressedState?.springDamping ?: 0.6f,
+                stiffness = pressedState?.springStiffness ?: 800f
+            ),
+            label = "nxp_scale"
+        ).value
+    } else 1.0f
 
-    val rotationAnim by animateFloatAsState(
-        targetValue = targetRotation,
-        animationSpec = spring(
-            dampingRatio = pressedState?.springDamping ?: 0.6f,
-            stiffness = pressedState?.springStiffness ?: 800f
-        ),
-        label = "nxp_rotation"
-    )
+    val rotationAnim = if (isInteractive) {
+        animateFloatAsState(
+            targetValue = targetRotation,
+            animationSpec = spring(
+                dampingRatio = pressedState?.springDamping ?: 0.6f,
+                stiffness = pressedState?.springStiffness ?: 800f
+            ),
+            label = "nxp_rotation"
+        ).value
+    } else 0f
 
     val fillColor = parseHexColor(
         if (isPressed && pressedState?.fillColor != null) pressedState.fillColor else def.visual.fillColor,
@@ -118,6 +124,22 @@ private fun RenderNxpButton(
         ?: (if (control is NexPadControl.DPad) NexPadControl.Button(control.direction) else null)
         ?: NexPadControl.Button(def.manifest.defaultControl)
 
+    val gestureModifier = if (!isInteractive) {
+        Modifier
+    } else {
+        Modifier.pointerInput(isConnected, buttonControl) {
+            detectTapGestures(
+                onPress = {
+                    isPressed = true
+                    inputTarget.onButtonPress(buttonControl)
+                    tryAwaitRelease()
+                    isPressed = false
+                    inputTarget.onButtonRelease(buttonControl)
+                }
+            )
+        }
+    }
+
     Box(
         modifier = modifier
             .size(def.size.widthDp.dp, def.size.heightDp.dp)
@@ -126,17 +148,7 @@ private fun RenderNxpButton(
                 scaleY = scaleAnim
                 rotationZ = rotationAnim
             }
-            .pointerInput(isConnected, buttonControl) {
-                detectTapGestures(
-                    onPress = {
-                        isPressed = true
-                        inputTarget.onButtonPress(buttonControl)
-                        tryAwaitRelease()
-                        isPressed = false
-                        inputTarget.onButtonRelease(buttonControl)
-                    }
-                )
-            },
+            .then(gestureModifier),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
@@ -183,7 +195,8 @@ private fun RenderNxpDPad(
     def: NxpComponentDef,
     isConnected: Boolean,
     inputTarget: NexPadInputTarget,
-    modifier: Modifier
+    modifier: Modifier,
+    isInteractive: Boolean = true
 ) {
     var pressedDirections by remember { mutableStateOf<Set<String>>(emptySet()) }
 
@@ -193,11 +206,11 @@ private fun RenderNxpDPad(
 
     val sizeDp = def.size.widthDp.coerceAtLeast(140).dp
 
-    Box(
-        modifier = modifier
-            .size(sizeDp)
-            .pointerInput(isConnected, inputTarget) {
-                awaitEachGesture {
+    val gestureModifier = if (!isInteractive) {
+        Modifier
+    } else {
+        Modifier.pointerInput(isConnected, inputTarget) {
+            awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     down.consume()
                     var activeDirs = emptySet<String>()
@@ -256,7 +269,13 @@ private fun RenderNxpDPad(
                         pressedDirections = emptySet()
                     }
                 }
-            },
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .size(sizeDp)
+            .then(gestureModifier),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
@@ -407,7 +426,8 @@ private fun RenderNxpJoystick(
     control: NexPadControl,
     isConnected: Boolean,
     inputTarget: NexPadInputTarget,
-    modifier: Modifier
+    modifier: Modifier,
+    isInteractive: Boolean = true
 ) {
     var thumbOffset by remember { mutableStateOf(Offset.Zero) }
     val baseSizePx = remember(def.size.widthDp) { def.size.widthDp * 2.5f }
@@ -420,36 +440,42 @@ private fun RenderNxpJoystick(
     val ringColor = parseHexColor(def.visual.borderColor, Color(0xFF00F0FF))
     val thumbColor = parseHexColor(def.pressed?.fillColor ?: def.visual.borderColor, Color(0xFF00F0FF))
 
+    val gestureModifier = if (!isInteractive) {
+        Modifier
+    } else {
+        Modifier.pointerInput(isConnected, stickControl) {
+            detectDragGestures(
+                onDragStart = {},
+                onDragEnd = {
+                    thumbOffset = Offset.Zero
+                    inputTarget.onStickMove(stickControl, 0f, 0f)
+                },
+                onDragCancel = {
+                    thumbOffset = Offset.Zero
+                    inputTarget.onStickMove(stickControl, 0f, 0f)
+                },
+                onDrag = { change, dragAmount ->
+                    change.consume()
+                    val newOffset = thumbOffset + dragAmount
+                    val distance = sqrt(newOffset.x * newOffset.x + newOffset.y * newOffset.y)
+                    val clamped = if (distance > maxRadiusPx) {
+                        Offset(newOffset.x / distance * maxRadiusPx, newOffset.y / distance * maxRadiusPx)
+                    } else newOffset
+                    thumbOffset = clamped
+
+                    val normX = (clamped.x / maxRadiusPx).coerceIn(-1.0f, 1.0f)
+                    val normY = (-clamped.y / maxRadiusPx).coerceIn(-1.0f, 1.0f)
+
+                    inputTarget.onStickMove(stickControl, normX, normY)
+                }
+            )
+        }
+    }
+
     Box(
         modifier = modifier
             .size(def.size.widthDp.dp, def.size.heightDp.dp)
-            .pointerInput(isConnected, stickControl) {
-                detectDragGestures(
-                    onDragStart = {},
-                    onDragEnd = {
-                        thumbOffset = Offset.Zero
-                        inputTarget.onStickMove(stickControl, 0f, 0f)
-                    },
-                    onDragCancel = {
-                        thumbOffset = Offset.Zero
-                        inputTarget.onStickMove(stickControl, 0f, 0f)
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        val newOffset = thumbOffset + dragAmount
-                        val distance = sqrt(newOffset.x * newOffset.x + newOffset.y * newOffset.y)
-                        val clamped = if (distance > maxRadiusPx) {
-                            Offset(newOffset.x / distance * maxRadiusPx, newOffset.y / distance * maxRadiusPx)
-                        } else newOffset
-                        thumbOffset = clamped
-
-                        val normX = (clamped.x / maxRadiusPx).coerceIn(-1.0f, 1.0f)
-                        val normY = (-clamped.y / maxRadiusPx).coerceIn(-1.0f, 1.0f)
-
-                        inputTarget.onStickMove(stickControl, normX, normY)
-                    }
-                )
-            },
+            .then(gestureModifier),
         contentAlignment = Alignment.Center
     ) {
         // Base plate canvas

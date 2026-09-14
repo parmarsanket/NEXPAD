@@ -21,18 +21,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.clickable
 import com.sanket.tools.nexpad.runtime.engine.NxprcCanvasRenderer
 import com.sanket.tools.nexpad.runtime.engine.NxpComposeInterpreter
 import com.sanket.tools.nexpad.runtime.model.NexPadControl
+import com.sanket.tools.nexpad.runtime.model.NoOpInputTarget
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
-import com.sanket.tools.nexpad.runtime.model.SandboxInputTarget
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
-import com.sanket.tools.nexpad.ui.components.controller.ControllerElementRenderer
 import com.sanket.tools.nexpad.ui.studio.model.ButtonStudioMode
 import com.sanket.tools.nexpad.ui.studio.model.ButtonStudioType
 import com.sanket.tools.nexpad.ui.studio.model.resolveButtonSourceType
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
-import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
 /**
  * Grid Card displaying button preview with Dual Mode behavior for individual controls.
@@ -43,7 +42,6 @@ fun StudioGridCard(
     mode: ButtonStudioMode,
     isSelectedInBuilder: Boolean,
     isAppliedToActiveProfile: Boolean = false,
-    dummyViewModel: GamepadViewModel,
     onToggleSelectInBuilder: () -> Unit,
     onApplyToProfile: () -> Unit = {},
     onUseInHud: () -> Unit,
@@ -55,7 +53,6 @@ fun StudioGridCard(
     val context = LocalContext.current
     val isBuiltIn = def.manifest.id.startsWith("builtin.")
     val type = remember(def.manifest.id) { resolveButtonSourceType(def) }
-    val dummyTarget = remember { SandboxInputTarget() }
 
     val borderColor = if (mode == ButtonStudioMode.SELECTION && isSelectedInBuilder) NeonPalette.Cyan else Color.White.copy(alpha = 0.10f)
     val borderWidth = if (mode == ButtonStudioMode.SELECTION && isSelectedInBuilder) 2.dp else 1.dp
@@ -108,14 +105,15 @@ fun StudioGridCard(
                 }
             }
 
-            // Interactive Live Preview Stage
+            // Static Zero-Overhead Preview Stage (Tapping opens interactive test sandbox)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(90.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(Color(0xFF040810))
-                    .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(10.dp)),
+                    .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(10.dp))
+                    .clickable { onTest() },
                 contentAlignment = Alignment.Center
             ) {
                 val controlKey = def.manifest.defaultControl.uppercase()
@@ -130,20 +128,10 @@ fun StudioGridCard(
                     contentAlignment = Alignment.Center
                 ) {
                     if (type == ButtonStudioType.DEFAULT) {
-                        ControllerElementRenderer(
-                            key = controlKey,
-                            isConnected = false,
-                            isRgbEnabled = true,
-                            viewModel = dummyViewModel,
-                            onVibrate = {},
-                            customComponentId = null
-                        )
+                        StaticDefaultButtonPreview(controlKey = controlKey)
                     } else if (type == ButtonStudioType.REMOTE_COMPOSE) {
                         val remoteRegistry = remember { RemoteComponentRegistry.getInstance(context) }
-                        val loadedDocs by remoteRegistry.loadedComponents.collectAsState()
-                        val doc = remember(def.manifest.id, loadedDocs) {
-                            remoteRegistry.getComponent(def.manifest.id)
-                        }
+                        val doc = remember(def.manifest.id) { remoteRegistry.getComponent(def.manifest.id) }
                         if (doc != null) {
                             val targetControl = when {
                                 controlKey.equals("LS", ignoreCase = true) || controlKey.equals("L3", ignoreCase = true) -> NexPadControl.Stick(isLeft = true)
@@ -159,7 +147,8 @@ fun StudioGridCard(
                                 document = doc,
                                 assignedControl = targetControl,
                                 isConnected = false,
-                                inputTarget = dummyTarget
+                                inputTarget = NoOpInputTarget,
+                                isInteractive = false
                             )
                         } else {
                             val control = when {
@@ -174,7 +163,8 @@ fun StudioGridCard(
                                 definition = def,
                                 assignedControl = control,
                                 isConnected = false,
-                                inputTarget = dummyTarget
+                                inputTarget = NoOpInputTarget,
+                                isInteractive = false
                             )
                         }
                     } else {
@@ -190,7 +180,8 @@ fun StudioGridCard(
                             definition = def,
                             assignedControl = control,
                             isConnected = false,
-                            inputTarget = dummyTarget
+                            inputTarget = NoOpInputTarget,
+                            isInteractive = false
                         )
                     }
                 }
