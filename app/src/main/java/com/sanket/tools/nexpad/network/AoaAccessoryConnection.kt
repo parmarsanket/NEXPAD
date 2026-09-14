@@ -260,12 +260,15 @@ class AoaAccessoryConnection(private val context: Context) : IGamepadConnection 
                         initialLength = bytesRead - offset
                     )
                     if (syncResult.isSuccess) {
-                        Log.i(TAG, "⚡ [AOA] Installed & hot-reloaded plugin: ${syncResult.getOrNull()}")
+                        val res = syncResult.getOrNull()
+                        Log.i(TAG, "⚡ [AOA] Installed & hot-reloaded plugin: ${res?.componentId}")
+                        offset += (res?.bytesConsumedFromInitial ?: (bytesRead - offset))
                     } else {
                         Log.w(TAG, "⚠️ [AOA] Failed to sync plugin: ${syncResult.exceptionOrNull()?.message}")
+                        offset = bytesRead // discard unparseable burst to re-sync
                     }
                     rxAccumulated = 0
-                    break // Remaining bytes in rxChunkBuffer were consumed by receiveFromStream
+                    continue
                 }
 
                 val needed = FEEDBACK_PACKET_SIZE - rxAccumulated

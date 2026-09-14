@@ -57,7 +57,7 @@ class NxprcSyncServer(private val context: Context) {
                             if (result.isSuccess) {
                                 output.write(NexpadProtocol.FILE_SYNC_ACK.toInt())
                                 output.flush()
-                                Log.i(TAG, "✅ Synced '${result.getOrNull()}' successfully over TCP sidecar")
+                                Log.i(TAG, "✅ Synced '${result.getOrNull()?.componentId}' successfully over TCP sidecar")
                             } else {
                                 output.write(NexpadProtocol.FILE_SYNC_NACK.toInt())
                                 output.flush()
