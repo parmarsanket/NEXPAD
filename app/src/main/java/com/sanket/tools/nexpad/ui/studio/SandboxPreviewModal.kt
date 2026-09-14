@@ -27,7 +27,10 @@ import com.sanket.tools.nexpad.runtime.model.NexPadControl
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
 import com.sanket.tools.nexpad.runtime.model.SandboxInputTarget
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
+import com.sanket.tools.nexpad.ui.components.controller.ControllerElementRenderer
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
+import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun SandboxPreviewModal(
@@ -114,21 +117,59 @@ fun SandboxPreviewModal(
                     contentAlignment = Alignment.Center
                 ) {
                     val context = LocalContext.current
+                    val testViewModel = viewModel<GamepadViewModel>()
+                    val isDefaultNative = componentDef.manifest.id.startsWith("builtin.default_")
                     val isRemote = componentDef.manifest.id.startsWith("rc.")
                     val remoteDoc = remember(componentDef.manifest.id) {
                         if (isRemote) RemoteComponentRegistry.getInstance(context).getComponent(componentDef.manifest.id) else null
                     }
 
-                    val control = when {
-                        componentDef.manifest.category.equals("JOYSTICK", ignoreCase = true) ->
-                            NexPadControl.Stick(isLeft = !componentDef.manifest.defaultControl.contains("R", ignoreCase = true))
-                        componentDef.manifest.category.equals("TRIGGER", ignoreCase = true) ->
-                            NexPadControl.Trigger(key = componentDef.manifest.defaultControl)
-                        else ->
-                            NexPadControl.Button(componentDef.manifest.defaultControl)
+                    val controlKey = componentDef.manifest.defaultControl.uppercase()
+
+                    LaunchedEffect(componentDef.manifest.id) {
+                        while (true) {
+                            kotlinx.coroutines.delay(60)
+                            if (controlKey == "LS" || controlKey == "L3") {
+                                val x = testViewModel.inputState.leftStickX / 32767f
+                                val y = testViewModel.inputState.leftStickY / 32767f
+                                if (kotlin.math.abs(x - axisValues.first) > 0.05f || kotlin.math.abs(y - axisValues.second) > 0.05f) {
+                                    axisValues = Pair(x, y)
+                                    telemetryAction = "STICK DEFLECTION (X=%.2f, Y=%.2f)".format(x, y)
+                                    eventCount++
+                                }
+                            } else if (controlKey == "RS" || controlKey == "R3") {
+                                val x = testViewModel.inputState.rightStickX / 32767f
+                                val y = testViewModel.inputState.rightStickY / 32767f
+                                if (kotlin.math.abs(x - axisValues.first) > 0.05f || kotlin.math.abs(y - axisValues.second) > 0.05f) {
+                                    axisValues = Pair(x, y)
+                                    telemetryAction = "STICK DEFLECTION (X=%.2f, Y=%.2f)".format(x, y)
+                                    eventCount++
+                                }
+                            }
+                        }
                     }
 
-                    if (remoteDoc != null) {
+                    if (isDefaultNative) {
+                        ControllerElementRenderer(
+                            key = controlKey,
+                            isConnected = true,
+                            isRgbEnabled = true,
+                            viewModel = testViewModel,
+                            onVibrate = {
+                                telemetryAction = "TAP • $controlKey (Haptic)"
+                                eventCount++
+                            },
+                            customComponentId = null
+                        )
+                    } else if (remoteDoc != null) {
+                        val control = when {
+                            componentDef.manifest.category.equals("JOYSTICK", ignoreCase = true) ->
+                                NexPadControl.Stick(isLeft = !controlKey.contains("R", ignoreCase = true))
+                            componentDef.manifest.category.equals("TRIGGER", ignoreCase = true) ->
+                                NexPadControl.Trigger(key = controlKey)
+                            else ->
+                                NexPadControl.Button(controlKey)
+                        }
                         NxprcCanvasRenderer(
                             document = remoteDoc,
                             assignedControl = control,
@@ -137,6 +178,14 @@ fun SandboxPreviewModal(
                             overrideSizeDp = 140
                         )
                     } else {
+                        val control = when {
+                            componentDef.manifest.category.equals("JOYSTICK", ignoreCase = true) ->
+                                NexPadControl.Stick(isLeft = !controlKey.contains("R", ignoreCase = true))
+                            componentDef.manifest.category.equals("TRIGGER", ignoreCase = true) ->
+                                NexPadControl.Trigger(key = controlKey)
+                            else ->
+                                NexPadControl.Button(controlKey)
+                        }
                         NxpComposeInterpreter(
                             definition = componentDef,
                             assignedControl = control,
