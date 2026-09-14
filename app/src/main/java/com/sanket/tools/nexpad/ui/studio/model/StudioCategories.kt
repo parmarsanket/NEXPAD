@@ -1,8 +1,10 @@
 package com.sanket.tools.nexpad.ui.studio.model
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.unit.dp
 
 import com.sanket.tools.nexpad.category.CategoryDefinition
 import com.sanket.tools.nexpad.category.CategoryManager
@@ -22,16 +24,26 @@ data class StudioCategory(
     val subFilters: List<StudioSubFilter>
 )
 
-fun CategorySymbol.asImageVector(): ImageVector = when (this) {
-    CategorySymbol.GAMEPAD -> Icons.Rounded.SportsEsports
-    CategorySymbol.DPAD -> Icons.Rounded.ControlCamera
-    CategorySymbol.STICK -> Icons.Rounded.Album
-    CategorySymbol.TRIGGER -> Icons.Rounded.Tune
-    CategorySymbol.BUMPER -> Icons.Rounded.HorizontalRule
-    CategorySymbol.HOME -> Icons.Rounded.Home
-    CategorySymbol.SYSTEM -> Icons.Rounded.Settings
-    CategorySymbol.MACRO -> Icons.Rounded.Bolt
-    CategorySymbol.ALL -> Icons.Rounded.Widgets
+private val iconCache = mutableMapOf<CategorySymbol, ImageVector>()
+
+/**
+ * Builds a native Compose ImageVector directly from CategorySymbol's SVG path data.
+ * Completely self-contained — zero external icon library dependencies!
+ */
+fun CategorySymbol.asImageVector(fillColor: Color = Color.White): ImageVector {
+    return iconCache.getOrPut(this) {
+        val nodes = PathParser().parsePathString(svgPath).toNodes()
+        ImageVector.Builder(
+            name = iconName,
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).addPath(
+            pathData = nodes,
+            fill = SolidColor(fillColor)
+        ).build()
+    }
 }
 
 fun CategoryDefinition.toStudioCategory(): StudioCategory {
@@ -42,7 +54,7 @@ fun CategoryDefinition.toStudioCategory(): StudioCategory {
         val controlFilters = controls.map { ctrl ->
             StudioSubFilter(
                 id = ctrl.key,
-                label = ctrl.label,
+                label = if (ctrl.emoji.isNotBlank()) "${ctrl.emoji} ${ctrl.label}" else ctrl.label,
                 targetKey = ctrl.key
             )
         }
