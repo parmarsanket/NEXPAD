@@ -93,9 +93,28 @@ object NxprcSyncReceiver {
                 tempFile.delete()
             }
 
-            // 8. Hot-reload RemoteComponentRegistry
+            // 8. Hot-reload RemoteComponentRegistry & ComponentRegistry
             RemoteComponentRegistry.getInstance(context).reloadAll()
+            com.sanket.tools.nexpad.runtime.registry.ComponentRegistry.getInstance(context).reloadAll()
             Log.i(TAG, "⚡ Successfully installed & hot-reloaded '$componentId' ($fileSize bytes)")
+
+            // 9. Instantaneous Toast notification on Main UI thread for user feedback
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                try {
+                    android.widget.Toast.makeText(
+                        context.applicationContext,
+                        "⚡ Received & installed '$componentId' into Button Studio!",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to show toast: ${e.message}")
+                }
+            }
+
+            // 10. Broadcast component reload to any active Activities/Screens
+            try {
+                context.sendBroadcast(android.content.Intent("com.sanket.tools.nexpad.RELOAD_COMPONENTS"))
+            } catch (_: Exception) {}
 
             val consumedFromInitial = if (preStream != null) initialLength - preStream.available() else 0
             Result.success(SyncResult(componentId = componentId, bytesConsumedFromInitial = consumedFromInitial))

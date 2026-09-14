@@ -5,6 +5,9 @@ import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
 import com.sanket.tools.nexpad.runtime.model.NxpManifest
 import com.sanket.tools.nexpad.runtime.model.NxpSize
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +32,11 @@ class ComponentRegistry private constructor(private val context: Context) {
 
     init {
         reloadAll()
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launch {
+            RemoteComponentRegistry.getInstance(context).loadedComponents.collect {
+                reloadAll()
+            }
+        }
     }
 
     fun reloadAll() {
