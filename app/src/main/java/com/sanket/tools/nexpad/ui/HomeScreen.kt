@@ -1,117 +1,67 @@
 package com.sanket.tools.nexpad.ui
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import android.Manifest
-import android.os.Build
-import androidx.constraintlayout.compose.ConstraintLayout
-import androidx.constraintlayout.compose.Dimension
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
-import kotlin.math.abs
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import android.util.Log
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Computer
 import androidx.compose.material.icons.rounded.DashboardCustomize
-import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Hub
+import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.SportsEsports
-import androidx.compose.material3.*
-import androidx.compose.material3.carousel.HorizontalCenteredHeroCarousel
-import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
-import androidx.compose.material3.carousel.rememberCarouselState
-import androidx.compose.runtime.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
-
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextStyle
-
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
 import androidx.navigation.NavController
+import com.sanket.tools.nexpad.ui.components.badge.HeaderStatusPill
+import com.sanket.tools.nexpad.ui.components.button.CommandButton
+import com.sanket.tools.nexpad.ui.components.effects.CyberGrid
+import com.sanket.tools.nexpad.ui.components.effects.ScanLine
+import com.sanket.tools.nexpad.ui.components.home.DeviceHeroCard
+import com.sanket.tools.nexpad.ui.components.home.VShapedPanel
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
-import com.sanket.tools.nexpad.network.DiscoveredServer
-
-// ---------------------------------------------------------------------------
-// Design tokens — pulling the cyberpunk palette out of the composables makes
-// it reusable and gives us one place to retheme from.
-// ---------------------------------------------------------------------------
-private object NeonPalette {
-    val Cyan = Color(0xFF00E5FF)
-    val Purple = Color(0xFFB400FF)
-    val Green = Color(0xFF39FF14)
-    val PanelBgTop = Color(0xFF0E1524)
-    val PanelBgBottom = Color(0xFF070B14)
-    val CardIdleBg = Color(0xFF111111)
-    val CardIdleBorder = Color(0xFF333333)
-    val CardIdleText = Color(0xFF888888)
-    val ConnectedDot = Color(0xFF34D399)
-}
-
-data class LayoutOption(
-    val title: String,
-    val subtitle: String
-)
-
-// Single source of truth for the carousel content — was previously
-// duplicated with copy-paste "Layout 1/2/3" subtitles on the advanced tier.
-private val layoutOptions = listOf(
-    LayoutOption("Classic Pro", "Layout 1"),
-    LayoutOption("FPS Master", "Layout 2"),
-    LayoutOption("Racing Sim", "Layout 3"),
-    LayoutOption("Advance 1", "Layout 4"),
-    LayoutOption("Advance 2", "Layout 5"),
-    LayoutOption("Advance 3", "Layout 6"),
-)
-
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(navController: NavController, layoutManager: LayoutManager, viewModel: GamepadViewModel) {
+fun HomeScreen(
+    navController: NavController,
+    layoutManager: LayoutManager,
+    viewModel: GamepadViewModel
+) {
     val scrollState = rememberScrollState()
-    
+
     val isConnected by viewModel.isConnected.collectAsState()
     val discoveredServers by viewModel.discoveredServers.collectAsState()
     val connectionStats by viewModel.connectionStats.collectAsState()
+    val isAoaAttached by viewModel.isAoaAttached.collectAsState()
+    val isUsbCableConnected by viewModel.isUsbCableConnected.collectAsState()
+    val isAdbAvailable by viewModel.isAdbAvailable.collectAsState()
+    val adbServerName by viewModel.adbServerName.collectAsState()
+    val profiles by layoutManager.profilesFlow.collectAsState()
+    val activeProfile = layoutManager.getActiveProfile()
 
     LaunchedEffect(isConnected) {
         if (!isConnected) {
@@ -120,9 +70,11 @@ fun HomeScreen(navController: NavController, layoutManager: LayoutManager, viewM
             viewModel.stopDiscovery()
         }
     }
+
     DisposableEffect(Unit) {
         onDispose { viewModel.stopDiscovery() }
     }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -153,16 +105,15 @@ fun HomeScreen(navController: NavController, layoutManager: LayoutManager, viewM
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
-        Box(
-
-        ) {
+        Box {
             CyberGrid(
-                Modifier.matchParentSize()
+                modifier = Modifier.matchParentSize()
             )
 
             ScanLine(
-                Modifier.matchParentSize()
+                modifier = Modifier.matchParentSize()
             )
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -174,22 +125,44 @@ fun HomeScreen(navController: NavController, layoutManager: LayoutManager, viewM
                 HeaderRow(isConnected = isConnected)
 
                 VShapedPanel(
+                    profiles = profiles,
+                    activeProfileName = activeProfile.name,
+                    onProfileSelected = { selected ->
+                        if (selected.name != activeProfile.name) {
+                            layoutManager.setActiveProfile(selected.name)
+                        }
+                    },
                     onPlayClick = { navController.navigate("gamepad") }
                 )
+
                 Text(
-                    "Online Device",
+                    text = "Online Device",
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onSurface
                 )
+
                 DeviceHeroCard(
                     isConnected = isConnected,
                     servers = discoveredServers,
                     stats = connectionStats,
-                    onConnectClick = { server -> viewModel.connect(server.ipAddress, server.port) }
+                    isAoaAttached = isAoaAttached && isUsbCableConnected,
+                    isAdbAvailable = isAdbAvailable,
+                    adbServerName = adbServerName,
+                    onConnectServer = { server ->
+                        Log.d(
+                            "NEXPAD",
+                            "⏱️ [BENCHMARK] User CLICKED Connect (${if (server.isUsbTethering) "USB Tethering" else "Wi-Fi"}) button for ${server.name} (${server.ipAddress}:${server.port})"
+                        )
+                        viewModel.connect(server.ipAddress, server.port, server.name)
+                    },
+                    onConnectAoa = { viewModel.switchToAoaConnection() },
+                    onConnectAdb = { viewModel.switchToAdbConnection() },
+                    onDisconnectClick = { viewModel.disconnect() },
+                    onOpenConnectionHub = { navController.navigate("connections") }
                 )
 
                 Text(
-                    "Command Center",
+                    text = "Command Center",
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -200,18 +173,18 @@ fun HomeScreen(navController: NavController, layoutManager: LayoutManager, viewM
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         CommandButton(
-                            "Connect Device",
-                            Icons.Rounded.Link,
-                            MaterialTheme.colorScheme.primary,
-                            { navController.navigate("device_scan") },
-                            Modifier.weight(1f)
+                            label = "Virtual Controller",
+                            icon = Icons.Rounded.SportsEsports,
+                            iconColor = MaterialTheme.colorScheme.primary,
+                            onClick = { navController.navigate("virtual_controller") },
+                            modifier = Modifier.weight(1f)
                         )
                         CommandButton(
-                            "Virtual Controller",
-                            Icons.Rounded.SportsEsports,
-                            MaterialTheme.colorScheme.primary,
-                            { navController.navigate("gamepad") },
-                            Modifier.weight(1f)
+                            label = "Connections",
+                            icon = Icons.Rounded.Hub,
+                            iconColor = NeonPalette.Cyan,
+                            onClick = { navController.navigate("connections") },
+                            modifier = Modifier.weight(1f)
                         )
                     }
                     Row(
@@ -219,18 +192,30 @@ fun HomeScreen(navController: NavController, layoutManager: LayoutManager, viewM
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         CommandButton(
-                            "HUD Editor",
-                            Icons.Rounded.DashboardCustomize,
-                            MaterialTheme.colorScheme.secondary,
-                            { navController.navigate("editor") },
-                            Modifier.weight(1f)
+                            label = "Button Studio",
+                            icon = Icons.Rounded.Palette,
+                            iconColor = NeonPalette.Purple,
+                            onClick = { navController.navigate("button_studio") },
+                            modifier = Modifier.weight(1f)
                         )
                         CommandButton(
-                            "Settings",
-                            Icons.Rounded.Settings,
-                            MaterialTheme.colorScheme.primaryContainer,
-                            { navController.navigate("settings") },
-                            Modifier.weight(1f)
+                            label = "HUD Editor",
+                            icon = Icons.Rounded.DashboardCustomize,
+                            iconColor = MaterialTheme.colorScheme.secondary,
+                            onClick = { navController.navigate("editor") },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        CommandButton(
+                            label = "Settings",
+                            icon = Icons.Rounded.Settings,
+                            iconColor = MaterialTheme.colorScheme.primaryContainer,
+                            onClick = { navController.navigate("settings") },
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }
@@ -247,553 +232,13 @@ private fun HeaderRow(isConnected: Boolean) {
         verticalAlignment = Alignment.Bottom
     ) {
         Text(
-            "Ready to Play",
+            text = "Ready to Play",
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onBackground
         )
 
-        Row(
-            modifier = Modifier
-                .clip(RoundedCornerShape(50))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f))
-                .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(50))
-                .padding(horizontal = 12.dp, vertical = 6.dp)
-                .semantics { contentDescription = "Connection status: connected" },
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(if (isConnected) NeonPalette.ConnectedDot else Color.Red)
-            )
-            Text(if (isConnected) "Connected" else "Disconnected", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
-        }
-    }
-}
-
-@Composable
-private fun DeviceHeroCard(
-    isConnected: Boolean,
-    servers: List<DiscoveredServer>,
-    stats: com.sanket.tools.nexpad.viewmodel.ConnectionStats,
-    onConnectClick: (DiscoveredServer) -> Unit
-) {
-    val displayServer = servers.firstOrNull()
-    val serverName = displayServer?.name ?: "No PC Found"
-    val serverStatus = if (isConnected) "Connected" else if (displayServer != null) displayServer.ipAddress else "Scanning network..."
-    
-    GlassCard(modifier = Modifier.fillMaxWidth().wrapContentHeight()) {
-        Column(
-            modifier = Modifier.padding(24.dp).fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(16.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Computer,
-                        contentDescription = "PC",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-                Column {
-                    Text(serverName, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
-                    Text(
-                        serverStatus,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            
-            if (!isConnected && displayServer != null) {
-                Button(
-                    onClick = { onConnectClick(displayServer) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan)
-                ) {
-                    Text("Connect", color = Color.Black, fontWeight = FontWeight.Bold)
-                }
-            }
-
-            if (isConnected) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White.copy(alpha = 0.05f))
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    val quality = when {
-                        stats.packetLossPercent ?: 0f > 5f -> "Poor"
-                        stats.latencyMs ?: 0 > 50 -> "Fair"
-                        stats.latencyMs ?: 0 > 20 -> "Good"
-                        else -> "Excellent"
-                    }
-                    val qualityColor = when (quality) {
-                        "Excellent" -> NeonPalette.ConnectedDot
-                        "Good" -> NeonPalette.Cyan
-                        "Fair" -> Color.Yellow
-                        else -> Color.Red
-                    }
-                    
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text("Controller Quality", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(quality, style = MaterialTheme.typography.labelLarge, color = qualityColor, fontWeight = FontWeight.Bold)
-                    }
-                    
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
-                    
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Column {
-                            Text("Connection Type", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(stats.transport.displayName, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
-                        }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text("Wi-Fi Signal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            val signalText = if (stats.signalDbm != null) {
-                                val dots = when (stats.signalLevel) {
-                                    4 -> "●●●●"
-                                    3 -> "●●●○"
-                                    2 -> "●●○○"
-                                    1 -> "●○○○"
-                                    else -> "○○○○"
-                                }
-                                "$dots  ${stats.signalDbm} dBm"
-                            } else {
-                                "N/A (Hotspot)"
-                            }
-                            Text(signalText, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
-                        }
-                    }
-                    
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Column {
-                            Text("Local Latency", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            val lat = stats.latencyMs?.let { "$it ms" } ?: "-- ms"
-                            Text(lat, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
-                        }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text("Jitter", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            val jit = stats.jitterMs?.let { "±$it ms" } ?: "-- ms"
-                            Text(jit, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
-                        }
-                    }
-                }
-            } else {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    StatBox("Network", stats.transport.displayName, MaterialTheme.colorScheme.primary, Modifier.weight(1f))
-                    StatBox("Latency", "-", MaterialTheme.colorScheme.primary, Modifier.weight(1f))
-                    StatBox("Signal", "-", MaterialTheme.colorScheme.onBackground, Modifier.weight(1f))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun GlassCard(
-    modifier: Modifier = Modifier,
-    content: @Composable BoxScope.() -> Unit
-) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(28.dp))
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
-                        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.35f)
-                    )
-                )
-            )
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
-            .border(2.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(28.dp)),
-        content = content
-    )
-}
-
-@Composable
-fun StatBox(label: String, value: String, valueColor: Color, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
-        Text(value, style = MaterialTheme.typography.titleLarge, color = valueColor)
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun CommandButton(label: String, icon: ImageVector, iconColor: Color, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Card(
-        onClick = onClick,
-        modifier = modifier.height(112.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = iconColor,
-                modifier = Modifier.size(32.dp)
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun VShapedPanel(onPlayClick: () -> Unit) {
-    var selectedIndex by remember { mutableIntStateOf(0) }
-    val state = rememberCarouselState { layoutOptions.size }
-
-    // No need for a separate CoroutineScope + launch here — LaunchedEffect
-    // already gives us a coroutine, and the assignment itself is synchronous.
-    LaunchedEffect(state.currentItem) {
-        selectedIndex = state.currentItem
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            //.height(350.dp)
-            .aspectRatio(1.1f)
-    ) {
-        VPanelBackground(modifier = Modifier.fillMaxSize())
-
-        Column(
-            modifier = Modifier.align(Alignment.TopCenter)
-        ) {
-            HorizontalCenteredHeroCarousel(
-                state = state,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(221.dp)
-                    .padding(24.dp),
-                itemSpacing = 8.dp,
-                contentPadding = PaddingValues(horizontal = 16.dp)
-            ) { index ->
-                val item = layoutOptions[index]
-                InnerLayoutCard(
-                    modifier = Modifier.fillMaxSize().padding(4.dp),
-                    title = item.title,
-                    subtitle = item.subtitle,
-                    isSelected = selectedIndex == index,
-                )
-            }
-          Box(
-              modifier = Modifier.fillMaxSize()
-          ) {
-              PlayButton(
-                  modifier = Modifier
-                      .align(alignment = Alignment.Center)
-                      .padding(bottom = 24.dp),
-                  onClick = onPlayClick
-              )
-          }
-
-        }
-    }
-}
-
-/** Draws the glowing V-shaped chassis behind the carousel. */
-@Composable
-private fun VPanelBackground(modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier) {
-        val path = Path().apply {
-            moveTo(0f, 0f)
-            lineTo(size.width, 0f)
-            lineTo(size.width, size.height * 0.75f)
-            lineTo(size.width * 0.5f, size.height)
-            lineTo(0f, size.height * 0.75f)
-            close()
-        }
-        drawPath(
-            path = path,
-            brush = Brush.linearGradient(colors = listOf(NeonPalette.PanelBgTop, NeonPalette.PanelBgBottom))
-        )
-        drawPath(
-            path = path,
-            brush = Brush.linearGradient(
-                colors = listOf(
-                    NeonPalette.Cyan.copy(alpha = 0.3f),
-                    NeonPalette.Purple.copy(alpha = 0.3f),
-                    NeonPalette.Cyan.copy(alpha = 0.3f)
-                )
-            ),
-            style = Stroke(width = 8.dp.toPx())
-        )
-        drawPath(
-            path = path,
-            brush = Brush.linearGradient(colors = listOf(NeonPalette.Cyan, NeonPalette.Purple, NeonPalette.Cyan)),
-            style = Stroke(width = 2.dp.toPx())
+        HeaderStatusPill(
+            isConnected = isConnected
         )
     }
-}
-
-@Composable
-fun PlayButton(
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-
-    val infinite = rememberInfiniteTransition(label = "")
-
-    val glowAlpha by infinite.animateFloat(
-        initialValue = 0.35f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = 900,
-                easing = FastOutSlowInEasing
-            ),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = ""
-    )
-
-    val scale by infinite.animateFloat(
-        initialValue = 0.97f,
-        targetValue = 1.04f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(900),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = ""
-    )
-    val haptic = LocalHapticFeedback.current
-    Box(
-        modifier = modifier
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clickable {
-                haptic.performHapticFeedback(HapticFeedbackType.Confirm)
-                onClick() },
-        contentAlignment = Alignment.Center
-    )
-    {
-
-        Canvas(
-            modifier = Modifier.size(80.dp)
-        ) {
-
-            drawRoundRect(
-                color = NeonPalette.Green.copy(alpha = 0.08f * glowAlpha),
-                topLeft = Offset(
-                    x = -size.width * 0.25f,
-                    y = -size.height * 0.10f
-                ),
-                size = Size(
-                    width = size.width * 1.5f ,
-                    height = size.height * 1.2f
-                ),
-                cornerRadius = CornerRadius(50.dp.toPx())
-            )
-            //-----------------------------------
-            // Triangle
-            //-----------------------------------
-
-            val path = Path().apply {
-                moveTo(size.width * .3f, size.height * .22f)
-
-                lineTo(size.width * .85f, size.height * .5f)
-
-                lineTo(size.width * .3f, size.height * .78f)
-                close()
-            }
-
-            drawPath(path = path, color = NeonPalette.Green.copy(alpha = 0.4f), style = Stroke(width = 16.dp.toPx()))
-            drawPath(path = path, color = NeonPalette.Green.copy(alpha = 0.7f), style = Stroke(width = 8.dp.toPx()))
-            drawPath(path = path, color = NeonPalette.Green)
-        }
-    }
-}
-private val cardAnimSpecDp = tween<Dp>(durationMillis = 280, easing = FastOutSlowInEasing)
-private val cardAnimSpecFloat = tween<Float>(durationMillis = 280, easing = FastOutSlowInEasing)
-private val cardAnimSpecColor = tween<Color>(durationMillis = 280, easing = FastOutSlowInEasing)
-
-@Composable
-fun InnerLayoutCard(modifier: Modifier, title: String, subtitle: String, isSelected: Boolean) {
-    // Every visual property below is animated off the SAME isSelected flag, so
-    // swiping left vs right produces identical motion either way — the carousel
-    // just decides which index gets isSelected = true, this composable only
-    // reacts to that boolean and doesn't care which direction it came from.
-    val width by animateDpAsState(
-        targetValue = if (isSelected) 140.dp else 100.dp,
-        animationSpec = cardAnimSpecDp,
-        label = "cardWidth"
-    )
-    val height by animateDpAsState(
-        targetValue = if (isSelected) 160.dp else 120.dp,
-        animationSpec = cardAnimSpecDp,
-        label = "cardHeight"
-    )
-    val borderWidth by animateDpAsState(
-        targetValue = if (isSelected) 2.dp else 2.dp,
-        animationSpec = cardAnimSpecDp,
-        label = "borderWidth"
-    )
-    val borderColor by animateColorAsState(
-        targetValue = if (isSelected) NeonPalette.Cyan else NeonPalette.CardIdleBorder,
-        animationSpec = cardAnimSpecColor,
-        label = "borderColor"
-    )
-    val textColor by animateColorAsState(
-        targetValue = if (isSelected) Color.White else NeonPalette.CardIdleText,
-        animationSpec = cardAnimSpecColor,
-        label = "textColor"
-    )
-    val bgStart by animateColorAsState(
-        targetValue = if (isSelected) Color(0xFF005577) else NeonPalette.CardIdleBg,
-        animationSpec = cardAnimSpecColor,
-        label = "bgStart"
-    )
-    val bgEnd by animateColorAsState(
-        targetValue = if (isSelected) Color(0xFF660088) else NeonPalette.CardIdleBg,
-        animationSpec = cardAnimSpecColor,
-        label = "bgEnd"
-    )
-    val titleFontSize by animateFloatAsState(
-        targetValue = if (isSelected) 16f else 12f,
-        animationSpec = cardAnimSpecFloat,
-        label = "titleFontSize"
-    )
-    // Subtitle stays composed at all times and just fades — swapping it in/out
-    // with an if() is what caused the old abrupt pop when selection changed.
-    val subtitleAlpha by animateFloatAsState(
-        targetValue = if (isSelected) 0.9f else 0f,
-        animationSpec = cardAnimSpecFloat,
-        label = "subtitleAlpha"
-    )
-
-    Box(
-        modifier = modifier
-            .size(width, height)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Brush.linearGradient(listOf(bgStart, bgEnd)))
-            .border(borderWidth, borderColor, RoundedCornerShape(16.dp))
-            .semantics { contentDescription = "$title layout${if (isSelected) ", selected" else ""}" },
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            Text(
-                text = title,
-                color = textColor,
-                fontWeight = if (isSelected) FontWeight.Black else FontWeight.SemiBold,
-                fontSize = titleFontSize.sp,
-                style = if (isSelected) {
-                    TextStyle(shadow = Shadow(color = Color.Black, offset = Offset(0f, 4f), blurRadius = 8f))
-                } else {
-                    TextStyle.Default
-                }
-            )
-            Text(
-                subtitle,
-                color = textColor.copy(alpha = subtitleAlpha),
-                fontSize = 11.sp,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-        }
-    }
-}
-@Composable
-fun CyberGrid(
-    modifier: Modifier = Modifier,
-    gridSize: Dp = 28.dp,
-    lineColor: Color = Color(0xFF00E5FF).copy(alpha = 0.08f)
-) {
-    Canvas(modifier) {
-
-        val step = gridSize.toPx()
-
-        // Vertical
-        var x = 0f
-        while (x <= size.width) {
-            drawLine(
-                color = lineColor,
-                start = Offset(x, 0f),
-                end = Offset(x, size.height),
-                strokeWidth = 1.dp.toPx()
-            )
-            x += step
-        }
-
-        // Horizontal
-        var y = 0f
-        while (y <= size.height) {
-            drawLine(
-                color = lineColor,
-                start = Offset(0f, y),
-                end = Offset(size.width, y),
-                strokeWidth = 1.dp.toPx()
-            )
-            y += step
-        }
-    }
-}
-@Composable
-fun ScanLine(
-    modifier: Modifier = Modifier
-) {
-
-    val transition = rememberInfiniteTransition()
-
-    val offset by transition.animateFloat(
-        initialValue = -200f,
-        targetValue = 2000f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = 6000,
-                easing = LinearEasing
-            )
-        )
-    )
-
-    Canvas(modifier) {
-
-        drawRect(
-
-            brush = Brush.verticalGradient(
-
-                listOf(
-                    Color.Transparent,
-                    Color(0xFF00E5FF).copy(alpha = .12f),
-                    Color.Transparent
-                ),
-
-                startY = offset,
-                endY = offset + 120.dp.toPx()
-
-            )
-
-        )
-
-    }
-
 }

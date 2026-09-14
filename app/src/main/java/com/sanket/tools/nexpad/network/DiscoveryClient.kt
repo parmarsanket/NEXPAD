@@ -15,7 +15,9 @@ import kotlinx.coroutines.CoroutineScope
 data class DiscoveredServer(
     val name: String,
     val ipAddress: String,
-    val port: Int = 9999
+    val port: Int = 9999,
+    val isUsbTethering: Boolean = false,
+    val lastSeenTimestamp: Long = System.currentTimeMillis()
 )
 
 class DiscoveryClient {
@@ -79,12 +81,15 @@ class DiscoveryClient {
                                         buffer.get(nameBytes)
                                         val serverName = String(nameBytes, Charsets.UTF_8)
                                         
+                                        val ip = senderAddr.address.hostAddress ?: ""
+                                        val isUsb = NetworkInterfaceHelper.isUsbTetheringAddress(ip)
                                         withContext(Dispatchers.Main) {
                                             onServerDiscovered(
                                                 DiscoveredServer(
                                                     name = serverName,
-                                                    ipAddress = senderAddr.address.hostAddress ?: "",
-                                                    port = 9999
+                                                    ipAddress = ip,
+                                                    port = 9999,
+                                                    isUsbTethering = isUsb
                                                 )
                                             )
                                         }
@@ -107,14 +112,18 @@ class DiscoveryClient {
                     put(NexpadProtocol.PACKET_TYPE_DISCOVER)
                 }
                 while (isActive) {
-                    val addresses = getBroadcastAddresses()
-                    for (addr in addresses) {
-                        broadcastBuffer.rewind()
-                        try {
-                            channel?.send(broadcastBuffer, addr)
-                        } catch (e: Exception) {
-                            // Ignore send failures on specific interfaces
+                    try {
+                        val addresses = getBroadcastAddresses()
+                        for (addr in addresses) {
+                            broadcastBuffer.rewind()
+                            try {
+                                channel?.send(broadcastBuffer, addr)
+                            } catch (_: Exception) {
+                                // Ignore send failures on specific interfaces
+                            }
                         }
+                    } catch (_: Exception) {
+                        // Network interfaces may be transitioning
                     }
                     delay(2000)
                 }

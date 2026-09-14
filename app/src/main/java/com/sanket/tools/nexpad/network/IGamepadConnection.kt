@@ -12,7 +12,8 @@ interface IGamepadConnection {
     var onConnectionStateChanged: ((Boolean) -> Unit)?
     var onStatusChanged: ((String) -> Unit)?
     var onDiagnosticLog: ((String) -> Unit)?
-    var onNetworkPerformanceUpdated: ((latencyMs: Long, jitterMs: Long, packetLoss: Float) -> Unit)?
+    var onNetworkPerformanceUpdated: ((latencyMs: Long, jitterMs: Float, packetLoss: Float) -> Unit)?
+    var onServerNameResolved: ((String) -> Unit)?
     
     suspend fun connect(address: String, port: Int)
     suspend fun sendInput(input: GamepadInput)

@@ -106,7 +106,7 @@ class MotionSensorManager(
         }
         
         listOf(
-            // gravitySensor, // UNUSED: Saves CPU
+            gravitySensor,
             accelSensor,
             gyroSensor,
             uncalibratedGyroSensor
