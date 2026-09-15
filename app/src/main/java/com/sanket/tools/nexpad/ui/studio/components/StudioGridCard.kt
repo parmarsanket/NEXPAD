@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.clickable
+import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.runtime.engine.NxprcCanvasRenderer
 import com.sanket.tools.nexpad.runtime.engine.NxpComposeInterpreter
 import com.sanket.tools.nexpad.runtime.model.NexPadControl
@@ -34,139 +35,115 @@ import com.sanket.tools.nexpad.ui.studio.model.resolveButtonSourceType
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 /**
- * Grid Card displaying button preview with Dual Mode behavior for individual controls.
+ * Minimalist, ultra-clean Grid Card displaying a high-performance button preview tile.
+ * All detailed metadata, control assignments, and action buttons (Apply, HUD, Export, Delete)
+ * are hosted in the SandboxPreviewModal opened upon clicking this card.
  */
 @Composable
 fun StudioGridCard(
     def: NxpComponentDef,
-    mode: ButtonStudioMode,
-    isSelectedInBuilder: Boolean,
     isAppliedToActiveProfile: Boolean = false,
-    onToggleSelectInBuilder: () -> Unit,
-    onApplyToProfile: () -> Unit = {},
-    onUseInHud: () -> Unit,
-    onTest: () -> Unit,
-    onExport: () -> Unit,
-    onDelete: () -> Unit,
+    isSelectedInBuilder: Boolean = false,
+    mode: ButtonStudioMode = ButtonStudioMode.MANAGE,
+    scale: Float = 0.50f, // <-- Adjust size from 0.0f to 1.0f according to your preference
+    onClick: () -> Unit,
+    onToggleSelectInBuilder: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val isBuiltIn = def.manifest.id.startsWith("builtin.")
     val type = remember(def.manifest.id) { resolveButtonSourceType(def) }
 
-    val borderColor = if (mode == ButtonStudioMode.SELECTION && isSelectedInBuilder) NeonPalette.Cyan else Color.White.copy(alpha = 0.10f)
-    val borderWidth = if (mode == ButtonStudioMode.SELECTION && isSelectedInBuilder) 2.dp else 1.dp
+    val isHighlight = isAppliedToActiveProfile || (mode == ButtonStudioMode.SELECTION && isSelectedInBuilder)
+    val borderColor = if (isHighlight) NeonPalette.Cyan else Color.White.copy(alpha = 0.08f)
+    val borderWidth = if (isHighlight) 1.5.dp else 1.dp
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .border(borderWidth, borderColor, RoundedCornerShape(14.dp)),
+            .border(borderWidth, borderColor, RoundedCornerShape(14.dp))
+            .clickable {
+                if (mode == ButtonStudioMode.SELECTION) {
+                    onToggleSelectInBuilder()
+                } else {
+                    onClick()
+                }
+            },
         colors = CardDefaults.cardColors(containerColor = Color(0xFF0C1322))
     ) {
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .aspectRatio(1f)
+                .background(Color(0xFF040810)),
+            contentAlignment = Alignment.Center
         ) {
-            // Header Row: Title + Type Badge
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = def.manifest.name,
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        fontSize = 12.sp
-                    ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-
-                // Type Badge (DEFAULT, SVG, PLUGIN, REMOTE_COMPOSE)
+            // Selection Mode Indicator Badge
+            if (mode == ButtonStudioMode.SELECTION && isSelectedInBuilder) {
                 Box(
                     modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(6.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(type.badgeBg)
-                        .border(1.dp, type.badgeColor.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                        .background(NeonPalette.Cyan.copy(alpha = 0.2f))
+                        .border(1.dp, NeonPalette.Cyan, RoundedCornerShape(4.dp))
                         .padding(horizontal = 5.dp, vertical = 2.dp)
                 ) {
-                    Text(
-                        text = type.label,
-                        color = type.badgeColor,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Black
+                    Icon(
+                        Icons.Rounded.CheckCircle,
+                        contentDescription = null,
+                        tint = NeonPalette.Cyan,
+                        modifier = Modifier.size(12.dp)
                     )
                 }
             }
 
-            // Static Zero-Overhead Preview Stage (Tapping opens interactive test sandbox)
+            // High-Performance Static Button Preview - Scaled according to 'scale' (0.0f to 1.0f)
+            val controlKey = def.manifest.defaultControl.uppercase()
+            val availableDim = minOf(maxWidth.value, maxHeight.value)
+            
+            // Adjust scale factor (0.0f to 1.0f): e.g. 0.75f = compact, 0.85f = balanced, 1.0f = full tile edge-to-edge
+            val targetDim = (if (availableDim > 0f) availableDim else 92f) * scale
+
+            // Centralized intrinsic dimension from protocol CategoryManager
+            val intrinsicMaxDim = if (type == ButtonStudioType.DEFAULT) {
+                CategoryManager.resolveIntrinsicMaxDim(controlKey)
+            } else {
+                CategoryManager.resolveIntrinsicMaxDim(controlKey, def.size.widthDp, def.size.heightDp)
+            }
+
+            val previewScale = targetDim / intrinsicMaxDim
+
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(90.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0xFF040810))
-                    .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(10.dp))
-                    .clickable { onTest() },
+                modifier = Modifier.graphicsLayer {
+                    scaleX = previewScale
+                    scaleY = previewScale
+                },
                 contentAlignment = Alignment.Center
             ) {
-                val controlKey = def.manifest.defaultControl.uppercase()
-                val maxDim = maxOf(def.size.widthDp, def.size.heightDp).toFloat()
-                val previewScale = if (maxDim > 60f) 60f / maxDim else 1.0f
-
-                Box(
-                    modifier = Modifier.graphicsLayer {
-                        scaleX = previewScale
-                        scaleY = previewScale
-                    },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (type == ButtonStudioType.DEFAULT) {
-                        StaticDefaultButtonPreview(controlKey = controlKey)
-                    } else if (type == ButtonStudioType.REMOTE_COMPOSE) {
-                        val remoteRegistry = remember { RemoteComponentRegistry.getInstance(context) }
-                        val doc = remember(def.manifest.id) { remoteRegistry.getComponent(def.manifest.id) }
-                        if (doc != null) {
-                            val targetControl = when {
-                                controlKey.equals("LS", ignoreCase = true) || controlKey.equals("L3", ignoreCase = true) -> NexPadControl.Stick(isLeft = true)
-                                controlKey.equals("RS", ignoreCase = true) || controlKey.equals("R3", ignoreCase = true) -> NexPadControl.Stick(isLeft = false)
-                                doc.manifest.category.equals("JOYSTICK", ignoreCase = true) ->
-                                    NexPadControl.Stick(isLeft = !controlKey.contains("R", ignoreCase = true))
-                                controlKey.equals("LT", ignoreCase = true) || controlKey.equals("RT", ignoreCase = true) -> NexPadControl.Trigger(controlKey)
-                                doc.manifest.category.equals("TRIGGER", ignoreCase = true) ->
-                                    NexPadControl.Trigger(controlKey)
-                                else -> NexPadControl.Button(controlKey)
-                            }
-                            NxprcCanvasRenderer(
-                                document = doc,
-                                assignedControl = targetControl,
-                                isConnected = false,
-                                inputTarget = NoOpInputTarget,
-                                isInteractive = false
-                            )
-                        } else {
-                            val control = when {
-                                def.manifest.category.equals("JOYSTICK", ignoreCase = true) ->
-                                    NexPadControl.Stick(isLeft = !controlKey.contains("R"))
-                                def.manifest.category.equals("TRIGGER", ignoreCase = true) ->
-                                    NexPadControl.Trigger(key = controlKey)
-                                else ->
-                                    NexPadControl.Button(controlKey)
-                            }
-                            NxpComposeInterpreter(
-                                definition = def,
-                                assignedControl = control,
-                                isConnected = false,
-                                inputTarget = NoOpInputTarget,
-                                isInteractive = false
-                            )
+                if (type == ButtonStudioType.DEFAULT) {
+                    StaticDefaultButtonPreview(controlKey = controlKey)
+                } else if (type == ButtonStudioType.REMOTE_COMPOSE) {
+                    val remoteRegistry = remember { RemoteComponentRegistry.getInstance(context) }
+                    val doc = remember(def.manifest.id) { remoteRegistry.getComponent(def.manifest.id) }
+                    if (doc != null) {
+                        val targetControl = when {
+                            controlKey.equals("LS", ignoreCase = true) || controlKey.equals("L3", ignoreCase = true) -> NexPadControl.Stick(isLeft = true)
+                            controlKey.equals("RS", ignoreCase = true) || controlKey.equals("R3", ignoreCase = true) -> NexPadControl.Stick(isLeft = false)
+                            doc.manifest.category.equals("JOYSTICK", ignoreCase = true) ->
+                                NexPadControl.Stick(isLeft = !controlKey.contains("R", ignoreCase = true))
+                            controlKey.equals("LT", ignoreCase = true) || controlKey.equals("RT", ignoreCase = true) -> NexPadControl.Trigger(controlKey)
+                            doc.manifest.category.equals("TRIGGER", ignoreCase = true) ->
+                                NexPadControl.Trigger(controlKey)
+                            else -> NexPadControl.Button(controlKey)
                         }
+                        NxprcCanvasRenderer(
+                            document = doc,
+                            assignedControl = targetControl,
+                            isConnected = false,
+                            inputTarget = NoOpInputTarget,
+                            isInteractive = false
+                        )
                     } else {
                         val control = when {
                             def.manifest.category.equals("JOYSTICK", ignoreCase = true) ->
@@ -184,135 +161,25 @@ fun StudioGridCard(
                             isInteractive = false
                         )
                     }
-                }
-            }
-
-            // Target Control Information
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Control: ${def.manifest.defaultControl}",
-                    color = NeonPalette.Cyan,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                Text(
-                    text = if (isBuiltIn) "Core" else "by ${def.manifest.author}",
-                    color = Color.Gray,
-                    fontSize = 10.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            // Primary Action: Mode-dependent
-            if (mode == ButtonStudioMode.SELECTION) {
-                Button(
-                    onClick = onToggleSelectInBuilder,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isSelectedInBuilder) NeonPalette.Cyan else Color.White.copy(alpha = 0.12f)
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(32.dp)
-                ) {
-                    Icon(
-                        if (isSelectedInBuilder) Icons.Rounded.CheckCircle else Icons.Rounded.AddCircleOutline,
-                        contentDescription = null,
-                        tint = if (isSelectedInBuilder) Color.Black else Color.White,
-                        modifier = Modifier.size(14.dp)
+                } else {
+                    val control = when {
+                        def.manifest.category.equals("JOYSTICK", ignoreCase = true) ->
+                            NexPadControl.Stick(isLeft = !controlKey.contains("R"))
+                        def.manifest.category.equals("TRIGGER", ignoreCase = true) ->
+                            NexPadControl.Trigger(key = controlKey)
+                        else ->
+                            NexPadControl.Button(controlKey)
+                    }
+                    NxpComposeInterpreter(
+                        definition = def,
+                        assignedControl = control,
+                        isConnected = false,
+                        inputTarget = NoOpInputTarget,
+                        isInteractive = false
                     )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = if (isSelectedInBuilder) "Active in Layout ✓" else "Select for Layout",
-                        color = if (isSelectedInBuilder) Color.Black else Color.White,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Button(
-                        onClick = onApplyToProfile,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isAppliedToActiveProfile) NeonPalette.Cyan.copy(alpha = 0.22f) else NeonPalette.Cyan
-                        ),
-                        border = if (isAppliedToActiveProfile) androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan) else null,
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(32.dp)
-                    ) {
-                        Icon(
-                            if (isAppliedToActiveProfile) Icons.Rounded.Check else Icons.Rounded.DashboardCustomize,
-                            contentDescription = null,
-                            tint = if (isAppliedToActiveProfile) NeonPalette.Cyan else Color.Black,
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            if (isAppliedToActiveProfile) "Active ✓" else "Apply",
-                            color = if (isAppliedToActiveProfile) NeonPalette.Cyan else Color.Black,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    OutlinedButton(
-                        onClick = onUseInHud,
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
-                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-                        modifier = Modifier.height(32.dp)
-                    ) {
-                        Text("HUD ➔", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                }
-            }
-
-            // Secondary Action Row (Test Sandbox, Copy JSON, Delete)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    OutlinedButton(
-                        onClick = onTest,
-                        shape = RoundedCornerShape(6.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Cyan),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.4f)),
-                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
-                        modifier = Modifier.height(26.dp)
-                    ) {
-                        Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(12.dp))
-                        Spacer(Modifier.width(2.dp))
-                        Text("Test", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-                    }
-
-                    IconButton(onClick = onExport, modifier = Modifier.size(26.dp)) {
-                        Icon(Icons.Rounded.ContentCopy, contentDescription = "Copy JSON", tint = Color.LightGray, modifier = Modifier.size(13.dp))
-                    }
-                }
-
-                if (!isBuiltIn && mode == ButtonStudioMode.MANAGE) {
-                    IconButton(onClick = onDelete, modifier = Modifier.size(26.dp)) {
-                        Icon(Icons.Rounded.DeleteOutline, contentDescription = "Delete", tint = Color(0xFFFF5252), modifier = Modifier.size(15.dp))
-                    }
                 }
             }
         }
     }
 }
+

@@ -395,7 +395,7 @@ fun ButtonStudioScreen(
 
                     // Responsive Grid of Individual Button Skins
                     LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 145.dp),
+                        columns = GridCells.Adaptive(minSize = 160.dp),
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -416,6 +416,7 @@ fun ButtonStudioScreen(
                                 mode = currentMode,
                                 isSelectedInBuilder = isControlActive && isSkinSelected,
                                 isAppliedToActiveProfile = isAppliedToProfile,
+                                onClick = { previewTarget = def },
                                 onToggleSelectInBuilder = {
                                     if (isControlActive && isSkinSelected) {
                                         activeControls[targetKey] = false
@@ -424,27 +425,6 @@ fun ButtonStudioScreen(
                                         activeControls[targetKey] = true
                                         chosenSkins[targetKey] = if (type == ButtonStudioType.DEFAULT) null else def.manifest.id
                                         Toast.makeText(context, "Selected ${def.manifest.name} for $targetKey", Toast.LENGTH_SHORT).show()
-                                    }
-                                },
-                                onApplyToProfile = {
-                                    applyButtonSkinToProfile(def, layoutManager, context)
-                                    activeProfile = layoutManager?.getActiveProfile()
-                                },
-                                onUseInHud = {
-                                    applyButtonToHud(def, layoutManager, navController, context)
-                                },
-                                onTest = { previewTarget = def },
-                                onExport = {
-                                    val json = registry.exportToJson(def.manifest.id)
-                                    if (json != null) {
-                                        clipboard.nativeClipboard.setPrimaryClip(android.content.ClipData.newPlainText("NXP JSON", json))
-                                        Toast.makeText(context, "JSON copied to clipboard!", Toast.LENGTH_SHORT).show()
-                                    }
-                                },
-                                onDelete = {
-                                    val deleted = registry.deleteComponent(def.manifest.id)
-                                    if (deleted) {
-                                        Toast.makeText(context, "Deleted ${def.manifest.name}", Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             )
@@ -457,13 +437,37 @@ fun ButtonStudioScreen(
 
     // Live Sandbox Modal
     if (previewTarget != null) {
+        val target = previewTarget!!
+        val targetKey = target.manifest.defaultControl.uppercase()
+        val type = resolveButtonSourceType(target)
+        val expectedCustomId = if (type == ButtonStudioType.DEFAULT) null else target.manifest.id
+        val isApplied = activeProfile?.positions?.get(targetKey)?.customComponentId == expectedCustomId
+
         SandboxPreviewModal(
-            componentDef = previewTarget!!,
+            componentDef = target,
+            isAppliedToActiveProfile = isApplied,
             onDismiss = { previewTarget = null },
+            onApplyToProfile = {
+                applyButtonSkinToProfile(target, layoutManager, context)
+                activeProfile = layoutManager?.getActiveProfile()
+            },
             onAddToHud = {
-                val target = previewTarget!!
                 previewTarget = null
                 applyButtonToHud(target, layoutManager, navController, context)
+            },
+            onExportJson = {
+                val json = registry.exportToJson(target.manifest.id)
+                if (json != null) {
+                    clipboard.nativeClipboard.setPrimaryClip(android.content.ClipData.newPlainText("NXP JSON", json))
+                    Toast.makeText(context, "JSON copied to clipboard!", Toast.LENGTH_SHORT).show()
+                }
+            },
+            onDelete = {
+                val deleted = registry.deleteComponent(target.manifest.id)
+                if (deleted) {
+                    previewTarget = null
+                    Toast.makeText(context, "Deleted ${target.manifest.name}", Toast.LENGTH_SHORT).show()
+                }
             }
         )
     }
