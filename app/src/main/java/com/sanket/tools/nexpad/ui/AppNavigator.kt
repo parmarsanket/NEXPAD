@@ -2,6 +2,7 @@ package com.sanket.tools.nexpad.ui
 
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.navigation3.runtime.NavKey
+import kotlin.collections.lastIndex
 
 /**
  * Modern Navigation 3 Navigator for NEXPAD.
@@ -26,7 +27,9 @@ interface AppNavigator {
             route.startsWith("button_studio") -> {
                 val mode = if (route.contains("mode=select")) "select" else "manage"
                 val profileNameMatch = Regex("""profileName=([^&]+)""").find(route)
-                val profileName = profileNameMatch?.groupValues?.get(1)?.let { android.net.Uri.decode(it) } ?: ""
+                val profileName = profileNameMatch?.groupValues?.get(1)?.let {
+                    runCatching { java.net.URLDecoder.decode(it, "UTF-8") }.getOrDefault(it)
+                } ?: ""
                 navigate(ScreenKey.ButtonStudio(mode, profileName))
             }
             else -> navigate(ScreenKey.Home)
