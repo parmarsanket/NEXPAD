@@ -2,6 +2,11 @@ package com.sanket.tools.nexpad.ui
 
 import android.content.Context
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
@@ -15,6 +20,11 @@ import com.sanket.tools.nexpad.ui.studio.model.ButtonStudioMode
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
+import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.savedstate.serialization.SavedStateConfiguration
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.polymorphic
+
 @Composable
 fun NavigationGraph(
     viewModel: GamepadViewModel,
@@ -22,7 +32,22 @@ fun NavigationGraph(
     context: Context,
     onVibrate: () -> Unit
 ) {
-    val backStack = remember { mutableStateListOf<NavKey>(ScreenKey.Home) }
+    val backStack = rememberNavBackStack(
+        configuration = SavedStateConfiguration {
+            serializersModule = SerializersModule {
+                polymorphic(NavKey::class) {
+                    subclass(ScreenKey.Home::class, ScreenKey.Home.serializer())
+                    subclass(ScreenKey.Settings::class, ScreenKey.Settings.serializer())
+                    subclass(ScreenKey.Connections::class, ScreenKey.Connections.serializer())
+                    subclass(ScreenKey.Editor::class, ScreenKey.Editor.serializer())
+                    subclass(ScreenKey.VirtualController::class, ScreenKey.VirtualController.serializer())
+                    subclass(ScreenKey.Gamepad::class, ScreenKey.Gamepad.serializer())
+                    subclass(ScreenKey.ButtonStudio::class, ScreenKey.ButtonStudio.serializer())
+                }
+            }
+        },
+        ScreenKey.Home
+    )
     val navigator = remember(backStack) { Nav3AppNavigator(backStack) }
     val sharedPref = remember(context) { context.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE) }
 
@@ -37,7 +62,19 @@ fun NavigationGraph(
     NavDisplay(
         backStack = backStack,
         entryDecorators = listOf(stateDecorator, vmDecorator),
-        onBack = { navigator.popBackStack() }
+        onBack = { navigator.popBackStack() },
+        transitionSpec = {
+            slideInHorizontally { it } + fadeIn() togetherWith
+                    slideOutHorizontally { -it } + fadeOut()
+        },
+        popTransitionSpec = {
+            slideInHorizontally { -it } + fadeIn() togetherWith
+                    slideOutHorizontally { it } + fadeOut()
+        },
+        predictivePopTransitionSpec = {
+            slideInHorizontally { -it } + fadeIn() togetherWith
+                    slideOutHorizontally { it } + fadeOut()
+        }
     ) { key ->
         NavEntry(key) {
             when (key) {

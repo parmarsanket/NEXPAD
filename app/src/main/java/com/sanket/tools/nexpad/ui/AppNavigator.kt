@@ -38,7 +38,7 @@ interface AppNavigator {
 }
 
 class Nav3AppNavigator(
-    private val backStackState: SnapshotStateList<NavKey>
+    private val backStackState: MutableList<NavKey>
 ) : AppNavigator {
     override val backStack: List<NavKey> get() = backStackState
 
