@@ -64,7 +64,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.navigation.NavController
+import com.sanket.tools.nexpad.ui.AppNavigator
 import com.sanket.tools.nexpad.ui.components.badge.HeaderStatusPill
 import com.sanket.tools.nexpad.ui.components.connection.ActiveSessionCard
 import com.sanket.tools.nexpad.ui.components.connection.BluetoothDeviceCard
@@ -80,7 +80,7 @@ import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConnectionScreen(
-    navController: NavController,
+    navController: AppNavigator,
     viewModel: GamepadViewModel
 ) {
     val context = LocalContext.current

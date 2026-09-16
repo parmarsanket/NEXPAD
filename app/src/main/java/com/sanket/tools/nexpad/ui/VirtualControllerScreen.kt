@@ -32,7 +32,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
+import com.sanket.tools.nexpad.ui.AppNavigator
 import com.sanket.tools.nexpad.model.LayoutProfile
 import com.sanket.tools.nexpad.model.getDefaultLayoutProfiles
 import com.sanket.tools.nexpad.ui.components.effects.CyberGrid
@@ -43,7 +43,7 @@ import com.sanket.tools.nexpad.utils.LayoutManager
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VirtualControllerScreen(
-    navController: NavController,
+    navController: AppNavigator,
     layoutManager: LayoutManager
 ) {
     val context = LocalContext.current

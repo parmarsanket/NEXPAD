@@ -41,14 +41,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
+import com.sanket.tools.nexpad.ui.AppNavigator
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
 @Composable
 fun SettingsScreen(
-    navController: NavController,
+    navController: AppNavigator,
     layoutManager: LayoutManager,
     viewModel: GamepadViewModel,
     sharedPref: SharedPreferences

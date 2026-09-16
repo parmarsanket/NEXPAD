@@ -26,7 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
+import com.sanket.tools.nexpad.ui.AppNavigator
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.model.Position
 import com.sanket.tools.nexpad.model.defaultPositions
@@ -48,7 +48,7 @@ import com.sanket.tools.nexpad.utils.LayoutManager
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ButtonStudioScreen(
-    navController: NavController,
+    navController: AppNavigator,
     layoutManager: LayoutManager?,
     initialMode: ButtonStudioMode = ButtonStudioMode.MANAGE,
     targetProfileName: String = ""
@@ -517,7 +517,7 @@ private fun applyButtonSkinToProfile(
 private fun applyButtonToHud(
     def: NxpComponentDef,
     layoutManager: LayoutManager?,
-    navController: NavController,
+    navController: AppNavigator,
     context: Context
 ) {
     applyButtonSkinToProfile(def, layoutManager, context)

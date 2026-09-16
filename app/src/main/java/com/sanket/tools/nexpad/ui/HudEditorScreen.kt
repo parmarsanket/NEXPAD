@@ -30,7 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
+import com.sanket.tools.nexpad.ui.AppNavigator
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.model.*
 import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
@@ -45,7 +45,7 @@ import kotlin.math.roundToInt
 
 @Composable
 fun HudEditorScreen(
-    navController: NavController,
+    navController: AppNavigator,
     layoutManager: LayoutManager,
     viewModel: HudEditorViewModel = viewModel(
         factory = HudEditorViewModelFactory(

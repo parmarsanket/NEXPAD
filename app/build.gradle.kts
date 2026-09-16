@@ -66,6 +66,8 @@ dependencies {
     
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.7.7")
+    implementation("androidx.navigation3:navigation3-runtime:1.1.0")
+    implementation("androidx.navigation3:navigation3-ui:1.1.0")
     
     // Modern Icons (Material Icons Extended)
     implementation("androidx.compose.material:material-icons-extended")

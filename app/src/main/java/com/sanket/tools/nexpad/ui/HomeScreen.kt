@@ -33,7 +33,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
+import com.sanket.tools.nexpad.ui.AppNavigator
 import com.sanket.tools.nexpad.ui.components.badge.HeaderStatusPill
 import com.sanket.tools.nexpad.ui.components.button.CommandButton
 import com.sanket.tools.nexpad.ui.components.effects.CyberGrid
@@ -53,7 +53,7 @@ import com.sanket.tools.nexpad.ui.layout.adaptiveLayoutSpec
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    navController: NavController,
+    navController: AppNavigator,
     layoutManager: LayoutManager,
     viewModel: GamepadViewModel
 ) {
@@ -278,7 +278,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun CommandCenterButtons(navController: NavController) {
+private fun CommandCenterButtons(navController: AppNavigator) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
