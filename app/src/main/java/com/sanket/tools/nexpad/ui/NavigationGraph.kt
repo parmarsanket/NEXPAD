@@ -5,8 +5,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.sanket.tools.nexpad.ui.studio.ButtonStudioScreen
 import com.sanket.tools.nexpad.ui.studio.model.ButtonStudioMode
@@ -24,6 +26,9 @@ fun NavigationGraph(
     val navigator = remember(backStack) { Nav3AppNavigator(backStack) }
     val sharedPref = remember(context) { context.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE) }
 
+    val stateDecorator = rememberSaveableStateHolderNavEntryDecorator<NavKey>()
+    val vmDecorator = rememberViewModelStoreNavEntryDecorator<NavKey>()
+
     // Intercept system/hardware back button when on nested screens
     BackHandler(enabled = backStack.size > 1) {
         navigator.popBackStack()
@@ -31,6 +36,7 @@ fun NavigationGraph(
 
     NavDisplay(
         backStack = backStack,
+        entryDecorators = listOf(stateDecorator, vmDecorator),
         onBack = { navigator.popBackStack() }
     ) { key ->
         NavEntry(key) {
@@ -77,5 +83,6 @@ fun NavigationGraph(
         }
     }
 }
+
 
 

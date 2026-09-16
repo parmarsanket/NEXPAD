@@ -47,6 +47,8 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout-compose:1.0.1")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
@@ -64,8 +66,7 @@ dependencies {
     // Serialization
     implementation(libs.kotlinx.serialization.json)
     
-    // Navigation
-    implementation("androidx.navigation:navigation-compose:2.7.7")
+    // Navigation 3
     implementation("androidx.navigation3:navigation3-runtime:1.1.0")
     implementation("androidx.navigation3:navigation3-ui:1.1.0")
     
