@@ -9,6 +9,7 @@ import android.net.Network
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.sanket.tools.nexpad.model.GamepadInput
+import com.sanket.tools.nexpad.category.ControlKey
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -282,34 +283,38 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     private fun applyButtonState(buttonName: String, isPressed: Boolean) {
         // Canonical keys come from NexpadKeys (backed by CategoryManager).
         // Hardware alias keys (L1/L2/L3, R1/R2/R3, BACK, SELECT, HOME, XBOX, MENU, VIEW)
-        // are kept alongside canonicals so that external hardware inputs still resolve correctly.
-        val K = com.sanket.tools.nexpad.model.NexpadKeys
-        when (buttonName.uppercase()) {
-            K.A                               -> inputState.btnA = isPressed
-            K.B                               -> inputState.btnB = isPressed
-            K.X                               -> inputState.btnX = isPressed
-            K.Y                               -> inputState.btnY = isPressed
-            K.UP                              -> inputState.dpadUp = isPressed
-            K.DOWN                            -> inputState.dpadDown = isPressed
-            K.LEFT                            -> inputState.dpadLeft = isPressed
-            K.RIGHT                           -> inputState.dpadRight = isPressed
-            K.LB, "L1"                        -> inputState.btnL1 = isPressed
-            K.RB, "R1"                        -> inputState.btnR1 = isPressed
-            K.LT, "L2"                        -> inputState.triggerL2 = if (isPressed) 1f else 0f
-            K.RT, "R2"                        -> inputState.triggerR2 = if (isPressed) 1f else 0f
-            K.LS, "L3"                        -> inputState.btnL3 = isPressed
-            K.RS, "R3"                        -> inputState.btnR3 = isPressed
-            K.START, "MENU", "START"          -> inputState.btnStart = isPressed
-            K.BACK, "VIEW", "BACK", "SELECT"  -> inputState.btnSelect = isPressed
-            K.GUIDE, "XBOX", "GUIDE", "HOME"  -> inputState.btnGuide = isPressed
-            K.SHARE                           -> inputState.btnShare = isPressed
-            "SCREENSHOT"                      -> inputState.btnScreenshot = isPressed
-            K.M1                              -> inputState.btnM1 = isPressed
-            K.M2                              -> inputState.btnM2 = isPressed
-            K.M3                              -> inputState.btnM3 = isPressed
-            K.M4                              -> inputState.btnM4 = isPressed
-            K.PROFILE                         -> inputState.btnProfile = isPressed
-            K.TURBO                           -> inputState.btnTurbo = isPressed
+        // Dispatches through ControlKey single source of truth; all aliases, synonyms
+        // (L1, R1, L2, R2, L3, R3, MENU, VIEW, XBOX, CAPTURE, etc.) resolve automatically.
+        val ctrl = ControlKey.fromIdentifier(buttonName)
+        when (ctrl) {
+            ControlKey.A       -> inputState.btnA = isPressed
+            ControlKey.B       -> inputState.btnB = isPressed
+            ControlKey.X       -> inputState.btnX = isPressed
+            ControlKey.Y       -> inputState.btnY = isPressed
+            ControlKey.UP      -> inputState.dpadUp = isPressed
+            ControlKey.DOWN    -> inputState.dpadDown = isPressed
+            ControlKey.LEFT    -> inputState.dpadLeft = isPressed
+            ControlKey.RIGHT   -> inputState.dpadRight = isPressed
+            ControlKey.LB      -> inputState.btnL1 = isPressed
+            ControlKey.RB      -> inputState.btnR1 = isPressed
+            ControlKey.LT      -> inputState.triggerL2 = if (isPressed) 1f else 0f
+            ControlKey.RT      -> inputState.triggerR2 = if (isPressed) 1f else 0f
+            ControlKey.LS      -> inputState.btnL3 = isPressed
+            ControlKey.RS      -> inputState.btnR3 = isPressed
+            ControlKey.START   -> inputState.btnStart = isPressed
+            ControlKey.BACK    -> inputState.btnSelect = isPressed
+            ControlKey.GUIDE   -> inputState.btnGuide = isPressed
+            ControlKey.SHARE   -> {
+                inputState.btnShare = isPressed
+                inputState.btnScreenshot = isPressed
+            }
+            ControlKey.M1      -> inputState.btnM1 = isPressed
+            ControlKey.M2      -> inputState.btnM2 = isPressed
+            ControlKey.M3      -> inputState.btnM3 = isPressed
+            ControlKey.M4      -> inputState.btnM4 = isPressed
+            ControlKey.PROFILE -> inputState.btnProfile = isPressed
+            ControlKey.TURBO   -> inputState.btnTurbo = isPressed
+            null, ControlKey.DPAD -> {}
         }
     }
 

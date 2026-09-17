@@ -80,10 +80,10 @@ fun StaticDefaultButtonPreview(
             K.LB -> StaticRealisticBumper(key = K.LB, isLeft = true)
             K.RB -> StaticRealisticBumper(key = K.RB, isLeft = false)
 
-            K.GUIDE, "XBOX" -> StaticRealisticSystemButton(label = "⨂", textColor = NeonPalette.Cyan)
-            K.START, "MENU" -> StaticRealisticSystemButton(label = "☰", textColor = Color.White)
-            K.BACK,  "VIEW" -> StaticRealisticSystemButton(label = "⧉", textColor = Color.White)
-            K.SHARE, "SCREENSHOT" -> StaticRealisticSystemButton(label = "⇪", textColor = Color.White)
+            K.GUIDE, K.XBOX -> StaticRealisticSystemButton(label = "⨂", textColor = NeonPalette.Cyan)
+            K.START, K.MENU -> StaticRealisticSystemButton(label = "☰", textColor = Color.White)
+            K.BACK,  K.VIEW -> StaticRealisticSystemButton(label = "⧉", textColor = Color.White)
+            K.SHARE, K.SCREENSHOT -> StaticRealisticSystemButton(label = "⇪", textColor = Color.White)
 
             K.M1, K.M2, K.M3, K.M4, K.PROFILE, K.TURBO -> StaticRealisticMacroButton(label = key)
 

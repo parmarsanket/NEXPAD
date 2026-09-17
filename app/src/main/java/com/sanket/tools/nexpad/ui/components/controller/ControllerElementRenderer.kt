@@ -159,7 +159,7 @@ fun ControllerElementRenderer(
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled
         )
-        key in listOf(K.START, K.BACK, K.GUIDE, K.SHARE, "MENU", "VIEW", "XBOX", "SCREENSHOT") -> RealisticSystemButton(
+        key in listOf(K.START, K.BACK, K.GUIDE, K.SHARE, K.MENU, K.VIEW, K.XBOX, K.SCREENSHOT) -> RealisticSystemButton(
             key = key,
             isConnected = isConnected,
             onVibrate = onVibrate,
