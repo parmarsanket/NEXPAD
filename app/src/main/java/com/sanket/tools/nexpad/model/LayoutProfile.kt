@@ -10,12 +10,12 @@ data class LayoutProfile(
     val positions: Map<String, Position> = standardElitePositions(),
     val description: String = ""
 ) {
-    fun toHudElements(): List<HudElement> = positions.mapNotNull { (key, pos) ->
+    fun toHudElements(): List<HudElement> = positions.map { (key, pos) ->
         HudElement.fromPosition(key, pos)
     }
 
     fun withUpdatedElements(elements: List<HudElement>): LayoutProfile = copy(
-        positions = elements.associate { it.control.key to it.toPosition() }
+        positions = elements.associate { it.controlKey to it.toPosition() }
     )
 }
 
@@ -202,7 +202,7 @@ fun getDefaultLayoutProfiles(): List<LayoutProfile> = listOf(
         name = "Racing & Simulation",
         isDefault = true,
         positions = racingSimPositions(),
-        description = "Large analog throttle & brake triggers, steering thumbstick, and paddle shifters."
+        description = "Large analog throttle & brake triggers, steering stick, and paddle shifters."
     ),
     LayoutProfile(
         name = "Retro Arcade & Fighter",

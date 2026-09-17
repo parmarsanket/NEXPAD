@@ -477,6 +477,174 @@ object DefaultComponents {
         size = NxpSize(widthDp = 104, heightDp = 50)
     )
 
+    val NEON_CYAN_BUMPER_LB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.neon_cyan_bumper_lb",
+            name = "Neon Cyan Bumper LB",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "BUMPER",
+            defaultControl = "LB",
+            description = "High-tech cyan glowing shoulder bumper with precision microswitch tactile response."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 14f),
+        visual = NxpVisual(
+            fillColor = "#061A2B",
+            opacity = 0.92f,
+            borderColor = "#00F0FF",
+            borderWidth = 2.5f,
+            glowColor = "#00F0FF",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(scale = 0.92f, fillColor = "#00F0FF", borderColor = "#FFFFFF", glowRadius = 20f),
+        label = NxpLabel(text = "LB", color = "#00F0FF", pressedColor = "#000000", fontSize = 18f),
+        size = NxpSize(widthDp = 104, heightDp = 50)
+    )
+
+    val NEON_CYAN_BUMPER_RB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.neon_cyan_bumper_rb",
+            name = "Neon Cyan Bumper RB",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "BUMPER",
+            defaultControl = "RB",
+            description = "High-tech cyan glowing shoulder bumper with precision microswitch tactile response."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 14f),
+        visual = NxpVisual(
+            fillColor = "#061A2B",
+            opacity = 0.92f,
+            borderColor = "#00F0FF",
+            borderWidth = 2.5f,
+            glowColor = "#00F0FF",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(scale = 0.92f, fillColor = "#00F0FF", borderColor = "#FFFFFF", glowRadius = 20f),
+        label = NxpLabel(text = "RB", color = "#00F0FF", pressedColor = "#000000", fontSize = 18f),
+        size = NxpSize(widthDp = 104, heightDp = 50)
+    )
+
+    val STEALTH_CARBON_LB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.stealth_carbon_lb",
+            name = "Stealth Carbon LB",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "BUMPER",
+            defaultControl = "LB",
+            description = "Matte carbon weave bumper with subtle sky blue chamfered accent lines."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
+        visual = NxpVisual(
+            fillColor = "#1E293B",
+            opacity = 0.94f,
+            borderColor = "#38BDF8",
+            borderWidth = 2f,
+            glowColor = "#38BDF8",
+            glowRadius = 8f
+        ),
+        pressed = NxpPressedState(scale = 0.93f, fillColor = "#38BDF8", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "LB", color = "#E2E8F0", pressedColor = "#0F172A", fontSize = 17f),
+        size = NxpSize(widthDp = 104, heightDp = 50)
+    )
+
+    val STEALTH_CARBON_RB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.stealth_carbon_rb",
+            name = "Stealth Carbon RB",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "BUMPER",
+            defaultControl = "RB",
+            description = "Matte carbon weave bumper with subtle sky blue chamfered accent lines."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
+        visual = NxpVisual(
+            fillColor = "#1E293B",
+            opacity = 0.94f,
+            borderColor = "#38BDF8",
+            borderWidth = 2f,
+            glowColor = "#38BDF8",
+            glowRadius = 8f
+        ),
+        pressed = NxpPressedState(scale = 0.93f, fillColor = "#38BDF8", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "RB", color = "#E2E8F0", pressedColor = "#0F172A", fontSize = 17f),
+        size = NxpSize(widthDp = 104, heightDp = 50)
+    )
+
+    val CRIMSON_MECHA_LB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.crimson_mecha_lb",
+            name = "Crimson Mecha LB",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "BUMPER",
+            defaultControl = "LB",
+            description = "Aggressive crimson mecha-style bumper with high-intensity warning edge."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 14f),
+        visual = NxpVisual(
+            fillColor = "#1F0A12",
+            opacity = 0.92f,
+            borderColor = "#F43F5E",
+            borderWidth = 2.5f,
+            glowColor = "#F43F5E",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(scale = 0.92f, fillColor = "#F43F5E", borderColor = "#FFFFFF", glowRadius = 20f),
+        label = NxpLabel(text = "LB", color = "#FDA4AF", pressedColor = "#1F0A12", fontSize = 18f),
+        size = NxpSize(widthDp = 104, heightDp = 50)
+    )
+
+    val CRIMSON_MECHA_RB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.crimson_mecha_rb",
+            name = "Crimson Mecha RB",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "BUMPER",
+            defaultControl = "RB",
+            description = "Aggressive crimson mecha-style bumper with high-intensity warning edge."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 14f),
+        visual = NxpVisual(
+            fillColor = "#1F0A12",
+            opacity = 0.92f,
+            borderColor = "#F43F5E",
+            borderWidth = 2.5f,
+            glowColor = "#F43F5E",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(scale = 0.92f, fillColor = "#F43F5E", borderColor = "#FFFFFF", glowRadius = 20f),
+        label = NxpLabel(text = "RB", color = "#FDA4AF", pressedColor = "#1F0A12", fontSize = 18f),
+        size = NxpSize(widthDp = 104, heightDp = 50)
+    )
+
+    val NEON_PULSE_B = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.neon_pulse_b",
+            name = "Neon Pulse B",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "BUTTON",
+            defaultControl = "B",
+            description = "Futuristic neon crimson circle action button."
+        ),
+        geometry = NxpGeometry(type = "Circle", cornerRadius = 38f),
+        visual = NxpVisual(
+            fillColor = "#1A050B",
+            opacity = 0.92f,
+            borderColor = "#FF1744",
+            borderWidth = 2.5f,
+            glowColor = "#FF1744",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(scale = 0.88f, fillColor = "#FF1744", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "B", color = "#FF1744", pressedColor = "#FFFFFF", fontSize = 24f),
+        size = NxpSize(widthDp = 76, heightDp = 76)
+    )
+
     val PULSE_TRIGGER_LT = NxpComponentDef(
         manifest = NxpManifest(
             id = "builtin.pulse_trigger_lt",
@@ -1455,8 +1623,15 @@ object DefaultComponents {
         CYBER_OCTA_A,
         NEON_DIAMOND_X,
         PLASMA_TRIANGLE_Y,
+        NEON_PULSE_B,
         CYBER_BUMPER_LB,
         CYBER_BUMPER_RB,
+        NEON_CYAN_BUMPER_LB,
+        NEON_CYAN_BUMPER_RB,
+        STEALTH_CARBON_LB,
+        STEALTH_CARBON_RB,
+        CRIMSON_MECHA_LB,
+        CRIMSON_MECHA_RB,
         PULSE_TRIGGER_LT,
         PULSE_TRIGGER_RT,
         NEON_MATRIX_JOYSTICK,

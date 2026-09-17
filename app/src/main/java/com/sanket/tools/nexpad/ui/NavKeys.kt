@@ -33,7 +33,7 @@ sealed interface ScreenKey : NavKey {
      *
      * @param profileName  Name of the layout to load. Null means "use the
      *                     currently active profile" (backward-compatible default).
-     * @param controlKey   Optional: GamepadControl.key of the control to
+     * @param controlKey   Optional: CategoryManager control key of the control to
      *                     pre-select after the editor opens (e.g. "RT").
      *                     Null means open with nothing selected.
      */
@@ -54,7 +54,7 @@ sealed interface ScreenKey : NavKey {
      *
      * @param mode           "manage" (asset library) or "select" (contextual picker).
      * @param profileName    Layout currently being edited. Empty string = none.
-     * @param controlKey     Optional: the specific GamepadControl.key that needs
+     * @param controlKey     Optional: the specific CategoryManager control key that needs
      *                       a new appearance (e.g. "RT"). Null = manage mode.
      * @param currentAssetId Optional: the asset ID currently applied to controlKey,
      *                       so Button Studio can highlight it as "Current".

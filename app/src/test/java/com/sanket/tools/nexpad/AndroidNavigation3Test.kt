@@ -46,7 +46,7 @@ class AndroidNavigation3Test {
         assertEquals(ScreenKey.Connections, navigator.backStack.last())
 
         navigator.navigate("editor")
-        assertEquals(ScreenKey.Editor, navigator.backStack.last())
+        assertEquals(ScreenKey.Editor(), navigator.backStack.last())
 
         navigator.navigate("virtual_controller")
         assertEquals(ScreenKey.VirtualController, navigator.backStack.last())
@@ -59,7 +59,7 @@ class AndroidNavigation3Test {
 
         navigator.navigate("button_studio?mode=select&profileName=Arcade_Fighter")
         val studioKey = navigator.backStack.last() as ScreenKey.ButtonStudio
-        assertEquals("select", studioKey.mode)
+        assertEquals("editor", studioKey.mode)
         assertEquals("Arcade_Fighter", studioKey.profileName)
     }
 

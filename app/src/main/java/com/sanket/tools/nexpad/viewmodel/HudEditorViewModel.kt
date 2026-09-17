@@ -2,8 +2,7 @@ package com.sanket.tools.nexpad.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.sanket.tools.nexpad.model.ControlCategory
-import com.sanket.tools.nexpad.model.GamepadControl
+import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.model.HudElement
 import com.sanket.tools.nexpad.model.LayoutProfile
 import com.sanket.tools.nexpad.model.LayoutSkin
@@ -23,8 +22,10 @@ import kotlinx.coroutines.launch
 
 /**
  * Single source of truth for HUD Layout Editing sessions.
- * Manages active profile, element transforms, strict category-safe skin binding,
+ * Manages active profile, element transforms, dynamic category-safe skin binding,
  * and asynchronous persistence off the main thread.
+ *
+ * Backed entirely by protocol CategoryManager — zero enum duplication or hardcoded heuristics.
  */
 class HudEditorViewModel(
     private val layoutManager: LayoutManager,
@@ -35,60 +36,104 @@ class HudEditorViewModel(
     private val _currentProfile = MutableStateFlow(layoutManager.getActiveProfile())
     val currentProfile: StateFlow<LayoutProfile> = _currentProfile.asStateFlow()
 
-    private val _elements = MutableStateFlow<Map<GamepadControl, HudElement>>(emptyMap())
-    val elements: StateFlow<Map<GamepadControl, HudElement>> = _elements.asStateFlow()
+    private val _elements = MutableStateFlow<Map<String, HudElement>>(emptyMap())
+    val elements: StateFlow<Map<String, HudElement>> = _elements.asStateFlow()
 
-    private val _selectedControl = MutableStateFlow<GamepadControl?>(null)
-    val selectedControl: StateFlow<GamepadControl?> = _selectedControl.asStateFlow()
+    private val _selectedControl = MutableStateFlow<String?>(null)
+    val selectedControl: StateFlow<String?> = _selectedControl.asStateFlow()
 
     private val _hasUnsavedChanges = MutableStateFlow(false)
     val hasUnsavedChanges: StateFlow<Boolean> = _hasUnsavedChanges.asStateFlow()
 
     /**
-     * Category-safe list of compatible skins for the currently selected control.
-     * Prevents cross-contamination (e.g. analog stick skin on a face button).
-     * Includes both Tier 1 ComponentRegistry skins and Tier 2 RemoteComponentRegistry (.nxprc) skins.
+     * Dynamically checks if a component definition is compatible with a given target control key.
+     * 100% dynamic — queries the protocol CategoryManager's canonical control resolution.
+     * Prevents cross-button leakage (e.g. A on B, LB on RB) without brittle hardcoded button names or heuristics.
      */
+    fun isSkinCompatible(
+        componentDefaultControl: String,
+        componentCategory: String,
+        componentId: String,
+        targetControlKey: String
+    ): Boolean {
+        val targetSpec = CategoryManager.getControl(targetControlKey) ?: return false
+
+        // 1. Primary: Match via component defaultControl (resolves keys, aliases, and labels)
+        if (componentDefaultControl.isNotBlank()) {
+            val resolved = CategoryManager.resolveControl(componentDefaultControl)
+            if (resolved != null) {
+                return resolved.key == targetSpec.key
+            }
+        }
+
+        // 2. Secondary: Match via componentId (for default or preset IDs e.g. "builtin.default_lb", "rc.bumper_lb")
+        if (componentId.isNotBlank()) {
+            val resolved = CategoryManager.resolveControl(componentId)
+            if (resolved != null) {
+                return resolved.key == targetSpec.key
+            }
+        }
+
+        // 3. Fallback: Category cluster controls where individual control keys are unassigned (e.g. DPAD)
+        if (componentDefaultControl.isBlank() && componentCategory.isNotBlank()) {
+            val cat = CategoryManager.getCategory(componentCategory)
+            if (cat != null) {
+                return cat.type == targetSpec.categoryType
+            }
+        }
+
+        return false
+    }
+
+    /**
+     * Dynamically retrieves all compatible skins for a specific control without duplicates.
+     * Adapts in real-time as users import or delete skins.
+     *
+     * Guarantee:
+     * - Index 0 is ALWAYS LayoutSkin.NativeDefault (the native 3D hardware element).
+     * - Any built-in default definition (e.g. "builtin.default_*") is unified under index 0.
+     * - Each custom/remote skin appears exactly once.
+     */
+    fun getCompatibleSkins(controlKey: String): List<LayoutSkin> {
+        val skins = mutableListOf<LayoutSkin>(LayoutSkin.NativeDefault)
+        val seenIds = mutableSetOf<String>()
+
+        val allComponents = componentRegistry.installedComponents.value
+        val remoteDocs = remoteComponentRegistry?.loadedComponents?.value ?: emptyList()
+
+        // 1. Tier 2: User-imported or remote .nxprc skins
+        remoteDocs.forEach { doc ->
+            if (isSkinCompatible(doc.manifest.defaultControl, doc.manifest.category, doc.manifest.id, controlKey)) {
+                if (seenIds.add(doc.manifest.id)) {
+                    skins.add(LayoutSkin.RemoteComponent(doc))
+                }
+            }
+        }
+
+        // 2. Tier 1: NXP JSON and built-in styled presets (excluding defaults and already-added remote components)
+        allComponents.forEach { def ->
+            val id = def.manifest.id
+            // Builtin defaults (e.g. builtin.default_lb) are unified under LayoutSkin.NativeDefault (index 0)
+            if (id.startsWith("builtin.default_")) return@forEach
+            if (seenIds.contains(id)) return@forEach
+
+            if (isSkinCompatible(def.manifest.defaultControl, def.manifest.category, id, controlKey)) {
+                if (seenIds.add(id)) {
+                    skins.add(LayoutSkin.CustomComponent(def))
+                }
+            }
+        }
+
+        return skins
+    }
+
     val compatibleSkins: StateFlow<List<LayoutSkin>> = combine(
         _selectedControl,
         componentRegistry.installedComponents,
         remoteComponentRegistry?.loadedComponents ?: MutableStateFlow(emptyList())
-    ) { selected, allComponents, remoteDocs ->
-        if (selected == null) return@combine emptyList()
-
-        val skins = mutableListOf<LayoutSkin>(LayoutSkin.NativeDefault)
-        val expectedCategory = when (selected.category) {
-            ControlCategory.BUTTON -> "BUTTON"
-            ControlCategory.JOYSTICK -> "JOYSTICK"
-            ControlCategory.TRIGGER -> "TRIGGER"
-            ControlCategory.BUMPER -> "BUMPER"
-            ControlCategory.DPAD -> "DPAD"
-            ControlCategory.HOME -> "HOME"
-            ControlCategory.SYSTEM -> "SYSTEM"
-            ControlCategory.MACRO -> "MACRO"
-        }
-
-        // Tier 1: NXP JSON and builtin vector skins
-        allComponents.filter { def ->
-            // Exclude default native components because LayoutSkin.NativeDefault already represents them
-            if (def.manifest.id.startsWith("builtin.default_")) return@filter false
-            val cat = def.manifest.category.uppercase()
-            val defaultCtrl = def.manifest.defaultControl.uppercase()
-            cat == expectedCategory || defaultCtrl == selected.key
-        }.forEach {
-            skins.add(LayoutSkin.CustomComponent(it))
-        }
-
-        // Tier 2: Remote Compose (.nxprc) skins
-        remoteDocs.filter { doc ->
-            val cat = doc.manifest.category.uppercase()
-            val defaultCtrl = doc.manifest.defaultControl.uppercase()
-            cat == expectedCategory || defaultCtrl == selected.key
-        }.forEach {
-            skins.add(LayoutSkin.RemoteComponent(it))
-        }
-
-        skins
+    ) { selected, _, _ ->
+        if (selected == null) emptyList()
+        else getCompatibleSkins(selected)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
@@ -99,21 +144,10 @@ class HudEditorViewModel(
         val profile = layoutManager.getActiveProfile()
         _currentProfile.value = profile
 
-        val elementMap = mutableMapOf<GamepadControl, HudElement>()
+        val elementMap = mutableMapOf<String, HudElement>()
         profile.positions.forEach { (key, pos) ->
-            val control = GamepadControl.fromKey(key)
-            if (control != null) {
-                elementMap[control] = HudElement(
-                    control = control,
-                    transform = LayoutTransform(
-                        xRatio = pos.xRatio,
-                        yRatio = pos.yRatio,
-                        scale = pos.scale,
-                        opacity = pos.opacity
-                    ),
-                    skinId = pos.customComponentId
-                )
-            }
+            val upperKey = key.uppercase()
+            elementMap[upperKey] = HudElement.fromPosition(upperKey, pos)
         }
         _elements.value = elementMap
         _hasUnsavedChanges.value = false
@@ -135,18 +169,19 @@ class HudEditorViewModel(
         loadActiveProfile()
     }
 
-    fun selectControl(control: GamepadControl?) {
-        _selectedControl.value = control
+    fun selectControl(controlKey: String?) {
+        _selectedControl.value = controlKey?.uppercase()
     }
 
     fun updateTransform(
-        control: GamepadControl,
+        controlKey: String,
         xRatio: Float,
         yRatio: Float,
         scale: Float? = null,
         opacity: Float? = null
     ) {
-        val current = _elements.value[control] ?: return
+        val key = controlKey.uppercase()
+        val current = _elements.value[key] ?: return
         val updated = current.copy(
             transform = current.transform.copy(
                 xRatio = xRatio.coerceIn(0.0f, 1.0f),
@@ -155,86 +190,95 @@ class HudEditorViewModel(
                 opacity = opacity?.coerceIn(0.1f, 1.0f) ?: current.transform.opacity
             )
         )
-        _elements.value = _elements.value + (control to updated)
+        _elements.value = _elements.value + (key to updated)
         _hasUnsavedChanges.value = true
     }
 
-    fun nudge(control: GamepadControl, dxRatio: Float, dyRatio: Float) {
-        val current = _elements.value[control] ?: return
+    fun nudge(controlKey: String, dxRatio: Float, dyRatio: Float) {
+        val key = controlKey.uppercase()
+        val current = _elements.value[key] ?: return
         val newX = (current.transform.xRatio + dxRatio).coerceIn(0.0f, 1.0f)
         val newY = (current.transform.yRatio + dyRatio).coerceIn(0.0f, 1.0f)
-        updateTransform(control, newX, newY)
+        updateTransform(key, newX, newY)
     }
 
-    fun setScale(control: GamepadControl, newScale: Float) {
-        val current = _elements.value[control] ?: return
-        updateTransform(control, current.transform.xRatio, current.transform.yRatio, scale = newScale)
+    fun setScale(controlKey: String, newScale: Float) {
+        val key = controlKey.uppercase()
+        val current = _elements.value[key] ?: return
+        updateTransform(key, current.transform.xRatio, current.transform.yRatio, scale = newScale)
     }
 
-    fun setOpacity(control: GamepadControl, newOpacity: Float) {
-        val current = _elements.value[control] ?: return
-        updateTransform(control, current.transform.xRatio, current.transform.yRatio, opacity = newOpacity)
+    fun setOpacity(controlKey: String, newOpacity: Float) {
+        val key = controlKey.uppercase()
+        val current = _elements.value[key] ?: return
+        updateTransform(key, current.transform.xRatio, current.transform.yRatio, opacity = newOpacity)
     }
 
-    fun setSkin(control: GamepadControl, skinId: String?) {
-        val current = _elements.value[control] ?: return
+    fun setSkin(controlKey: String, skinId: String?) {
+        val key = controlKey.uppercase()
+        val current = _elements.value[key] ?: return
         val updated = current.copy(skinId = skinId)
-        _elements.value = _elements.value + (control to updated)
+        _elements.value = _elements.value + (key to updated)
         _hasUnsavedChanges.value = true
     }
 
-    fun cycleNextSkin(control: GamepadControl) {
-        val available = compatibleSkins.value
+    fun cycleNextSkin(controlKey: String) {
+        val key = controlKey.uppercase()
+        val available = getCompatibleSkins(key)
         if (available.isEmpty()) return
 
-        val currentSkinId = _elements.value[control]?.skinId
-        val currentIndex = available.indexOfFirst {
-            when (it) {
-                is LayoutSkin.NativeDefault -> currentSkinId == null
-                is LayoutSkin.CustomComponent -> it.def.manifest.id == currentSkinId
-                is LayoutSkin.RemoteComponent -> it.doc.manifest.id == currentSkinId
-            }
+        val currentSkinId = _elements.value[key]?.skinId?.takeIf { it.isNotBlank() }
+        val isCurrentDefault = currentSkinId == null || currentSkinId.startsWith("builtin.default_")
+
+        val currentIndex = if (isCurrentDefault) {
+            0
+        } else {
+            available.indexOfFirst { it.id == currentSkinId }
         }
 
-        val nextIndex = (currentIndex + 1) % available.size
-        val nextSkin = available[nextIndex]
-        val newSkinId = when (nextSkin) {
-            is LayoutSkin.NativeDefault -> null
-            is LayoutSkin.CustomComponent -> nextSkin.def.manifest.id
-            is LayoutSkin.RemoteComponent -> nextSkin.doc.manifest.id
+        val nextIndex = if (currentIndex == -1) {
+            // Unknown or deleted skin: cleanly reset to Native Default (0)
+            0
+        } else {
+            (currentIndex + 1) % available.size
         }
-        setSkin(control, newSkinId)
+
+        val nextSkin = available[nextIndex]
+        setSkin(key, nextSkin.id)
     }
 
-    fun addControl(control: GamepadControl, skinId: String? = null) {
-        val defPos = defaultPositions()[control.key]
+    fun addControl(controlKey: String, skinId: String? = null) {
+        val key = controlKey.uppercase()
+        val defPos = defaultPositions()[key]
         val transform = LayoutTransform(
             xRatio = defPos?.xRatio ?: 0.5f,
             yRatio = defPos?.yRatio ?: 0.5f,
             scale = defPos?.scale ?: 1.0f,
             opacity = defPos?.opacity ?: 1.0f
         )
-        val element = HudElement(control = control, transform = transform, skinId = skinId)
-        _elements.value = _elements.value + (control to element)
-        _selectedControl.value = control
+        val element = HudElement(controlKey = key, transform = transform, skinId = skinId)
+        _elements.value = _elements.value + (key to element)
+        _selectedControl.value = key
         _hasUnsavedChanges.value = true
     }
 
-    fun removeControl(control: GamepadControl) {
-        if (_elements.value.containsKey(control)) {
-            _elements.value = _elements.value - control
-            if (_selectedControl.value == control) {
+    fun removeControl(controlKey: String) {
+        val key = controlKey.uppercase()
+        if (_elements.value.containsKey(key)) {
+            _elements.value = _elements.value - key
+            if (_selectedControl.value == key) {
                 _selectedControl.value = null
             }
             _hasUnsavedChanges.value = true
         }
     }
 
-    fun resetControlToDefault(control: GamepadControl) {
-        val defPos = defaultPositions()[control.key] ?: return
-        val current = _elements.value[control]
+    fun resetControlToDefault(controlKey: String) {
+        val key = controlKey.uppercase()
+        val defPos = defaultPositions()[key] ?: return
+        val current = _elements.value[key]
         val updated = HudElement(
-            control = control,
+            controlKey = key,
             transform = LayoutTransform(
                 xRatio = defPos.xRatio,
                 yRatio = defPos.yRatio,
@@ -243,27 +287,25 @@ class HudEditorViewModel(
             ),
             skinId = current?.skinId
         )
-        _elements.value = _elements.value + (control to updated)
+        _elements.value = _elements.value + (key to updated)
         _hasUnsavedChanges.value = true
     }
 
     fun restoreAllDefaultButtons() {
         val defaultMap = defaultPositions()
-        val elementMap = mutableMapOf<GamepadControl, HudElement>()
+        val elementMap = mutableMapOf<String, HudElement>()
         defaultMap.forEach { (key, pos) ->
-            val control = GamepadControl.fromKey(key)
-            if (control != null) {
-                elementMap[control] = HudElement(
-                    control = control,
-                    transform = LayoutTransform(
-                        xRatio = pos.xRatio,
-                        yRatio = pos.yRatio,
-                        scale = pos.scale,
-                        opacity = pos.opacity
-                    ),
-                    skinId = _elements.value[control]?.skinId
-                )
-            }
+            val upperKey = key.uppercase()
+            elementMap[upperKey] = HudElement(
+                controlKey = upperKey,
+                transform = LayoutTransform(
+                    xRatio = pos.xRatio,
+                    yRatio = pos.yRatio,
+                    scale = pos.scale,
+                    opacity = pos.opacity
+                ),
+                skinId = _elements.value[upperKey]?.skinId
+            )
         }
         _elements.value = elementMap
         _hasUnsavedChanges.value = true
@@ -274,7 +316,7 @@ class HudEditorViewModel(
      */
     fun saveProfile(onSaved: () -> Unit = {}) {
         val profile = _currentProfile.value
-        val positionMap = _elements.value.values.associate { it.control.key to it.toPosition() }
+        val positionMap = _elements.value.values.associate { it.controlKey to it.toPosition() }
         val updatedProfile = profile.copy(positions = positionMap)
 
         viewModelScope.launch(Dispatchers.IO) {

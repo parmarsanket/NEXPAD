@@ -86,10 +86,7 @@ fun HudEditorScreen(
         }
         // Pre-select a control if one was specified in the ScreenKey (replaces pendingSelectedKey)
         if (!initialControlKey.isNullOrBlank()) {
-            val target = com.sanket.tools.nexpad.model.GamepadControl.fromKey(initialControlKey)
-            if (target != null) {
-                viewModel.selectControl(target)
-            }
+            viewModel.selectControl(initialControlKey)
         }
     }
 
@@ -100,13 +97,11 @@ fun HudEditorScreen(
 
     LaunchedEffect(editingContext?.pendingAssetResult) {
         val result = editingContext?.pendingAssetResult ?: return@LaunchedEffect
-        val ctrl = editingContext?.controlKey?.let {
-            com.sanket.tools.nexpad.model.GamepadControl.fromKey(it)
-        } ?: return@LaunchedEffect
+        val ctrlKey = editingContext?.controlKey ?: return@LaunchedEffect
         // Apply the chosen asset to the control (marks hasUnsavedChanges = true)
-        viewModel.setSkin(ctrl, result)
+        viewModel.setSkin(ctrlKey, result)
         // Re-select the control so the inspector stays open showing the new skin
-        viewModel.selectControl(ctrl)
+        viewModel.selectControl(ctrlKey)
         // Consume the result so it doesn't re-trigger on recomposition
         navigationViewModel?.consumeAssetResult()
     }
@@ -183,7 +178,7 @@ fun HudEditorScreen(
                     // which control and profile it is serving.
                     navigationViewModel?.beginAssetSelection(
                         profileName = profile.name,
-                        controlKey = selectedControl!!.key,
+                        controlKey = selectedControl!!,
                         currentAssetId = selectedElement.skinId,
                         originScreen = OriginScreen.HUD_EDITOR
                     )
@@ -191,7 +186,7 @@ fun HudEditorScreen(
                         ScreenKey.ButtonStudio(
                             mode = "editor",
                             profileName = profile.name,
-                            controlKey = selectedControl!!.key,
+                            controlKey = selectedControl!!,
                             currentAssetId = selectedElement.skinId
                         )
                     )
@@ -208,26 +203,27 @@ fun HudEditorScreen(
         if (showAddDialog) {
             HudButtonPaletteDialog(
                 currentElements = elements,
-                onToggleControl = { control ->
-                    if (elements.containsKey(control)) {
-                        viewModel.removeControl(control)
+                onToggleControl = { controlKey ->
+                    if (elements.containsKey(controlKey)) {
+                        viewModel.removeControl(controlKey)
                     } else {
-                        viewModel.addControl(control)
+                        viewModel.addControl(controlKey)
                     }
                 },
                 onRestoreAll = { viewModel.restoreAllDefaultButtons() },
                 onStandardOnly = {
                     val standardKeys = setOf(
-                        GamepadControl.LT, GamepadControl.RT, GamepadControl.LB, GamepadControl.RB,
-                        GamepadControl.LS, GamepadControl.RS, GamepadControl.DPAD,
-                        GamepadControl.A, GamepadControl.B, GamepadControl.X, GamepadControl.Y,
-                        GamepadControl.XBOX, GamepadControl.VIEW, GamepadControl.MENU
+                        "LT", "RT", "LB", "RB",
+                        "LS", "RS", "DPAD",
+                        "A", "B", "X", "Y",
+                        "XBOX", "VIEW", "MENU"
                     )
-                    GamepadControl.entries.forEach { ctrl ->
-                        if (ctrl in standardKeys) {
-                            if (!elements.containsKey(ctrl)) viewModel.addControl(ctrl)
+                    CategoryManager.getAllCategories().flatMap { it.controls }.forEach { spec ->
+                        val k = spec.key.uppercase()
+                        if (k in standardKeys) {
+                            if (!elements.containsKey(k)) viewModel.addControl(k)
                         } else {
-                            viewModel.removeControl(ctrl)
+                            viewModel.removeControl(k)
                         }
                     }
                 },
@@ -301,14 +297,14 @@ fun HudEditorScreen(
  */
 @Composable
 private fun HudCanvas(
-    elements: Map<GamepadControl, HudElement>,
-    selectedControl: GamepadControl?,
+    elements: Map<String, HudElement>,
+    selectedControl: String?,
     screenWidthPx: Float,
     screenHeightPx: Float,
     isRgbEnabled: Boolean,
     dummyViewModel: GamepadViewModel,
-    onSelect: (GamepadControl) -> Unit,
-    onDragDelta: (GamepadControl, Float, Float) -> Unit
+    onSelect: (String) -> Unit,
+    onDragDelta: (String, Float, Float) -> Unit
 ) {
     val context = LocalContext.current
     val registry = remember { ComponentRegistry.getInstance(context) }
@@ -316,9 +312,9 @@ private fun HudCanvas(
     val installedComponents by registry.installedComponents.collectAsState()
     val remoteDocs by remoteRegistry.loadedComponents.collectAsState()
 
-    elements.forEach { (control, element) ->
-        key(control) {
-            val isSelected = selectedControl == control
+    elements.forEach { (controlKey, element) ->
+        key(controlKey) {
+            val isSelected = selectedControl == controlKey
 
             Box(
                 modifier = Modifier
@@ -339,7 +335,7 @@ private fun HudCanvas(
             ) {
                 // Controller Element Visual Renderer
                 ControllerElementRenderer(
-                    key = control.key,
+                    key = controlKey,
                     isConnected = false,
                     isRgbEnabled = isRgbEnabled,
                     viewModel = dummyViewModel,
@@ -392,21 +388,21 @@ private fun HudCanvas(
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        .pointerInput(control, screenWidthPx, screenHeightPx) {
+                        .pointerInput(controlKey, screenWidthPx, screenHeightPx) {
                             detectTapGestures(
-                                onTap = { onSelect(control) }
+                                onTap = { onSelect(controlKey) }
                             )
                         }
-                        .pointerInput(control, screenWidthPx, screenHeightPx) {
+                        .pointerInput(controlKey, screenWidthPx, screenHeightPx) {
                             detectDragGestures(
-                                onDragStart = { onSelect(control) },
+                                onDragStart = { onSelect(controlKey) },
                                 onDragEnd = {},
                                 onDragCancel = {}
                             ) { change, dragAmount ->
                                 change.consume()
                                 val dx = dragAmount.x / screenWidthPx
                                 val dy = dragAmount.y / screenHeightPx
-                                onDragDelta(control, dx, dy)
+                                onDragDelta(controlKey, dx, dy)
                             }
                         }
                 )
@@ -541,7 +537,6 @@ private fun HudDockedInspector(
     onRemove: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val control = element.control
     val transform = element.transform
 
     Surface(
@@ -569,23 +564,34 @@ private fun HudDockedInspector(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    val controlSpec = remember(control.key) { CategoryManager.getControl(control.key) }
-                    val emoji = controlSpec?.emoji ?: ""
+                    val emoji = element.emoji
                     Text(
-                        text = "${if (emoji.isNotBlank()) "$emoji " else ""}${control.displayName} (${control.category.displayName})",
+                        text = "${if (emoji.isNotBlank()) "$emoji " else ""}${element.displayName} (${element.categoryTitle})",
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = NeonPalette.Cyan)
                     )
 
+                    val currentSkin = compatibleSkins.firstOrNull { it.id == element.skinId }
                     val isCustom = element.skinId != null && !element.skinId.startsWith("builtin.default_")
-                    val customMatch = if (isCustom) {
-                        compatibleSkins.filterIsInstance<LayoutSkin.CustomComponent>()
-                            .firstOrNull { it.def.manifest.id == element.skinId }?.def?.manifest?.name
-                    } else null
-                    val remoteMatch = if (isCustom && customMatch == null) {
-                        compatibleSkins.filterIsInstance<LayoutSkin.RemoteComponent>()
-                            .firstOrNull { it.doc.manifest.id == element.skinId }?.doc?.manifest?.name
-                    } else null
-                    val isMissingAsset = isCustom && customMatch == null && remoteMatch == null
+                    val isMissingAsset = isCustom && currentSkin == null
+                    val skinLabel = when {
+                        !isCustom -> "Default"
+                        isMissingAsset -> "Missing"
+                        else -> currentSkin?.name ?: "Custom"
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = NeonPalette.Purple.copy(alpha = 0.18f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Purple.copy(alpha = 0.5f))
+                    ) {
+                        Text(
+                            text = "Skin: $skinLabel",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = NeonPalette.Purple,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
 
                     if (isMissingAsset) {
                         Surface(
@@ -707,22 +713,9 @@ private fun HudDockedInspector(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    val currentSkin = compatibleSkins.firstOrNull { it.id == element.skinId }
                     val isCustom = element.skinId != null && !element.skinId.startsWith("builtin.default_")
-                    val customMatch = if (isCustom) {
-                        compatibleSkins.filterIsInstance<LayoutSkin.CustomComponent>()
-                            .firstOrNull { it.def.manifest.id == element.skinId }?.def?.manifest?.name
-                    } else null
-                    val remoteMatch = if (isCustom && customMatch == null) {
-                        compatibleSkins.filterIsInstance<LayoutSkin.RemoteComponent>()
-                            .firstOrNull { it.doc.manifest.id == element.skinId }?.doc?.manifest?.name
-                    } else null
-                    val isMissingAsset = isCustom && customMatch == null && remoteMatch == null
-
-                    val skinName = when {
-                        !isCustom -> "Default 3D"
-                        isMissingAsset -> "Missing (Fallback)"
-                        else -> customMatch ?: remoteMatch ?: "Custom"
-                    }
+                    val isMissingAsset = isCustom && currentSkin == null
 
                     OutlinedButton(
                         onClick = onCycleSkin,
@@ -744,7 +737,7 @@ private fun HudDockedInspector(
                             modifier = Modifier.size(12.dp)
                         )
                         Spacer(Modifier.width(4.dp))
-                        Text("Skin: $skinName", fontSize = 10.sp)
+                        Text("Skin Change", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                     }
 
                     IconButton(
@@ -786,39 +779,15 @@ private fun HudDockedInspector(
  */
 @Composable
 private fun HudButtonPaletteDialog(
-    currentElements: Map<GamepadControl, HudElement>,
-    onToggleControl: (GamepadControl) -> Unit,
+    currentElements: Map<String, HudElement>,
+    onToggleControl: (String) -> Unit,
     onRestoreAll: () -> Unit,
     onStandardOnly: () -> Unit,
     onClearAll: () -> Unit,
     onOpenStudio: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val controlDescriptions = mapOf(
-        GamepadControl.A to "Face Button A (Bottom)",
-        GamepadControl.B to "Face Button B (Right)",
-        GamepadControl.X to "Face Button X (Left)",
-        GamepadControl.Y to "Face Button Y (Top)",
-        GamepadControl.LS to "Left Analog Thumbstick",
-        GamepadControl.RS to "Right Analog Thumbstick",
-        GamepadControl.DPAD to "4-Way Directional Pad",
-        GamepadControl.UP to "D-Pad Directional Up (▲)",
-        GamepadControl.DOWN to "D-Pad Directional Down (▼)",
-        GamepadControl.LEFT to "D-Pad Directional Left (◀)",
-        GamepadControl.RIGHT to "D-Pad Directional Right (▶)",
-        GamepadControl.LT to "Left Analog Trigger",
-        GamepadControl.RT to "Right Analog Trigger",
-        GamepadControl.LB to "Left Bumper",
-        GamepadControl.RB to "Right Bumper",
-        GamepadControl.XBOX to "Guide / Home Button",
-        GamepadControl.VIEW to "View / Back Button",
-        GamepadControl.MENU to "Menu / Start Button",
-        GamepadControl.SHARE to "Share / Capture Button",
-        GamepadControl.M1 to "Rear Macro Paddle 1",
-        GamepadControl.M2 to "Rear Macro Paddle 2",
-        GamepadControl.M3 to "Rear Macro Paddle 3",
-        GamepadControl.M4 to "Rear Macro Paddle 4"
-    )
+    val categories = remember { CategoryManager.getAllCategories() }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -850,7 +819,7 @@ private fun HudButtonPaletteDialog(
                         contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text("Add All 19", fontSize = 11.sp)
+                        Text("Add All", fontSize = 11.sp)
                     }
                     OutlinedButton(
                         onClick = onStandardOnly,
@@ -872,15 +841,11 @@ private fun HudButtonPaletteDialog(
 
                 HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
 
-                // Grouped by Category
-                val groupedControls = GamepadControl.entries.groupBy { it.category }
-
-                groupedControls.forEach { (category, controlList) ->
-                    val catSpec = CategoryManager.getAllCategories().find {
-                        it.id.equals(category.name, ignoreCase = true) ||
-                        it.controls.any { c -> controlList.any { ctrl -> ctrl.key.equals(c.key, ignoreCase = true) } }
-                    }
-                    val catHeader = if (catSpec != null) "${catSpec.title} (${controlList.size})" else category.displayName
+                // Grouped by Category via CategoryManager
+                categories.forEach { category ->
+                    val controlList = category.controls
+                    if (controlList.isEmpty()) return@forEach
+                    val catHeader = "${category.title} (${controlList.size})"
 
                     Text(
                         catHeader,
@@ -897,16 +862,16 @@ private fun HudButtonPaletteDialog(
                         border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
                     ) {
                         Column {
-                            controlList.forEachIndexed { index, control ->
-                                val isPresent = currentElements.containsKey(control)
-                                val spec = CategoryManager.getControl(control.key)
-                                val emoji = spec?.emoji ?: ""
-                                val label = spec?.label ?: control.displayName
-                                val desc = spec?.description ?: controlDescriptions[control] ?: ""
+                            controlList.forEachIndexed { index, spec ->
+                                val upperKey = spec.key.uppercase()
+                                val isPresent = currentElements.containsKey(upperKey)
+                                val emoji = spec.emoji
+                                val label = spec.label
+                                val desc = spec.description
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable { onToggleControl(control) }
+                                        .clickable { onToggleControl(upperKey) }
                                         .padding(horizontal = 12.dp, vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -923,7 +888,7 @@ private fun HudButtonPaletteDialog(
                                     Column(modifier = Modifier.weight(1f)) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Text(
-                                                control.key,
+                                                upperKey,
                                                 fontSize = 14.sp,
                                                 fontWeight = if (isPresent) FontWeight.Bold else FontWeight.Normal,
                                                 color = if (isPresent) Color.White else Color.Gray
@@ -935,11 +900,13 @@ private fun HudButtonPaletteDialog(
                                                 color = if (isPresent) NeonPalette.Cyan.copy(alpha = 0.8f) else Color.Gray.copy(alpha = 0.6f)
                                             )
                                         }
-                                        Text(
-                                            desc,
-                                            fontSize = 10.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                                        if (desc.isNotBlank()) {
+                                            Text(
+                                                desc,
+                                                fontSize = 10.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
                                     }
                                 }
                                 if (index < controlList.lastIndex) {

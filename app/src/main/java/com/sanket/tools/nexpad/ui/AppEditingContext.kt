@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpad.ui
+package com.sanket.tools.nexpad.ui
 
 /**
  * Represents the active contextual editing operation when a screen opens
@@ -20,7 +20,7 @@ data class AppEditingContext(
     /** Name of the LayoutProfile being edited (e.g. My FPS Layout). */
     val profileName: String,
 
-    /** GamepadControl.key of the specific control whose appearance is being changed (e.g. RT). */
+    /** CategoryManager control key of the specific control whose appearance is being changed (e.g. RT). */
     val controlKey: String,
 
     /** The asset ID currently applied to this control. Null means native default rendering.

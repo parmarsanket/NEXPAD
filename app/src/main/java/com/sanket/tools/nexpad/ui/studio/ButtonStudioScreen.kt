@@ -30,7 +30,6 @@ import com.sanket.tools.nexpad.ui.AppNavigator
 import com.sanket.tools.nexpad.ui.NavigationViewModel
 import com.sanket.tools.nexpad.ui.ScreenKey
 import com.sanket.tools.nexpad.category.CategoryManager
-import com.sanket.tools.nexpad.model.GamepadControl
 import com.sanket.tools.nexpad.model.Position
 import com.sanket.tools.nexpad.model.defaultPositions
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
@@ -60,7 +59,7 @@ fun ButtonStudioScreen(
     navigationViewModel: NavigationViewModel? = null,
     initialMode: ButtonStudioMode = ButtonStudioMode.VIEWER,
     targetProfileName: String = "",
-    /** The GamepadControl.key being edited contextually (e.g. "RT"). Null = Viewer Mode. */
+    /** The CategoryManager control key being edited contextually (e.g. "RT"). Null = Viewer Mode. */
     targetControlKey: String? = null,
     /** The asset ID currently applied to targetControlKey. Used for "✓ Current" badge. */
     targetCurrentAssetId: String? = null
@@ -92,13 +91,9 @@ fun ButtonStudioScreen(
     // --- Step 5: Auto-navigate to the correct category when opened contextually ---
     val initialCategory = remember(targetControlKey) {
         if (targetControlKey != null) {
-            val gc = GamepadControl.fromKey(targetControlKey)
-            if (gc != null) {
-                // Find the StudioCategory whose keys include this control
-                STUDIO_CATEGORIES.find { cat ->
-                    cat.keys.any { k -> k.equals(targetControlKey, ignoreCase = true) }
-                } ?: STUDIO_CATEGORIES.first()
-            } else STUDIO_CATEGORIES.first()
+            STUDIO_CATEGORIES.find { cat ->
+                cat.keys.any { k -> k.equals(targetControlKey, ignoreCase = true) }
+            } ?: STUDIO_CATEGORIES.first()
         } else STUDIO_CATEGORIES.first()
     }
 
@@ -207,7 +202,7 @@ fun ButtonStudioScreen(
 
                         if (currentMode == ButtonStudioMode.EDITOR) {
                             if (isContextual) {
-                                val controlLabel = GamepadControl.fromKey(targetControlKey)?.displayName
+                                val controlLabel = CategoryManager.getControl(targetControlKey)?.label
                                     ?: targetControlKey
                                 val currentLabel = when {
                                     contextualSelectedAssetId == null -> "Default"
