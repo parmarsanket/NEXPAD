@@ -306,7 +306,7 @@ private fun CommandCenterButtons(navController: AppNavigator) {
                 label = "Button Studio",
                 icon = Icons.Rounded.Palette,
                 iconColor = NeonPalette.Purple,
-                onClick = { navController.navigate("button_studio") },
+                onClick = { navController.navigate(ScreenKey.ButtonStudio(mode = "viewer")) },
                 modifier = Modifier.weight(1f)
             )
             CommandButton(

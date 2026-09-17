@@ -89,7 +89,7 @@ fun VirtualControllerScreen(
                 },
                 actions = {
                     OutlinedButton(
-                        onClick = { navController.navigate(ScreenKey.ButtonStudio(mode = "manage")) },
+                        onClick = { navController.navigate(ScreenKey.ButtonStudio(mode = "viewer")) },
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Purple),
                         border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Purple.copy(alpha = 0.7f)),
                         shape = RoundedCornerShape(10.dp),
@@ -165,7 +165,7 @@ fun VirtualControllerScreen(
                         },
                         onOpenStudio = {
                             layoutManager.setActiveProfile(profile.name)
-                            navController.navigate(ScreenKey.ButtonStudio(mode = "manage", profileName = profile.name))
+                            navController.navigate(ScreenKey.ButtonStudio(mode = "editor", profileName = profile.name))
                         },
                         onDuplicate = {
                             profileToDuplicate = profile

@@ -1,5 +1,7 @@
 package com.sanket.tools.nexpad.ui.studio.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -53,23 +55,28 @@ fun StudioGridCard(
     val context = LocalContext.current
     val type = remember(def.manifest.id) { resolveButtonSourceType(def) }
 
-    val isHighlight = isAppliedToActiveProfile || (mode == ButtonStudioMode.SELECTION && isSelectedInBuilder)
-    val borderColor = if (isHighlight) NeonPalette.Cyan else Color.White.copy(alpha = 0.08f)
-    val borderWidth = if (isHighlight) 1.5.dp else 1.dp
+    // Stop glowing in VIEWER mode. In EDITOR mode, glow buttons applied to the particular layout.
+    val isHighlight = mode == ButtonStudioMode.EDITOR && isAppliedToActiveProfile
+    val animatedBorderColor by animateColorAsState(
+        targetValue = if (isHighlight) NeonPalette.Cyan else Color.White.copy(alpha = 0.08f),
+        label = "gridCardBorderColor"
+    )
+    val animatedBorderWidth by animateDpAsState(
+        targetValue = if (isHighlight) 2.dp else 1.dp,
+        label = "gridCardBorderWidth"
+    )
+    val animatedContainerColor by animateColorAsState(
+        targetValue = if (isHighlight) Color(0xFF0F1E33) else Color(0xFF0C1322),
+        label = "gridCardBgColor"
+    )
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .border(borderWidth, borderColor, RoundedCornerShape(14.dp))
-            .clickable {
-                if (mode == ButtonStudioMode.SELECTION) {
-                    onToggleSelectInBuilder()
-                } else {
-                    onClick()
-                }
-            },
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF0C1322))
+            .border(animatedBorderWidth, animatedBorderColor, RoundedCornerShape(14.dp))
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = animatedContainerColor)
     ) {
         BoxWithConstraints(
             modifier = Modifier
@@ -78,8 +85,8 @@ fun StudioGridCard(
                 .background(Color(0xFF040810)),
             contentAlignment = Alignment.Center
         ) {
-            // Selection Mode Indicator Badge
-            if (mode == ButtonStudioMode.SELECTION && isSelectedInBuilder) {
+            // In Editor mode, show an applied badge for the layout's active button
+            if (mode == ButtonStudioMode.EDITOR && isAppliedToActiveProfile) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopStart)

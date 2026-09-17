@@ -42,10 +42,10 @@ fun SandboxPreviewModal(
     isAppliedToActiveProfile: Boolean = false,
     scale: Float = 0.65f, // <-- Adjust size from 0.0f to 1.0f according to your preference
     /** Label for the primary action button. "Apply to Profile" in Manage Mode, "Use This" in contextual Selection Mode. */
-    applyButtonLabel: String = "Apply to Profile",
+    applyButtonLabel: String? = "Apply to Profile",
     onDismiss: () -> Unit,
-    onApplyToProfile: () -> Unit,
-    onAddToHud: () -> Unit,
+    onApplyToProfile: () -> Unit = {},
+    onAddToHud: () -> Unit = {},
     onExportJson: () -> Unit = {},
     onDelete: () -> Unit = {}
 ) {
@@ -282,62 +282,64 @@ fun SandboxPreviewModal(
                     }
                 }
 
-                // Primary Actions: Apply to Profile / Use This & Open in HUD
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val isContextualPick = applyButtonLabel != "Apply to Profile"
-                    Button(
-                        onClick = onApplyToProfile,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isAppliedToActiveProfile && !isContextualPick) NeonPalette.Cyan.copy(alpha = 0.22f) else NeonPalette.Cyan
-                        ),
-                        border = if (isAppliedToActiveProfile && !isContextualPick) androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan) else null,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(44.dp)
+                // Primary Actions: Apply to Profile / Use This & Open in HUD (Hidden in Viewer mode)
+                if (applyButtonLabel != null) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            if (isAppliedToActiveProfile && !isContextualPick) Icons.Rounded.Check else Icons.Rounded.DashboardCustomize,
-                            contentDescription = null,
-                            tint = if (isAppliedToActiveProfile && !isContextualPick) NeonPalette.Cyan else Color.Black,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            text = when {
-                                isContextualPick -> applyButtonLabel   // "Use This"
-                                isAppliedToActiveProfile -> "Active in Profile ✓"
-                                else -> applyButtonLabel               // "Apply to Profile"
-                            },
-                            color = if (isAppliedToActiveProfile && !isContextualPick) NeonPalette.Cyan else Color.Black,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    // "Open in HUD" shortcut — hidden in contextual selection mode
-                    if (!isContextualPick) {
+                        val isContextualPick = applyButtonLabel != "Apply to Profile"
                         Button(
-                            onClick = onAddToHud,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A2639)),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                            onClick = onApplyToProfile,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isAppliedToActiveProfile && !isContextualPick) NeonPalette.Cyan.copy(alpha = 0.22f) else NeonPalette.Cyan
+                            ),
+                            border = if (isAppliedToActiveProfile && !isContextualPick) androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan) else null,
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .weight(1f)
                                 .height(44.dp)
                         ) {
                             Icon(
-                                Icons.AutoMirrored.Rounded.ArrowForward,
+                                if (isAppliedToActiveProfile && !isContextualPick) Icons.Rounded.Check else Icons.Rounded.DashboardCustomize,
                                 contentDescription = null,
-                                tint = Color.White,
+                                tint = if (isAppliedToActiveProfile && !isContextualPick) NeonPalette.Cyan else Color.Black,
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(Modifier.width(6.dp))
-                            Text("Open in HUD", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = when {
+                                    isContextualPick -> applyButtonLabel   // "Use This"
+                                    isAppliedToActiveProfile -> "Active in Profile ✓"
+                                    else -> applyButtonLabel               // "Apply to Profile"
+                                },
+                                color = if (isAppliedToActiveProfile && !isContextualPick) NeonPalette.Cyan else Color.Black,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        // "Open in HUD" shortcut — hidden in contextual selection mode
+                        if (!isContextualPick) {
+                            Button(
+                                onClick = onAddToHud,
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A2639)),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(44.dp)
+                            ) {
+                                Icon(
+                                    Icons.AutoMirrored.Rounded.ArrowForward,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text("Open in HUD", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }

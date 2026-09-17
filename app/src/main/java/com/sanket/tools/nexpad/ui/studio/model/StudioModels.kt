@@ -5,12 +5,17 @@ import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
 
 /**
  * Operating mode for Button Studio:
- * - MANAGE: View existing buttons, test in sandbox, import AI JSON, copy JSON, delete custom buttons.
- * - SELECTION: Custom layout builder. Select one button skin per control type. Unselected buttons are ignored.
+ * - VIEWER: Universal Button Showcase & Library. Browse, test in sandbox, import new buttons. Not tied to any layout.
+ * - EDITOR: Layout Customizer. Opened from Virtual Controller list or HUD Editor for a particular layout.
  */
 enum class ButtonStudioMode(val label: String) {
-    MANAGE("Manager"),
-    SELECTION("Builder")
+    VIEWER("Viewer"),
+    EDITOR("Editor");
+
+    companion object {
+        val MANAGE get() = VIEWER
+        val SELECTION get() = EDITOR
+    }
 }
 
 /**

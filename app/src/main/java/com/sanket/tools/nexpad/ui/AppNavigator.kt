@@ -25,7 +25,11 @@ interface AppNavigator {
             route == "virtual_controller" -> navigate(ScreenKey.VirtualController)
             route == "gamepad" -> navigate(ScreenKey.Gamepad)
             route.startsWith("button_studio") -> {
-                val mode = if (route.contains("mode=select")) "select" else "manage"
+                val mode = when {
+                    route.contains("mode=editor") -> "editor"
+                    route.contains("mode=select") -> "editor"
+                    else -> "viewer"
+                }
                 val profileNameMatch = Regex("""profileName=([^&]+)""").find(route)
                 val profileName = profileNameMatch?.groupValues?.get(1)?.let {
                     runCatching { java.net.URLDecoder.decode(it, "UTF-8") }.getOrDefault(it)

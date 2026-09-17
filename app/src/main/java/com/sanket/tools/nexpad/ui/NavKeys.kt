@@ -61,7 +61,7 @@ sealed interface ScreenKey : NavKey {
      */
     @Serializable
     data class ButtonStudio(
-        val mode: String = "manage",
+        val mode: String = "viewer",
         val profileName: String = "",
         val controlKey: String? = null,
         val currentAssetId: String? = null

@@ -58,9 +58,9 @@ fun ButtonStudioScreen(
     navController: AppNavigator,
     layoutManager: LayoutManager?,
     navigationViewModel: NavigationViewModel? = null,
-    initialMode: ButtonStudioMode = ButtonStudioMode.MANAGE,
+    initialMode: ButtonStudioMode = ButtonStudioMode.VIEWER,
     targetProfileName: String = "",
-    /** The GamepadControl.key being edited contextually (e.g. "RT"). Null = Manage Mode. */
+    /** The GamepadControl.key being edited contextually (e.g. "RT"). Null = Viewer Mode. */
     targetControlKey: String? = null,
     /** The asset ID currently applied to targetControlKey. Used for "✓ Current" badge. */
     targetCurrentAssetId: String? = null
@@ -70,16 +70,24 @@ fun ButtonStudioScreen(
     val registry = remember { ComponentRegistry.getInstance(context) }
     val components by registry.installedComponents.collectAsState()
 
-    // Current Studio Mode (MANAGE vs SELECTION)
+    // Current Studio Mode (VIEWER vs EDITOR)
     var currentMode by remember { mutableStateOf(initialMode) }
 
-    // Whether we are in a contextual selection session (launched from HUD Editor / VirtualController)
-    val isContextual = initialMode == ButtonStudioMode.SELECTION && targetControlKey != null
+    // Whether we are in a contextual selection session (launched from HUD Editor)
+    val isContextual = initialMode == ButtonStudioMode.EDITOR && targetControlKey != null
 
-    // Active Profile State (refreshes on apply)
-    var activeProfile by remember(layoutManager) {
-        mutableStateOf(layoutManager?.getActiveProfile())
+    // Target/Active Profile State (refreshes on apply)
+    var currentProfileName by remember(targetProfileName) { mutableStateOf(targetProfileName) }
+    var activeProfile by remember(layoutManager, targetProfileName) {
+        mutableStateOf(
+            if (targetProfileName.isNotBlank() && layoutManager != null) {
+                layoutManager.loadProfile(targetProfileName) ?: layoutManager.getActiveProfile()
+            } else {
+                layoutManager?.getActiveProfile()
+            }
+        )
     }
+    var contextualSelectedAssetId by remember(targetCurrentAssetId) { mutableStateOf(targetCurrentAssetId) }
 
     // --- Step 5: Auto-navigate to the correct category when opened contextually ---
     val initialCategory = remember(targetControlKey) {
@@ -176,47 +184,60 @@ fun ButtonStudioScreen(
                                 maxLines = 1
                             )
 
-                            // Active Profile Badge
-                            val profileTitle = activeProfile?.name ?: targetProfileName.ifBlank { "Default" }
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = NeonPalette.Cyan.copy(alpha = 0.15f),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.6f))
-                            ) {
-                                Text(
-                                    text = profileTitle,
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = NeonPalette.Cyan,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
+                            // Active Profile Badge — ONLY in EDITOR mode! In VIEWER mode, hidden.
+                            if (currentMode == ButtonStudioMode.EDITOR) {
+                                val profileTitle = currentProfileName.ifBlank { activeProfile?.name ?: "Default" }
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = NeonPalette.Cyan.copy(alpha = 0.15f),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.6f))
+                                ) {
+                                    Text(
+                                        text = profileTitle,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = NeonPalette.Cyan,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
                             }
                         }
 
-                        // --- Step 4: Context Banner for Selection Mode ---
-                        if (isContextual && targetControlKey != null) {
-                            // Show which control and profile the user is editing
-                            val controlLabel = GamepadControl.fromKey(targetControlKey)?.displayName
-                                ?: targetControlKey
-                            val currentLabel = when {
-                                targetCurrentAssetId == null -> "Default"
-                                else -> targetCurrentAssetId.substringAfterLast(".").replace("_", " ")
-                                    .replaceFirstChar { it.uppercase() }
+                        if (currentMode == ButtonStudioMode.EDITOR) {
+                            if (isContextual) {
+                                val controlLabel = GamepadControl.fromKey(targetControlKey)?.displayName
+                                    ?: targetControlKey
+                                val currentLabel = when {
+                                    contextualSelectedAssetId == null -> "Default"
+                                    else -> contextualSelectedAssetId!!.substringAfterLast(".").replace("_", " ")
+                                        .replaceFirstChar { it.uppercase() }
+                                }
+                                Text(
+                                    text = "Changing appearance for $controlLabel  •  Currently: $currentLabel",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = NeonPalette.Cyan.copy(alpha = 0.85f),
+                                        fontSize = 10.sp
+                                    ),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            } else {
+                                val profileTitle = currentProfileName.ifBlank { activeProfile?.name ?: "Default" }
+                                Text(
+                                    text = "Customizing layout: $profileTitle",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 10.sp
+                                    ),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
-                            Text(
-                                text = "Changing appearance for $controlLabel  •  Currently: $currentLabel",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = NeonPalette.Cyan.copy(alpha = 0.85f),
-                                    fontSize = 10.sp
-                                ),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
                         } else {
                             Text(
-                                text = if (currentMode == ButtonStudioMode.SELECTION) "Select buttons for custom layout" else "Pick skins, test in sandbox, or apply to HUD",
+                                text = "Button Catalog • Browse, test & add buttons",
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontSize = 10.sp
@@ -237,93 +258,62 @@ fun ButtonStudioScreen(
                     }
                 },
                 actions = {
-                    // Mode Switcher Toggle — hidden when in a contextual selection session
-                    if (!isContextual) {
-                        OutlinedButton(
-                            onClick = {
-                                currentMode = if (currentMode == ButtonStudioMode.MANAGE) {
-                                    ButtonStudioMode.SELECTION
-                                } else {
-                                    ButtonStudioMode.MANAGE
-                                }
-                            },
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.45f)),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                            modifier = Modifier.height(32.dp)
-                        ) {
-                            Icon(
-                                if (currentMode == ButtonStudioMode.MANAGE) Icons.Rounded.Build else Icons.Rounded.Palette,
-                                contentDescription = null,
-                                modifier = Modifier.size(13.dp),
-                                tint = NeonPalette.Cyan
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                if (currentMode == ButtonStudioMode.MANAGE) "Builder" else "Studio",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-
-                    // Import Menu (dropdown keeps top bar clean!)
-                    Box {
+                    // Contextual Done button
+                    if (isContextual) {
                         IconButton(
-                            onClick = { showImportMenu = true },
+                            onClick = { navController.popBackStack() },
                             modifier = Modifier.size(34.dp)
                         ) {
                             Icon(
-                                Icons.Rounded.FileUpload,
-                                contentDescription = "Import",
-                                tint = Color(0xFFFF9100),
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-
-                        DropdownMenu(
-                            expanded = showImportMenu,
-                            onDismissRequest = { showImportMenu = false },
-                            modifier = Modifier.background(Color(0xFF0F172A))
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("⚡ Import .nxprc (Remote)", color = Color.White, fontSize = 12.sp) },
-                                onClick = {
-                                    showImportMenu = false
-                                    filePickerLauncher.launch(arrayOf("*/*"))
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Rounded.FlashOn, contentDescription = null, tint = Color(0xFFFF9100), modifier = Modifier.size(16.dp))
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("📄 Import JSON (NXP Spec)", color = Color.White, fontSize = 12.sp) },
-                                onClick = {
-                                    showImportMenu = false
-                                    showImportDialog = true
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Rounded.Code, contentDescription = null, tint = NeonPalette.Purple, modifier = Modifier.size(16.dp))
-                                }
+                                Icons.Rounded.Check,
+                                contentDescription = "Done",
+                                tint = NeonPalette.Cyan,
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
 
-                    // Open HUD Editor Button — hidden in contextual selection mode (use Back to return)
-                    if (!isContextual) {
-                        Button(
-                            onClick = { navController.navigate(ScreenKey.Editor()) },
-                            colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan),
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-                            modifier = Modifier
-                                .height(32.dp)
-                                .padding(end = 4.dp)
-                        ) {
-                            Icon(Icons.Rounded.DashboardCustomize, contentDescription = null, tint = Color.Black, modifier = Modifier.size(13.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("HUD", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    // Import Menu — ONLY in VIEWER mode! (In EDITOR mode, import icon is removed)
+                    if (currentMode == ButtonStudioMode.VIEWER) {
+                        Box {
+                            IconButton(
+                                onClick = { showImportMenu = true },
+                                modifier = Modifier.size(34.dp)
+                            ) {
+                                Icon(
+                                    Icons.Rounded.FileUpload,
+                                    contentDescription = "Import",
+                                    tint = Color(0xFFFF9100),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+
+                            DropdownMenu(
+                                expanded = showImportMenu,
+                                onDismissRequest = { showImportMenu = false },
+                                modifier = Modifier.background(Color(0xFF0F172A))
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("⚡ Import .nxprc (Remote)", color = Color.White, fontSize = 12.sp) },
+                                    onClick = {
+                                        showImportMenu = false
+                                        filePickerLauncher.launch(arrayOf("*/*"))
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Rounded.FlashOn, contentDescription = null, tint = Color(0xFFFF9100), modifier = Modifier.size(16.dp))
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("📄 Import JSON (NXP Spec)", color = Color.White, fontSize = 12.sp) },
+                                    onClick = {
+                                        showImportMenu = false
+                                        showImportDialog = true
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Rounded.Code, contentDescription = null, tint = NeonPalette.Purple, modifier = Modifier.size(16.dp))
+                                    }
+                                )
+                            }
                         }
                     }
                 },
@@ -331,49 +321,6 @@ fun ButtonStudioScreen(
                     containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
                 )
             )
-        },
-        bottomBar = {
-            if (currentMode == ButtonStudioMode.SELECTION && !isContextual) {
-                SelectionModeBottomBar(
-                    activeCount = activeControls.values.count { it },
-                    totalCount = 19,
-                    onProceedToHud = {
-                        val layoutName = targetProfileName.trim().ifEmpty {
-                            "Custom Layout ${System.currentTimeMillis() % 1000}"
-                        }
-                        if (layoutManager != null) {
-                            val activeKeys = activeControls.filterValues { it }.keys
-                            val defaults = defaultPositions()
-
-                            val positions = activeKeys.associateWith { key ->
-                                val basePos = defaults[key] ?: Position(0.5f, 0.5f)
-                                basePos.copy(customComponentId = chosenSkins[key])
-                            }
-
-                            val base = layoutManager.getActiveProfile()
-                            val newProfile = layoutManager.createCustomProfile(
-                                name = layoutName,
-                                baseProfile = base,
-                                selectedButtons = activeKeys
-                            ).copy(
-                                positions = positions,
-                                description = "Custom Layout designed in Button Studio (${activeKeys.size} controls)"
-                            )
-
-                            layoutManager.saveProfile(newProfile)
-                            layoutManager.setActiveProfile(newProfile.name)
-                            activeProfile = newProfile
-
-                            Toast.makeText(
-                                context,
-                                "Created '$layoutName' with ${activeKeys.size} controls. Place and size on HUD!",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                        navController.navigate(ScreenKey.Editor())
-                    }
-                )
-            }
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
@@ -396,7 +343,13 @@ fun ButtonStudioScreen(
                     },
                     mode = currentMode,
                     activeCountForCategory = { cat ->
-                        cat.keys.count { activeControls[it] == true }
+                        if (currentMode == ButtonStudioMode.EDITOR) {
+                            cat.keys.count { key ->
+                                activeProfile?.positions?.get(key)?.customComponentId != null
+                            }
+                        } else {
+                            0
+                        }
                     },
                     modifier = Modifier
                         .width(74.dp)
@@ -471,28 +424,71 @@ fun ButtonStudioScreen(
                             val isSkinSelected = chosenSkins[targetKey] == def.manifest.id ||
                                     (type == ButtonStudioType.DEFAULT && chosenSkins[targetKey] == null)
 
-                            // In contextual selection mode, "applied" means it matches targetCurrentAssetId
-                            val isAppliedToProfile = if (isContextual) {
-                                def.manifest.id == (targetCurrentAssetId ?: "") ||
-                                        (type == ButtonStudioType.DEFAULT && targetCurrentAssetId == null)
+                            // In VIEWER mode, NEVER glow/highlight as applied.
+                            // In EDITOR mode, glow if applied to that particular layout.
+                            val isAppliedToProfile = if (currentMode == ButtonStudioMode.VIEWER) {
+                                false
+                            } else if (isContextual) {
+                                val selectedId = contextualSelectedAssetId
+                                if (type == ButtonStudioType.DEFAULT) {
+                                    selectedId == null || selectedId.isBlank()
+                                } else {
+                                    def.manifest.id == selectedId
+                                }
                             } else {
-                                activeProfile?.positions?.get(targetKey)?.customComponentId == expectedCustomId
+                                val currentCustomId = activeProfile?.positions?.get(targetKey)?.customComponentId
+                                if (type == ButtonStudioType.DEFAULT) {
+                                    currentCustomId == null
+                                } else {
+                                    currentCustomId == def.manifest.id
+                                }
                             }
 
                             StudioGridCard(
                                 def = def,
                                 mode = currentMode,
-                                isSelectedInBuilder = isControlActive && isSkinSelected,
                                 isAppliedToActiveProfile = isAppliedToProfile,
-                                onClick = { previewTarget = def },
-                                onToggleSelectInBuilder = {
-                                    if (isControlActive && isSkinSelected) {
-                                        activeControls[targetKey] = false
-                                        Toast.makeText(context, "Excluded $targetKey from layout", Toast.LENGTH_SHORT).show()
+                                onClick = {
+                                    if (currentMode == ButtonStudioMode.VIEWER) {
+                                        // VIEWER MODE: Open sandbox test & preview popup
+                                        previewTarget = def
+                                    } else if (isContextual) {
+                                        // CONTEXTUAL EDITOR MODE: Select or deselect for targetControlKey
+                                        if (isAppliedToProfile) {
+                                            contextualSelectedAssetId = null
+                                            navigationViewModel?.commitAssetSelection("")
+                                            Toast.makeText(context, "Deselected skin for $targetKey", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            val newAssetId = if (type == ButtonStudioType.DEFAULT) null else def.manifest.id
+                                            contextualSelectedAssetId = newAssetId
+                                            navigationViewModel?.commitAssetSelection(newAssetId ?: "")
+                                            Toast.makeText(context, "Selected ${def.manifest.name} for $targetKey", Toast.LENGTH_SHORT).show()
+                                        }
                                     } else {
-                                        activeControls[targetKey] = true
-                                        chosenSkins[targetKey] = if (type == ButtonStudioType.DEFAULT) null else def.manifest.id
-                                        Toast.makeText(context, "Selected ${def.manifest.name} for $targetKey", Toast.LENGTH_SHORT).show()
+                                        // EDITOR MODE: Direct select / deselect on layout without preview popup
+                                        val effectiveName = currentProfileName.ifBlank { activeProfile?.name ?: "" }
+                                        if (isAppliedToProfile) {
+                                            // Already selected -> Deselect! If custom skin, revert to Default
+                                            if (type != ButtonStudioType.DEFAULT) {
+                                                val updated = removeCustomSkinFromProfile(targetKey, effectiveName, layoutManager, context)
+                                                if (updated != null) {
+                                                    activeProfile = updated
+                                                    currentProfileName = updated.name
+                                                    Toast.makeText(context, "Deselected ${def.manifest.name} (reverted to Default)", Toast.LENGTH_SHORT).show()
+                                                }
+                                            } else {
+                                                Toast.makeText(context, "Default skin is active for $targetKey", Toast.LENGTH_SHORT).show()
+                                            }
+                                        } else {
+                                            // Unselected -> Select this skin!
+                                            // The previous skin for targetKey automatically un-glows on recomposition
+                                            val updated = applyButtonSkinToProfile(def, effectiveName, layoutManager, context)
+                                            if (updated != null) {
+                                                activeProfile = updated
+                                                currentProfileName = updated.name
+                                                Toast.makeText(context, "Selected ${def.manifest.name} for $targetKey", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
                                     }
                                 }
                             )
@@ -503,46 +499,16 @@ fun ButtonStudioScreen(
         }
     }
 
-    // Live Sandbox Modal
-    if (previewTarget != null) {
+    // Live Sandbox Modal — ONLY in VIEWER mode!
+    if (currentMode == ButtonStudioMode.VIEWER && previewTarget != null) {
         val target = previewTarget!!
-        val targetKey = target.manifest.defaultControl.uppercase()
-        val type = resolveButtonSourceType(target)
-        val expectedCustomId = if (type == ButtonStudioType.DEFAULT) null else target.manifest.id
-        val isApplied = activeProfile?.positions?.get(targetKey)?.customComponentId == expectedCustomId
-
         SandboxPreviewModal(
             componentDef = target,
-            isAppliedToActiveProfile = isApplied,
-            // In contextual Selection Mode, the primary action label changes to "Use This"
-            applyButtonLabel = if (isContextual) "Use This" else "Apply to Profile",
+            isAppliedToActiveProfile = false,
+            applyButtonLabel = null, // Viewer mode: test & preview only
             onDismiss = { previewTarget = null },
-            onApplyToProfile = {
-                if (isContextual) {
-                    // --- Step 4 Core: Return result via NavigationViewModel, do NOT mutate layout ---
-                    val assetId = if (type == ButtonStudioType.DEFAULT) null else target.manifest.id
-                    if (assetId != null) {
-                        navigationViewModel?.commitAssetSelection(assetId)
-                    } else {
-                        // Default asset: commit a sentinel that clears the custom id
-                        navigationViewModel?.commitAssetSelection("")
-                    }
-                    previewTarget = null
-                    navController.popBackStack()
-                } else {
-                    // Manage Mode: direct mutation (existing behavior)
-                    applyButtonSkinToProfile(target, layoutManager, context)
-                    activeProfile = layoutManager?.getActiveProfile()
-                }
-            },
-            onAddToHud = {
-                previewTarget = null
-                // In contextual mode onAddToHud is mapped to onApplyToProfile above.
-                // In manage mode, this is the explicit "Add to HUD" quick-launch:
-                if (!isContextual) {
-                    applyButtonToHud(target, layoutManager, navController, context)
-                }
-            },
+            onApplyToProfile = {},
+            onAddToHud = {},
             onExportJson = {
                 val json = registry.exportToJson(target.manifest.id)
                 if (json != null) {
@@ -574,60 +540,96 @@ fun ButtonStudioScreen(
 }
 
 /**
- * Applies button skin to active profile immediately without navigating away.
- * Used in Manage Mode only.
+ * Applies button skin to a specific layout profile (or active profile).
+ * Used in Editor Mode only. Returns updated LayoutProfile.
  */
 private fun applyButtonSkinToProfile(
     def: NxpComponentDef,
+    targetProfileName: String,
     layoutManager: LayoutManager?,
     context: Context
-) {
+): com.sanket.tools.nexpad.model.LayoutProfile? {
     val targetKey = def.manifest.defaultControl.uppercase()
     val type = resolveButtonSourceType(def)
     val customId = if (type == ButtonStudioType.DEFAULT) null else def.manifest.id
 
-    if (layoutManager != null) {
-        val active = layoutManager.getActiveProfile()
-        if (active.isDefault) {
-            // Preset protection: copy-on-write so default presets are never mutated
-            val customCopy = layoutManager.createCustomProfile(
-                name = "${active.name} Custom",
-                baseProfile = active
-            )
-            layoutManager.setActiveProfile(customCopy.name)
-            Toast.makeText(
-                context,
-                "Created '${customCopy.name}' (preset protected)",
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-        layoutManager.applyButtonSkinToActiveProfile(targetKey, customId)
-        val profileName = layoutManager.getActiveProfile().name
+    if (layoutManager == null) return null
+
+    val target = (if (targetProfileName.isNotBlank()) layoutManager.loadProfile(targetProfileName) else null)
+        ?: layoutManager.getActiveProfile()
+    val effectiveProfile = if (target.isDefault) {
+        // Preset protection: copy-on-write so default presets are never mutated
+        val customCopy = layoutManager.createCustomProfile(
+            name = "${target.name} Custom",
+            baseProfile = target
+        )
+        layoutManager.setActiveProfile(customCopy.name)
         Toast.makeText(
             context,
-            "Applied ${def.manifest.name} to $targetKey on '$profileName'",
+            "Created '${customCopy.name}' (preset protected)",
             Toast.LENGTH_SHORT
         ).show()
+        customCopy
+    } else {
+        target
     }
+    val posMap = effectiveProfile.positions.toMutableMap()
+    val currentPos = posMap[targetKey] ?: defaultPositions()[targetKey] ?: Position(0.5f, 0.5f)
+    posMap[targetKey] = currentPos.copy(customComponentId = customId)
+    val updated = effectiveProfile.copy(positions = posMap)
+    layoutManager.saveProfile(updated, activate = true)
+    return updated
 }
 
+/**
+ * Removes custom skin from a control (reverting it to the default native skin).
+ * Returns updated LayoutProfile.
+ */
+private fun removeCustomSkinFromProfile(
+    targetKey: String,
+    targetProfileName: String,
+    layoutManager: LayoutManager?,
+    context: Context
+): com.sanket.tools.nexpad.model.LayoutProfile? {
+    if (layoutManager == null) return null
 
+    val target = (if (targetProfileName.isNotBlank()) layoutManager.loadProfile(targetProfileName) else null)
+        ?: layoutManager.getActiveProfile()
+    val effectiveProfile = if (target.isDefault) {
+        val customCopy = layoutManager.createCustomProfile(
+            name = "${target.name} Custom",
+            baseProfile = target
+        )
+        layoutManager.setActiveProfile(customCopy.name)
+        Toast.makeText(
+            context,
+            "Created '${customCopy.name}' (preset protected)",
+            Toast.LENGTH_SHORT
+        ).show()
+        customCopy
+    } else {
+        target
+    }
+    val posMap = effectiveProfile.positions.toMutableMap()
+    val currentPos = posMap[targetKey] ?: defaultPositions()[targetKey] ?: Position(0.5f, 0.5f)
+    posMap[targetKey] = currentPos.copy(customComponentId = null)
+    val updated = effectiveProfile.copy(positions = posMap)
+    layoutManager.saveProfile(updated, activate = true)
+    return updated
+}
 
 /**
- * Places the selected button with its skin onto the active profile and opens HudEditorScreen.
- * Used only in Manage Mode (not in contextual Selection Mode).
- * Note: pendingSelectedKey has been removed; the HUD Editor now receives the control key
- * via ScreenKey.Editor(controlKey = ...) instead.
+ * Places the selected button with its skin onto the target profile and opens HudEditorScreen.
  */
 private fun applyButtonToHud(
     def: NxpComponentDef,
+    targetProfileName: String,
     layoutManager: LayoutManager?,
     navController: AppNavigator,
     context: Context
 ) {
-    applyButtonSkinToProfile(def, layoutManager, context)
+    applyButtonSkinToProfile(def, targetProfileName, layoutManager, context)
     val controlKey = def.manifest.defaultControl.uppercase()
-    // Navigate to HUD Editor and pre-select the control that was just skinned
-    navController.navigate(ScreenKey.Editor(controlKey = controlKey))
+    navController.navigate(ScreenKey.Editor(profileName = targetProfileName.ifBlank { null }, controlKey = controlKey))
 }
 

@@ -189,7 +189,7 @@ fun HudEditorScreen(
                     )
                     navController.navigate(
                         ScreenKey.ButtonStudio(
-                            mode = "select",
+                            mode = "editor",
                             profileName = profile.name,
                             controlKey = selectedControl!!.key,
                             currentAssetId = selectedElement.skinId
@@ -236,8 +236,8 @@ fun HudEditorScreen(
                 },
                 onOpenStudio = {
                     showAddDialog = false
-                    // Palette dialog → Manage Mode (no context — user is browsing assets)
-                    navController.navigate(ScreenKey.ButtonStudio(mode = "manage"))
+                    // Palette dialog → Viewer Mode (no context — user is browsing assets)
+                    navController.navigate(ScreenKey.ButtonStudio(mode = "viewer"))
                 },
                 onDismiss = { showAddDialog = false }
             )
