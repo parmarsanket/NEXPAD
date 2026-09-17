@@ -16,6 +16,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
 @Composable
@@ -28,8 +30,20 @@ fun RealisticSystemButton(
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
+    val ctrl = remember(key) { ControlKey.fromIdentifier(key) }
+    val (symbol, textColor) = remember(ctrl, key) {
+        when (ctrl) {
+            ControlKey.GUIDE -> Pair("⨂", NeonPalette.Cyan)
+            ControlKey.START -> Pair("☰", Color.White)
+            ControlKey.BACK  -> Pair("⧉", Color.White)
+            ControlKey.SHARE -> Pair("⇪", Color.White)
+            else -> Pair(key.take(2), Color.White)
+        }
+    }
+
     val shadow = if (isRgbEnabled) {
-        Modifier.shadow(10.dp, CircleShape, ambientColor = Color.White, spotColor = Color.White)
+        val spot = if (ctrl == ControlKey.GUIDE) NeonPalette.Cyan else Color.White
+        Modifier.shadow(10.dp, CircleShape, ambientColor = spot, spotColor = spot)
     } else {
         Modifier.shadow(4.dp, CircleShape)
     }
@@ -54,6 +68,6 @@ fun RealisticSystemButton(
             },
         contentAlignment = Alignment.Center
     ) {
-        Text(key.take(1), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+        Text(symbol, color = textColor, fontWeight = FontWeight.Bold, fontSize = 20.sp)
     }
 }

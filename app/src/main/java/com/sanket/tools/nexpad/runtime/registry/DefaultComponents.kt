@@ -893,7 +893,7 @@ object DefaultComponents {
             name = "Nexus Core Home Guide",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = NxprcCategory.HOME.id,
+            category = NxprcCategory.SYSTEM.id,
             defaultControl = ControlKey.GUIDE.key,
             description = "Floating orbital nexus guide button with breathing power core."
         ),
@@ -914,7 +914,7 @@ object DefaultComponents {
             borderColor = "#FFFFFF"
         ),
         label = NxpLabel(
-            text = "X",
+            text = "⨂",
             color = "#FFFFFF",
             pressedColor = "#064E3B",
             fontSize = 24f
@@ -1401,10 +1401,10 @@ object DefaultComponents {
     val DEFAULT_HOME_XBOX = NxpComponentDef(
         manifest = NxpManifest(
             id = "builtin.default_xbox",
-            name = "Default Xbox Guide (Home)",
+            name = "Default Nexus Guide",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = NxprcCategory.HOME.id,
+            category = NxprcCategory.SYSTEM.id,
             defaultControl = ControlKey.GUIDE.key,
             description = "Iconic centered Xbox guide button with luminous white badge."
         ),
@@ -1412,20 +1412,20 @@ object DefaultComponents {
         visual = NxpVisual(
             fillColor = "#181818",
             opacity = 0.95f,
-            borderColor = "#FFFFFF",
+            borderColor = "#00F0FF",
             borderWidth = 2f,
-            glowColor = "#FFFFFF",
+            glowColor = "#00F0FF",
             glowRadius = 12f
         ),
-        pressed = NxpPressedState(scale = 0.88f, fillColor = "#FFFFFF", borderColor = "#FFFFFF"),
-        label = NxpLabel(text = "X", color = "#FFFFFF", pressedColor = "#000000", fontSize = 24f),
+        pressed = NxpPressedState(scale = 0.88f, fillColor = "#00F0FF", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "⨂", color = "#00F0FF", pressedColor = "#000000", fontSize = 24f),
         size = NxpSize(widthDp = 60, heightDp = 60)
     )
 
     val DEFAULT_SYSTEM_VIEW = NxpComponentDef(
         manifest = NxpManifest(
             id = "builtin.default_view",
-            name = "Default View Button (V)",
+            name = "Default View Button",
             author = "NEXPAD Core",
             version = "1.0.0",
             category = NxprcCategory.SYSTEM.id,
@@ -1440,14 +1440,14 @@ object DefaultComponents {
             borderWidth = 1.5f
         ),
         pressed = NxpPressedState(scale = 0.88f, fillColor = "#94A3B8"),
-        label = NxpLabel(text = "V", color = "#FFFFFF", pressedColor = "#000000", fontSize = 18f),
+        label = NxpLabel(text = "⧉", color = "#FFFFFF", pressedColor = "#000000", fontSize = 18f),
         size = NxpSize(widthDp = 60, heightDp = 60)
     )
 
     val DEFAULT_SYSTEM_MENU = NxpComponentDef(
         manifest = NxpManifest(
             id = "builtin.default_menu",
-            name = "Default Menu Button (M)",
+            name = "Default Menu Button",
             author = "NEXPAD Core",
             version = "1.0.0",
             category = NxprcCategory.SYSTEM.id,
@@ -1462,14 +1462,14 @@ object DefaultComponents {
             borderWidth = 1.5f
         ),
         pressed = NxpPressedState(scale = 0.88f, fillColor = "#94A3B8"),
-        label = NxpLabel(text = "M", color = "#FFFFFF", pressedColor = "#000000", fontSize = 18f),
+        label = NxpLabel(text = "☰", color = "#FFFFFF", pressedColor = "#000000", fontSize = 18f),
         size = NxpSize(widthDp = 60, heightDp = 60)
     )
 
     val DEFAULT_SYSTEM_SHARE = NxpComponentDef(
         manifest = NxpManifest(
             id = "builtin.default_share",
-            name = "Default Share Button (S)",
+            name = "Default Share Button",
             author = "NEXPAD Core",
             version = "1.0.0",
             category = NxprcCategory.SYSTEM.id,
@@ -1484,7 +1484,7 @@ object DefaultComponents {
             borderWidth = 1.5f
         ),
         pressed = NxpPressedState(scale = 0.88f, fillColor = "#94A3B8"),
-        label = NxpLabel(text = "S", color = "#FFFFFF", pressedColor = "#000000", fontSize = 18f),
+        label = NxpLabel(text = "⇪", color = "#FFFFFF", pressedColor = "#000000", fontSize = 18f),
         size = NxpSize(widthDp = 60, heightDp = 60)
     )
 

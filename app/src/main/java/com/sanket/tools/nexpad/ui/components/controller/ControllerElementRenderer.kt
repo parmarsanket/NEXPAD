@@ -12,6 +12,8 @@ import com.sanket.tools.nexpad.runtime.engine.NxprcCanvasRenderer
 import com.sanket.tools.nexpad.runtime.engine.NxpComposeInterpreter
 import com.sanket.tools.nexpad.runtime.model.NexPadControl
 import com.sanket.tools.nexpad.runtime.model.asInputTarget
+import com.sanket.tools.nexpad.category.CategoryType
+import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
 
@@ -87,47 +89,62 @@ fun ControllerElementRenderer(
         return
     }
 
-    when {
-        key == K.LS -> RealisticJoystick(
+    val ctrl = ControlKey.fromIdentifier(key)
+    when (ctrl) {
+        ControlKey.LS -> RealisticJoystick(
             isLeft = true,
             isConnected = isConnected,
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled
         )
-        key == K.RS -> RealisticJoystick(
+        ControlKey.RS -> RealisticJoystick(
             isLeft = false,
             isConnected = isConnected,
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled
         )
-        key == K.DPAD -> RealisticDPad(
+        ControlKey.DPAD -> RealisticDPad(
             isConnected = isConnected,
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled,
             onVibrate = onVibrate
         )
-        key in listOf(K.UP, K.DOWN, K.LEFT, K.RIGHT) -> RealisticDPadButton(
+        ControlKey.UP, ControlKey.DOWN, ControlKey.LEFT, ControlKey.RIGHT -> RealisticDPadButton(
             direction = key,
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled
         )
-        key == K.LT || key == K.RT -> RealisticTrigger(
-            key = key,
+        ControlKey.LT -> RealisticTrigger(
+            key = K.LT,
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled
         )
-        key == K.LB || key == K.RB -> RealisticBumper(
-            key = key,
+        ControlKey.RT -> RealisticTrigger(
+            key = K.RT,
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled
         )
-        key == K.A -> RealisticButton(
+        ControlKey.LB -> RealisticBumper(
+            key = K.LB,
+            isConnected = isConnected,
+            onVibrate = onVibrate,
+            viewModel = viewModel,
+            isRgbEnabled = isRgbEnabled
+        )
+        ControlKey.RB -> RealisticBumper(
+            key = K.RB,
+            isConnected = isConnected,
+            onVibrate = onVibrate,
+            viewModel = viewModel,
+            isRgbEnabled = isRgbEnabled
+        )
+        ControlKey.A -> RealisticButton(
             key = K.A,
             buttonColor = Color(0xFF00C853),
             isConnected = isConnected,
@@ -135,7 +152,7 @@ fun ControllerElementRenderer(
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled
         )
-        key == K.B -> RealisticButton(
+        ControlKey.B -> RealisticButton(
             key = K.B,
             buttonColor = Color(0xFFD50000),
             isConnected = isConnected,
@@ -143,7 +160,7 @@ fun ControllerElementRenderer(
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled
         )
-        key == K.X -> RealisticButton(
+        ControlKey.X -> RealisticButton(
             key = K.X,
             buttonColor = Color(0xFF2962FF),
             isConnected = isConnected,
@@ -151,7 +168,7 @@ fun ControllerElementRenderer(
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled
         )
-        key == K.Y -> RealisticButton(
+        ControlKey.Y -> RealisticButton(
             key = K.Y,
             buttonColor = Color(0xFFFFD600),
             isConnected = isConnected,
@@ -159,27 +176,43 @@ fun ControllerElementRenderer(
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled
         )
-        key in listOf(K.START, K.BACK, K.GUIDE, K.SHARE, K.MENU, K.VIEW, K.XBOX, K.SCREENSHOT) -> RealisticSystemButton(
+        ControlKey.GUIDE, ControlKey.START, ControlKey.BACK, ControlKey.SHARE -> RealisticSystemButton(
             key = key,
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled
         )
-        key in listOf(K.M1, K.M2, K.M3, K.M4, K.PROFILE, K.TURBO) -> RealisticMacroButton(
+        ControlKey.M1, ControlKey.M2, ControlKey.M3, ControlKey.M4 -> RealisticMacroButton(
             key = key,
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled
         )
-        else -> RealisticButton(
-            key = key,
-            buttonColor = Color.Gray,
-            isConnected = isConnected,
-            onVibrate = onVibrate,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
-        )
+        else -> when (ctrl?.categoryType) {
+            CategoryType.SYSTEM -> RealisticSystemButton(
+                key = key,
+                isConnected = isConnected,
+                onVibrate = onVibrate,
+                viewModel = viewModel,
+                isRgbEnabled = isRgbEnabled
+            )
+            CategoryType.MACROS -> RealisticMacroButton(
+                key = key,
+                isConnected = isConnected,
+                onVibrate = onVibrate,
+                viewModel = viewModel,
+                isRgbEnabled = isRgbEnabled
+            )
+            else -> RealisticButton(
+                key = key,
+                buttonColor = Color.Gray,
+                isConnected = isConnected,
+                onVibrate = onVibrate,
+                viewModel = viewModel,
+                isRgbEnabled = isRgbEnabled
+            )
+        }
     }
 }

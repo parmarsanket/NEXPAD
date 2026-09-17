@@ -312,8 +312,6 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
             ControlKey.M2      -> inputState.btnM2 = isPressed
             ControlKey.M3      -> inputState.btnM3 = isPressed
             ControlKey.M4      -> inputState.btnM4 = isPressed
-            ControlKey.PROFILE -> inputState.btnProfile = isPressed
-            ControlKey.TURBO   -> inputState.btnTurbo = isPressed
             null, ControlKey.DPAD -> {}
         }
     }

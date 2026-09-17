@@ -22,6 +22,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.category.CategoryType
+import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 private val crossShape = GenericShape { size, _ ->
@@ -55,39 +57,43 @@ fun StaticDefaultButtonPreview(
     controlKey: String,
     modifier: Modifier = Modifier
 ) {
-    val key = controlKey.uppercase()
+    val ctrl = ControlKey.fromIdentifier(controlKey)
+    val key = ctrl?.key ?: controlKey.uppercase()
 
     Box(
         modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
-        val K = com.sanket.tools.nexpad.model.NexpadKeys
-        when (key) {
-            K.A -> StaticRealisticButton(key = K.A, buttonColor = Color(0xFF00C853))
-            K.B -> StaticRealisticButton(key = K.B, buttonColor = Color(0xFFD50000))
-            K.X -> StaticRealisticButton(key = K.X, buttonColor = Color(0xFF2962FF))
-            K.Y -> StaticRealisticButton(key = K.Y, buttonColor = Color(0xFFFFD600))
+        when (ctrl) {
+            ControlKey.A -> StaticRealisticButton(key = "A", buttonColor = Color(0xFF00C853))
+            ControlKey.B -> StaticRealisticButton(key = "B", buttonColor = Color(0xFFD50000))
+            ControlKey.X -> StaticRealisticButton(key = "X", buttonColor = Color(0xFF2962FF))
+            ControlKey.Y -> StaticRealisticButton(key = "Y", buttonColor = Color(0xFFFFD600))
 
-            K.LS, "L3" -> StaticRealisticJoystick(isLeft = true)
-            K.RS, "R3" -> StaticRealisticJoystick(isLeft = false)
+            ControlKey.LS -> StaticRealisticJoystick(isLeft = true)
+            ControlKey.RS -> StaticRealisticJoystick(isLeft = false)
 
-            K.DPAD -> StaticRealisticDPad()
-            K.UP, K.DOWN, K.LEFT, K.RIGHT -> StaticRealisticDPadButton(direction = key)
+            ControlKey.DPAD -> StaticRealisticDPad()
+            ControlKey.UP, ControlKey.DOWN, ControlKey.LEFT, ControlKey.RIGHT -> StaticRealisticDPadButton(direction = key)
 
-            K.LT -> StaticRealisticTrigger(key = K.LT, isLeft = true)
-            K.RT -> StaticRealisticTrigger(key = K.RT, isLeft = false)
+            ControlKey.LT -> StaticRealisticTrigger(key = "LT", isLeft = true)
+            ControlKey.RT -> StaticRealisticTrigger(key = "RT", isLeft = false)
 
-            K.LB -> StaticRealisticBumper(key = K.LB, isLeft = true)
-            K.RB -> StaticRealisticBumper(key = K.RB, isLeft = false)
+            ControlKey.LB -> StaticRealisticBumper(key = "LB", isLeft = true)
+            ControlKey.RB -> StaticRealisticBumper(key = "RB", isLeft = false)
 
-            K.GUIDE, K.XBOX -> StaticRealisticSystemButton(label = "⨂", textColor = NeonPalette.Cyan)
-            K.START, K.MENU -> StaticRealisticSystemButton(label = "☰", textColor = Color.White)
-            K.BACK,  K.VIEW -> StaticRealisticSystemButton(label = "⧉", textColor = Color.White)
-            K.SHARE, K.SCREENSHOT -> StaticRealisticSystemButton(label = "⇪", textColor = Color.White)
+            ControlKey.GUIDE -> StaticRealisticSystemButton(label = "⨂", textColor = NeonPalette.Cyan)
+            ControlKey.START -> StaticRealisticSystemButton(label = "☰", textColor = Color.White)
+            ControlKey.BACK  -> StaticRealisticSystemButton(label = "⧉", textColor = Color.White)
+            ControlKey.SHARE -> StaticRealisticSystemButton(label = "⇪", textColor = Color.White)
 
-            K.M1, K.M2, K.M3, K.M4, K.PROFILE, K.TURBO -> StaticRealisticMacroButton(label = key)
+            ControlKey.M1, ControlKey.M2, ControlKey.M3, ControlKey.M4 -> StaticRealisticMacroButton(label = key)
 
-            else -> StaticRealisticButton(key = key.take(3), buttonColor = Color.Gray)
+            else -> when (ctrl?.categoryType) {
+                CategoryType.SYSTEM -> StaticRealisticSystemButton(label = key.take(2), textColor = Color.White)
+                CategoryType.MACROS -> StaticRealisticMacroButton(label = key)
+                else -> StaticRealisticButton(key = key.take(3), buttonColor = Color.Gray)
+            }
         }
     }
 }

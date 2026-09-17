@@ -30,6 +30,8 @@ import com.sanket.tools.nexpad.ui.AppNavigator
 import com.sanket.tools.nexpad.ui.NavigationViewModel
 import com.sanket.tools.nexpad.ui.ScreenKey
 import com.sanket.tools.nexpad.category.CategoryManager
+import com.sanket.tools.nexpad.category.CategoryType
+import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.model.Position
 import com.sanket.tools.nexpad.model.defaultPositions
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
@@ -149,17 +151,24 @@ fun ButtonStudioScreen(
 
             if (selectedCategory.id == "ALL") return@filter true
 
-            val matchesCategory = selectedCategory.keys.any { k ->
-                k.uppercase() == control || category == selectedCategory.id
-            }
+            val compCtrl = ControlKey.fromIdentifier(control)
+            val matchesCategory = selectedCategory.keys.contains(control) ||
+                    (compCtrl != null && compCtrl.categoryType.id == selectedCategory.id) ||
+                    CategoryType.fromIdentifier(category)?.id == selectedCategory.id
+
             if (!matchesCategory) return@filter false
 
             val sub = selectedSubFilter
             if (sub == null || sub.id == "ALL") {
                 true
             } else {
-                val target = (sub.targetKey ?: sub.id).uppercase()
-                control == target || CategoryManager.getControl(control)?.key?.uppercase() == target
+                val targetKey = (sub.targetKey ?: sub.id).uppercase()
+                val targetCtrl = ControlKey.fromIdentifier(targetKey)
+                if (targetCtrl != null && compCtrl != null) {
+                    compCtrl == targetCtrl
+                } else {
+                    control == targetKey
+                }
             }
         }
     }

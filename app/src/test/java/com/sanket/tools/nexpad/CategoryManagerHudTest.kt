@@ -195,7 +195,7 @@ class CategoryManagerHudTest {
             K.LT, K.RT,
             K.LB, K.RB,
             K.LS, K.RS,
-            K.GUIDE, K.START, K.BACK, K.SHARE, K.TURBO, K.PROFILE,
+            K.GUIDE, K.START, K.BACK, K.SHARE,
             K.M1, K.M2, K.M3, K.M4
         )
 
