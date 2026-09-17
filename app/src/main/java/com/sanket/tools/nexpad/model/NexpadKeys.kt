@@ -1,64 +1,63 @@
 package com.sanket.tools.nexpad.model
 
-import com.sanket.tools.nexpad.category.CategoryManager
+import com.sanket.tools.nexpad.category.ControlKey
 
 /**
  * Canonical control key constants for the entire NEXPAD app layer.
  *
- * Every key is sourced directly from [CategoryManager] — the single source of truth.
- * Use these constants instead of raw string literals anywhere a control key is needed
- * (layout positions, HUD elements, skin lookups, etc.).
+ * Every value here is `ControlKey.<X>.key`, which is that enum constant's own name —
+ * there is no separate string to maintain and nothing that can fall out of sync with
+ * [com.sanket.tools.nexpad.category.CategoryManager], because it's literally the same enum.
+ * The old runtime lookup-and-throw is gone: if a key doesn't exist, the code simply doesn't
+ * compile, so errors are caught at build time instead of surfacing as runtime crashes.
  *
- * If a key doesn't exist in CategoryManager at runtime, an [IllegalStateException]
- * is thrown immediately so the error is caught early — not silently swallowed.
+ * Use these constants where a plain `String` is required (persistence, HID mapping, layout
+ * serialization, etc). For anything else — rendering, dimensions, color, icon — reference
+ * [ControlKey] directly (e.g. `ControlKey.A.accentColorArgb`) instead of round-tripping
+ * through a string.
  */
 object NexpadKeys {
 
-    /** Safely retrieves a canonical key from CategoryManager. Throws if not found. */
-    private fun key(k: String): String =
-        CategoryManager.getControl(k)?.key
-            ?: error("NexpadKeys: '$k' not found in CategoryManager — ensure CategoryManager is up to date.")
+    // ── ABXY ─────────────────────────────────────────────────────────────
+    val A: String = ControlKey.A.key
+    val B: String = ControlKey.B.key
+    val X: String = ControlKey.X.key
+    val Y: String = ControlKey.Y.key
 
-    // ── ABXY ──────────────────────────────────────────────────────────────────
-    val A: String get() = key("A")
-    val B: String get() = key("B")
-    val X: String get() = key("X")
-    val Y: String get() = key("Y")
-
-    // ── D-Pad (individual + composite) ────────────────────────────────────────
-    val UP: String    get() = key("UP")
-    val DOWN: String  get() = key("DOWN")
-    val LEFT: String  get() = key("LEFT")
-    val RIGHT: String get() = key("RIGHT")
+    // ── D-Pad (individual + composite) ──────────────────────────────────
+    val UP: String = ControlKey.UP.key
+    val DOWN: String = ControlKey.DOWN.key
+    val LEFT: String = ControlKey.LEFT.key
+    val RIGHT: String = ControlKey.RIGHT.key
     /** Composite 4-way D-Pad cluster (single renderable unit). */
-    val DPAD: String  get() = CategoryManager.getControl("DPAD")?.key ?: "DPAD"
+    val DPAD: String = ControlKey.DPAD.key
 
-    // ── Triggers ──────────────────────────────────────────────────────────────
-    val LT: String get() = key("LT")
-    val RT: String get() = key("RT")
+    // ── Triggers ─────────────────────────────────────────────────────────
+    val LT: String = ControlKey.LT.key
+    val RT: String = ControlKey.RT.key
 
-    // ── Bumpers ───────────────────────────────────────────────────────────────
-    val LB: String get() = key("LB")
-    val RB: String get() = key("RB")
+    // ── Bumpers ──────────────────────────────────────────────────────────
+    val LB: String = ControlKey.LB.key
+    val RB: String = ControlKey.RB.key
 
-    // ── Sticks ────────────────────────────────────────────────────────────────
-    val LS: String get() = key("LS")
-    val RS: String get() = key("RS")
+    // ── Sticks ───────────────────────────────────────────────────────────
+    val LS: String = ControlKey.LS.key
+    val RS: String = ControlKey.RS.key
 
-    // ── System ────────────────────────────────────────────────────────────────
+    // ── System ───────────────────────────────────────────────────────────
     /** Xbox / Home / Guide center button. */
-    val GUIDE: String   get() = key("GUIDE")
+    val GUIDE: String = ControlKey.GUIDE.key
     /** Menu / Start / Options button. */
-    val START: String   get() = key("START")
+    val START: String = ControlKey.START.key
     /** View / Back / Select / Map button. */
-    val BACK: String    get() = key("BACK")
-    val SHARE: String   get() = key("SHARE")
-    val TURBO: String   get() = key("TURBO")
-    val PROFILE: String get() = key("PROFILE")
+    val BACK: String = ControlKey.BACK.key
+    val SHARE: String = ControlKey.SHARE.key
+    val TURBO: String = ControlKey.TURBO.key
+    val PROFILE: String = ControlKey.PROFILE.key
 
-    // ── Macros ────────────────────────────────────────────────────────────────
-    val M1: String get() = key("M1")
-    val M2: String get() = key("M2")
-    val M3: String get() = key("M3")
-    val M4: String get() = key("M4")
+    // ── Macros ───────────────────────────────────────────────────────────
+    val M1: String = ControlKey.M1.key
+    val M2: String = ControlKey.M2.key
+    val M3: String = ControlKey.M3.key
+    val M4: String = ControlKey.M4.key
 }
