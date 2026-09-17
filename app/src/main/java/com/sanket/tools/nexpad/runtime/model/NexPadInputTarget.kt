@@ -1,5 +1,6 @@
 package com.sanket.tools.nexpad.runtime.model
 
+import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
 /**
@@ -82,7 +83,7 @@ class SandboxInputTarget(
 
     override fun onStickMove(stick: NexPadControl.Stick, normX: Float, normY: Float) {
         onAxisChange(normX, normY)
-        onStateChange("STICK ${if (stick.isLeft) "LS" else "RS"}: X=%.2f, Y=%.2f".format(normX, normY))
+        onStateChange("STICK ${if (stick.isLeft) NexpadKeys.LS else NexpadKeys.RS}: X=%.2f, Y=%.2f".format(normX, normY))
     }
 
     override fun onTriggerMove(trigger: NexPadControl.Trigger, pressure: Float) {

@@ -29,6 +29,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpad.runtime.model.NexPadControl
 import com.sanket.tools.nexpad.runtime.model.NexPadInputTarget
 import com.sanket.tools.nexpad.nxprc.*
@@ -156,9 +157,9 @@ fun NxprcCanvasRenderer(
 
     val isStick = assignedControl is NexPadControl.Stick ||
             document.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
-            document.manifest.defaultControl.uppercase() in listOf("LS", "RS")
+            document.manifest.defaultControl.uppercase() in listOf(NexpadKeys.LS, NexpadKeys.RS)
     val stick = (assignedControl as? NexPadControl.Stick)
-        ?: NexPadControl.Stick(isLeft = document.manifest.defaultControl.uppercase() != "RS" && document.manifest.defaultControl.uppercase() != "R3")
+        ?: NexPadControl.Stick(isLeft = document.manifest.defaultControl.uppercase() != NexpadKeys.RS && document.manifest.defaultControl.uppercase() != "R3")
     var thumbOffsetX by remember { mutableFloatStateOf(0f) }
     var thumbOffsetY by remember { mutableFloatStateOf(0f) }
 
@@ -279,12 +280,12 @@ fun NxprcCanvasRenderer(
             is NexPadControl.Button -> assignedControl
             is NexPadControl.DPad -> NexPadControl.Button(assignedControl.direction)
             is NexPadControl.Trigger -> NexPadControl.Button(assignedControl.key)
-            is NexPadControl.Stick -> NexPadControl.Button(if (assignedControl.isLeft) "LS" else "RS")
+            is NexPadControl.Stick -> NexPadControl.Button(if (assignedControl.isLeft) NexpadKeys.LS else NexpadKeys.RS)
         }
     }
 
-    val isDpadCross = (assignedControl is NexPadControl.Button && (assignedControl.key.equals("DPAD", ignoreCase = true) || document.manifest.defaultControl.equals("DPAD", ignoreCase = true))) ||
-            (document.manifest.category.equals("DPAD", ignoreCase = true) && assignedControl is NexPadControl.Button && assignedControl.key.equals("DPAD", ignoreCase = true)) ||
+    val isDpadCross = (assignedControl is NexPadControl.Button && (assignedControl.key.equals(NexpadKeys.DPAD, ignoreCase = true) || document.manifest.defaultControl.equals(NexpadKeys.DPAD, ignoreCase = true))) ||
+            (document.manifest.category.equals(NexpadKeys.DPAD, ignoreCase = true) && assignedControl is NexPadControl.Button && assignedControl.key.equals(NexpadKeys.DPAD, ignoreCase = true)) ||
             (document.manifest.id.contains("dpad_cross", ignoreCase = true))
 
     val gestureModifier = if (!isInteractive) {
@@ -413,10 +414,10 @@ fun NxprcCanvasRenderer(
                         } else {
                             val angle = Math.toDegrees(kotlin.math.atan2(dy.toDouble(), dx.toDouble()))
                             val dirs = mutableSetOf<String>()
-                            if (angle in -157.5..-22.5) dirs.add("UP")
-                            if (angle in 22.5..157.5) dirs.add("DOWN")
-                            if (angle in -67.5..67.5) dirs.add("RIGHT")
-                            if (angle < -112.5 || angle > 112.5) dirs.add("LEFT")
+                            if (angle in -157.5..-22.5) dirs.add(NexpadKeys.UP)
+                            if (angle in 22.5..157.5) dirs.add(NexpadKeys.DOWN)
+                            if (angle in -67.5..67.5) dirs.add(NexpadKeys.RIGHT)
+                            if (angle < -112.5 || angle > 112.5) dirs.add(NexpadKeys.LEFT)
                             dirs
                         }
 

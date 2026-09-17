@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpad.runtime.model.NexPadControl
 import com.sanket.tools.nexpad.runtime.model.NexPadInputTarget
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
@@ -58,9 +59,9 @@ fun NxpComposeInterpreter(
     modifier: Modifier = Modifier,
     isInteractive: Boolean = true
 ) {
-    val isDpadCross = definition.manifest.defaultControl.equals("DPAD", ignoreCase = true) ||
-            (definition.manifest.category.equals("DPAD", ignoreCase = true) && definition.size.widthDp >= 100) ||
-            (assignedControl is NexPadControl.Button && assignedControl.key.equals("DPAD", ignoreCase = true))
+    val isDpadCross = definition.manifest.defaultControl.equals(NexpadKeys.DPAD, ignoreCase = true) ||
+            (definition.manifest.category.equals(NexpadKeys.DPAD, ignoreCase = true) && definition.size.widthDp >= 100) ||
+            (assignedControl is NexPadControl.Button && assignedControl.key.equals(NexpadKeys.DPAD, ignoreCase = true))
 
     if (definition.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
         definition.interaction.type.equals("Joystick", ignoreCase = true)
@@ -170,11 +171,15 @@ private fun RenderNxpButton(
             val labelText = if (buttonControl.key.isNotBlank()) {
                 val upper = buttonControl.key.uppercase()
                 when (upper) {
-                    "UP" -> "▲"
-                    "DOWN" -> "▼"
-                    "LEFT" -> "◀"
-                    "RIGHT" -> "▶"
-                    "A", "B", "X", "Y", "LT", "RT", "LB", "RB", "LS", "RS", "M1", "M2", "M3", "M4", "VIEW", "MENU", "SHARE" -> upper
+                    NexpadKeys.UP -> "▲"
+                    NexpadKeys.DOWN -> "▼"
+                    NexpadKeys.LEFT -> "◀"
+                    NexpadKeys.RIGHT -> "▶"
+                    NexpadKeys.A, NexpadKeys.B, NexpadKeys.X, NexpadKeys.Y,
+                    NexpadKeys.LT, NexpadKeys.RT, NexpadKeys.LB, NexpadKeys.RB,
+                    NexpadKeys.LS, NexpadKeys.RS, NexpadKeys.M1, NexpadKeys.M2,
+                    NexpadKeys.M3, NexpadKeys.M4, NexpadKeys.VIEW, NexpadKeys.MENU,
+                    NexpadKeys.SHARE -> upper
                     else -> label.text.ifBlank { upper }
                 }
             } else {
@@ -228,10 +233,10 @@ private fun RenderNxpDPad(
                         } else {
                             val angle = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble()))
                             val dirs = mutableSetOf<String>()
-                            if (angle in -157.5..-22.5) dirs.add("UP")
-                            if (angle in 22.5..157.5) dirs.add("DOWN")
-                            if (angle in -67.5..67.5) dirs.add("RIGHT")
-                            if (angle < -112.5 || angle > 112.5) dirs.add("LEFT")
+                            if (angle in -157.5..-22.5) dirs.add(NexpadKeys.UP)
+                            if (angle in 22.5..157.5) dirs.add(NexpadKeys.DOWN)
+                            if (angle in -67.5..67.5) dirs.add(NexpadKeys.RIGHT)
+                            if (angle < -112.5 || angle > 112.5) dirs.add(NexpadKeys.LEFT)
                             dirs
                         }
 
@@ -302,7 +307,7 @@ private fun RenderNxpDPad(
             )
 
             // Draw active arm highlights
-            if (pressedDirections.contains("UP")) {
+            if (pressedDirections.contains(NexpadKeys.UP)) {
                 drawRoundRect(
                     color = activeColor.copy(alpha = 0.45f),
                     topLeft = Offset(armW, 0f),
@@ -310,7 +315,7 @@ private fun RenderNxpDPad(
                     cornerRadius = CornerRadius(cornerR, cornerR)
                 )
             }
-            if (pressedDirections.contains("DOWN")) {
+            if (pressedDirections.contains(NexpadKeys.DOWN)) {
                 drawRoundRect(
                     color = activeColor.copy(alpha = 0.45f),
                     topLeft = Offset(armW, armH * 2f),
@@ -318,7 +323,7 @@ private fun RenderNxpDPad(
                     cornerRadius = CornerRadius(cornerR, cornerR)
                 )
             }
-            if (pressedDirections.contains("LEFT")) {
+            if (pressedDirections.contains(NexpadKeys.LEFT)) {
                 drawRoundRect(
                     color = activeColor.copy(alpha = 0.45f),
                     topLeft = Offset(0f, armH),
@@ -326,7 +331,7 @@ private fun RenderNxpDPad(
                     cornerRadius = CornerRadius(cornerR, cornerR)
                 )
             }
-            if (pressedDirections.contains("RIGHT")) {
+            if (pressedDirections.contains(NexpadKeys.RIGHT)) {
                 drawRoundRect(
                     color = activeColor.copy(alpha = 0.45f),
                     topLeft = Offset(armW * 2f, armH),
@@ -371,7 +376,7 @@ private fun RenderNxpDPad(
             }
             drawPath(
                 path = upPath,
-                color = if (pressedDirections.contains("UP")) pressedArrowColor else arrowColor
+                color = if (pressedDirections.contains(NexpadKeys.UP)) pressedArrowColor else arrowColor
             )
 
             // DOWN Arrow
@@ -383,7 +388,7 @@ private fun RenderNxpDPad(
             }
             drawPath(
                 path = downPath,
-                color = if (pressedDirections.contains("DOWN")) pressedArrowColor else arrowColor
+                color = if (pressedDirections.contains(NexpadKeys.DOWN)) pressedArrowColor else arrowColor
             )
 
             // LEFT Arrow
@@ -395,7 +400,7 @@ private fun RenderNxpDPad(
             }
             drawPath(
                 path = leftPath,
-                color = if (pressedDirections.contains("LEFT")) pressedArrowColor else arrowColor
+                color = if (pressedDirections.contains(NexpadKeys.LEFT)) pressedArrowColor else arrowColor
             )
 
             // RIGHT Arrow
@@ -407,7 +412,7 @@ private fun RenderNxpDPad(
             }
             drawPath(
                 path = rightPath,
-                color = if (pressedDirections.contains("RIGHT")) pressedArrowColor else arrowColor
+                color = if (pressedDirections.contains(NexpadKeys.RIGHT)) pressedArrowColor else arrowColor
             )
 
             // Center pivot disc
