@@ -27,7 +27,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.ui.AppNavigator
+import com.sanket.tools.nexpad.ui.NavigationViewModel
+import com.sanket.tools.nexpad.ui.ScreenKey
 import com.sanket.tools.nexpad.category.CategoryManager
+import com.sanket.tools.nexpad.model.GamepadControl
 import com.sanket.tools.nexpad.model.Position
 import com.sanket.tools.nexpad.model.defaultPositions
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
@@ -44,14 +47,23 @@ import com.sanket.tools.nexpad.utils.LayoutManager
  * Modern, high-performance Button Studio Screen.
  * Unifies component skin browsing, sandbox testing, individual button customization,
  * cohesive cluster themes, and direct integration with active HUD layout profiles.
+ *
+ * When opened in SELECTION Mode with a [targetControlKey], acts as a contextual
+ * asset picker: the user selects a skin and returns the result to the calling screen
+ * via [navigationViewModel] without directly mutating the layout.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ButtonStudioScreen(
     navController: AppNavigator,
     layoutManager: LayoutManager?,
+    navigationViewModel: NavigationViewModel? = null,
     initialMode: ButtonStudioMode = ButtonStudioMode.MANAGE,
-    targetProfileName: String = ""
+    targetProfileName: String = "",
+    /** The GamepadControl.key being edited contextually (e.g. "RT"). Null = Manage Mode. */
+    targetControlKey: String? = null,
+    /** The asset ID currently applied to targetControlKey. Used for "✓ Current" badge. */
+    targetCurrentAssetId: String? = null
 ) {
     val context = LocalContext.current
     val clipboard = LocalClipboard.current
@@ -61,13 +73,38 @@ fun ButtonStudioScreen(
     // Current Studio Mode (MANAGE vs SELECTION)
     var currentMode by remember { mutableStateOf(initialMode) }
 
+    // Whether we are in a contextual selection session (launched from HUD Editor / VirtualController)
+    val isContextual = initialMode == ButtonStudioMode.SELECTION && targetControlKey != null
+
     // Active Profile State (refreshes on apply)
     var activeProfile by remember(layoutManager) {
         mutableStateOf(layoutManager?.getActiveProfile())
     }
 
-    var selectedCategory by remember { mutableStateOf(STUDIO_CATEGORIES.first()) }
-    var selectedSubFilter by remember { mutableStateOf<StudioSubFilter?>(null) }
+    // --- Step 5: Auto-navigate to the correct category when opened contextually ---
+    val initialCategory = remember(targetControlKey) {
+        if (targetControlKey != null) {
+            val gc = GamepadControl.fromKey(targetControlKey)
+            if (gc != null) {
+                // Find the StudioCategory whose keys include this control
+                STUDIO_CATEGORIES.find { cat ->
+                    cat.keys.any { k -> k.equals(targetControlKey, ignoreCase = true) }
+                } ?: STUDIO_CATEGORIES.first()
+            } else STUDIO_CATEGORIES.first()
+        } else STUDIO_CATEGORIES.first()
+    }
+
+    val initialSubFilter = remember(targetControlKey, initialCategory) {
+        if (targetControlKey != null) {
+            // Try to find the sub-filter matching the exact control key
+            initialCategory.subFilters.find { sub ->
+                (sub.targetKey ?: sub.id).equals(targetControlKey, ignoreCase = true)
+            } ?: initialCategory.subFilters.firstOrNull()
+        } else null
+    }
+
+    var selectedCategory by remember { mutableStateOf(initialCategory) }
+    var selectedSubFilter by remember { mutableStateOf<StudioSubFilter?>(initialSubFilter) }
     var showImportMenu by remember { mutableStateOf(false) }
     var showImportDialog by remember { mutableStateOf(false) }
     var previewTarget by remember { mutableStateOf<NxpComponentDef?>(null) }
@@ -158,15 +195,36 @@ fun ButtonStudioScreen(
                             }
                         }
 
-                        Text(
-                            text = if (currentMode == ButtonStudioMode.SELECTION) "Select buttons for custom layout" else "Pick skins, test in sandbox, or apply to HUD",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 10.sp
-                            ),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        // --- Step 4: Context Banner for Selection Mode ---
+                        if (isContextual && targetControlKey != null) {
+                            // Show which control and profile the user is editing
+                            val controlLabel = GamepadControl.fromKey(targetControlKey)?.displayName
+                                ?: targetControlKey
+                            val currentLabel = when {
+                                targetCurrentAssetId == null -> "Default"
+                                else -> targetCurrentAssetId.substringAfterLast(".").replace("_", " ")
+                                    .replaceFirstChar { it.uppercase() }
+                            }
+                            Text(
+                                text = "Changing appearance for $controlLabel  •  Currently: $currentLabel",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = NeonPalette.Cyan.copy(alpha = 0.85f),
+                                    fontSize = 10.sp
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        } else {
+                            Text(
+                                text = if (currentMode == ButtonStudioMode.SELECTION) "Select buttons for custom layout" else "Pick skins, test in sandbox, or apply to HUD",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 10.sp
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 },
                 navigationIcon = {
@@ -179,33 +237,35 @@ fun ButtonStudioScreen(
                     }
                 },
                 actions = {
-                    // Mode Switcher Toggle
-                    OutlinedButton(
-                        onClick = {
-                            currentMode = if (currentMode == ButtonStudioMode.MANAGE) {
-                                ButtonStudioMode.SELECTION
-                            } else {
-                                ButtonStudioMode.MANAGE
-                            }
-                        },
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.45f)),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                        modifier = Modifier.height(32.dp)
-                    ) {
-                        Icon(
-                            if (currentMode == ButtonStudioMode.MANAGE) Icons.Rounded.Build else Icons.Rounded.Palette,
-                            contentDescription = null,
-                            modifier = Modifier.size(13.dp),
-                            tint = NeonPalette.Cyan
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            if (currentMode == ButtonStudioMode.MANAGE) "Builder" else "Studio",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                    // Mode Switcher Toggle — hidden when in a contextual selection session
+                    if (!isContextual) {
+                        OutlinedButton(
+                            onClick = {
+                                currentMode = if (currentMode == ButtonStudioMode.MANAGE) {
+                                    ButtonStudioMode.SELECTION
+                                } else {
+                                    ButtonStudioMode.MANAGE
+                                }
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.45f)),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Icon(
+                                if (currentMode == ButtonStudioMode.MANAGE) Icons.Rounded.Build else Icons.Rounded.Palette,
+                                contentDescription = null,
+                                modifier = Modifier.size(13.dp),
+                                tint = NeonPalette.Cyan
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                if (currentMode == ButtonStudioMode.MANAGE) "Builder" else "Studio",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
 
                     // Import Menu (dropdown keeps top bar clean!)
@@ -250,19 +310,21 @@ fun ButtonStudioScreen(
                         }
                     }
 
-                    // Open HUD Editor Button
-                    Button(
-                        onClick = { navController.navigate("editor") },
-                        colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-                        modifier = Modifier
-                            .height(32.dp)
-                            .padding(end = 4.dp)
-                    ) {
-                        Icon(Icons.Rounded.DashboardCustomize, contentDescription = null, tint = Color.Black, modifier = Modifier.size(13.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("HUD", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    // Open HUD Editor Button — hidden in contextual selection mode (use Back to return)
+                    if (!isContextual) {
+                        Button(
+                            onClick = { navController.navigate(ScreenKey.Editor()) },
+                            colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                            modifier = Modifier
+                                .height(32.dp)
+                                .padding(end = 4.dp)
+                        ) {
+                            Icon(Icons.Rounded.DashboardCustomize, contentDescription = null, tint = Color.Black, modifier = Modifier.size(13.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("HUD", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -271,7 +333,7 @@ fun ButtonStudioScreen(
             )
         },
         bottomBar = {
-            if (currentMode == ButtonStudioMode.SELECTION) {
+            if (currentMode == ButtonStudioMode.SELECTION && !isContextual) {
                 SelectionModeBottomBar(
                     activeCount = activeControls.values.count { it },
                     totalCount = 19,
@@ -308,7 +370,7 @@ fun ButtonStudioScreen(
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
-                        navController.navigate("editor")
+                        navController.navigate(ScreenKey.Editor())
                     }
                 )
             }
@@ -409,7 +471,13 @@ fun ButtonStudioScreen(
                             val isSkinSelected = chosenSkins[targetKey] == def.manifest.id ||
                                     (type == ButtonStudioType.DEFAULT && chosenSkins[targetKey] == null)
 
-                            val isAppliedToProfile = activeProfile?.positions?.get(targetKey)?.customComponentId == expectedCustomId
+                            // In contextual selection mode, "applied" means it matches targetCurrentAssetId
+                            val isAppliedToProfile = if (isContextual) {
+                                def.manifest.id == (targetCurrentAssetId ?: "") ||
+                                        (type == ButtonStudioType.DEFAULT && targetCurrentAssetId == null)
+                            } else {
+                                activeProfile?.positions?.get(targetKey)?.customComponentId == expectedCustomId
+                            }
 
                             StudioGridCard(
                                 def = def,
@@ -446,14 +514,34 @@ fun ButtonStudioScreen(
         SandboxPreviewModal(
             componentDef = target,
             isAppliedToActiveProfile = isApplied,
+            // In contextual Selection Mode, the primary action label changes to "Use This"
+            applyButtonLabel = if (isContextual) "Use This" else "Apply to Profile",
             onDismiss = { previewTarget = null },
             onApplyToProfile = {
-                applyButtonSkinToProfile(target, layoutManager, context)
-                activeProfile = layoutManager?.getActiveProfile()
+                if (isContextual) {
+                    // --- Step 4 Core: Return result via NavigationViewModel, do NOT mutate layout ---
+                    val assetId = if (type == ButtonStudioType.DEFAULT) null else target.manifest.id
+                    if (assetId != null) {
+                        navigationViewModel?.commitAssetSelection(assetId)
+                    } else {
+                        // Default asset: commit a sentinel that clears the custom id
+                        navigationViewModel?.commitAssetSelection("")
+                    }
+                    previewTarget = null
+                    navController.popBackStack()
+                } else {
+                    // Manage Mode: direct mutation (existing behavior)
+                    applyButtonSkinToProfile(target, layoutManager, context)
+                    activeProfile = layoutManager?.getActiveProfile()
+                }
             },
             onAddToHud = {
                 previewTarget = null
-                applyButtonToHud(target, layoutManager, navController, context)
+                // In contextual mode onAddToHud is mapped to onApplyToProfile above.
+                // In manage mode, this is the explicit "Add to HUD" quick-launch:
+                if (!isContextual) {
+                    applyButtonToHud(target, layoutManager, navController, context)
+                }
             },
             onExportJson = {
                 val json = registry.exportToJson(target.manifest.id)
@@ -487,6 +575,7 @@ fun ButtonStudioScreen(
 
 /**
  * Applies button skin to active profile immediately without navigating away.
+ * Used in Manage Mode only.
  */
 private fun applyButtonSkinToProfile(
     def: NxpComponentDef,
@@ -498,6 +587,20 @@ private fun applyButtonSkinToProfile(
     val customId = if (type == ButtonStudioType.DEFAULT) null else def.manifest.id
 
     if (layoutManager != null) {
+        val active = layoutManager.getActiveProfile()
+        if (active.isDefault) {
+            // Preset protection: copy-on-write so default presets are never mutated
+            val customCopy = layoutManager.createCustomProfile(
+                name = "${active.name} Custom",
+                baseProfile = active
+            )
+            layoutManager.setActiveProfile(customCopy.name)
+            Toast.makeText(
+                context,
+                "Created '${customCopy.name}' (preset protected)",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
         layoutManager.applyButtonSkinToActiveProfile(targetKey, customId)
         val profileName = layoutManager.getActiveProfile().name
         Toast.makeText(
@@ -511,8 +614,10 @@ private fun applyButtonSkinToProfile(
 
 
 /**
- * Places the selected button with its skin onto the active profile,
- * selects it in LayoutManager, and opens HudEditorScreen.
+ * Places the selected button with its skin onto the active profile and opens HudEditorScreen.
+ * Used only in Manage Mode (not in contextual Selection Mode).
+ * Note: pendingSelectedKey has been removed; the HUD Editor now receives the control key
+ * via ScreenKey.Editor(controlKey = ...) instead.
  */
 private fun applyButtonToHud(
     def: NxpComponentDef,
@@ -521,7 +626,8 @@ private fun applyButtonToHud(
     context: Context
 ) {
     applyButtonSkinToProfile(def, layoutManager, context)
-    layoutManager?.pendingSelectedKey = def.manifest.defaultControl.uppercase()
-    navController.navigate("editor")
+    val controlKey = def.manifest.defaultControl.uppercase()
+    // Navigate to HUD Editor and pre-select the control that was just skinned
+    navController.navigate(ScreenKey.Editor(controlKey = controlKey))
 }
 

@@ -8,8 +8,8 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
@@ -51,6 +51,10 @@ fun NavigationGraph(
     val navigator = remember(backStack) { Nav3AppNavigator(backStack) }
     val sharedPref = remember(context) { context.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE) }
 
+    // Graph-scoped ViewModel: shared by all entries for cross-screen editing context.
+    // This replaces LayoutManager.pendingSelectedKey.
+    val navigationViewModel: NavigationViewModel = viewModel()
+
     val stateDecorator = rememberSaveableStateHolderNavEntryDecorator<NavKey>()
     val vmDecorator = rememberViewModelStoreNavEntryDecorator<NavKey>()
 
@@ -88,10 +92,20 @@ fun NavigationGraph(
                     ConnectionScreen(navController = navigator, viewModel = viewModel)
                 }
                 is ScreenKey.Editor -> {
-                    HudEditorScreen(navController = navigator, layoutManager = layoutManager)
+                    HudEditorScreen(
+                        navController = navigator,
+                        layoutManager = layoutManager,
+                        navigationViewModel = navigationViewModel,
+                        initialProfileName = key.profileName,
+                        initialControlKey = key.controlKey
+                    )
                 }
                 is ScreenKey.VirtualController -> {
-                    VirtualControllerScreen(navController = navigator, layoutManager = layoutManager)
+                    VirtualControllerScreen(
+                        navController = navigator,
+                        layoutManager = layoutManager,
+                        navigationViewModel = navigationViewModel
+                    )
                 }
                 is ScreenKey.Gamepad -> {
                     GamepadScreen(
@@ -105,12 +119,15 @@ fun NavigationGraph(
                     ButtonStudioScreen(
                         navController = navigator,
                         layoutManager = layoutManager,
+                        navigationViewModel = navigationViewModel,
                         initialMode = if (key.mode.equals("select", ignoreCase = true)) {
                             ButtonStudioMode.SELECTION
                         } else {
                             ButtonStudioMode.MANAGE
                         },
-                        targetProfileName = key.profileName
+                        targetProfileName = key.profileName,
+                        targetControlKey = key.controlKey,
+                        targetCurrentAssetId = key.currentAssetId
                     )
                 }
                 else -> {
@@ -120,6 +137,5 @@ fun NavigationGraph(
         }
     }
 }
-
 
 

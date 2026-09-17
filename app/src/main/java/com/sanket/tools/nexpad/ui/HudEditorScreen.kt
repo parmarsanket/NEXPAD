@@ -2,6 +2,7 @@ package com.sanket.tools.nexpad.ui
 
 import android.content.pm.ActivityInfo
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -33,6 +34,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sanket.tools.nexpad.ui.AppNavigator
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.model.*
+import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
 import com.sanket.tools.nexpad.ui.components.controller.ControllerElementRenderer
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
@@ -47,10 +49,14 @@ import kotlin.math.roundToInt
 fun HudEditorScreen(
     navController: AppNavigator,
     layoutManager: LayoutManager,
+    navigationViewModel: NavigationViewModel? = null,
+    initialProfileName: String? = null,
+    initialControlKey: String? = null,
     viewModel: HudEditorViewModel = viewModel(
         factory = HudEditorViewModelFactory(
             layoutManager = layoutManager,
-            componentRegistry = ComponentRegistry.getInstance(LocalContext.current)
+            componentRegistry = ComponentRegistry.getInstance(LocalContext.current),
+            remoteComponentRegistry = RemoteComponentRegistry.getInstance(LocalContext.current)
         )
     )
 ) {
@@ -64,20 +70,58 @@ fun HudEditorScreen(
     val dummyGamepadViewModel = viewModel<GamepadViewModel>()
     var showAddDialog by remember { mutableStateOf(false) }
 
+    // Unsaved-changes guard: show dialog before leaving if edits exist
+    var showUnsavedDialog by remember { mutableStateOf(false) }
+
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
 
-    // Reload active profile and consume any pending selected key from Button Studio
+    // Load the correct profile on entry.
+    // If initialProfileName is provided (e.g. launched from VirtualController),
+    // load that specific profile. Otherwise fall back to the current active profile.
     LaunchedEffect(Unit) {
-        viewModel.loadActiveProfile()
-    }
-
-    // Auto-save on exit if there are changes
-    DisposableEffect(Unit) {
-        onDispose {
-            if (viewModel.hasUnsavedChanges.value) {
-                viewModel.saveProfile()
+        if (!initialProfileName.isNullOrBlank()) {
+            viewModel.loadProfileByName(initialProfileName)
+        } else {
+            viewModel.loadActiveProfile()
+        }
+        // Pre-select a control if one was specified in the ScreenKey (replaces pendingSelectedKey)
+        if (!initialControlKey.isNullOrBlank()) {
+            val target = com.sanket.tools.nexpad.model.GamepadControl.fromKey(initialControlKey)
+            if (target != null) {
+                viewModel.selectControl(target)
             }
         }
+    }
+
+    // Observe NavigationViewModel for an asset selection result returned from Button Studio.
+    // When Button Studio pops with a confirmed selection, apply the skin to the selected control.
+    val editingContext by navigationViewModel?.editingContext?.collectAsState(initial = null)
+        ?: remember { mutableStateOf<AppEditingContext?>(null) }
+
+    LaunchedEffect(editingContext?.pendingAssetResult) {
+        val result = editingContext?.pendingAssetResult ?: return@LaunchedEffect
+        val ctrl = editingContext?.controlKey?.let {
+            com.sanket.tools.nexpad.model.GamepadControl.fromKey(it)
+        } ?: return@LaunchedEffect
+        // Apply the chosen asset to the control (marks hasUnsavedChanges = true)
+        viewModel.setSkin(ctrl, result)
+        // Re-select the control so the inspector stays open showing the new skin
+        viewModel.selectControl(ctrl)
+        // Consume the result so it doesn't re-trigger on recomposition
+        navigationViewModel?.consumeAssetResult()
+    }
+
+    // Step 10: Back handler — guards against losing unsaved changes
+    val handleBack: () -> Unit = {
+        if (hasUnsavedChanges) {
+            showUnsavedDialog = true
+        } else {
+            navController.popBackStack()
+        }
+    }
+
+    BackHandler(enabled = true) {
+        handleBack()
     }
 
     BoxWithConstraints(
@@ -110,13 +154,7 @@ fun HudEditorScreen(
             profileName = profile.name,
             isDefault = profile.isDefault,
             hasUnsavedChanges = hasUnsavedChanges,
-            onBack = {
-                if (hasUnsavedChanges) {
-                    viewModel.saveProfile { navController.popBackStack() }
-                } else {
-                    navController.popBackStack()
-                }
-            },
+            onBack = handleBack,
             onOpenPalette = { showAddDialog = true },
             onSave = {
                 viewModel.saveProfile {
@@ -140,7 +178,24 @@ fun HudEditorScreen(
                 onScaleChange = { viewModel.setScale(selectedControl!!, it) },
                 onOpacityChange = { viewModel.setOpacity(selectedControl!!, it) },
                 onCycleSkin = { viewModel.cycleNextSkin(selectedControl!!) },
-                onOpenStudio = { navController.navigate("button_studio") },
+                onOpenStudio = {
+                    // Begin a contextual selection session so Button Studio knows
+                    // which control and profile it is serving.
+                    navigationViewModel?.beginAssetSelection(
+                        profileName = profile.name,
+                        controlKey = selectedControl!!.key,
+                        currentAssetId = selectedElement.skinId,
+                        originScreen = OriginScreen.HUD_EDITOR
+                    )
+                    navController.navigate(
+                        ScreenKey.ButtonStudio(
+                            mode = "select",
+                            profileName = profile.name,
+                            controlKey = selectedControl!!.key,
+                            currentAssetId = selectedElement.skinId
+                        )
+                    )
+                },
                 onResetPos = { viewModel.resetControlToDefault(selectedControl!!) },
                 onRemove = { viewModel.removeControl(selectedControl!!) },
                 modifier = Modifier.align(
@@ -181,9 +236,60 @@ fun HudEditorScreen(
                 },
                 onOpenStudio = {
                     showAddDialog = false
-                    navController.navigate("button_studio")
+                    // Palette dialog → Manage Mode (no context — user is browsing assets)
+                    navController.navigate(ScreenKey.ButtonStudio(mode = "manage"))
                 },
                 onDismiss = { showAddDialog = false }
+            )
+        }
+
+        // Step 10: Unsaved Changes Dialog (Save & Exit / Discard / Cancel)
+        if (showUnsavedDialog) {
+            AlertDialog(
+                onDismissRequest = { showUnsavedDialog = false },
+                title = {
+                    Text(
+                        "Unsaved Changes",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Text(
+                        "You have unsaved changes in '${profile.name}'. Would you like to save them before leaving?",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            viewModel.saveProfile {
+                                Toast.makeText(context, "Layout '${profile.name}' saved!", Toast.LENGTH_SHORT).show()
+                                showUnsavedDialog = false
+                                navController.popBackStack()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan)
+                    ) {
+                        Text("Save & Exit", color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(
+                            onClick = {
+                                showUnsavedDialog = false
+                                navController.popBackStack()
+                            }
+                        ) {
+                            Text("Discard", color = Color(0xFFFF5252))
+                        }
+                        TextButton(onClick = { showUnsavedDialog = false }) {
+                            Text("Cancel", color = Color.White)
+                        }
+                    }
+                },
+                containerColor = MaterialTheme.colorScheme.surface
             )
         }
     }
@@ -204,6 +310,12 @@ private fun HudCanvas(
     onSelect: (GamepadControl) -> Unit,
     onDragDelta: (GamepadControl, Float, Float) -> Unit
 ) {
+    val context = LocalContext.current
+    val registry = remember { ComponentRegistry.getInstance(context) }
+    val remoteRegistry = remember { RemoteComponentRegistry.getInstance(context) }
+    val installedComponents by registry.installedComponents.collectAsState()
+    val remoteDocs by remoteRegistry.loadedComponents.collectAsState()
+
     elements.forEach { (control, element) ->
         key(control) {
             val isSelected = selectedControl == control
@@ -234,6 +346,35 @@ private fun HudCanvas(
                     onVibrate = {},
                     customComponentId = element.skinId
                 )
+
+                // Step 9: Broken asset warning badge when custom component is missing
+                val isCustomSkin = element.skinId != null && !element.skinId.startsWith("builtin.default_")
+                val isMissingSkin = remember(element.skinId, installedComponents, remoteDocs) {
+                    if (!isCustomSkin) false
+                    else {
+                        installedComponents.none { it.manifest.id == element.skinId } &&
+                                remoteDocs.none { it.manifest.id == element.skinId }
+                    }
+                }
+                if (isMissingSkin) {
+                    Surface(
+                        shape = CircleShape,
+                        color = Color(0xFFE65100),
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(2.dp)
+                            .size(18.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                "⚠",
+                                fontSize = 11.sp,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
 
                 // Selection Box Indicator
                 Box(
@@ -435,11 +576,38 @@ private fun HudDockedInspector(
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = NeonPalette.Cyan)
                     )
 
-                    Text(
-                        text = "X: ${(transform.xRatio * 100).roundToInt()}%  Y: ${(transform.yRatio * 100).roundToInt()}%",
-                        fontSize = 11.sp,
-                        color = Color.LightGray
-                    )
+                    val isCustom = element.skinId != null && !element.skinId.startsWith("builtin.default_")
+                    val customMatch = if (isCustom) {
+                        compatibleSkins.filterIsInstance<LayoutSkin.CustomComponent>()
+                            .firstOrNull { it.def.manifest.id == element.skinId }?.def?.manifest?.name
+                    } else null
+                    val remoteMatch = if (isCustom && customMatch == null) {
+                        compatibleSkins.filterIsInstance<LayoutSkin.RemoteComponent>()
+                            .firstOrNull { it.doc.manifest.id == element.skinId }?.doc?.manifest?.name
+                    } else null
+                    val isMissingAsset = isCustom && customMatch == null && remoteMatch == null
+
+                    if (isMissingAsset) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = Color(0xFFE65100).copy(alpha = 0.2f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE65100))
+                        ) {
+                            Text(
+                                text = "⚠ Missing asset — using fallback",
+                                fontSize = 10.sp,
+                                color = Color(0xFFFFB703),
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = "X: ${(transform.xRatio * 100).roundToInt()}%  Y: ${(transform.yRatio * 100).roundToInt()}%",
+                            fontSize = 11.sp,
+                            color = Color.LightGray
+                        )
+                    }
                 }
 
                 IconButton(onClick = onClose, modifier = Modifier.size(28.dp)) {
@@ -539,24 +707,42 @@ private fun HudDockedInspector(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    val isCustom = element.skinId != null && !element.skinId.startsWith("builtin.default_")
+                    val customMatch = if (isCustom) {
+                        compatibleSkins.filterIsInstance<LayoutSkin.CustomComponent>()
+                            .firstOrNull { it.def.manifest.id == element.skinId }?.def?.manifest?.name
+                    } else null
+                    val remoteMatch = if (isCustom && customMatch == null) {
+                        compatibleSkins.filterIsInstance<LayoutSkin.RemoteComponent>()
+                            .firstOrNull { it.doc.manifest.id == element.skinId }?.doc?.manifest?.name
+                    } else null
+                    val isMissingAsset = isCustom && customMatch == null && remoteMatch == null
+
                     val skinName = when {
-                        element.skinId == null || element.skinId.startsWith("builtin.default_") -> "Default 3D"
-                        else -> {
-                            val custom = compatibleSkins.filterIsInstance<LayoutSkin.CustomComponent>()
-                                .firstOrNull { it.def.manifest.id == element.skinId }
-                            custom?.def?.manifest?.name ?: "Custom"
-                        }
+                        !isCustom -> "Default 3D"
+                        isMissingAsset -> "Missing (Fallback)"
+                        else -> customMatch ?: remoteMatch ?: "Custom"
                     }
 
                     OutlinedButton(
                         onClick = onCycleSkin,
                         shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Purple.copy(alpha = 0.6f)),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = if (isMissingAsset) Color(0xFFFFB703) else Color.White
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            if (isMissingAsset) Color(0xFFFFB703) else NeonPalette.Purple.copy(alpha = 0.6f)
+                        ),
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                         modifier = Modifier.height(30.dp)
                     ) {
-                        Icon(Icons.Rounded.AutoAwesome, contentDescription = null, tint = NeonPalette.Purple, modifier = Modifier.size(12.dp))
+                        Icon(
+                            if (isMissingAsset) Icons.Rounded.Warning else Icons.Rounded.AutoAwesome,
+                            contentDescription = null,
+                            tint = if (isMissingAsset) Color(0xFFFFB703) else NeonPalette.Purple,
+                            modifier = Modifier.size(12.dp)
+                        )
                         Spacer(Modifier.width(4.dp))
                         Text("Skin: $skinName", fontSize = 10.sp)
                     }
@@ -565,7 +751,7 @@ private fun HudDockedInspector(
                         onClick = onOpenStudio,
                         modifier = Modifier.size(30.dp)
                     ) {
-                        Icon(Icons.Rounded.Palette, contentDescription = "Button Studio", tint = NeonPalette.Purple, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Rounded.Palette, contentDescription = "Change Appearance", tint = NeonPalette.Purple, modifier = Modifier.size(16.dp))
                     }
                 }
 

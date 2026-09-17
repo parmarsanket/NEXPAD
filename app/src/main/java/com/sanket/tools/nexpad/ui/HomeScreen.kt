@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.DashboardCustomize
 import androidx.compose.material.icons.rounded.Hub
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Settings
@@ -67,7 +66,7 @@ fun HomeScreen(
     val isAdbAvailable by viewModel.isAdbAvailable.collectAsState()
     val adbServerName by viewModel.adbServerName.collectAsState()
     val profiles by layoutManager.profilesFlow.collectAsState()
-    val activeProfile = layoutManager.getActiveProfile()
+    val activeProfileName by layoutManager.activeProfileNameFlow.collectAsState()
 
     LaunchedEffect(isConnected) {
         if (!isConnected) {
@@ -149,9 +148,9 @@ fun HomeScreen(
 
                         VShapedPanel(
                             profiles = profiles,
-                            activeProfileName = activeProfile.name,
+                            activeProfileName = activeProfileName,
                             onProfileSelected = { selected ->
-                                if (selected.name != activeProfile.name) {
+                                if (!selected.name.equals(activeProfileName, ignoreCase = true)) {
                                     layoutManager.setActiveProfile(selected.name)
                                 }
                             },
@@ -229,9 +228,9 @@ fun HomeScreen(
 
                     VShapedPanel(
                         profiles = profiles,
-                        activeProfileName = activeProfile.name,
+                        activeProfileName = activeProfileName,
                         onProfileSelected = { selected ->
-                            if (selected.name != activeProfile.name) {
+                            if (!selected.name.equals(activeProfileName, ignoreCase = true)) {
                                 layoutManager.setActiveProfile(selected.name)
                             }
                         },
@@ -311,23 +310,11 @@ private fun CommandCenterButtons(navController: AppNavigator) {
                 modifier = Modifier.weight(1f)
             )
             CommandButton(
-                label = "HUD Editor",
-                icon = Icons.Rounded.DashboardCustomize,
-                iconColor = MaterialTheme.colorScheme.secondary,
-                onClick = { navController.navigate("editor") },
-                modifier = Modifier.weight(1f)
-            )
-        }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            CommandButton(
                 label = "Settings",
                 icon = Icons.Rounded.Settings,
                 iconColor = MaterialTheme.colorScheme.primaryContainer,
                 onClick = { navController.navigate("settings") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.weight(1f)
             )
         }
     }

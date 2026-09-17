@@ -1,6 +1,7 @@
 package com.sanket.tools.nexpad.model
 
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
+import com.sanket.tools.nexpad.runtime.plugin.NxprcDocument
 
 /**
  * High-level categories for gamepad controls.
@@ -90,6 +91,9 @@ sealed interface LayoutSkin {
 
     /** Vector, SVG, or dynamic Compose plugin loaded from ComponentRegistry */
     data class CustomComponent(val def: NxpComponentDef) : LayoutSkin
+
+    /** Remote Compose binary plugin (.nxprc) loaded from RemoteComponentRegistry */
+    data class RemoteComponent(val doc: NxprcDocument) : LayoutSkin
 }
 
 /**

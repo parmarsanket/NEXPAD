@@ -15,13 +15,19 @@ class LayoutManager(private val context: Context) {
     private val prefs = context.getSharedPreferences("NEXPAD_LAYOUTS_V3", Context.MODE_PRIVATE)
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
-    /** Ephemeral key indicating which button should be selected/focused when opening HUD editor */
-    var pendingSelectedKey: String? = null
-
     private val _profilesFlow = MutableStateFlow<List<LayoutProfile>>(emptyList())
     val profilesFlow: StateFlow<List<LayoutProfile>> = _profilesFlow.asStateFlow()
 
+    private val _activeProfileNameFlow = MutableStateFlow<String>(
+        prefs.getString("active_profile", "Standard Elite")?.let {
+            if (it == "Standard") "Standard Elite" else it
+        } ?: "Standard Elite"
+    )
+    val activeProfileNameFlow: StateFlow<String> = _activeProfileNameFlow.asStateFlow()
+
     init {
+        val savedName = prefs.getString("active_profile", "Standard Elite") ?: "Standard Elite"
+        _activeProfileNameFlow.value = if (savedName == "Standard") "Standard Elite" else savedName
         refreshProfilesFlow()
     }
 
@@ -29,14 +35,13 @@ class LayoutManager(private val context: Context) {
         _profilesFlow.value = getAllProfiles()
     }
 
-    /** Applies a button skin (or default) to the active profile and pre-selects it for HUD editing */
+    /** Applies a button skin (or default) to the active profile. */
     fun applyButtonSkinToActiveProfile(key: String, customComponentId: String?) {
         val active = getActiveProfile()
         val posMap = active.positions.toMutableMap()
         val currentPos = posMap[key] ?: defaultPositions()[key] ?: Position(0.5f, 0.5f)
         posMap[key] = currentPos.copy(customComponentId = customComponentId)
         saveProfile(active.copy(positions = posMap))
-        pendingSelectedKey = key
     }
 
     /** Returns all available profiles: 5 default layouts (with any saved overrides) plus user custom layouts. */
@@ -170,7 +175,9 @@ class LayoutManager(private val context: Context) {
 
     /** Set the active layout profile. */
     fun setActiveProfile(name: String) {
-        prefs.edit().putString("active_profile", name).apply()
+        val effectiveName = if (name == "Standard") "Standard Elite" else name
+        prefs.edit().putString("active_profile", effectiveName).apply()
+        _activeProfileNameFlow.value = effectiveName
         refreshProfilesFlow()
     }
 

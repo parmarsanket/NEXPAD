@@ -13,12 +13,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.carousel.HorizontalCenteredHeroCarousel
 import androidx.compose.material3.carousel.rememberCarouselState
+import androidx.compose.foundation.clickable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -45,17 +49,44 @@ fun VShapedPanel(
     val effectiveProfiles = remember(profiles) {
         if (profiles.isNotEmpty()) profiles else getDefaultLayoutProfiles()
     }
-    val initialIndex = remember(effectiveProfiles, activeProfileName) {
+    val targetIndex = remember(effectiveProfiles, activeProfileName) {
         val idx = effectiveProfiles.indexOfFirst { it.name.equals(activeProfileName, ignoreCase = true) }
         if (idx >= 0) idx else 0
     }
-    val state = rememberCarouselState(initialItem = initialIndex) { effectiveProfiles.size }
+    val state = rememberCarouselState(initialItem = targetIndex) { effectiveProfiles.size }
+    val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(state.currentItem) {
-        if (effectiveProfiles.isNotEmpty()) {
+    var isUserGesture by remember { mutableStateOf(false) }
+    var isProgrammaticScroll by remember { mutableStateOf(false) }
+
+    // Synchronize external changes (e.g. from VirtualControllerScreen) into carousel
+    LaunchedEffect(targetIndex) {
+        if (effectiveProfiles.isNotEmpty() && state.currentItem != targetIndex) {
+            isProgrammaticScroll = true
+            try {
+                state.scrollToItem(targetIndex)
+            } finally {
+                isProgrammaticScroll = false
+            }
+        }
+    }
+
+    // Flag when scroll is from user gesture
+    LaunchedEffect(state.isScrollInProgress) {
+        if (state.isScrollInProgress && !isProgrammaticScroll) {
+            isUserGesture = true
+        }
+    }
+
+    // Emit selection only when user gestured and scroll finished
+    LaunchedEffect(state.currentItem, state.isScrollInProgress) {
+        if (!state.isScrollInProgress && isUserGesture && effectiveProfiles.isNotEmpty()) {
+            isUserGesture = false
             val validIdx = state.currentItem.coerceIn(0, effectiveProfiles.lastIndex)
             val selected = effectiveProfiles[validIdx]
-            onProfileSelected(selected)
+            if (!selected.name.equals(activeProfileName, ignoreCase = true)) {
+                onProfileSelected(selected)
+            }
         }
     }
 
@@ -90,7 +121,19 @@ fun VShapedPanel(
                 val profile = effectiveProfiles[index]
                 val subtitle = if (profile.isDefault) "DEFAULT ${index + 1}" else "CUSTOM"
                 InnerLayoutCard(
-                    modifier = Modifier.fillMaxSize().padding(4.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(4.dp)
+                        .clickable {
+                            if (state.currentItem != index) {
+                                coroutineScope.launch {
+                                    isUserGesture = true
+                                    try {
+                                        state.scrollToItem(index)
+                                    } catch (_: Exception) {}
+                                }
+                            }
+                        },
                     title = profile.name,
                     subtitle = subtitle,
                     isSelected = state.currentItem == index,

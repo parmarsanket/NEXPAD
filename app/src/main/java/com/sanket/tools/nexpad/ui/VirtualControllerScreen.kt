@@ -44,16 +44,19 @@ import com.sanket.tools.nexpad.utils.LayoutManager
 @Composable
 fun VirtualControllerScreen(
     navController: AppNavigator,
-    layoutManager: LayoutManager
+    layoutManager: LayoutManager,
+    navigationViewModel: NavigationViewModel? = null
 ) {
     val context = LocalContext.current
     val profiles by layoutManager.profilesFlow.collectAsState()
-    val activeProfile = layoutManager.getActiveProfile()
+    val activeProfileName by layoutManager.activeProfileNameFlow.collectAsState()
 
     var showAddDialog by remember { mutableStateOf(false) }
     var profileToDuplicate by remember { mutableStateOf<LayoutProfile?>(null) }
     var profileToDelete by remember { mutableStateOf<LayoutProfile?>(null) }
     var profileToReset by remember { mutableStateOf<LayoutProfile?>(null) }
+    // Step 7: Preset protection — holds the preset that needs a copy dialog before editing
+    var profileToEditAsPreset by remember { mutableStateOf<LayoutProfile?>(null) }
 
     Scaffold(
         topBar = {
@@ -86,7 +89,7 @@ fun VirtualControllerScreen(
                 },
                 actions = {
                     OutlinedButton(
-                        onClick = { navController.navigate("button_studio") },
+                        onClick = { navController.navigate(ScreenKey.ButtonStudio(mode = "manage")) },
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Purple),
                         border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Purple.copy(alpha = 0.7f)),
                         shape = RoundedCornerShape(10.dp),
@@ -139,7 +142,7 @@ fun VirtualControllerScreen(
 
                 // Layout Profiles List
                 items(profiles, key = { it.name }) { profile ->
-                    val isActive = profile.name == activeProfile.name
+                    val isActive = profile.name.equals(activeProfileName, ignoreCase = true)
                     LayoutProfileCard(
                         profile = profile,
                         isActive = isActive,
@@ -152,12 +155,17 @@ fun VirtualControllerScreen(
                             navController.navigate("gamepad")
                         },
                         onEditHud = {
-                            layoutManager.setActiveProfile(profile.name)
-                            navController.navigate("editor")
+                            if (profile.isDefault) {
+                                // Preset protection: require creating a custom copy first
+                                profileToEditAsPreset = profile
+                            } else {
+                                layoutManager.setActiveProfile(profile.name)
+                                navController.navigate(ScreenKey.Editor(profileName = profile.name))
+                            }
                         },
                         onOpenStudio = {
                             layoutManager.setActiveProfile(profile.name)
-                            navController.navigate("button_studio")
+                            navController.navigate(ScreenKey.ButtonStudio(mode = "manage", profileName = profile.name))
                         },
                         onDuplicate = {
                             profileToDuplicate = profile
@@ -308,6 +316,55 @@ fun VirtualControllerScreen(
             },
             dismissButton = {
                 TextButton(onClick = { profileToDelete = null }) {
+                    Text("Cancel", color = Color.White)
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    }
+
+    // Preset Protection Dialog — triggered when user taps "Edit HUD" on a default preset
+    if (profileToEditAsPreset != null) {
+        val preset = profileToEditAsPreset!!
+        var customName by remember { mutableStateOf("${preset.name} Custom") }
+        AlertDialog(
+            onDismissRequest = { profileToEditAsPreset = null },
+            title = { Text("Built-in Preset", color = Color.White) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        "\"${preset.name}\" is a built-in preset. Editing it will create a personal copy.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedTextField(
+                        value = customName,
+                        onValueChange = { customName = it },
+                        label = { Text("New name", color = NeonPalette.Cyan) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = NeonPalette.Cyan,
+                            unfocusedBorderColor = Color.Gray
+                        )
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val name = customName.trim().ifEmpty { "${preset.name} Custom" }
+                        val copy = layoutManager.createCustomProfile(name = name, baseProfile = preset)
+                        layoutManager.setActiveProfile(copy.name)
+                        profileToEditAsPreset = null
+                        navController.navigate(ScreenKey.Editor(profileName = copy.name))
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan)
+                ) {
+                    Text("Create & Edit", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { profileToEditAsPreset = null }) {
                     Text("Cancel", color = Color.White)
                 }
             },

@@ -21,7 +21,7 @@ interface AppNavigator {
             route == "home" -> navigate(ScreenKey.Home)
             route == "settings" -> navigate(ScreenKey.Settings)
             route == "connections" -> navigate(ScreenKey.Connections)
-            route == "editor" -> navigate(ScreenKey.Editor)
+            route == "editor" -> navigate(ScreenKey.Editor())
             route == "virtual_controller" -> navigate(ScreenKey.VirtualController)
             route == "gamepad" -> navigate(ScreenKey.Gamepad)
             route.startsWith("button_studio") -> {

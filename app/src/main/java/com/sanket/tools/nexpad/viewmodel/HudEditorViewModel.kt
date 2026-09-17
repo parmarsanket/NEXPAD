@@ -9,6 +9,7 @@ import com.sanket.tools.nexpad.model.LayoutProfile
 import com.sanket.tools.nexpad.model.LayoutSkin
 import com.sanket.tools.nexpad.model.LayoutTransform
 import com.sanket.tools.nexpad.model.defaultPositions
+import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
 import com.sanket.tools.nexpad.utils.LayoutManager
 import kotlinx.coroutines.Dispatchers
@@ -27,7 +28,8 @@ import kotlinx.coroutines.launch
  */
 class HudEditorViewModel(
     private val layoutManager: LayoutManager,
-    private val componentRegistry: ComponentRegistry
+    private val componentRegistry: ComponentRegistry,
+    private val remoteComponentRegistry: RemoteComponentRegistry? = null
 ) : ViewModel() {
 
     private val _currentProfile = MutableStateFlow(layoutManager.getActiveProfile())
@@ -45,11 +47,13 @@ class HudEditorViewModel(
     /**
      * Category-safe list of compatible skins for the currently selected control.
      * Prevents cross-contamination (e.g. analog stick skin on a face button).
+     * Includes both Tier 1 ComponentRegistry skins and Tier 2 RemoteComponentRegistry (.nxprc) skins.
      */
     val compatibleSkins: StateFlow<List<LayoutSkin>> = combine(
         _selectedControl,
-        componentRegistry.installedComponents
-    ) { selected, allComponents ->
+        componentRegistry.installedComponents,
+        remoteComponentRegistry?.loadedComponents ?: MutableStateFlow(emptyList())
+    ) { selected, allComponents, remoteDocs ->
         if (selected == null) return@combine emptyList()
 
         val skins = mutableListOf<LayoutSkin>(LayoutSkin.NativeDefault)
@@ -64,6 +68,7 @@ class HudEditorViewModel(
             ControlCategory.MACRO -> "MACRO"
         }
 
+        // Tier 1: NXP JSON and builtin vector skins
         allComponents.filter { def ->
             // Exclude default native components because LayoutSkin.NativeDefault already represents them
             if (def.manifest.id.startsWith("builtin.default_")) return@filter false
@@ -72,6 +77,15 @@ class HudEditorViewModel(
             cat == expectedCategory || defaultCtrl == selected.key
         }.forEach {
             skins.add(LayoutSkin.CustomComponent(it))
+        }
+
+        // Tier 2: Remote Compose (.nxprc) skins
+        remoteDocs.filter { doc ->
+            val cat = doc.manifest.category.uppercase()
+            val defaultCtrl = doc.manifest.defaultControl.uppercase()
+            cat == expectedCategory || defaultCtrl == selected.key
+        }.forEach {
+            skins.add(LayoutSkin.RemoteComponent(it))
         }
 
         skins
@@ -103,19 +117,22 @@ class HudEditorViewModel(
         }
         _elements.value = elementMap
         _hasUnsavedChanges.value = false
+    }
 
-        // Consume any pending selected control requested by Button Studio
-        layoutManager.pendingSelectedKey?.let { key ->
-            layoutManager.pendingSelectedKey = null
-            val target = GamepadControl.fromKey(key)
-            if (target != null) {
-                // If element is not yet placed, auto-add it with default position
-                if (!elementMap.containsKey(target)) {
-                    addControl(target)
-                }
-                _selectedControl.value = target
-            }
+    /**
+     * Load a specific profile by name.
+     * Used when HudEditorScreen is opened from VirtualControllerScreen with an explicit profileName
+     * in the ScreenKey — ensures the correct layout is always loaded regardless of which profile
+     * is currently "active" in LayoutManager.
+     */
+    fun loadProfileByName(name: String) {
+        val profile = layoutManager.getAllProfiles().find { it.name == name }
+        if (profile != null) {
+            // Activate it so subsequent saves write to the right profile
+            layoutManager.setActiveProfile(profile.name)
         }
+        // Reload (now with the correct active profile)
+        loadActiveProfile()
     }
 
     fun selectControl(control: GamepadControl?) {
@@ -175,6 +192,7 @@ class HudEditorViewModel(
             when (it) {
                 is LayoutSkin.NativeDefault -> currentSkinId == null
                 is LayoutSkin.CustomComponent -> it.def.manifest.id == currentSkinId
+                is LayoutSkin.RemoteComponent -> it.doc.manifest.id == currentSkinId
             }
         }
 
@@ -183,6 +201,7 @@ class HudEditorViewModel(
         val newSkinId = when (nextSkin) {
             is LayoutSkin.NativeDefault -> null
             is LayoutSkin.CustomComponent -> nextSkin.def.manifest.id
+            is LayoutSkin.RemoteComponent -> nextSkin.doc.manifest.id
         }
         setSkin(control, newSkinId)
     }
@@ -271,12 +290,13 @@ class HudEditorViewModel(
 
 class HudEditorViewModelFactory(
     private val layoutManager: LayoutManager,
-    private val componentRegistry: ComponentRegistry
+    private val componentRegistry: ComponentRegistry,
+    private val remoteComponentRegistry: RemoteComponentRegistry? = null
 ) : androidx.lifecycle.ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(HudEditorViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return HudEditorViewModel(layoutManager, componentRegistry) as T
+            return HudEditorViewModel(layoutManager, componentRegistry, remoteComponentRegistry) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }
