@@ -280,32 +280,36 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun applyButtonState(buttonName: String, isPressed: Boolean) {
+        // Canonical keys come from NexpadKeys (backed by CategoryManager).
+        // Hardware alias keys (L1/L2/L3, R1/R2/R3, BACK, SELECT, HOME, XBOX, MENU, VIEW)
+        // are kept alongside canonicals so that external hardware inputs still resolve correctly.
+        val K = com.sanket.tools.nexpad.model.NexpadKeys
         when (buttonName.uppercase()) {
-            "A" -> inputState.btnA = isPressed
-            "B" -> inputState.btnB = isPressed
-            "X" -> inputState.btnX = isPressed
-            "Y" -> inputState.btnY = isPressed
-            "UP" -> inputState.dpadUp = isPressed
-            "DOWN" -> inputState.dpadDown = isPressed
-            "LEFT" -> inputState.dpadLeft = isPressed
-            "RIGHT" -> inputState.dpadRight = isPressed
-            "LB", "L1" -> inputState.btnL1 = isPressed
-            "RB", "R1" -> inputState.btnR1 = isPressed
-            "LT", "L2" -> inputState.triggerL2 = if (isPressed) 1f else 0f
-            "RT", "R2" -> inputState.triggerR2 = if (isPressed) 1f else 0f
-            "L3", "LS" -> inputState.btnL3 = isPressed
-            "R3", "RS" -> inputState.btnR3 = isPressed
-            "MENU", "START" -> inputState.btnStart = isPressed
-            "VIEW", "BACK", "SELECT" -> inputState.btnSelect = isPressed
-            "XBOX", "GUIDE", "HOME" -> inputState.btnGuide = isPressed
-            "SHARE" -> inputState.btnShare = isPressed
-            "SCREENSHOT" -> inputState.btnScreenshot = isPressed
-            "M1" -> inputState.btnM1 = isPressed
-            "M2" -> inputState.btnM2 = isPressed
-            "M3" -> inputState.btnM3 = isPressed
-            "M4" -> inputState.btnM4 = isPressed
-            "PROFILE" -> inputState.btnProfile = isPressed
-            "TURBO" -> inputState.btnTurbo = isPressed
+            K.A                               -> inputState.btnA = isPressed
+            K.B                               -> inputState.btnB = isPressed
+            K.X                               -> inputState.btnX = isPressed
+            K.Y                               -> inputState.btnY = isPressed
+            K.UP                              -> inputState.dpadUp = isPressed
+            K.DOWN                            -> inputState.dpadDown = isPressed
+            K.LEFT                            -> inputState.dpadLeft = isPressed
+            K.RIGHT                           -> inputState.dpadRight = isPressed
+            K.LB, "L1"                        -> inputState.btnL1 = isPressed
+            K.RB, "R1"                        -> inputState.btnR1 = isPressed
+            K.LT, "L2"                        -> inputState.triggerL2 = if (isPressed) 1f else 0f
+            K.RT, "R2"                        -> inputState.triggerR2 = if (isPressed) 1f else 0f
+            K.LS, "L3"                        -> inputState.btnL3 = isPressed
+            K.RS, "R3"                        -> inputState.btnR3 = isPressed
+            K.START, "MENU", "START"          -> inputState.btnStart = isPressed
+            K.BACK, "VIEW", "BACK", "SELECT"  -> inputState.btnSelect = isPressed
+            K.GUIDE, "XBOX", "GUIDE", "HOME"  -> inputState.btnGuide = isPressed
+            K.SHARE                           -> inputState.btnShare = isPressed
+            "SCREENSHOT"                      -> inputState.btnScreenshot = isPressed
+            K.M1                              -> inputState.btnM1 = isPressed
+            K.M2                              -> inputState.btnM2 = isPressed
+            K.M3                              -> inputState.btnM3 = isPressed
+            K.M4                              -> inputState.btnM4 = isPressed
+            K.PROFILE                         -> inputState.btnProfile = isPressed
+            K.TURBO                           -> inputState.btnTurbo = isPressed
         }
     }
 

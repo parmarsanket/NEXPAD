@@ -33,7 +33,7 @@ fun RealisticBumper(
     modifier: Modifier = Modifier
 ) {
     var isPressed by remember { mutableStateOf(false) }
-    val isLeft = key.uppercase() == "LB"
+    val isLeft = key.uppercase() == com.sanket.tools.nexpad.model.NexpadKeys.LB
 
     val bumperShape = if (isLeft) {
         RoundedCornerShape(topStart = 40.dp, topEnd = 14.dp, bottomStart = 14.dp, bottomEnd = 8.dp)

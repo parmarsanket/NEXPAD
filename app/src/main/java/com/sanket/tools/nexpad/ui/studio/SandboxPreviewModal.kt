@@ -183,7 +183,8 @@ fun SandboxPreviewModal(
                     LaunchedEffect(componentDef.manifest.id) {
                         while (true) {
                             kotlinx.coroutines.delay(60)
-                            if (controlKey == "LS" || controlKey == "L3") {
+                            val K = com.sanket.tools.nexpad.model.NexpadKeys
+                            if (controlKey == K.LS || controlKey == "L3") {
                                 val x = testViewModel.inputState.leftStickX / 32767f
                                 val y = testViewModel.inputState.leftStickY / 32767f
                                 if (kotlin.math.abs(x - axisValues.first) > 0.05f || kotlin.math.abs(y - axisValues.second) > 0.05f) {
@@ -191,7 +192,7 @@ fun SandboxPreviewModal(
                                     telemetryAction = "STICK DEFLECTION (X=%.2f, Y=%.2f)".format(x, y)
                                     eventCount++
                                 }
-                            } else if (controlKey == "RS" || controlKey == "R3") {
+                            } else if (controlKey == K.RS || controlKey == "R3") {
                                 val x = testViewModel.inputState.rightStickX / 32767f
                                 val y = testViewModel.inputState.rightStickY / 32767f
                                 if (kotlin.math.abs(x - axisValues.first) > 0.05f || kotlin.math.abs(y - axisValues.second) > 0.05f) {

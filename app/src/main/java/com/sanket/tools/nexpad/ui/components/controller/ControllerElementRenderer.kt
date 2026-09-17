@@ -43,14 +43,15 @@ fun ControllerElementRenderer(
         val remoteRegistry = remember { RemoteComponentRegistry.getInstance(context) }
         val loadedDocs by remoteRegistry.loadedComponents.collectAsState()
         val remoteDoc = remember(customComponentId, loadedDocs) { remoteRegistry.getComponent(customComponentId) }
+        val K = com.sanket.tools.nexpad.model.NexpadKeys
         if (remoteDoc != null) {
             val targetControl = when {
-                key.equals("LS", ignoreCase = true) || key.equals("L3", ignoreCase = true) -> NexPadControl.Stick(isLeft = true)
-                key.equals("RS", ignoreCase = true) || key.equals("R3", ignoreCase = true) -> NexPadControl.Stick(isLeft = false)
-                key.equals("LT", ignoreCase = true) || key.equals("RT", ignoreCase = true) -> NexPadControl.Trigger(key.uppercase())
-                key.uppercase() in listOf("UP", "DOWN", "LEFT", "RIGHT") -> NexPadControl.DPad(key.uppercase())
+                key.equals(K.LS, ignoreCase = true) || key.equals("L3", ignoreCase = true) -> NexPadControl.Stick(isLeft = true)
+                key.equals(K.RS, ignoreCase = true) || key.equals("R3", ignoreCase = true) -> NexPadControl.Stick(isLeft = false)
+                key.equals(K.LT, ignoreCase = true) || key.equals(K.RT, ignoreCase = true) -> NexPadControl.Trigger(key.uppercase())
+                key.uppercase() in listOf(K.UP, K.DOWN, K.LEFT, K.RIGHT) -> NexPadControl.DPad(key.uppercase())
                 remoteDoc.manifest.category.equals("JOYSTICK", ignoreCase = true) ->
-                    NexPadControl.Stick(isLeft = remoteDoc.manifest.defaultControl.uppercase() != "RS" && remoteDoc.manifest.defaultControl.uppercase() != "R3")
+                    NexPadControl.Stick(isLeft = remoteDoc.manifest.defaultControl.uppercase() != K.RS && remoteDoc.manifest.defaultControl.uppercase() != "R3")
                 else -> NexPadControl.Button(key)
             }
             NxprcCanvasRenderer(
@@ -68,12 +69,13 @@ fun ControllerElementRenderer(
         if (isDefaultNative) null else ComponentRegistry.getInstance(context).getComponent(customComponentId)
     }
 
+    val K = com.sanket.tools.nexpad.model.NexpadKeys
     if (customDef != null) {
         val targetControl = when {
-            key == "LS" -> NexPadControl.Stick(isLeft = true)
-            key == "RS" -> NexPadControl.Stick(isLeft = false)
-            key == "LT" || key == "RT" -> NexPadControl.Trigger(key)
-            key in listOf("UP", "DOWN", "LEFT", "RIGHT") -> NexPadControl.DPad(key)
+            key == K.LS -> NexPadControl.Stick(isLeft = true)
+            key == K.RS -> NexPadControl.Stick(isLeft = false)
+            key == K.LT || key == K.RT -> NexPadControl.Trigger(key)
+            key in listOf(K.UP, K.DOWN, K.LEFT, K.RIGHT) -> NexPadControl.DPad(key)
             else -> NexPadControl.Button(key)
         }
         NxpComposeInterpreter(
@@ -86,85 +88,85 @@ fun ControllerElementRenderer(
     }
 
     when {
-        key == "LS" -> RealisticJoystick(
+        key == K.LS -> RealisticJoystick(
             isLeft = true,
             isConnected = isConnected,
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled
         )
-        key == "RS" -> RealisticJoystick(
+        key == K.RS -> RealisticJoystick(
             isLeft = false,
             isConnected = isConnected,
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled
         )
-        key == "DPAD" -> RealisticDPad(
+        key == K.DPAD -> RealisticDPad(
             isConnected = isConnected,
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled,
             onVibrate = onVibrate
         )
-        key in listOf("UP", "DOWN", "LEFT", "RIGHT") -> RealisticDPadButton(
+        key in listOf(K.UP, K.DOWN, K.LEFT, K.RIGHT) -> RealisticDPadButton(
             direction = key,
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled
         )
-        key == "LT" || key == "RT" -> RealisticTrigger(
+        key == K.LT || key == K.RT -> RealisticTrigger(
             key = key,
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled
         )
-        key == "LB" || key == "RB" -> RealisticBumper(
+        key == K.LB || key == K.RB -> RealisticBumper(
             key = key,
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled
         )
-        key == "A" -> RealisticButton(
-            key = "A",
+        key == K.A -> RealisticButton(
+            key = K.A,
             buttonColor = Color(0xFF00C853),
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled
         )
-        key == "B" -> RealisticButton(
-            key = "B",
+        key == K.B -> RealisticButton(
+            key = K.B,
             buttonColor = Color(0xFFD50000),
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled
         )
-        key == "X" -> RealisticButton(
-            key = "X",
+        key == K.X -> RealisticButton(
+            key = K.X,
             buttonColor = Color(0xFF2962FF),
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled
         )
-        key == "Y" -> RealisticButton(
-            key = "Y",
+        key == K.Y -> RealisticButton(
+            key = K.Y,
             buttonColor = Color(0xFFFFD600),
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled
         )
-        key in listOf("MENU", "VIEW", "XBOX", "SHARE", "SCREENSHOT") -> RealisticSystemButton(
+        key in listOf(K.START, K.BACK, K.GUIDE, K.SHARE, "MENU", "VIEW", "XBOX", "SCREENSHOT") -> RealisticSystemButton(
             key = key,
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled
         )
-        key in listOf("M1", "M2", "M3", "M4", "PROFILE", "TURBO") -> RealisticMacroButton(
+        key in listOf(K.M1, K.M2, K.M3, K.M4, K.PROFILE, K.TURBO) -> RealisticMacroButton(
             key = key,
             isConnected = isConnected,
             onVibrate = onVibrate,

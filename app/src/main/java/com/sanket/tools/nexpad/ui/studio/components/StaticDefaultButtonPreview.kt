@@ -61,30 +61,31 @@ fun StaticDefaultButtonPreview(
         modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
+        val K = com.sanket.tools.nexpad.model.NexpadKeys
         when (key) {
-            "A" -> StaticRealisticButton(key = "A", buttonColor = Color(0xFF00C853))
-            "B" -> StaticRealisticButton(key = "B", buttonColor = Color(0xFFD50000))
-            "X" -> StaticRealisticButton(key = "X", buttonColor = Color(0xFF2962FF))
-            "Y" -> StaticRealisticButton(key = "Y", buttonColor = Color(0xFFFFD600))
+            K.A -> StaticRealisticButton(key = K.A, buttonColor = Color(0xFF00C853))
+            K.B -> StaticRealisticButton(key = K.B, buttonColor = Color(0xFFD50000))
+            K.X -> StaticRealisticButton(key = K.X, buttonColor = Color(0xFF2962FF))
+            K.Y -> StaticRealisticButton(key = K.Y, buttonColor = Color(0xFFFFD600))
 
-            "LS", "L3" -> StaticRealisticJoystick(isLeft = true)
-            "RS", "R3" -> StaticRealisticJoystick(isLeft = false)
+            K.LS, "L3" -> StaticRealisticJoystick(isLeft = true)
+            K.RS, "R3" -> StaticRealisticJoystick(isLeft = false)
 
-            "DPAD" -> StaticRealisticDPad()
-            "UP", "DOWN", "LEFT", "RIGHT" -> StaticRealisticDPadButton(direction = key)
+            K.DPAD -> StaticRealisticDPad()
+            K.UP, K.DOWN, K.LEFT, K.RIGHT -> StaticRealisticDPadButton(direction = key)
 
-            "LT" -> StaticRealisticTrigger(key = "LT", isLeft = true)
-            "RT" -> StaticRealisticTrigger(key = "RT", isLeft = false)
+            K.LT -> StaticRealisticTrigger(key = K.LT, isLeft = true)
+            K.RT -> StaticRealisticTrigger(key = K.RT, isLeft = false)
 
-            "LB" -> StaticRealisticBumper(key = "LB", isLeft = true)
-            "RB" -> StaticRealisticBumper(key = "RB", isLeft = false)
+            K.LB -> StaticRealisticBumper(key = K.LB, isLeft = true)
+            K.RB -> StaticRealisticBumper(key = K.RB, isLeft = false)
 
-            "XBOX" -> StaticRealisticSystemButton(label = "⨂", textColor = NeonPalette.Cyan)
-            "MENU" -> StaticRealisticSystemButton(label = "☰", textColor = Color.White)
-            "VIEW" -> StaticRealisticSystemButton(label = "⧉", textColor = Color.White)
-            "SHARE", "SCREENSHOT" -> StaticRealisticSystemButton(label = "⇪", textColor = Color.White)
+            K.GUIDE, "XBOX" -> StaticRealisticSystemButton(label = "⨂", textColor = NeonPalette.Cyan)
+            K.START, "MENU" -> StaticRealisticSystemButton(label = "☰", textColor = Color.White)
+            K.BACK,  "VIEW" -> StaticRealisticSystemButton(label = "⧉", textColor = Color.White)
+            K.SHARE, "SCREENSHOT" -> StaticRealisticSystemButton(label = "⇪", textColor = Color.White)
 
-            "M1", "M2", "M3", "M4", "PROFILE", "TURBO" -> StaticRealisticMacroButton(label = key)
+            K.M1, K.M2, K.M3, K.M4, K.PROFILE, K.TURBO -> StaticRealisticMacroButton(label = key)
 
             else -> StaticRealisticButton(key = key.take(3), buttonColor = Color.Gray)
         }
@@ -203,7 +204,8 @@ private fun StaticRealisticJoystick(
                 )
             }
             Text(
-                text = if (isLeft) "LS" else "RS",
+                text = if (isLeft) com.sanket.tools.nexpad.model.NexpadKeys.LS
+                       else com.sanket.tools.nexpad.model.NexpadKeys.RS,
                 color = Color.LightGray.copy(alpha = 0.7f),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold
@@ -322,12 +324,13 @@ private fun StaticRealisticDPadButton(
     direction: String,
     modifier: Modifier = Modifier
 ) {
+    val K = com.sanket.tools.nexpad.model.NexpadKeys
     val dirSymbol = when (direction.uppercase()) {
-        "UP" -> "▲"
-        "DOWN" -> "▼"
-        "LEFT" -> "◀"
-        "RIGHT" -> "▶"
-        else -> direction
+        K.UP    -> "▲"
+        K.DOWN  -> "▼"
+        K.LEFT  -> "◀"
+        K.RIGHT -> "▶"
+        else    -> direction
     }
 
     val themeColor = Color(0xFF00F0FF)

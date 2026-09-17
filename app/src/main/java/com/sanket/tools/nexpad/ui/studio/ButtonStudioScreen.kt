@@ -113,11 +113,10 @@ fun ButtonStudioScreen(
     var previewTarget by remember { mutableStateOf<NxpComponentDef?>(null) }
 
     // Map of active controls (controlKey -> Boolean) in Builder mode
+    // Sourced dynamically from CategoryManager — no hardcoded list
     val activeControls = remember {
         mutableStateMapOf<String, Boolean>().apply {
-            listOf("A", "B", "X", "Y", "LS", "RS", "DPAD", "LT", "RT", "LB", "RB", "XBOX", "VIEW", "MENU").forEach {
-                put(it, true)
-            }
+            CategoryManager.getAllControls().forEach { put(it.key, true) }
         }
     }
 

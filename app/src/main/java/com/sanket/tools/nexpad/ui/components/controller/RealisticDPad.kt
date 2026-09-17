@@ -107,10 +107,11 @@ fun RealisticDPad(
                         } else {
                             val angle = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble()))
                             val dirs = mutableSetOf<String>()
-                            if (angle in -157.5..-22.5) dirs.add("UP")
-                            if (angle in 22.5..157.5) dirs.add("DOWN")
-                            if (angle in -67.5..67.5) dirs.add("RIGHT")
-                            if (angle < -112.5 || angle > 112.5) dirs.add("LEFT")
+                            val K = com.sanket.tools.nexpad.model.NexpadKeys
+                            if (angle in -157.5..-22.5) dirs.add(K.UP)
+                            if (angle in 22.5..157.5) dirs.add(K.DOWN)
+                            if (angle in -67.5..67.5) dirs.add(K.RIGHT)
+                            if (angle < -112.5 || angle > 112.5) dirs.add(K.LEFT)
                             dirs
                         }
 
@@ -146,30 +147,31 @@ fun RealisticDPad(
             val h = size.height
             val armW = w / 3f
             val armH = h / 3f
+            val K = com.sanket.tools.nexpad.model.NexpadKeys
 
             // 1. Draw Active Arm Highlights
-            if (pressedDirs.contains("UP")) {
+            if (pressedDirs.contains(K.UP)) {
                 drawRect(
                     color = activeColor.copy(alpha = 0.40f),
                     topLeft = Offset(armW, 0f),
                     size = Size(armW, armH)
                 )
             }
-            if (pressedDirs.contains("DOWN")) {
+            if (pressedDirs.contains(K.DOWN)) {
                 drawRect(
                     color = activeColor.copy(alpha = 0.40f),
                     topLeft = Offset(armW, armH * 2f),
                     size = Size(armW, armH)
                 )
             }
-            if (pressedDirs.contains("LEFT")) {
+            if (pressedDirs.contains(K.LEFT)) {
                 drawRect(
                     color = activeColor.copy(alpha = 0.40f),
                     topLeft = Offset(0f, armH),
                     size = Size(armW, armH)
                 )
             }
-            if (pressedDirs.contains("RIGHT")) {
+            if (pressedDirs.contains(K.RIGHT)) {
                 drawRect(
                     color = activeColor.copy(alpha = 0.40f),
                     topLeft = Offset(armW * 2f, armH),
@@ -205,7 +207,7 @@ fun RealisticDPad(
             }
             drawPath(
                 path = upPath,
-                color = if (pressedDirs.contains("UP")) pressedArrowColor else normalArrowColor
+                color = if (pressedDirs.contains(K.UP)) pressedArrowColor else normalArrowColor
             )
 
             // DOWN Arrow
@@ -217,7 +219,7 @@ fun RealisticDPad(
             }
             drawPath(
                 path = downPath,
-                color = if (pressedDirs.contains("DOWN")) pressedArrowColor else normalArrowColor
+                color = if (pressedDirs.contains(K.DOWN)) pressedArrowColor else normalArrowColor
             )
 
             // LEFT Arrow
@@ -229,7 +231,7 @@ fun RealisticDPad(
             }
             drawPath(
                 path = leftPath,
-                color = if (pressedDirs.contains("LEFT")) pressedArrowColor else normalArrowColor
+                color = if (pressedDirs.contains(K.LEFT)) pressedArrowColor else normalArrowColor
             )
 
             // RIGHT Arrow
@@ -241,7 +243,7 @@ fun RealisticDPad(
             }
             drawPath(
                 path = rightPath,
-                color = if (pressedDirs.contains("RIGHT")) pressedArrowColor else normalArrowColor
+                color = if (pressedDirs.contains(K.RIGHT)) pressedArrowColor else normalArrowColor
             )
 
             // 4. Center Pivot Depression Disc
@@ -281,12 +283,15 @@ fun RealisticDPadButton(
         label = "dpad_btn_scale"
     )
 
-    val dirSymbol = when (direction.uppercase()) {
-        "UP" -> "▲"
-        "DOWN" -> "▼"
-        "LEFT" -> "◀"
-        "RIGHT" -> "▶"
-        else -> direction
+    val dirSymbol = run {
+        val K = com.sanket.tools.nexpad.model.NexpadKeys
+        when (direction.uppercase()) {
+            K.UP    -> "▲"
+            K.DOWN  -> "▼"
+            K.LEFT  -> "◀"
+            K.RIGHT -> "▶"
+            else    -> direction
+        }
     }
 
     val themeColor = if (isRgbEnabled) Color(0xFF00F0FF) else Color(0xFF4ADE80)

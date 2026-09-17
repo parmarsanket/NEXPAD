@@ -185,4 +185,24 @@ class CategoryManagerHudTest {
         val resetSkin = getNextSkinId("deleted_unknown_skin_id")
         assertEquals(dummySkins[0].id, resetSkin) // null
     }
+
+    @Test
+    fun testNexpadKeysAllResolveToCategoryManager() {
+        val K = com.sanket.tools.nexpad.model.NexpadKeys
+        val keys = listOf(
+            K.A, K.B, K.X, K.Y,
+            K.UP, K.DOWN, K.LEFT, K.RIGHT, K.DPAD,
+            K.LT, K.RT,
+            K.LB, K.RB,
+            K.LS, K.RS,
+            K.GUIDE, K.START, K.BACK, K.SHARE, K.TURBO, K.PROFILE,
+            K.M1, K.M2, K.M3, K.M4
+        )
+
+        for (k in keys) {
+            val control = CategoryManager.getControl(k)
+            assertNotNull("Control key '$k' in NexpadKeys must exist in CategoryManager", control)
+            assertEquals("Control key '$k' in NexpadKeys must match canonical CategoryManager key", k, control?.key)
+        }
+    }
 }

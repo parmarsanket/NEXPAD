@@ -34,7 +34,7 @@ fun RealisticTrigger(
     modifier: Modifier = Modifier
 ) {
     var isPressed by remember { mutableStateOf(false) }
-    val isLeft = key.uppercase() == "LT"
+    val isLeft = key.uppercase() == com.sanket.tools.nexpad.model.NexpadKeys.LT
 
     val triggerShape = if (isLeft) {
         RoundedCornerShape(topStart = 16.dp, topEnd = 8.dp, bottomStart = 50.dp, bottomEnd = 24.dp)

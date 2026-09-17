@@ -212,13 +212,14 @@ fun HudEditorScreen(
                 },
                 onRestoreAll = { viewModel.restoreAllDefaultButtons() },
                 onStandardOnly = {
+                    val K = com.sanket.tools.nexpad.model.NexpadKeys
                     val standardKeys = setOf(
-                        "LT", "RT", "LB", "RB",
-                        "LS", "RS", "DPAD",
-                        "A", "B", "X", "Y",
-                        "XBOX", "VIEW", "MENU"
+                        K.LT, K.RT, K.LB, K.RB,
+                        K.LS, K.RS, K.DPAD,
+                        K.A, K.B, K.X, K.Y,
+                        K.GUIDE, K.BACK, K.START
                     )
-                    CategoryManager.getAllCategories().flatMap { it.controls }.forEach { spec ->
+                    CategoryManager.getAllControls().forEach { spec ->
                         val k = spec.key.uppercase()
                         if (k in standardKeys) {
                             if (!elements.containsKey(k)) viewModel.addControl(k)
