@@ -3,10 +3,12 @@ package com.sanket.tools.nexpad.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sanket.tools.nexpad.category.CategoryManager
+import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.model.HudElement
 import com.sanket.tools.nexpad.model.LayoutProfile
 import com.sanket.tools.nexpad.model.LayoutSkin
 import com.sanket.tools.nexpad.model.LayoutTransform
+import com.sanket.tools.nexpad.model.Position
 import com.sanket.tools.nexpad.model.defaultPositions
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
@@ -145,9 +147,11 @@ class HudEditorViewModel(
         _currentProfile.value = profile
 
         val elementMap = mutableMapOf<String, HudElement>()
-        profile.positions.forEach { (key, pos) ->
-            val upperKey = key.uppercase()
-            elementMap[upperKey] = HudElement.fromPosition(upperKey, pos)
+        profile.canonicalPositions().forEach { (key, pos) ->
+            val canonicalKey = ControlKey.fromIdentifier(key)?.key ?: key.uppercase()
+            if (!elementMap.containsKey(canonicalKey)) {
+                elementMap[canonicalKey] = HudElement.fromPosition(canonicalKey, pos)
+            }
         }
         _elements.value = elementMap
         _hasUnsavedChanges.value = false
@@ -170,7 +174,17 @@ class HudEditorViewModel(
     }
 
     fun selectControl(controlKey: String?) {
-        _selectedControl.value = controlKey?.uppercase()
+        if (controlKey == null) {
+            _selectedControl.value = null
+            return
+        }
+        val targetCtrl = ControlKey.fromIdentifier(controlKey)
+        val canonical = targetCtrl?.key ?: controlKey.uppercase()
+        val matchingKey = _elements.value.keys.firstOrNull {
+            if (targetCtrl != null) ControlKey.fromIdentifier(it) == targetCtrl
+            else it.equals(canonical, ignoreCase = true)
+        }
+        _selectedControl.value = matchingKey ?: canonical
     }
 
     fun updateTransform(
@@ -248,25 +262,47 @@ class HudEditorViewModel(
     }
 
     fun addControl(controlKey: String, skinId: String? = null) {
-        val key = controlKey.uppercase()
-        val defPos = defaultPositions()[key]
+        val targetCtrl = ControlKey.fromIdentifier(controlKey)
+        val canonicalKey = targetCtrl?.key ?: controlKey.uppercase()
+
+        // Check if an element for this canonical control already exists
+        val existingEntry = _elements.value.entries.firstOrNull { (k, _) ->
+            if (targetCtrl != null) ControlKey.fromIdentifier(k) == targetCtrl
+            else k.equals(canonicalKey, ignoreCase = true)
+        }
+
+        if (existingEntry != null) {
+            // Already present — update skin if provided, but NEVER add duplicate
+            if (skinId != null && existingEntry.value.skinId != skinId) {
+                setSkin(existingEntry.key, skinId)
+            }
+            _selectedControl.value = existingEntry.key
+            return
+        }
+
+        val defPos = defaultPositions()[canonicalKey] ?: defaultPositions()[controlKey]
         val transform = LayoutTransform(
             xRatio = defPos?.xRatio ?: 0.5f,
             yRatio = defPos?.yRatio ?: 0.5f,
             scale = defPos?.scale ?: 1.0f,
             opacity = defPos?.opacity ?: 1.0f
         )
-        val element = HudElement(controlKey = key, transform = transform, skinId = skinId)
-        _elements.value = _elements.value + (key to element)
-        _selectedControl.value = key
+        val element = HudElement(controlKey = canonicalKey, transform = transform, skinId = skinId)
+        _elements.value = _elements.value + (canonicalKey to element)
+        _selectedControl.value = canonicalKey
         _hasUnsavedChanges.value = true
     }
 
     fun removeControl(controlKey: String) {
-        val key = controlKey.uppercase()
-        if (_elements.value.containsKey(key)) {
-            _elements.value = _elements.value - key
-            if (_selectedControl.value == key) {
+        val targetCtrl = ControlKey.fromIdentifier(controlKey)
+        val canonicalKey = targetCtrl?.key ?: controlKey.uppercase()
+        val matchingKeys = _elements.value.keys.filter {
+            if (targetCtrl != null) ControlKey.fromIdentifier(it) == targetCtrl
+            else it.equals(canonicalKey, ignoreCase = true)
+        }
+        if (matchingKeys.isNotEmpty()) {
+            _elements.value = _elements.value - matchingKeys.toSet()
+            if (_selectedControl.value in matchingKeys) {
                 _selectedControl.value = null
             }
             _hasUnsavedChanges.value = true
@@ -274,20 +310,25 @@ class HudEditorViewModel(
     }
 
     fun resetControlToDefault(controlKey: String) {
-        val key = controlKey.uppercase()
-        val defPos = defaultPositions()[key] ?: return
-        val current = _elements.value[key]
+        val targetCtrl = ControlKey.fromIdentifier(controlKey)
+        val canonicalKey = targetCtrl?.key ?: controlKey.uppercase()
+        val defPos = defaultPositions()[canonicalKey] ?: defaultPositions()[controlKey] ?: return
+        val currentEntry = _elements.value.entries.firstOrNull { (k, _) ->
+            if (targetCtrl != null) ControlKey.fromIdentifier(k) == targetCtrl
+            else k.equals(canonicalKey, ignoreCase = true)
+        }
+        val targetKey = currentEntry?.key ?: canonicalKey
         val updated = HudElement(
-            controlKey = key,
+            controlKey = targetKey,
             transform = LayoutTransform(
                 xRatio = defPos.xRatio,
                 yRatio = defPos.yRatio,
                 scale = defPos.scale,
                 opacity = defPos.opacity
             ),
-            skinId = current?.skinId
+            skinId = currentEntry?.value?.skinId
         )
-        _elements.value = _elements.value + (key to updated)
+        _elements.value = _elements.value + (targetKey to updated)
         _hasUnsavedChanges.value = true
     }
 
@@ -295,16 +336,16 @@ class HudEditorViewModel(
         val defaultMap = defaultPositions()
         val elementMap = mutableMapOf<String, HudElement>()
         defaultMap.forEach { (key, pos) ->
-            val upperKey = key.uppercase()
-            elementMap[upperKey] = HudElement(
-                controlKey = upperKey,
+            val canonicalKey = ControlKey.fromIdentifier(key)?.key ?: key.uppercase()
+            elementMap[canonicalKey] = HudElement(
+                controlKey = canonicalKey,
                 transform = LayoutTransform(
                     xRatio = pos.xRatio,
                     yRatio = pos.yRatio,
                     scale = pos.scale,
                     opacity = pos.opacity
                 ),
-                skinId = _elements.value[upperKey]?.skinId
+                skinId = _elements.value[canonicalKey]?.skinId
             )
         }
         _elements.value = elementMap
@@ -316,7 +357,13 @@ class HudEditorViewModel(
      */
     fun saveProfile(onSaved: () -> Unit = {}) {
         val profile = _currentProfile.value
-        val positionMap = _elements.value.values.associate { it.controlKey to it.toPosition() }
+        val positionMap = mutableMapOf<String, Position>()
+        _elements.value.values.forEach { element ->
+            val canonical = ControlKey.fromIdentifier(element.controlKey)?.key ?: element.controlKey.uppercase()
+            if (!positionMap.containsKey(canonical)) {
+                positionMap[canonical] = element.toPosition()
+            }
+        }
         val updatedProfile = profile.copy(positions = positionMap)
 
         viewModelScope.launch(Dispatchers.IO) {

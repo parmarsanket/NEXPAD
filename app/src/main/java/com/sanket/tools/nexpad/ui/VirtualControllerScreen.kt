@@ -32,6 +32,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.category.CategoryManager
+import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.ui.AppNavigator
 import com.sanket.tools.nexpad.model.LayoutProfile
 import com.sanket.tools.nexpad.model.getDefaultLayoutProfiles
@@ -720,7 +722,7 @@ private fun AddCustomLayoutDialog(
     var openInStudio by remember { mutableStateOf(false) }
     val currentTemplate = defaults.getOrElse(selectedTemplateIndex) { defaults.first() }
 
-    val allTemplateKeys = remember(currentTemplate) { currentTemplate.positions.keys.toList() }
+    val allTemplateKeys = remember(currentTemplate) { currentTemplate.canonicalPositions().keys.toList() }
     val selectedButtons = remember(currentTemplate) { mutableStateMapOf<String, Boolean>().apply {
         allTemplateKeys.forEach { put(it, true) }
     }}
@@ -865,7 +867,9 @@ private fun AddCustomLayoutDialog(
                                             onCheckedChange = { selectedButtons[key] = it },
                                             colors = CheckboxDefaults.colors(checkedColor = NeonPalette.Cyan)
                                         )
-                                        Text(key, fontSize = 13.sp, color = Color.White)
+                                        val ctrlSpec = CategoryManager.getControl(key)
+                                        val displayLabel = if (ctrlSpec != null && ctrlSpec.emoji.isNotBlank()) "${ctrlSpec.emoji} $key" else key
+                                        Text(displayLabel, fontSize = 13.sp, color = Color.White)
                                     }
                                 }
                                 if (pair.size == 1) {

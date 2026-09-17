@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sanket.tools.nexpad.ui.AppNavigator
 import com.sanket.tools.nexpad.category.CategoryManager
+import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.model.*
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
@@ -78,7 +79,7 @@ fun HudEditorScreen(
     // Load the correct profile on entry.
     // If initialProfileName is provided (e.g. launched from VirtualController),
     // load that specific profile. Otherwise fall back to the current active profile.
-    LaunchedEffect(Unit) {
+    LaunchedEffect(initialProfileName) {
         if (!initialProfileName.isNullOrBlank()) {
             viewModel.loadProfileByName(initialProfileName)
         } else {
@@ -204,27 +205,33 @@ fun HudEditorScreen(
             HudButtonPaletteDialog(
                 currentElements = elements,
                 onToggleControl = { controlKey ->
-                    if (elements.containsKey(controlKey)) {
-                        viewModel.removeControl(controlKey)
+                    val targetCtrl = ControlKey.fromIdentifier(controlKey)
+                    val canonical = targetCtrl?.key ?: controlKey.uppercase()
+                    val existingKey = elements.keys.firstOrNull { elemKey ->
+                        if (targetCtrl != null) ControlKey.fromIdentifier(elemKey) == targetCtrl
+                        else elemKey.equals(canonical, ignoreCase = true)
+                    }
+                    if (existingKey != null) {
+                        viewModel.removeControl(existingKey)
                     } else {
-                        viewModel.addControl(controlKey)
+                        viewModel.addControl(canonical)
                     }
                 },
                 onRestoreAll = { viewModel.restoreAllDefaultButtons() },
                 onStandardOnly = {
-                    val K = com.sanket.tools.nexpad.model.NexpadKeys
-                    val standardKeys = setOf(
-                        K.LT, K.RT, K.LB, K.RB,
-                        K.LS, K.RS, K.DPAD,
-                        K.A, K.B, K.X, K.Y,
-                        K.GUIDE, K.BACK, K.START
+                    val standardControls = setOf(
+                        ControlKey.LT, ControlKey.RT, ControlKey.LB, ControlKey.RB,
+                        ControlKey.LS, ControlKey.RS, ControlKey.DPAD,
+                        ControlKey.A, ControlKey.B, ControlKey.X, ControlKey.Y,
+                        ControlKey.GUIDE, ControlKey.BACK, ControlKey.START
                     )
                     CategoryManager.getAllControls().forEach { spec ->
-                        val k = spec.key.uppercase()
-                        if (k in standardKeys) {
-                            if (!elements.containsKey(k)) viewModel.addControl(k)
+                        val isStandard = spec in standardControls
+                        val hasControl = elements.keys.any { ControlKey.fromIdentifier(it) == spec }
+                        if (isStandard) {
+                            if (!hasControl) viewModel.addControl(spec.key)
                         } else {
-                            viewModel.removeControl(k)
+                            if (hasControl) viewModel.removeControl(spec.key)
                         }
                     }
                 },
@@ -864,15 +871,17 @@ private fun HudButtonPaletteDialog(
                     ) {
                         Column {
                             controlList.forEachIndexed { index, spec ->
-                                val upperKey = spec.key.uppercase()
-                                val isPresent = currentElements.containsKey(upperKey)
+                                val canonicalKey = spec.key
+                                val isPresent = currentElements.keys.any { elemKey ->
+                                    ControlKey.fromIdentifier(elemKey) == spec
+                                }
                                 val emoji = spec.emoji
                                 val label = spec.label
                                 val desc = spec.description
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable { onToggleControl(upperKey) }
+                                        .clickable { onToggleControl(canonicalKey) }
                                         .padding(horizontal = 12.dp, vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -889,7 +898,7 @@ private fun HudButtonPaletteDialog(
                                     Column(modifier = Modifier.weight(1f)) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Text(
-                                                upperKey,
+                                                canonicalKey,
                                                 fontSize = 14.sp,
                                                 fontWeight = if (isPresent) FontWeight.Bold else FontWeight.Normal,
                                                 color = if (isPresent) Color.White else Color.Gray

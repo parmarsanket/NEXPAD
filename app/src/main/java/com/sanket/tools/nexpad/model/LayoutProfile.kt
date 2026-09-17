@@ -1,5 +1,6 @@
 package com.sanket.tools.nexpad.model
 
+import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.model.NexpadKeys as K
 import kotlinx.serialization.Serializable
 
@@ -11,12 +12,27 @@ data class LayoutProfile(
     val positions: Map<String, Position> = standardElitePositions(),
     val description: String = ""
 ) {
-    fun toHudElements(): List<HudElement> = positions.map { (key, pos) ->
+    /** Returns positions with all keys normalized to canonical ControlKey identifiers. */
+    fun canonicalPositions(): Map<String, Position> {
+        val normalized = mutableMapOf<String, Position>()
+        positions.forEach { (rawKey, pos) ->
+            val canonicalKey = ControlKey.fromIdentifier(rawKey)?.key ?: rawKey.uppercase()
+            if (!normalized.containsKey(canonicalKey)) {
+                normalized[canonicalKey] = pos
+            }
+        }
+        return normalized
+    }
+
+    fun toHudElements(): List<HudElement> = canonicalPositions().map { (key, pos) ->
         HudElement.fromPosition(key, pos)
     }
 
     fun withUpdatedElements(elements: List<HudElement>): LayoutProfile = copy(
-        positions = elements.associate { it.controlKey to it.toPosition() }
+        positions = elements.associate {
+            val canonical = ControlKey.fromIdentifier(it.controlKey)?.key ?: it.controlKey.uppercase()
+            canonical to it.toPosition()
+        }
     )
 }
 

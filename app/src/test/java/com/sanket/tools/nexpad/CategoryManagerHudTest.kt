@@ -205,4 +205,140 @@ class CategoryManagerHudTest {
             assertEquals("Control key '$k' in NexpadKeys must match canonical CategoryManager key", k, control?.key)
         }
     }
+
+    @Test
+    fun testLayoutProfileCanonicalPositions() {
+        val legacyProfile = com.sanket.tools.nexpad.model.LayoutProfile(
+            name = "Legacy Test",
+            positions = mapOf(
+                "XBOX" to Position(0.5f, 0.1f),
+                "VIEW" to Position(0.4f, 0.2f),
+                "MENU" to Position(0.6f, 0.2f),
+                "L1" to Position(0.1f, 0.3f),
+                "L2" to Position(0.1f, 0.1f),
+                "HOME" to Position(0.5f, 0.1f) // duplicate of XBOX -> GUIDE
+            )
+        )
+
+        val canonical = legacyProfile.canonicalPositions()
+
+        // XBOX and HOME must both normalize to GUIDE with no duplication
+        assertTrue(canonical.containsKey("GUIDE"))
+        assertFalse(canonical.containsKey("XBOX"))
+        assertFalse(canonical.containsKey("HOME"))
+
+        // VIEW normalizes to BACK
+        assertTrue(canonical.containsKey("BACK"))
+        assertFalse(canonical.containsKey("VIEW"))
+
+        // MENU normalizes to START
+        assertTrue(canonical.containsKey("START"))
+        assertFalse(canonical.containsKey("MENU"))
+
+        // L1 normalizes to LB, L2 normalizes to LT
+        assertTrue(canonical.containsKey("LB"))
+        assertTrue(canonical.containsKey("LT"))
+        assertFalse(canonical.containsKey("L1"))
+        assertFalse(canonical.containsKey("L2"))
+
+        // Count should be exactly 5 distinct controls: GUIDE, BACK, START, LB, LT
+        assertEquals(5, canonical.size)
+    }
+
+    @Test
+    fun testHudPaletteDialogDynamicMatching() {
+        val K = com.sanket.tools.nexpad.model.NexpadKeys
+        // Elements on HUD using legacy or alias keys
+        val currentElements = mapOf(
+            "XBOX" to HudElement("XBOX", LayoutTransform(0.5f, 0.1f)),
+            "VIEW" to HudElement("VIEW", LayoutTransform(0.4f, 0.2f)),
+            "MENU" to HudElement("MENU", LayoutTransform(0.6f, 0.2f)),
+            K.A to HudElement(K.A, LayoutTransform(0.8f, 0.8f))
+        )
+
+        // Palette checks using dynamic ControlKey resolution
+        fun isPresentInPalette(spec: com.sanket.tools.nexpad.category.ControlKey): Boolean =
+            currentElements.keys.any { elemKey ->
+                com.sanket.tools.nexpad.category.ControlKey.fromIdentifier(elemKey) == spec
+            }
+
+        // Even though elements has "XBOX", "VIEW", "MENU", the palette specs GUIDE, BACK, START match TRUE!
+        assertTrue(isPresentInPalette(com.sanket.tools.nexpad.category.ControlKey.GUIDE))
+        assertTrue(isPresentInPalette(com.sanket.tools.nexpad.category.ControlKey.BACK))
+        assertTrue(isPresentInPalette(com.sanket.tools.nexpad.category.ControlKey.START))
+        assertTrue(isPresentInPalette(com.sanket.tools.nexpad.category.ControlKey.A))
+
+        // SHARE is not on HUD -> matches FALSE
+        assertFalse(isPresentInPalette(com.sanket.tools.nexpad.category.ControlKey.SHARE))
+        assertFalse(isPresentInPalette(com.sanket.tools.nexpad.category.ControlKey.B))
+    }
+
+    @Test
+    fun testFpsTacticalPositionsHasCanonicalButtonsAndZeroDuplicates() {
+        val positions = com.sanket.tools.nexpad.model.fpsTacticalPositions()
+
+        // Verify the 3 system buttons are present under canonical keys
+        assertTrue("GUIDE must be present", positions.containsKey("GUIDE"))
+        assertTrue("BACK must be present", positions.containsKey("BACK"))
+        assertTrue("START must be present", positions.containsKey("START"))
+
+        // Verify face buttons are present
+        assertTrue("A must be present", positions.containsKey("A"))
+        assertTrue("B must be present", positions.containsKey("B"))
+        assertTrue("X must be present", positions.containsKey("X"))
+        assertTrue("Y must be present", positions.containsKey("Y"))
+
+        // Verify no duplicate keys exist after canonicalization
+        val profile = com.sanket.tools.nexpad.model.LayoutProfile(
+            name = "FPS Tactical Pro",
+            positions = positions
+        )
+        val canonical = profile.canonicalPositions()
+        assertEquals(positions.size, canonical.size)
+    }
+
+    @Test
+    fun testAddControlDuplicatePrevention() {
+        val elements = mutableMapOf<String, HudElement>(
+            "GUIDE" to HudElement("GUIDE", LayoutTransform(0.5f, 0.1f))
+        )
+
+        fun addControl(controlKey: String) {
+            val targetCtrl = com.sanket.tools.nexpad.category.ControlKey.fromIdentifier(controlKey)
+            val canonicalKey = targetCtrl?.key ?: controlKey.uppercase()
+
+            val existingEntry = elements.entries.firstOrNull { (k, _) ->
+                if (targetCtrl != null) com.sanket.tools.nexpad.category.ControlKey.fromIdentifier(k) == targetCtrl
+                else k.equals(canonicalKey, ignoreCase = true)
+            }
+
+            if (existingEntry != null) {
+                // Duplicate prevention: do not add!
+                return
+            }
+
+            elements[canonicalKey] = HudElement(canonicalKey, LayoutTransform(0.5f, 0.5f))
+        }
+
+        // Attempt to add "GUIDE" again
+        addControl("GUIDE")
+        assertEquals(1, elements.size)
+
+        // Attempt to add "XBOX" (alias of GUIDE)
+        addControl("XBOX")
+        assertEquals(1, elements.size)
+
+        // Attempt to add "HOME" (alias of GUIDE)
+        addControl("HOME")
+        assertEquals(1, elements.size)
+
+        // Attempt to add "PS" (alias of GUIDE)
+        addControl("PS")
+        assertEquals(1, elements.size)
+
+        // Adding a distinct control like "SHARE" succeeds
+        addControl("SHARE")
+        assertEquals(2, elements.size)
+        assertTrue(elements.containsKey("SHARE"))
+    }
 }

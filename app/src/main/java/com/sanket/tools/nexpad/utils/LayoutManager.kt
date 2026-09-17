@@ -1,6 +1,7 @@
 package com.sanket.tools.nexpad.utils
 
 import android.content.Context
+import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.model.LayoutProfile
 import com.sanket.tools.nexpad.model.Position
 import com.sanket.tools.nexpad.model.defaultPositions
@@ -55,12 +56,12 @@ class LayoutManager(private val context: Context) {
             if (savedJson != null) {
                 try {
                     val loaded = json.decodeFromString<LayoutProfile>(savedJson)
-                    result.add(loaded.copy(isDefault = true))
+                    result.add(loaded.copy(isDefault = true, positions = loaded.canonicalPositions()))
                 } catch (e: Exception) {
-                    result.add(defaultProfile)
+                    result.add(defaultProfile.copy(positions = defaultProfile.canonicalPositions()))
                 }
             } else {
-                result.add(defaultProfile)
+                result.add(defaultProfile.copy(positions = defaultProfile.canonicalPositions()))
             }
         }
 
@@ -71,7 +72,7 @@ class LayoutManager(private val context: Context) {
             if (savedJson != null) {
                 try {
                     val loaded = json.decodeFromString<LayoutProfile>(savedJson)
-                    result.add(loaded.copy(isDefault = false))
+                    result.add(loaded.copy(isDefault = false, positions = loaded.canonicalPositions()))
                 } catch (e: Exception) {
                     // Ignore corrupted profile
                 }
@@ -83,17 +84,18 @@ class LayoutManager(private val context: Context) {
 
     /** Save profile. If it's custom, adds to custom profiles set. */
     fun saveProfile(profile: LayoutProfile, activate: Boolean = true) {
-        val jsonString = json.encodeToString(profile)
-        prefs.edit().putString("profile_${profile.name}", jsonString).apply()
+        val canonicalProfile = profile.copy(positions = profile.canonicalPositions())
+        val jsonString = json.encodeToString(canonicalProfile)
+        prefs.edit().putString("profile_${canonicalProfile.name}", jsonString).apply()
 
-        if (!profile.isDefault) {
+        if (!canonicalProfile.isDefault) {
             val customNames = (prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()).toMutableSet()
-            customNames.add(profile.name)
+            customNames.add(canonicalProfile.name)
             prefs.edit().putStringSet("custom_profile_names", customNames).apply()
         }
 
         if (activate) {
-            setActiveProfile(profile.name)
+            setActiveProfile(canonicalProfile.name)
         } else {
             refreshProfilesFlow()
         }
@@ -104,12 +106,15 @@ class LayoutManager(private val context: Context) {
         val savedJson = prefs.getString("profile_$name", null)
         if (savedJson != null) {
             return try {
-                json.decodeFromString<LayoutProfile>(savedJson)
+                val loaded = json.decodeFromString<LayoutProfile>(savedJson)
+                loaded.copy(positions = loaded.canonicalPositions())
             } catch (e: Exception) {
                 null
             }
         }
-        return getDefaultLayoutProfiles().find { it.name.equals(name, ignoreCase = true) }
+        return getDefaultLayoutProfiles().find { it.name.equals(name, ignoreCase = true) }?.let {
+            it.copy(positions = it.canonicalPositions())
+        }
     }
 
     /**
@@ -155,10 +160,17 @@ class LayoutManager(private val context: Context) {
         baseProfile: LayoutProfile,
         selectedButtons: Set<String>? = null
     ): LayoutProfile {
+        val baseCanonical = baseProfile.canonicalPositions()
         val positions = if (selectedButtons != null) {
-            baseProfile.positions.filterKeys { selectedButtons.contains(it) }
+            val selectedCanonical = selectedButtons.map {
+                ControlKey.fromIdentifier(it)?.key ?: it.uppercase()
+            }.toSet()
+            baseCanonical.filterKeys { k ->
+                val can = ControlKey.fromIdentifier(k)?.key ?: k.uppercase()
+                selectedCanonical.contains(can)
+            }
         } else {
-            baseProfile.positions
+            baseCanonical
         }
 
         val newProfile = LayoutProfile(
