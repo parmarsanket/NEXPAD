@@ -60,4 +60,18 @@ object NexpadKeys {
     val M2: String = ControlKey.M2.key
     val M3: String = ControlKey.M3.key
     val M4: String = ControlKey.M4.key
+
+    // ── Hardware Synonyms & Aliases (All bound to single source of truth) ──
+    val XBOX: String = ControlKey.GUIDE.key
+    val HOME: String = ControlKey.GUIDE.key
+    val MENU: String = ControlKey.START.key
+    val VIEW: String = ControlKey.BACK.key
+    val SELECT: String = ControlKey.BACK.key
+    val L1: String = ControlKey.LB.key
+    val R1: String = ControlKey.RB.key
+    val L2: String = ControlKey.LT.key
+    val R2: String = ControlKey.RT.key
+    val L3: String = ControlKey.LS.key
+    val R3: String = ControlKey.RS.key
+    val SCREENSHOT: String = ControlKey.SHARE.key
 }

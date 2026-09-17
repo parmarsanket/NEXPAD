@@ -1,6 +1,7 @@
 package com.sanket.tools.nexpad.runtime.registry
 
 import com.sanket.tools.nexpad.runtime.model.*
+import com.sanket.tools.nexpad.category.ControlKey
 
 object DefaultComponents {
 
@@ -11,7 +12,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "BUTTON",
-            defaultControl = "A",
+            defaultControl = ControlKey.A.key,
             description = "Cyan holographic hexagonal attack button with spring bounce feedback."
         ),
         geometry = NxpGeometry(
@@ -52,7 +53,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "BUTTON",
-            defaultControl = "B",
+            defaultControl = ControlKey.B.key,
             description = "Neon crimson octagonal defense/burst button."
         ),
         geometry = NxpGeometry(
@@ -93,7 +94,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "BUTTON",
-            defaultControl = "Y",
+            defaultControl = ControlKey.Y.key,
             description = "Canary yellow holographic hexagonal action button."
         ),
         geometry = NxpGeometry(type = "Polygon", sides = 6, cornerRadius = 10f),
@@ -130,7 +131,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "BUTTON",
-            defaultControl = "X",
+            defaultControl = ControlKey.X.key,
             description = "Cobalt blue holographic hexagonal action button."
         ),
         geometry = NxpGeometry(type = "Polygon", sides = 6, cornerRadius = 10f),
@@ -167,7 +168,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "BUTTON",
-            defaultControl = "B",
+            defaultControl = ControlKey.B.key,
             description = "Crimson red holographic hexagonal action button."
         ),
         geometry = NxpGeometry(type = "Polygon", sides = 6, cornerRadius = 10f),
@@ -204,7 +205,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "BUTTON",
-            defaultControl = "Y",
+            defaultControl = ControlKey.Y.key,
             description = "Neon amber octagonal heavy action button."
         ),
         geometry = NxpGeometry(type = "Polygon", sides = 8, cornerRadius = 8f),
@@ -238,7 +239,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "BUTTON",
-            defaultControl = "X",
+            defaultControl = ControlKey.X.key,
             description = "Neon sapphire octagonal action button."
         ),
         geometry = NxpGeometry(type = "Polygon", sides = 8, cornerRadius = 8f),
@@ -272,7 +273,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "BUTTON",
-            defaultControl = "A",
+            defaultControl = ControlKey.A.key,
             description = "Neon turquoise octagonal primary action button."
         ),
         geometry = NxpGeometry(type = "Polygon", sides = 8, cornerRadius = 8f),
@@ -306,7 +307,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "JOYSTICK",
-            defaultControl = "LS",
+            defaultControl = ControlKey.LS.key,
             description = "Floating dual-ring cyber analog stick with dynamic deadzone indicators."
         ),
         geometry = NxpGeometry(
@@ -335,7 +336,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "BUTTON",
-            defaultControl = "X",
+            defaultControl = ControlKey.X.key,
             description = "Cyan holographic diamond quick action button."
         ),
         geometry = NxpGeometry(
@@ -374,7 +375,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "BUTTON",
-            defaultControl = "Y",
+            defaultControl = ControlKey.Y.key,
             description = "Amber plasma power button with explosive kinetic pop."
         ),
         geometry = NxpGeometry(
@@ -412,7 +413,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "BUMPER",
-            defaultControl = "LB",
+            defaultControl = ControlKey.LB.key,
             description = "Sleek aerodynamic left shoulder bumper with neon edge illumination."
         ),
         geometry = NxpGeometry(
@@ -448,7 +449,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "BUMPER",
-            defaultControl = "RB",
+            defaultControl = ControlKey.RB.key,
             description = "Sleek aerodynamic right shoulder bumper with cyan edge illumination."
         ),
         geometry = NxpGeometry(
@@ -484,7 +485,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "BUMPER",
-            defaultControl = "LB",
+            defaultControl = ControlKey.LB.key,
             description = "High-tech cyan glowing shoulder bumper with precision microswitch tactile response."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 14f),
@@ -508,7 +509,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "BUMPER",
-            defaultControl = "RB",
+            defaultControl = ControlKey.RB.key,
             description = "High-tech cyan glowing shoulder bumper with precision microswitch tactile response."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 14f),
@@ -532,7 +533,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "BUMPER",
-            defaultControl = "LB",
+            defaultControl = ControlKey.LB.key,
             description = "Matte carbon weave bumper with subtle sky blue chamfered accent lines."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
@@ -556,7 +557,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "BUMPER",
-            defaultControl = "RB",
+            defaultControl = ControlKey.RB.key,
             description = "Matte carbon weave bumper with subtle sky blue chamfered accent lines."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
@@ -580,7 +581,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "BUMPER",
-            defaultControl = "LB",
+            defaultControl = ControlKey.LB.key,
             description = "Aggressive crimson mecha-style bumper with high-intensity warning edge."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 14f),
@@ -604,7 +605,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "BUMPER",
-            defaultControl = "RB",
+            defaultControl = ControlKey.RB.key,
             description = "Aggressive crimson mecha-style bumper with high-intensity warning edge."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 14f),
@@ -628,7 +629,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "BUTTON",
-            defaultControl = "B",
+            defaultControl = ControlKey.B.key,
             description = "Futuristic neon crimson circle action button."
         ),
         geometry = NxpGeometry(type = "Circle", cornerRadius = 38f),
@@ -652,7 +653,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "TRIGGER",
-            defaultControl = "LT",
+            defaultControl = ControlKey.LT.key,
             description = "High-travel analog trigger with deep haptic feedback."
         ),
         geometry = NxpGeometry(
@@ -691,7 +692,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "TRIGGER",
-            defaultControl = "RT",
+            defaultControl = ControlKey.RT.key,
             description = "Hair-trigger accelerator with instant microswitch response."
         ),
         geometry = NxpGeometry(
@@ -730,7 +731,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "JOYSTICK",
-            defaultControl = "RS",
+            defaultControl = ControlKey.RS.key,
             description = "High-precision right thumbstick with reticle crosshair indicator."
         ),
         geometry = NxpGeometry(
@@ -761,7 +762,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "DPAD",
-            defaultControl = "DPAD",
+            defaultControl = ControlKey.DPAD.key,
             description = "Holographic 4-way precision directional pad."
         ),
         geometry = NxpGeometry(
@@ -796,7 +797,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "DPAD",
-            defaultControl = "UP",
+            defaultControl = ControlKey.UP.key,
             description = "Neon turquoise directional UP cap button."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
@@ -820,7 +821,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "DPAD",
-            defaultControl = "DOWN",
+            defaultControl = ControlKey.DOWN.key,
             description = "Neon turquoise directional DOWN cap button."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
@@ -844,7 +845,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "DPAD",
-            defaultControl = "LEFT",
+            defaultControl = ControlKey.LEFT.key,
             description = "Neon turquoise directional LEFT cap button."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
@@ -868,7 +869,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "DPAD",
-            defaultControl = "RIGHT",
+            defaultControl = ControlKey.RIGHT.key,
             description = "Neon turquoise directional RIGHT cap button."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
@@ -892,7 +893,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "HOME",
-            defaultControl = "XBOX",
+            defaultControl = ControlKey.GUIDE.key,
             description = "Floating orbital nexus guide button with breathing power core."
         ),
         geometry = NxpGeometry(
@@ -927,7 +928,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "SYSTEM",
-            defaultControl = "MENU",
+            defaultControl = ControlKey.START.key,
             description = "Minimalist stealth system menu button."
         ),
         geometry = NxpGeometry(
@@ -960,7 +961,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "MACRO",
-            defaultControl = "M1",
+            defaultControl = ControlKey.M1.key,
             description = "Low-latency custom macro paddle with instant actuator click."
         ),
         geometry = NxpGeometry(
@@ -1001,7 +1002,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "BUTTON",
-            defaultControl = "A",
+            defaultControl = ControlKey.A.key,
             description = "Standard tactile action button with emerald green illumination."
         ),
         geometry = NxpGeometry(type = "Circle"),
@@ -1035,7 +1036,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "BUTTON",
-            defaultControl = "B",
+            defaultControl = ControlKey.B.key,
             description = "Standard tactile action button with crimson red illumination."
         ),
         geometry = NxpGeometry(type = "Circle"),
@@ -1069,7 +1070,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "BUTTON",
-            defaultControl = "X",
+            defaultControl = ControlKey.X.key,
             description = "Standard tactile action button with cobalt blue illumination."
         ),
         geometry = NxpGeometry(type = "Circle"),
@@ -1103,7 +1104,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "BUTTON",
-            defaultControl = "Y",
+            defaultControl = ControlKey.Y.key,
             description = "Standard tactile action button with canary yellow illumination."
         ),
         geometry = NxpGeometry(type = "Circle"),
@@ -1137,7 +1138,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "JOYSTICK",
-            defaultControl = "LS",
+            defaultControl = ControlKey.LS.key,
             description = "Dual-ring analog movement stick with textured concave grip and L3 click."
         ),
         geometry = NxpGeometry(type = "Circle"),
@@ -1161,7 +1162,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "JOYSTICK",
-            defaultControl = "RS",
+            defaultControl = ControlKey.RS.key,
             description = "High-precision aiming analog thumbstick with responsive centering and R3 click."
         ),
         geometry = NxpGeometry(type = "Circle"),
@@ -1185,7 +1186,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "DPAD",
-            defaultControl = "DPAD",
+            defaultControl = ControlKey.DPAD.key,
             description = "Standard 4-way mechanical directional cross pad."
         ),
         geometry = NxpGeometry(type = "Polygon", sides = 8, cornerRadius = 8f),
@@ -1209,7 +1210,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "DPAD",
-            defaultControl = "UP",
+            defaultControl = ControlKey.UP.key,
             description = "Standard tactile directional UP button."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
@@ -1233,7 +1234,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "DPAD",
-            defaultControl = "DOWN",
+            defaultControl = ControlKey.DOWN.key,
             description = "Standard tactile directional DOWN button."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
@@ -1257,7 +1258,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "DPAD",
-            defaultControl = "LEFT",
+            defaultControl = ControlKey.LEFT.key,
             description = "Standard tactile directional LEFT button."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
@@ -1281,7 +1282,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "DPAD",
-            defaultControl = "RIGHT",
+            defaultControl = ControlKey.RIGHT.key,
             description = "Standard tactile directional RIGHT button."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
@@ -1305,7 +1306,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "TRIGGER",
-            defaultControl = "LT",
+            defaultControl = ControlKey.LT.key,
             description = "Contoured analog shoulder trigger with full travel resistance."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 24f),
@@ -1330,7 +1331,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "TRIGGER",
-            defaultControl = "RT",
+            defaultControl = ControlKey.RT.key,
             description = "Contoured analog shoulder trigger with quick accelerator response."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 24f),
@@ -1355,7 +1356,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "BUMPER",
-            defaultControl = "LB",
+            defaultControl = ControlKey.LB.key,
             description = "Aerodynamic shoulder bumper with crisp mechanical microswitch click."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 16f),
@@ -1379,7 +1380,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "BUMPER",
-            defaultControl = "RB",
+            defaultControl = ControlKey.RB.key,
             description = "Aerodynamic shoulder bumper with crisp mechanical microswitch click."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 16f),
@@ -1403,7 +1404,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "HOME",
-            defaultControl = "XBOX",
+            defaultControl = ControlKey.GUIDE.key,
             description = "Iconic centered Xbox guide button with luminous white badge."
         ),
         geometry = NxpGeometry(type = "Circle"),
@@ -1427,7 +1428,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "SYSTEM",
-            defaultControl = "VIEW",
+            defaultControl = ControlKey.BACK.key,
             description = "Xbox View / Back system navigation button."
         ),
         geometry = NxpGeometry(type = "Circle"),
@@ -1449,7 +1450,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "SYSTEM",
-            defaultControl = "MENU",
+            defaultControl = ControlKey.START.key,
             description = "Xbox Menu / Pause system navigation button."
         ),
         geometry = NxpGeometry(type = "Circle"),
@@ -1471,7 +1472,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "SYSTEM",
-            defaultControl = "SHARE",
+            defaultControl = ControlKey.SHARE.key,
             description = "Xbox Share / Screenshot capture system button."
         ),
         geometry = NxpGeometry(type = "Circle"),
@@ -1493,7 +1494,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "MACRO",
-            defaultControl = "M1",
+            defaultControl = ControlKey.M1.key,
             description = "Standard ergonomic programmable macro paddle M1."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 16f),
@@ -1517,7 +1518,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "MACRO",
-            defaultControl = "M2",
+            defaultControl = ControlKey.M2.key,
             description = "Standard ergonomic programmable macro paddle M2."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 16f),
@@ -1541,7 +1542,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "MACRO",
-            defaultControl = "M3",
+            defaultControl = ControlKey.M3.key,
             description = "Standard ergonomic programmable macro paddle M3."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 16f),
@@ -1565,7 +1566,7 @@ object DefaultComponents {
             author = "NEXPAD Core",
             version = "1.0.0",
             category = "MACRO",
-            defaultControl = "M4",
+            defaultControl = ControlKey.M4.key,
             description = "Standard ergonomic programmable macro paddle M4."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 16f),
