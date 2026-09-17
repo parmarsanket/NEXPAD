@@ -2,6 +2,7 @@ package com.sanket.tools.nexpad.runtime.registry
 
 import com.sanket.tools.nexpad.runtime.model.*
 import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.nxprc.NxprcCategory
 
 object DefaultComponents {
 
@@ -11,7 +12,7 @@ object DefaultComponents {
             name = "Sci-Fi Hex Attack",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
+            category = NxprcCategory.BUTTON.id,
             defaultControl = ControlKey.A.key,
             description = "Cyan holographic hexagonal attack button with spring bounce feedback."
         ),
@@ -52,7 +53,7 @@ object DefaultComponents {
             name = "Cyber Octa Burst",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
+            category = NxprcCategory.BUTTON.id,
             defaultControl = ControlKey.B.key,
             description = "Neon crimson octagonal defense/burst button."
         ),
@@ -93,7 +94,7 @@ object DefaultComponents {
             name = "Sci-Fi Hex Y",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
+            category = NxprcCategory.BUTTON.id,
             defaultControl = ControlKey.Y.key,
             description = "Canary yellow holographic hexagonal action button."
         ),
@@ -130,7 +131,7 @@ object DefaultComponents {
             name = "Sci-Fi Hex X",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
+            category = NxprcCategory.BUTTON.id,
             defaultControl = ControlKey.X.key,
             description = "Cobalt blue holographic hexagonal action button."
         ),
@@ -167,7 +168,7 @@ object DefaultComponents {
             name = "Sci-Fi Hex B",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
+            category = NxprcCategory.BUTTON.id,
             defaultControl = ControlKey.B.key,
             description = "Crimson red holographic hexagonal action button."
         ),
@@ -204,7 +205,7 @@ object DefaultComponents {
             name = "Cyber Octa Y",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
+            category = NxprcCategory.BUTTON.id,
             defaultControl = ControlKey.Y.key,
             description = "Neon amber octagonal heavy action button."
         ),
@@ -238,7 +239,7 @@ object DefaultComponents {
             name = "Cyber Octa X",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
+            category = NxprcCategory.BUTTON.id,
             defaultControl = ControlKey.X.key,
             description = "Neon sapphire octagonal action button."
         ),
@@ -272,7 +273,7 @@ object DefaultComponents {
             name = "Cyber Octa A",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
+            category = NxprcCategory.BUTTON.id,
             defaultControl = ControlKey.A.key,
             description = "Neon turquoise octagonal primary action button."
         ),
@@ -306,7 +307,7 @@ object DefaultComponents {
             name = "Neon Matrix Analog Stick",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "JOYSTICK",
+            category = NxprcCategory.JOYSTICK.id,
             defaultControl = ControlKey.LS.key,
             description = "Floating dual-ring cyber analog stick with dynamic deadzone indicators."
         ),
@@ -335,7 +336,7 @@ object DefaultComponents {
             name = "Neon Diamond Reload",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
+            category = NxprcCategory.BUTTON.id,
             defaultControl = ControlKey.X.key,
             description = "Cyan holographic diamond quick action button."
         ),
@@ -374,7 +375,7 @@ object DefaultComponents {
             name = "Plasma Triangle Heavy",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
+            category = NxprcCategory.BUTTON.id,
             defaultControl = ControlKey.Y.key,
             description = "Amber plasma power button with explosive kinetic pop."
         ),
@@ -412,7 +413,7 @@ object DefaultComponents {
             name = "Tactical Bumper LB",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUMPER",
+            category = NxprcCategory.BUMPER.id,
             defaultControl = ControlKey.LB.key,
             description = "Sleek aerodynamic left shoulder bumper with neon edge illumination."
         ),
@@ -448,7 +449,7 @@ object DefaultComponents {
             name = "Tactical Bumper RB",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUMPER",
+            category = NxprcCategory.BUMPER.id,
             defaultControl = ControlKey.RB.key,
             description = "Sleek aerodynamic right shoulder bumper with cyan edge illumination."
         ),
@@ -484,7 +485,7 @@ object DefaultComponents {
             name = "Neon Cyan Bumper LB",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUMPER",
+            category = NxprcCategory.BUMPER.id,
             defaultControl = ControlKey.LB.key,
             description = "High-tech cyan glowing shoulder bumper with precision microswitch tactile response."
         ),
@@ -508,7 +509,7 @@ object DefaultComponents {
             name = "Neon Cyan Bumper RB",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUMPER",
+            category = NxprcCategory.BUMPER.id,
             defaultControl = ControlKey.RB.key,
             description = "High-tech cyan glowing shoulder bumper with precision microswitch tactile response."
         ),
@@ -532,7 +533,7 @@ object DefaultComponents {
             name = "Stealth Carbon LB",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUMPER",
+            category = NxprcCategory.BUMPER.id,
             defaultControl = ControlKey.LB.key,
             description = "Matte carbon weave bumper with subtle sky blue chamfered accent lines."
         ),
@@ -556,7 +557,7 @@ object DefaultComponents {
             name = "Stealth Carbon RB",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUMPER",
+            category = NxprcCategory.BUMPER.id,
             defaultControl = ControlKey.RB.key,
             description = "Matte carbon weave bumper with subtle sky blue chamfered accent lines."
         ),
@@ -580,7 +581,7 @@ object DefaultComponents {
             name = "Crimson Mecha LB",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUMPER",
+            category = NxprcCategory.BUMPER.id,
             defaultControl = ControlKey.LB.key,
             description = "Aggressive crimson mecha-style bumper with high-intensity warning edge."
         ),
@@ -604,7 +605,7 @@ object DefaultComponents {
             name = "Crimson Mecha RB",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUMPER",
+            category = NxprcCategory.BUMPER.id,
             defaultControl = ControlKey.RB.key,
             description = "Aggressive crimson mecha-style bumper with high-intensity warning edge."
         ),
@@ -628,7 +629,7 @@ object DefaultComponents {
             name = "Neon Pulse B",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
+            category = NxprcCategory.BUTTON.id,
             defaultControl = ControlKey.B.key,
             description = "Futuristic neon crimson circle action button."
         ),
@@ -652,7 +653,7 @@ object DefaultComponents {
             name = "Impulse Trigger LT",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "TRIGGER",
+            category = NxprcCategory.TRIGGER.id,
             defaultControl = ControlKey.LT.key,
             description = "High-travel analog trigger with deep haptic feedback."
         ),
@@ -691,7 +692,7 @@ object DefaultComponents {
             name = "Impulse Trigger RT",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "TRIGGER",
+            category = NxprcCategory.TRIGGER.id,
             defaultControl = ControlKey.RT.key,
             description = "Hair-trigger accelerator with instant microswitch response."
         ),
@@ -730,7 +731,7 @@ object DefaultComponents {
             name = "Cyber Vortex RS Stick",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "JOYSTICK",
+            category = NxprcCategory.JOYSTICK.id,
             defaultControl = ControlKey.RS.key,
             description = "High-precision right thumbstick with reticle crosshair indicator."
         ),
@@ -761,7 +762,7 @@ object DefaultComponents {
             name = "Holo Cross D-Pad",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "DPAD",
+            category = NxprcCategory.DPAD.id,
             defaultControl = ControlKey.DPAD.key,
             description = "Holographic 4-way precision directional pad."
         ),
@@ -796,7 +797,7 @@ object DefaultComponents {
             name = "Cyber D-Pad Up",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "DPAD",
+            category = NxprcCategory.DPAD.id,
             defaultControl = ControlKey.UP.key,
             description = "Neon turquoise directional UP cap button."
         ),
@@ -820,7 +821,7 @@ object DefaultComponents {
             name = "Cyber D-Pad Down",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "DPAD",
+            category = NxprcCategory.DPAD.id,
             defaultControl = ControlKey.DOWN.key,
             description = "Neon turquoise directional DOWN cap button."
         ),
@@ -844,7 +845,7 @@ object DefaultComponents {
             name = "Cyber D-Pad Left",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "DPAD",
+            category = NxprcCategory.DPAD.id,
             defaultControl = ControlKey.LEFT.key,
             description = "Neon turquoise directional LEFT cap button."
         ),
@@ -868,7 +869,7 @@ object DefaultComponents {
             name = "Cyber D-Pad Right",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "DPAD",
+            category = NxprcCategory.DPAD.id,
             defaultControl = ControlKey.RIGHT.key,
             description = "Neon turquoise directional RIGHT cap button."
         ),
@@ -892,7 +893,7 @@ object DefaultComponents {
             name = "Nexus Core Home Guide",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "HOME",
+            category = NxprcCategory.HOME.id,
             defaultControl = ControlKey.GUIDE.key,
             description = "Floating orbital nexus guide button with breathing power core."
         ),
@@ -927,7 +928,7 @@ object DefaultComponents {
             name = "Tactical Menu Pill",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "SYSTEM",
+            category = NxprcCategory.SYSTEM.id,
             defaultControl = ControlKey.START.key,
             description = "Minimalist stealth system menu button."
         ),
@@ -960,7 +961,7 @@ object DefaultComponents {
             name = "Ergonomic Macro Paddle M1",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "MACRO",
+            category = NxprcCategory.MACRO.id,
             defaultControl = ControlKey.M1.key,
             description = "Low-latency custom macro paddle with instant actuator click."
         ),
@@ -1001,7 +1002,7 @@ object DefaultComponents {
             name = "Default Button A (Green)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
+            category = NxprcCategory.BUTTON.id,
             defaultControl = ControlKey.A.key,
             description = "Standard tactile action button with emerald green illumination."
         ),
@@ -1035,7 +1036,7 @@ object DefaultComponents {
             name = "Default Button B (Red)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
+            category = NxprcCategory.BUTTON.id,
             defaultControl = ControlKey.B.key,
             description = "Standard tactile action button with crimson red illumination."
         ),
@@ -1069,7 +1070,7 @@ object DefaultComponents {
             name = "Default Button X (Blue)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
+            category = NxprcCategory.BUTTON.id,
             defaultControl = ControlKey.X.key,
             description = "Standard tactile action button with cobalt blue illumination."
         ),
@@ -1103,7 +1104,7 @@ object DefaultComponents {
             name = "Default Button Y (Yellow)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
+            category = NxprcCategory.BUTTON.id,
             defaultControl = ControlKey.Y.key,
             description = "Standard tactile action button with canary yellow illumination."
         ),
@@ -1137,7 +1138,7 @@ object DefaultComponents {
             name = "Default Left Stick (LS)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "JOYSTICK",
+            category = NxprcCategory.JOYSTICK.id,
             defaultControl = ControlKey.LS.key,
             description = "Dual-ring analog movement stick with textured concave grip and L3 click."
         ),
@@ -1161,7 +1162,7 @@ object DefaultComponents {
             name = "Default Right Stick (RS)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "JOYSTICK",
+            category = NxprcCategory.JOYSTICK.id,
             defaultControl = ControlKey.RS.key,
             description = "High-precision aiming analog thumbstick with responsive centering and R3 click."
         ),
@@ -1185,7 +1186,7 @@ object DefaultComponents {
             name = "Default D-Pad (Directional Cross)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "DPAD",
+            category = NxprcCategory.DPAD.id,
             defaultControl = ControlKey.DPAD.key,
             description = "Standard 4-way mechanical directional cross pad."
         ),
@@ -1209,7 +1210,7 @@ object DefaultComponents {
             name = "Default D-Pad Up (▲)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "DPAD",
+            category = NxprcCategory.DPAD.id,
             defaultControl = ControlKey.UP.key,
             description = "Standard tactile directional UP button."
         ),
@@ -1233,7 +1234,7 @@ object DefaultComponents {
             name = "Default D-Pad Down (▼)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "DPAD",
+            category = NxprcCategory.DPAD.id,
             defaultControl = ControlKey.DOWN.key,
             description = "Standard tactile directional DOWN button."
         ),
@@ -1257,7 +1258,7 @@ object DefaultComponents {
             name = "Default D-Pad Left (◀)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "DPAD",
+            category = NxprcCategory.DPAD.id,
             defaultControl = ControlKey.LEFT.key,
             description = "Standard tactile directional LEFT button."
         ),
@@ -1281,7 +1282,7 @@ object DefaultComponents {
             name = "Default D-Pad Right (▶)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "DPAD",
+            category = NxprcCategory.DPAD.id,
             defaultControl = ControlKey.RIGHT.key,
             description = "Standard tactile directional RIGHT button."
         ),
@@ -1305,7 +1306,7 @@ object DefaultComponents {
             name = "Default Left Trigger (LT)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "TRIGGER",
+            category = NxprcCategory.TRIGGER.id,
             defaultControl = ControlKey.LT.key,
             description = "Contoured analog shoulder trigger with full travel resistance."
         ),
@@ -1330,7 +1331,7 @@ object DefaultComponents {
             name = "Default Right Trigger (RT)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "TRIGGER",
+            category = NxprcCategory.TRIGGER.id,
             defaultControl = ControlKey.RT.key,
             description = "Contoured analog shoulder trigger with quick accelerator response."
         ),
@@ -1355,7 +1356,7 @@ object DefaultComponents {
             name = "Default Left Bumper (LB)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUMPER",
+            category = NxprcCategory.BUMPER.id,
             defaultControl = ControlKey.LB.key,
             description = "Aerodynamic shoulder bumper with crisp mechanical microswitch click."
         ),
@@ -1379,7 +1380,7 @@ object DefaultComponents {
             name = "Default Right Bumper (RB)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUMPER",
+            category = NxprcCategory.BUMPER.id,
             defaultControl = ControlKey.RB.key,
             description = "Aerodynamic shoulder bumper with crisp mechanical microswitch click."
         ),
@@ -1403,7 +1404,7 @@ object DefaultComponents {
             name = "Default Xbox Guide (Home)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "HOME",
+            category = NxprcCategory.HOME.id,
             defaultControl = ControlKey.GUIDE.key,
             description = "Iconic centered Xbox guide button with luminous white badge."
         ),
@@ -1427,7 +1428,7 @@ object DefaultComponents {
             name = "Default View Button (V)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "SYSTEM",
+            category = NxprcCategory.SYSTEM.id,
             defaultControl = ControlKey.BACK.key,
             description = "Xbox View / Back system navigation button."
         ),
@@ -1449,7 +1450,7 @@ object DefaultComponents {
             name = "Default Menu Button (M)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "SYSTEM",
+            category = NxprcCategory.SYSTEM.id,
             defaultControl = ControlKey.START.key,
             description = "Xbox Menu / Pause system navigation button."
         ),
@@ -1471,7 +1472,7 @@ object DefaultComponents {
             name = "Default Share Button (S)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "SYSTEM",
+            category = NxprcCategory.SYSTEM.id,
             defaultControl = ControlKey.SHARE.key,
             description = "Xbox Share / Screenshot capture system button."
         ),
@@ -1493,7 +1494,7 @@ object DefaultComponents {
             name = "Default Macro Paddle M1",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "MACRO",
+            category = NxprcCategory.MACRO.id,
             defaultControl = ControlKey.M1.key,
             description = "Standard ergonomic programmable macro paddle M1."
         ),
@@ -1517,7 +1518,7 @@ object DefaultComponents {
             name = "Default Macro Paddle M2",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "MACRO",
+            category = NxprcCategory.MACRO.id,
             defaultControl = ControlKey.M2.key,
             description = "Standard ergonomic programmable macro paddle M2."
         ),
@@ -1541,7 +1542,7 @@ object DefaultComponents {
             name = "Default Macro Paddle M3",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "MACRO",
+            category = NxprcCategory.MACRO.id,
             defaultControl = ControlKey.M3.key,
             description = "Standard ergonomic programmable macro paddle M3."
         ),
@@ -1565,7 +1566,7 @@ object DefaultComponents {
             name = "Default Macro Paddle M4",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "MACRO",
+            category = NxprcCategory.MACRO.id,
             defaultControl = ControlKey.M4.key,
             description = "Standard ergonomic programmable macro paddle M4."
         ),

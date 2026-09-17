@@ -91,8 +91,13 @@ fun ButtonStudioScreen(
     // --- Step 5: Auto-navigate to the correct category when opened contextually ---
     val initialCategory = remember(targetControlKey) {
         if (targetControlKey != null) {
-            STUDIO_CATEGORIES.find { cat ->
-                cat.keys.any { k -> k.equals(targetControlKey, ignoreCase = true) }
+            val parentDef = CategoryManager.findCategoryForControl(targetControlKey)
+            if (parentDef != null) {
+                STUDIO_CATEGORIES.find { it.id.equals(parentDef.id, ignoreCase = true) }
+            } else {
+                STUDIO_CATEGORIES.find { cat ->
+                    cat.keys.any { k -> k.equals(targetControlKey, ignoreCase = true) }
+                }
             } ?: STUDIO_CATEGORIES.first()
         } else STUDIO_CATEGORIES.first()
     }
