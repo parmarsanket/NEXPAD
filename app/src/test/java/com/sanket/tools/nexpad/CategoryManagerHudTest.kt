@@ -1,10 +1,14 @@
 package com.sanket.tools.nexpad
 
 import com.sanket.tools.nexpad.category.CategoryManager
+import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.model.HudElement
+import com.sanket.tools.nexpad.model.LayoutProfile
 import com.sanket.tools.nexpad.model.LayoutSkin
 import com.sanket.tools.nexpad.model.LayoutTransform
 import com.sanket.tools.nexpad.model.Position
+import com.sanket.tools.nexpad.model.getControlDefaultPosition
+import com.sanket.tools.nexpad.model.standardElitePositions
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -340,5 +344,147 @@ class CategoryManagerHudTest {
         addControl("SHARE")
         assertEquals(2, elements.size)
         assertTrue(elements.containsKey("SHARE"))
+    }
+
+    @Test
+    fun testStandardElitePositionsHasOnlyCompositeDpad() {
+        val positions = standardElitePositions()
+        assertTrue("Standard Elite must contain integrated DPAD", positions.containsKey("DPAD"))
+        assertFalse("Standard Elite must NOT contain discrete UP", positions.containsKey("UP"))
+        assertFalse("Standard Elite must NOT contain discrete DOWN", positions.containsKey("DOWN"))
+        assertFalse("Standard Elite must NOT contain discrete LEFT", positions.containsKey("LEFT"))
+        assertFalse("Standard Elite must NOT contain discrete RIGHT", positions.containsKey("RIGHT"))
+    }
+
+    @Test
+    fun testCanonicalPositionsDpadMutualExclusivitySelfHeal() {
+        // Given a legacy profile with BOTH composite DPAD and discrete directional buttons
+        val legacyPositions = mapOf(
+            "DPAD" to Position(0.32f, 0.74f),
+            "UP" to Position(0.32f, 0.65f),
+            "DOWN" to Position(0.32f, 0.83f),
+            "LEFT" to Position(0.26f, 0.74f),
+            "RIGHT" to Position(0.38f, 0.74f),
+            "A" to Position(0.7f, 0.7f)
+        )
+        val profile = LayoutProfile(name = "Legacy With Overlapping DPad", positions = legacyPositions)
+        val canonical = profile.canonicalPositions()
+
+        assertTrue("Canonical positions must keep composite DPAD", canonical.containsKey("DPAD"))
+        assertTrue("Canonical positions must keep A button", canonical.containsKey("A"))
+        assertFalse("Canonical positions must self-heal and drop discrete UP", canonical.containsKey("UP"))
+        assertFalse("Canonical positions must self-heal and drop discrete DOWN", canonical.containsKey("DOWN"))
+        assertFalse("Canonical positions must self-heal and drop discrete LEFT", canonical.containsKey("LEFT"))
+        assertFalse("Canonical positions must self-heal and drop discrete RIGHT", canonical.containsKey("RIGHT"))
+        assertEquals(2, canonical.size)
+    }
+
+    @Test
+    fun testCanonicalPositionsPreservesDiscreteDpadWhenNoComposite() {
+        // A layout with ONLY discrete buttons and NO composite DPAD should retain all discrete buttons
+        val discreteOnly = mapOf(
+            "UP" to Position(0.32f, 0.65f),
+            "DOWN" to Position(0.32f, 0.83f),
+            "LEFT" to Position(0.26f, 0.74f),
+            "RIGHT" to Position(0.38f, 0.74f),
+            "A" to Position(0.7f, 0.7f)
+        )
+        val profile = LayoutProfile(name = "Discrete Only", positions = discreteOnly)
+        val canonical = profile.canonicalPositions()
+
+        assertFalse(canonical.containsKey("DPAD"))
+        assertTrue(canonical.containsKey("UP"))
+        assertTrue(canonical.containsKey("DOWN"))
+        assertTrue(canonical.containsKey("LEFT"))
+        assertTrue(canonical.containsKey("RIGHT"))
+        assertTrue(canonical.containsKey("A"))
+        assertEquals(5, canonical.size)
+    }
+
+    @Test
+    fun testAddControlDpadMutualExclusivitySimulation() {
+        val elements = mutableMapOf<String, HudElement>()
+
+        fun addControl(controlKey: String) {
+            val targetCtrl = ControlKey.fromIdentifier(controlKey)
+            val canonicalKey = targetCtrl?.key ?: controlKey.uppercase()
+
+            val existingEntry = elements.entries.firstOrNull { (k, _) ->
+                if (targetCtrl != null) ControlKey.fromIdentifier(k) == targetCtrl
+                else k.equals(canonicalKey, ignoreCase = true)
+            }
+            if (existingEntry != null) return
+
+            var updatedElements = elements.toMap()
+            if (targetCtrl?.isDpadComposite == true) {
+                updatedElements = updatedElements.filterKeys { k ->
+                    ControlKey.fromIdentifier(k)?.isDpadDiscrete != true
+                }
+            } else if (targetCtrl?.isDpadDiscrete == true) {
+                updatedElements = updatedElements.filterKeys { k ->
+                    ControlKey.fromIdentifier(k)?.isDpadComposite != true
+                }
+            }
+
+            elements.clear()
+            elements.putAll(updatedElements)
+            val defPos = getControlDefaultPosition(canonicalKey)
+            elements[canonicalKey] = HudElement(
+                controlKey = canonicalKey,
+                transform = LayoutTransform(defPos?.xRatio ?: 0.5f, defPos?.yRatio ?: 0.5f)
+            )
+        }
+
+        // 1. Add DPAD
+        addControl("DPAD")
+        assertTrue(elements.containsKey("DPAD"))
+        assertEquals(1, elements.size)
+
+        // 2. Add UP (discrete button) -> removes DPAD, adds UP
+        addControl("UP")
+        assertFalse("Adding UP must remove composite DPAD", elements.containsKey("DPAD"))
+        assertTrue("Adding UP must add UP", elements.containsKey("UP"))
+        assertEquals(1, elements.size)
+
+        // 3. Add DOWN, LEFT, RIGHT -> all discrete buttons coexist
+        addControl("DOWN")
+        addControl("LEFT")
+        addControl("RIGHT")
+        assertEquals(4, elements.size)
+        assertTrue(elements.containsKey("UP"))
+        assertTrue(elements.containsKey("DOWN"))
+        assertTrue(elements.containsKey("LEFT"))
+        assertTrue(elements.containsKey("RIGHT"))
+
+        // 4. Add CROSS (alias of DPAD) -> removes UP, DOWN, LEFT, RIGHT, leaves only DPAD
+        addControl("CROSS")
+        assertEquals(1, elements.size)
+        assertTrue("Adding CROSS must resolve to canonical DPAD", elements.containsKey("DPAD"))
+        assertFalse(elements.containsKey("UP"))
+        assertFalse(elements.containsKey("DOWN"))
+        assertFalse(elements.containsKey("LEFT"))
+        assertFalse(elements.containsKey("RIGHT"))
+    }
+
+    @Test
+    fun testControlKeyDpadClassificationHelpers() {
+        assertTrue(ControlKey.DPAD.isDpadComposite)
+        assertFalse(ControlKey.DPAD.isDpadDiscrete)
+
+        assertTrue(ControlKey.UP.isDpadDiscrete)
+        assertFalse(ControlKey.UP.isDpadComposite)
+
+        assertTrue(ControlKey.DOWN.isDpadDiscrete)
+        assertTrue(ControlKey.LEFT.isDpadDiscrete)
+        assertTrue(ControlKey.RIGHT.isDpadDiscrete)
+
+        assertEquals(4, ControlKey.DISCRETE_DPAD_KEYS.size)
+        assertTrue(ControlKey.DISCRETE_DPAD_KEYS.contains(ControlKey.UP))
+        assertTrue(ControlKey.DISCRETE_DPAD_KEYS.contains(ControlKey.DOWN))
+        assertTrue(ControlKey.DISCRETE_DPAD_KEYS.contains(ControlKey.LEFT))
+        assertTrue(ControlKey.DISCRETE_DPAD_KEYS.contains(ControlKey.RIGHT))
+
+        assertFalse(ControlKey.A.isDpadComposite)
+        assertFalse(ControlKey.A.isDpadDiscrete)
     }
 }

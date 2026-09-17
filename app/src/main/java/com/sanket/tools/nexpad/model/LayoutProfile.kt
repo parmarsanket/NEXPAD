@@ -21,6 +21,12 @@ data class LayoutProfile(
                 normalized[canonicalKey] = pos
             }
         }
+        // Self-heal: If both composite 4-way DPAD and discrete directional buttons exist,
+        // industry standard is mutual exclusivity: retain the integrated 4-way DPAD and drop discrete directional buttons.
+        if (normalized.containsKey(ControlKey.DPAD.key)) {
+            val discreteKeys = ControlKey.DISCRETE_DPAD_KEYS.map { it.key }
+            discreteKeys.forEach { normalized.remove(it) }
+        }
         return normalized
     }
 
@@ -54,13 +60,9 @@ fun standardElitePositions(): Map<String, Position> {
         K.RT to Position(0.920f, 0.055f, scale = 1.18f),
         K.RB to Position(0.920f, 0.375f, scale = 0.95f),
 
-        // Left Stick & D-Pad (Cross & Discrete Buttons)
+        // Left Stick & D-Pad (Integrated 4-Way Cross Pad)
         K.LS   to Position(0.115f, 0.740f, scale = 1.05f),
         K.DPAD to Position(0.320f, 0.740f, scale = 1.10f),
-        K.UP   to Position(0.320f, 0.650f, scale = 0.85f),
-        K.DOWN to Position(0.320f, 0.830f, scale = 0.85f),
-        K.LEFT to Position(0.260f, 0.740f, scale = 0.85f),
-        K.RIGHT to Position(0.380f, 0.740f, scale = 0.85f),
 
         // Right Stick
         K.RS to Position(0.895f, 0.740f, scale = 1.05f),
@@ -94,6 +96,20 @@ fun standardElitePositions(): Map<String, Position> {
 
 /** Backward compatible alias for default positions. */
 fun defaultPositions(): Map<String, Position> = standardElitePositions()
+
+/**
+ * Fallback ergonomic default positions for controls when added to a layout that doesn't define them.
+ * Specifically handles discrete directional buttons (UP, DOWN, LEFT, RIGHT) when replacing DPAD.
+ */
+fun getControlDefaultPosition(canonicalKey: String): Position? {
+    return defaultPositions()[canonicalKey] ?: when (canonicalKey) {
+        K.UP    -> Position(0.320f, 0.650f, scale = 0.85f)
+        K.DOWN  -> Position(0.320f, 0.830f, scale = 0.85f)
+        K.LEFT  -> Position(0.260f, 0.740f, scale = 0.85f)
+        K.RIGHT -> Position(0.380f, 0.740f, scale = 0.85f)
+        else    -> null
+    }
+}
 
 /** Default Layout 2: FPS Tactical Pro with quick triggers, elevated sticks & macro paddles. */
 fun fpsTacticalPositions(): Map<String, Position> {

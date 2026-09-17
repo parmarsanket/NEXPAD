@@ -10,6 +10,7 @@ import com.sanket.tools.nexpad.model.LayoutSkin
 import com.sanket.tools.nexpad.model.LayoutTransform
 import com.sanket.tools.nexpad.model.Position
 import com.sanket.tools.nexpad.model.defaultPositions
+import com.sanket.tools.nexpad.model.getControlDefaultPosition
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
 import com.sanket.tools.nexpad.utils.LayoutManager
@@ -280,7 +281,23 @@ class HudEditorViewModel(
             return
         }
 
-        val defPos = defaultPositions()[canonicalKey] ?: defaultPositions()[controlKey]
+        // Industry-standard mutual exclusivity:
+        // Integrated 4-Way D-Pad (DPAD) and discrete directional buttons (UP, DOWN, LEFT, RIGHT)
+        // cannot coexist on the same gamepad HUD layout.
+        var updatedElements = _elements.value
+        if (targetCtrl?.isDpadComposite == true) {
+            // Adding composite 4-way D-Pad cross removes any discrete directional buttons
+            updatedElements = updatedElements.filterKeys { k ->
+                ControlKey.fromIdentifier(k)?.isDpadDiscrete != true
+            }
+        } else if (targetCtrl?.isDpadDiscrete == true) {
+            // Adding a discrete directional button removes any composite 4-way D-Pad cross
+            updatedElements = updatedElements.filterKeys { k ->
+                ControlKey.fromIdentifier(k)?.isDpadComposite != true
+            }
+        }
+
+        val defPos = getControlDefaultPosition(canonicalKey) ?: defaultPositions()[controlKey]
         val transform = LayoutTransform(
             xRatio = defPos?.xRatio ?: 0.5f,
             yRatio = defPos?.yRatio ?: 0.5f,
@@ -288,7 +305,7 @@ class HudEditorViewModel(
             opacity = defPos?.opacity ?: 1.0f
         )
         val element = HudElement(controlKey = canonicalKey, transform = transform, skinId = skinId)
-        _elements.value = _elements.value + (canonicalKey to element)
+        _elements.value = updatedElements + (canonicalKey to element)
         _selectedControl.value = canonicalKey
         _hasUnsavedChanges.value = true
     }
@@ -312,7 +329,7 @@ class HudEditorViewModel(
     fun resetControlToDefault(controlKey: String) {
         val targetCtrl = ControlKey.fromIdentifier(controlKey)
         val canonicalKey = targetCtrl?.key ?: controlKey.uppercase()
-        val defPos = defaultPositions()[canonicalKey] ?: defaultPositions()[controlKey] ?: return
+        val defPos = getControlDefaultPosition(canonicalKey) ?: defaultPositions()[controlKey] ?: return
         val currentEntry = _elements.value.entries.firstOrNull { (k, _) ->
             if (targetCtrl != null) ControlKey.fromIdentifier(k) == targetCtrl
             else k.equals(canonicalKey, ignoreCase = true)

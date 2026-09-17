@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sanket.tools.nexpad.ui.AppNavigator
 import com.sanket.tools.nexpad.category.CategoryManager
+import com.sanket.tools.nexpad.category.CategoryType
 import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.model.*
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
@@ -863,6 +864,15 @@ private fun HudButtonPaletteDialog(
                         ),
                         modifier = Modifier.padding(top = 4.dp)
                     )
+
+                    if (category.type == CategoryType.DPAD) {
+                        Text(
+                            "💡 4-Way Cross Pad and discrete directional buttons are mutually exclusive.",
+                            fontSize = 11.sp,
+                            color = NeonPalette.Cyan.copy(alpha = 0.8f),
+                            modifier = Modifier.padding(bottom = 2.dp)
+                        )
+                    }
 
                     Surface(
                         shape = RoundedCornerShape(12.dp),

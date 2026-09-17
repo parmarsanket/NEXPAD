@@ -828,7 +828,14 @@ private fun AddCustomLayoutDialog(
                                 fontSize = 11.sp,
                                 color = NeonPalette.Cyan,
                                 modifier = Modifier
-                                    .clickable { allTemplateKeys.forEach { selectedButtons[it] = true } }
+                                    .clickable {
+                                        allTemplateKeys.forEach { selectedButtons[it] = true }
+                                        if (selectedButtons.containsKey(ControlKey.DPAD.key) && selectedButtons[ControlKey.DPAD.key] == true) {
+                                            ControlKey.DISCRETE_DPAD_KEYS.forEach { discrete ->
+                                                selectedButtons[discrete.key] = false
+                                            }
+                                        }
+                                    }
                                     .padding(4.dp)
                             )
                             Text(
@@ -843,6 +850,20 @@ private fun AddCustomLayoutDialog(
                     }
 
                     // Button Checkboxes in Grid
+                    val toggleButton = { key: String, newVal: Boolean ->
+                        selectedButtons[key] = newVal
+                        if (newVal) {
+                            val ctrl = ControlKey.fromIdentifier(key)
+                            if (ctrl?.isDpadComposite == true) {
+                                ControlKey.DISCRETE_DPAD_KEYS.forEach { discrete ->
+                                    selectedButtons[discrete.key] = false
+                                }
+                            } else if (ctrl?.isDpadDiscrete == true) {
+                                selectedButtons[ControlKey.DPAD.key] = false
+                            }
+                        }
+                    }
+
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -858,13 +879,13 @@ private fun AddCustomLayoutDialog(
                                     Row(
                                         modifier = Modifier
                                             .weight(1f)
-                                            .clickable { selectedButtons[key] = !isChecked }
+                                            .clickable { toggleButton(key, !isChecked) }
                                             .padding(vertical = 4.dp, horizontal = 4.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Checkbox(
                                             checked = isChecked,
-                                            onCheckedChange = { selectedButtons[key] = it },
+                                            onCheckedChange = { toggleButton(key, it) },
                                             colors = CheckboxDefaults.colors(checkedColor = NeonPalette.Cyan)
                                         )
                                         val ctrlSpec = CategoryManager.getControl(key)
