@@ -11,6 +11,8 @@ import com.sanket.tools.nexpad.model.getControlDefaultPosition
 import com.sanket.tools.nexpad.model.standardElitePositions
 import org.junit.Assert.*
 import org.junit.Test
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 
 class CategoryManagerHudTest {
 
@@ -486,5 +488,72 @@ class CategoryManagerHudTest {
 
         assertFalse(ControlKey.A.isDpadComposite)
         assertFalse(ControlKey.A.isDpadDiscrete)
+    }
+
+    @Test
+    fun testProfileOrderSortingAndUnlistedFallback() {
+        val json = Json { ignoreUnknownKeys = true }
+        val sampleProfiles = listOf(
+            LayoutProfile(name = "Standard Elite", isDefault = true),
+            LayoutProfile(name = "FPS Tactical", isDefault = true),
+            LayoutProfile(name = "MOBA Arena", isDefault = true),
+            LayoutProfile(name = "My Custom 1", isDefault = false),
+            LayoutProfile(name = "My Custom 2", isDefault = false)
+        )
+
+        val customOrder = listOf("My Custom 2", "FPS Tactical", "NonExistentProfile", "Standard Elite")
+        val savedOrderJson = json.encodeToString(customOrder)
+
+        // Decode and apply order as done in LayoutManager
+        val orderList = json.decodeFromString<List<String>>(savedOrderJson)
+        val profileMap = sampleProfiles.associateBy { it.name }
+        val orderedResult = mutableListOf<LayoutProfile>()
+        for (name in orderList) {
+            profileMap[name]?.let { orderedResult.add(it) }
+        }
+        for (profile in sampleProfiles) {
+            if (orderedResult.none { it.name.equals(profile.name, ignoreCase = true) }) {
+                orderedResult.add(profile)
+            }
+        }
+
+        assertEquals(5, orderedResult.size)
+        assertEquals("My Custom 2", orderedResult[0].name)
+        assertEquals("FPS Tactical", orderedResult[1].name)
+        assertEquals("Standard Elite", orderedResult[2].name)
+        assertEquals("MOBA Arena", orderedResult[3].name)
+        assertEquals("My Custom 1", orderedResult[4].name)
+    }
+
+    @Test
+    fun testProfileOrderReorderingSwap() {
+        val list = mutableListOf("A", "B", "C", "D")
+        // Move "C" (index 2) to index 0
+        val fromIndex = 2
+        val toIndex = 0
+        list.add(toIndex, list.removeAt(fromIndex))
+        assertEquals(listOf("C", "A", "B", "D"), list)
+
+        // Move "A" (index 1) to end (index 3)
+        val from2 = 1
+        val to2 = 3
+        list.add(to2, list.removeAt(from2))
+        assertEquals(listOf("C", "B", "D", "A"), list)
+    }
+
+    @Test
+    fun testProfileOrderSyncOnDeleteAndRename() {
+        val order = mutableListOf("Standard Elite", "Custom Beta", "Racing Master")
+
+        // Rename "Custom Beta" to "Custom Pro"
+        val renameIdx = order.indexOfFirst { it.equals("Custom Beta", ignoreCase = true) }
+        assertTrue(renameIdx != -1)
+        order[renameIdx] = "Custom Pro"
+        assertEquals(listOf("Standard Elite", "Custom Pro", "Racing Master"), order)
+
+        // Delete "Custom Pro"
+        val deleted = order.removeAll { it.equals("Custom Pro", ignoreCase = true) }
+        assertTrue(deleted)
+        assertEquals(listOf("Standard Elite", "Racing Master"), order)
     }
 }

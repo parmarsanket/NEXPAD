@@ -79,7 +79,36 @@ class LayoutManager(private val context: Context) {
             }
         }
 
+        // 3. Apply custom ordering if saved
+        val savedOrderJson = prefs.getString("profile_order", null)
+        if (savedOrderJson != null) {
+            try {
+                val orderList = json.decodeFromString<List<String>>(savedOrderJson)
+                val profileMap = result.associateBy { it.name }
+                val orderedResult = mutableListOf<LayoutProfile>()
+                for (name in orderList) {
+                    profileMap[name]?.let { orderedResult.add(it) }
+                }
+                // Append any unlisted profiles (e.g., newly created or defaults not yet in order)
+                for (profile in result) {
+                    if (orderedResult.none { it.name.equals(profile.name, ignoreCase = true) }) {
+                        orderedResult.add(profile)
+                    }
+                }
+                return orderedResult
+            } catch (e: Exception) {
+                // Fallback to un-ordered result on decode issue
+            }
+        }
+
         return result
+    }
+
+    /** Saves custom display ordering of layouts and notifies active observers. */
+    fun saveProfileOrder(order: List<String>) {
+        val jsonOrder = json.encodeToString(order)
+        prefs.edit().putString("profile_order", jsonOrder).apply()
+        refreshProfilesFlow()
     }
 
     /** Save profile. If it's custom, adds to custom profiles set. */
@@ -130,10 +159,21 @@ class LayoutManager(private val context: Context) {
 
         val customNames = (prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()).toMutableSet()
         val removed = customNames.remove(name)
-        prefs.edit()
+        val editor = prefs.edit()
             .putStringSet("custom_profile_names", customNames)
             .remove("profile_$name")
-            .apply()
+
+        // Also update saved profile_order
+        val savedOrderJson = prefs.getString("profile_order", null)
+        if (savedOrderJson != null) {
+            try {
+                val orderList = json.decodeFromString<List<String>>(savedOrderJson).toMutableList()
+                if (orderList.removeAll { it.equals(name, ignoreCase = true) }) {
+                    editor.putString("profile_order", json.encodeToString(orderList))
+                }
+            } catch (_: Exception) {}
+        }
+        editor.apply()
 
         // If the deleted profile was active, switch to Default 1 (Standard Elite)
         val activeName = prefs.getString("active_profile", "Standard Elite")
@@ -172,11 +212,24 @@ class LayoutManager(private val context: Context) {
         val canonicalProfile = renamed.copy(positions = renamed.canonicalPositions())
         val jsonString = json.encodeToString(canonicalProfile)
 
-        prefs.edit()
+        val renameEditor = prefs.edit()
             .putStringSet("custom_profile_names", customNames)
             .remove("profile_$oldName")
             .putString("profile_$trimmedNew", jsonString)
-            .apply()
+
+        // Also update saved profile_order
+        val savedOrderJson = prefs.getString("profile_order", null)
+        if (savedOrderJson != null) {
+            try {
+                val orderList = json.decodeFromString<List<String>>(savedOrderJson).toMutableList()
+                val idx = orderList.indexOfFirst { it.equals(oldName, ignoreCase = true) }
+                if (idx != -1) {
+                    orderList[idx] = trimmedNew
+                    renameEditor.putString("profile_order", json.encodeToString(orderList))
+                }
+            } catch (_: Exception) {}
+        }
+        renameEditor.apply()
 
         if (wasActive) {
             setActiveProfile(trimmedNew)

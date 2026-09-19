@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,6 +14,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import com.sanket.tools.nexpad.ui.layout.adaptiveLayoutSpec
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -27,12 +29,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.ui.AppNavigator
@@ -53,6 +61,19 @@ fun VirtualControllerScreen(
     val context = LocalContext.current
     val profiles by layoutManager.profilesFlow.collectAsState()
     val activeProfileName by layoutManager.activeProfileNameFlow.collectAsState()
+
+    val gridState = rememberLazyGridState()
+    val haptic = LocalHapticFeedback.current
+
+    var localProfiles by remember { mutableStateOf(profiles) }
+    var draggingProfileName by remember { mutableStateOf<String?>(null) }
+    var dragOffset by remember { mutableStateOf(Offset.Zero) }
+
+    LaunchedEffect(profiles) {
+        if (draggingProfileName == null) {
+            localProfiles = profiles
+        }
+    }
 
     var showAddDialog by remember { mutableStateOf(false) }
     var profileToDuplicate by remember { mutableStateOf<LayoutProfile?>(null) }
@@ -131,6 +152,7 @@ fun VirtualControllerScreen(
             ScanLine(modifier = Modifier.matchParentSize())
 
             LazyVerticalGrid(
+                state = gridState,
                 columns = GridCells.Fixed(if (layout.useTwoPaneLayout) 2 else 1),
                 modifier = Modifier
                     .fillMaxSize()
@@ -140,16 +162,95 @@ fun VirtualControllerScreen(
                 horizontalArrangement = Arrangement.spacedBy(layout.paneSpacing)
             ) {
                 // Info banner spans full width
-                item(span = { GridItemSpan(maxLineSpan) }) {
+                item(key = "hub_banner", span = { GridItemSpan(maxLineSpan) }) {
                     LayoutHubBanner()
                 }
 
                 // Layout Profiles List
-                items(profiles, key = { it.name }) { profile ->
+                items(localProfiles, key = { it.name }) { profile ->
+                    val isDragging = profile.name == draggingProfileName
                     val isActive = profile.name.equals(activeProfileName, ignoreCase = true)
                     LayoutProfileCard(
+                        modifier = Modifier
+                            .zIndex(if (isDragging) 10f else 1f)
+                            .graphicsLayer {
+                                if (isDragging) {
+                                    translationX = dragOffset.x
+                                    translationY = dragOffset.y
+                                    scaleX = 1.03f
+                                    scaleY = 1.03f
+                                    shadowElevation = 16f
+                                }
+                            }
+                            .pointerInput(profile.name) {
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart = {
+                                        draggingProfileName = profile.name
+                                        dragOffset = Offset.Zero
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    },
+                                    onDrag = { change, dragAmount ->
+                                        change.consume()
+                                        dragOffset += dragAmount
+
+                                        val currentItem = gridState.layoutInfo.visibleItemsInfo
+                                            .firstOrNull { it.key == draggingProfileName }
+
+                                        if (currentItem != null) {
+                                            val currentCenterX = currentItem.offset.x + (currentItem.size.width / 2f) + dragOffset.x
+                                            val currentCenterY = currentItem.offset.y + (currentItem.size.height / 2f) + dragOffset.y
+
+                                            // Auto-scroll when dragging near top/bottom boundaries
+                                            val viewportHeight = gridState.layoutInfo.viewportSize.height
+                                            if (viewportHeight > 0) {
+                                                if (currentCenterY < 120f) {
+                                                    gridState.dispatchRawDelta(-16f)
+                                                } else if (currentCenterY > viewportHeight - 120f) {
+                                                    gridState.dispatchRawDelta(16f)
+                                                }
+                                            }
+
+                                            // Find target card item overlapping the dragged card center
+                                            val targetItem = gridState.layoutInfo.visibleItemsInfo.firstOrNull { itemInfo ->
+                                                itemInfo.key != "hub_banner" &&
+                                                itemInfo.key != draggingProfileName &&
+                                                currentCenterX >= itemInfo.offset.x &&
+                                                currentCenterX <= itemInfo.offset.x + itemInfo.size.width &&
+                                                currentCenterY >= itemInfo.offset.y &&
+                                                currentCenterY <= itemInfo.offset.y + itemInfo.size.height
+                                            }
+
+                                            if (targetItem != null) {
+                                                val fromIndex = localProfiles.indexOfFirst { it.name == draggingProfileName }
+                                                val toIndex = localProfiles.indexOfFirst { it.name == targetItem.key }
+                                                if (fromIndex != -1 && toIndex != -1 && fromIndex != toIndex) {
+                                                    val deltaX = (currentItem.offset.x - targetItem.offset.x).toFloat()
+                                                    val deltaY = (currentItem.offset.y - targetItem.offset.y).toFloat()
+                                                    dragOffset += Offset(deltaX, deltaY)
+                                                    localProfiles = localProfiles.toMutableList().apply {
+                                                        add(toIndex, removeAt(fromIndex))
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    },
+                                    onDragEnd = {
+                                        draggingProfileName?.let {
+                                            layoutManager.saveProfileOrder(localProfiles.map { it.name })
+                                            Toast.makeText(context, "Layout order updated", Toast.LENGTH_SHORT).show()
+                                        }
+                                        draggingProfileName = null
+                                        dragOffset = Offset.Zero
+                                    },
+                                    onDragCancel = {
+                                        draggingProfileName = null
+                                        dragOffset = Offset.Zero
+                                    }
+                                )
+                            },
                         profile = profile,
                         isActive = isActive,
+                        isDragging = isDragging,
                         onSetActive = {
                             layoutManager.setActiveProfile(profile.name)
                             Toast.makeText(context, "Activated ${profile.name}", Toast.LENGTH_SHORT).show()
@@ -496,8 +597,10 @@ private fun LayoutHubBanner() {
 
 @Composable
 private fun LayoutProfileCard(
+    modifier: Modifier = Modifier,
     profile: LayoutProfile,
     isActive: Boolean,
+    isDragging: Boolean = false,
     onSetActive: () -> Unit,
     onPlay: () -> Unit,
     onEditHud: () -> Unit,
@@ -508,19 +611,22 @@ private fun LayoutProfileCard(
     onReset: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val borderColor = if (isActive) NeonPalette.Cyan else Color.White.copy(alpha = 0.12f)
-    val borderWidth = if (isActive) 2.dp else 1.dp
+    val borderColor = if (isDragging) NeonPalette.Cyan else if (isActive) NeonPalette.Cyan else Color.White.copy(alpha = 0.12f)
+    val borderWidth = if (isDragging) 2.5.dp else if (isActive) 2.dp else 1.dp
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.90f))
+            .background(
+                if (isDragging) MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)
+                else MaterialTheme.colorScheme.surface.copy(alpha = 0.90f)
+            )
             .border(borderWidth, borderColor, RoundedCornerShape(16.dp))
             .padding(16.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            // Header Row: Title + Badges
+            // Header Row: Title + Badges + Drag Handle
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -528,7 +634,8 @@ private fun LayoutProfileCard(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.weight(1f, fill = false)
                 ) {
                     Text(
                         profile.name,
@@ -604,21 +711,34 @@ private fun LayoutProfileCard(
                     }
                 }
 
-                // Active badge
-                if (isActive) {
-                    Surface(
-                        shape = CircleShape,
-                        color = Color(0xFF00FF66).copy(alpha = 0.18f),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF00FF66))
-                    ) {
-                        Text(
-                            "ACTIVE",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Black,
-                            color = Color(0xFF00FF66),
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
-                        )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Active badge
+                    if (isActive) {
+                        Surface(
+                            shape = CircleShape,
+                            color = Color(0xFF00FF66).copy(alpha = 0.18f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF00FF66))
+                        ) {
+                            Text(
+                                "ACTIVE",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color(0xFF00FF66),
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                            )
+                        }
                     }
+
+                    // Drag Handle affordance icon
+                    Icon(
+                        Icons.Rounded.DragHandle,
+                        contentDescription = "Long press to drag & reorder",
+                        tint = if (isDragging) NeonPalette.Cyan else Color.White.copy(alpha = 0.35f),
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
 
