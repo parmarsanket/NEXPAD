@@ -343,11 +343,25 @@ fun HudDockedInspector(
                         Text("Skin Change", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                     }
 
-                    IconButton(
+                    OutlinedButton(
                         onClick = onOpenStudio,
-                        modifier = Modifier.size(30.dp)
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = if (isMissingAsset) Color(0xFFFFB703) else Color.White
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            if (isMissingAsset) Color(0xFFFFB703) else NeonPalette.Purple.copy(alpha = 0.6f)
+                        ),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                        modifier = Modifier.height(30.dp)
                     ) {
+
                         Icon(Icons.Rounded.Palette, contentDescription = "Change Appearance", tint = NeonPalette.Purple, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+
+                        Text("Studio",fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+
                     }
                 }
 

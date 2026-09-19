@@ -76,8 +76,8 @@ fun ButtonStudioScreen(
     // Current Studio Mode (VIEWER vs EDITOR)
     var currentMode by remember { mutableStateOf(initialMode) }
 
-    // Whether we are in a contextual selection session (launched from HUD Editor)
-    val isContextual = initialMode == ButtonStudioMode.EDITOR && targetControlKey != null
+    // Whether we are in a contextual selection session (launched from HUD Editor or Virtual Controller)
+    val isContextual = (initialMode == ButtonStudioMode.EDITOR || initialMode == ButtonStudioMode.BUTTON_EDITOR) && targetControlKey != null
 
     // Target/Active Profile State (refreshes on apply)
     var currentProfileName by remember(targetProfileName) { mutableStateOf(targetProfileName) }
@@ -145,31 +145,53 @@ fun ButtonStudioScreen(
         }
     }
 
-    // Filter components matching the active category & sub-filter
-    val filteredComponents = remember(components, selectedCategory, selectedSubFilter) {
-        components.filter { def ->
-            val control = def.manifest.defaultControl.uppercase()
-            val category = def.manifest.category.uppercase()
+    // Filter components matching the active category & sub-filter, or strictly for targetControlKey in BUTTON_EDITOR mode
+    val filteredComponents = remember(components, selectedCategory, selectedSubFilter, currentMode, targetControlKey) {
+        if (currentMode == ButtonStudioMode.BUTTON_EDITOR && targetControlKey != null) {
+            val targetSpec = CategoryManager.getControl(targetControlKey)
+            val targetKey = targetControlKey.uppercase()
+            components.filter { def ->
+                if (targetSpec != null) {
+                    if (def.manifest.defaultControl.isNotBlank()) {
+                        val resolved = CategoryManager.resolveControl(def.manifest.defaultControl)
+                        if (resolved != null) return@filter resolved.key == targetSpec.key
+                    }
+                    if (def.manifest.id.isNotBlank()) {
+                        val resolved = CategoryManager.resolveControl(def.manifest.id)
+                        if (resolved != null) return@filter resolved.key == targetSpec.key
+                    }
+                    if (def.manifest.defaultControl.isBlank() && def.manifest.category.isNotBlank()) {
+                        val cat = CategoryManager.getCategory(def.manifest.category)
+                        if (cat != null && cat.type == targetSpec.categoryType) return@filter true
+                    }
+                }
+                def.manifest.defaultControl.equals(targetKey, ignoreCase = true)
+            }
+        } else {
+            components.filter { def ->
+                val control = def.manifest.defaultControl.uppercase()
+                val category = def.manifest.category.uppercase()
 
-            if (selectedCategory.id == "ALL") return@filter true
+                if (selectedCategory.id == "ALL") return@filter true
 
-            val compCtrl = ControlKey.fromIdentifier(control)
-            val matchesCategory = selectedCategory.keys.contains(control) ||
-                    (compCtrl != null && compCtrl.categoryType.id == selectedCategory.id) ||
-                    CategoryType.fromIdentifier(category)?.id == selectedCategory.id
+                val compCtrl = ControlKey.fromIdentifier(control)
+                val matchesCategory = selectedCategory.keys.contains(control) ||
+                        (compCtrl != null && compCtrl.categoryType.id == selectedCategory.id) ||
+                        CategoryType.fromIdentifier(category)?.id == selectedCategory.id
 
-            if (!matchesCategory) return@filter false
+                if (!matchesCategory) return@filter false
 
-            val sub = selectedSubFilter
-            if (sub == null || sub.id == "ALL") {
-                true
-            } else {
-                val targetKey = (sub.targetKey ?: sub.id).uppercase()
-                val targetCtrl = ControlKey.fromIdentifier(targetKey)
-                if (targetCtrl != null && compCtrl != null) {
-                    compCtrl == targetCtrl
+                val sub = selectedSubFilter
+                if (sub == null || sub.id == "ALL") {
+                    true
                 } else {
-                    control == targetKey
+                    val targetKey = (sub.targetKey ?: sub.id).uppercase()
+                    val targetCtrl = ControlKey.fromIdentifier(targetKey)
+                    if (targetCtrl != null && compCtrl != null) {
+                        compCtrl == targetCtrl
+                    } else {
+                        control == targetKey
+                    }
                 }
             }
         }
@@ -180,12 +202,21 @@ fun ButtonStudioScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
+                        if (currentMode == ButtonStudioMode.BUTTON_EDITOR) {
+                            val ctrl = targetControlKey?.let { CategoryManager.getControl(it) }
+                            val controlLabel = ctrl?.label ?: targetControlKey ?: "Button Skin"
+                            val controlEmoji = ctrl?.emoji ?: ""
+                            val titleText = if (controlEmoji.isNotBlank()) "$controlEmoji $controlLabel" else controlLabel
+                            val parentCategory = targetControlKey?.let { CategoryManager.findCategoryForControl(it) }
+                            val clusterName = parentCategory?.title ?: "Action"
+                            val currentSkinName = when {
+                                contextualSelectedAssetId.isNullOrBlank() -> "Default"
+                                else -> contextualSelectedAssetId!!.substringAfterLast(".").replace("_", " ")
+                                    .replaceFirstChar { it.uppercase() }
+                            }
+
                             Text(
-                                "Button Studio",
+                                text = titleText,
                                 style = MaterialTheme.typography.titleMedium.copy(
                                     fontWeight = FontWeight.Black,
                                     color = NeonPalette.Cyan,
@@ -193,50 +224,84 @@ fun ButtonStudioScreen(
                                 ),
                                 maxLines = 1
                             )
-
-                            // Active Profile Badge — ONLY in EDITOR mode! In VIEWER mode, hidden.
-                            if (currentMode == ButtonStudioMode.EDITOR) {
-                                val profileTitle = currentProfileName.ifBlank { activeProfile?.name ?: "Default" }
-                                Surface(
-                                    shape = RoundedCornerShape(6.dp),
-                                    color = NeonPalette.Cyan.copy(alpha = 0.15f),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.6f))
-                                ) {
-                                    Text(
-                                        text = profileTitle,
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
+                            Text(
+                                text = "$clusterName Cluster • Current: $currentSkinName",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = NeonPalette.Cyan.copy(alpha = 0.85f),
+                                    fontSize = 10.sp
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        } else {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    "Button Studio",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.Black,
                                         color = NeonPalette.Cyan,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
+                                        fontSize = 17.sp
+                                    ),
+                                    maxLines = 1
+                                )
+
+                                // Active Profile Badge — ONLY in EDITOR mode! In VIEWER mode, hidden.
+                                if (currentMode == ButtonStudioMode.EDITOR) {
+                                    val profileTitle = currentProfileName.ifBlank { activeProfile?.name ?: "Default" }
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = NeonPalette.Cyan.copy(alpha = 0.15f),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.6f))
+                                    ) {
+                                        Text(
+                                            text = profileTitle,
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = NeonPalette.Cyan,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
                                 }
                             }
-                        }
 
-                        if (currentMode == ButtonStudioMode.EDITOR) {
-                            if (isContextual) {
-                                val controlLabel = CategoryManager.getControl(targetControlKey)?.label
-                                    ?: targetControlKey
-                                val currentLabel = when {
-                                    contextualSelectedAssetId == null -> "Default"
-                                    else -> contextualSelectedAssetId!!.substringAfterLast(".").replace("_", " ")
-                                        .replaceFirstChar { it.uppercase() }
+                            if (currentMode == ButtonStudioMode.EDITOR) {
+                                if (isContextual) {
+                                    val controlLabel = CategoryManager.getControl(targetControlKey)?.label
+                                        ?: targetControlKey
+                                    val currentLabel = when {
+                                        contextualSelectedAssetId == null -> "Default"
+                                        else -> contextualSelectedAssetId!!.substringAfterLast(".").replace("_", " ")
+                                            .replaceFirstChar { it.uppercase() }
+                                    }
+                                    Text(
+                                        text = "Changing appearance for $controlLabel  •  Currently: $currentLabel",
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            color = NeonPalette.Cyan.copy(alpha = 0.85f),
+                                            fontSize = 10.sp
+                                        ),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                } else {
+                                    val profileTitle = currentProfileName.ifBlank { activeProfile?.name ?: "Default" }
+                                    Text(
+                                        text = "Customizing layout: $profileTitle",
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontSize = 10.sp
+                                        ),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
                                 }
-                                Text(
-                                    text = "Changing appearance for $controlLabel  •  Currently: $currentLabel",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        color = NeonPalette.Cyan.copy(alpha = 0.85f),
-                                        fontSize = 10.sp
-                                    ),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
                             } else {
-                                val profileTitle = currentProfileName.ifBlank { activeProfile?.name ?: "Default" }
                                 Text(
-                                    text = "Customizing layout: $profileTitle",
+                                    text = "Button Catalog • Browse, test & add buttons",
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontSize = 10.sp
@@ -245,16 +310,6 @@ fun ButtonStudioScreen(
                                     overflow = TextOverflow.Ellipsis
                                 )
                             }
-                        } else {
-                            Text(
-                                text = "Button Catalog • Browse, test & add buttons",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = 10.sp
-                                ),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
                         }
                     }
                 },
@@ -269,7 +324,7 @@ fun ButtonStudioScreen(
                 },
                 actions = {
                     // Contextual Done button
-                    if (isContextual) {
+                    if (isContextual || currentMode == ButtonStudioMode.BUTTON_EDITOR) {
                         IconButton(
                             onClick = { navController.popBackStack() },
                             modifier = Modifier.size(34.dp)
@@ -343,40 +398,44 @@ fun ButtonStudioScreen(
             ScanLine(modifier = Modifier.matchParentSize())
 
             Row(modifier = Modifier.fillMaxSize()) {
-                // 1. Sleek Vertical Navigation Rail (Slider on Left)
-                StudioVerticalRail(
-                    categories = STUDIO_CATEGORIES,
-                    selectedCategoryId = selectedCategory.id,
-                    onSelectCategory = { cat ->
-                        selectedCategory = cat
-                        selectedSubFilter = cat.subFilters.firstOrNull()
-                    },
-                    mode = currentMode,
-                    activeCountForCategory = { cat ->
-                        if (currentMode == ButtonStudioMode.EDITOR) {
-                            cat.keys.count { key ->
-                                activeProfile?.positions?.get(key)?.customComponentId != null
+                // 1. Sleek Vertical Navigation Rail (Slider on Left) - HIDDEN in BUTTON_EDITOR mode
+                if (currentMode != ButtonStudioMode.BUTTON_EDITOR) {
+                    StudioVerticalRail(
+                        categories = STUDIO_CATEGORIES,
+                        selectedCategoryId = selectedCategory.id,
+                        onSelectCategory = { cat ->
+                            selectedCategory = cat
+                            selectedSubFilter = cat.subFilters.firstOrNull()
+                        },
+                        mode = currentMode,
+                        activeCountForCategory = { cat ->
+                            if (currentMode == ButtonStudioMode.EDITOR) {
+                                cat.keys.count { key ->
+                                    activeProfile?.positions?.get(key)?.customComponentId != null
+                                }
+                            } else {
+                                0
                             }
-                        } else {
-                            0
-                        }
-                    },
-                    modifier = Modifier
-                        .width(74.dp)
-                        .fillMaxHeight()
-                )
+                        },
+                        modifier = Modifier
+                            .width(74.dp)
+                            .fillMaxHeight()
+                    )
 
-                VerticalDivider(color = Color.White.copy(alpha = 0.08f))
+                    VerticalDivider(color = Color.White.copy(alpha = 0.08f))
+                }
 
                 // 2. Right Content Area: Sub-filters + Responsive Grid
                 Column(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
+                        .then(
+                            if (currentMode == ButtonStudioMode.BUTTON_EDITOR) Modifier.fillMaxSize()
+                            else Modifier.weight(1f).fillMaxHeight()
+                        )
                         .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
-                    // Sub-filter Chips Row
-                    if (selectedCategory.subFilters.isNotEmpty()) {
+                    // Sub-filter Chips Row - HIDDEN in BUTTON_EDITOR mode
+                    if (currentMode != ButtonStudioMode.BUTTON_EDITOR && selectedCategory.subFilters.isNotEmpty()) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -419,14 +478,26 @@ fun ButtonStudioScreen(
                     }
 
                     // Responsive Grid of Individual Button Skins
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 160.dp),
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(filteredComponents, key = { it.manifest.id }) { def ->
+                    if (filteredComponents.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "No custom skins found for this control.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.LightGray.copy(alpha = 0.6f)
+                            )
+                        }
+                    } else {
+                        LazyVerticalGrid(
+                            columns = GridCells.Adaptive(minSize = 160.dp),
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(bottom = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(filteredComponents, key = { it.manifest.id }) { def ->
                             val targetKey = def.manifest.defaultControl.uppercase()
                             val isControlActive = activeControls[targetKey] == true
                             val type = resolveButtonSourceType(def)
@@ -508,6 +579,7 @@ fun ButtonStudioScreen(
             }
         }
     }
+}
 
     // Live Sandbox Modal — ONLY in VIEWER mode!
     if (currentMode == ButtonStudioMode.VIEWER && previewTarget != null) {

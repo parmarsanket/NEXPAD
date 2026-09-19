@@ -118,6 +118,7 @@ fun NavigationGraph(
                 }
                 is ScreenKey.ButtonStudio -> {
                     val mode = when {
+                        key.mode.equals("button_editor", ignoreCase = true) -> ButtonStudioMode.BUTTON_EDITOR
                         key.mode.equals("editor", ignoreCase = true) || key.mode.equals("select", ignoreCase = true) -> ButtonStudioMode.EDITOR
                         key.profileName.isNotBlank() -> ButtonStudioMode.EDITOR
                         else -> ButtonStudioMode.VIEWER

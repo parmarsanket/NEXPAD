@@ -10,7 +10,8 @@ import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
  */
 enum class ButtonStudioMode(val label: String) {
     VIEWER("Viewer"),
-    EDITOR("Editor");
+    EDITOR("Editor"),
+    BUTTON_EDITOR("Button Editor");
 
     companion object {
         val MANAGE get() = VIEWER

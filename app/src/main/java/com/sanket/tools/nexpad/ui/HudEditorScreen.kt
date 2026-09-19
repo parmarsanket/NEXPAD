@@ -116,7 +116,7 @@ fun HudEditorScreen(
         val result = editingContext?.pendingAssetResult ?: return@LaunchedEffect
         val ctrlKey = editingContext?.controlKey ?: return@LaunchedEffect
         // Apply the chosen asset to the control (marks hasUnsavedChanges = true)
-        viewModel.setSkin(ctrlKey, result)
+        viewModel.setSkin(ctrlKey, result.ifBlank { null })
         // Re-select the control so the inspector stays open showing the new skin
         viewModel.selectControl(ctrlKey)
         // Consume the result so it doesn't re-trigger on recomposition
@@ -254,7 +254,7 @@ fun HudEditorScreen(
                     )
                     navController.navigate(
                         ScreenKey.ButtonStudio(
-                            mode = "editor",
+                            mode = "button_editor",
                             profileName = profile.name,
                             controlKey = selectedControl!!,
                             currentAssetId = element.skinId
