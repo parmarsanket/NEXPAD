@@ -56,6 +56,7 @@ fun VirtualControllerScreen(
 
     var showAddDialog by remember { mutableStateOf(false) }
     var profileToDuplicate by remember { mutableStateOf<LayoutProfile?>(null) }
+    var profileToRename by remember { mutableStateOf<LayoutProfile?>(null) }
     var profileToDelete by remember { mutableStateOf<LayoutProfile?>(null) }
     var profileToReset by remember { mutableStateOf<LayoutProfile?>(null) }
     // Step 7: Preset protection — holds the preset that needs a copy dialog before editing
@@ -173,6 +174,22 @@ fun VirtualControllerScreen(
                         onDuplicate = {
                             profileToDuplicate = profile
                         },
+                        onRename = {
+                            profileToRename = profile
+                        },
+                        onShare = {
+                            val sendIntent = android.content.Intent().apply {
+                                action = android.content.Intent.ACTION_SEND
+                                putExtra(android.content.Intent.EXTRA_TITLE, "NEXPAD Layout: ${profile.name}")
+                                putExtra(
+                                    android.content.Intent.EXTRA_TEXT,
+                                    "🎮 NEXPAD Controller Layout: ${profile.name} (${profile.positions.size} controls)\nDesigned with NEXPAD."
+                                )
+                                type = "text/plain"
+                            }
+                            val shareIntent = android.content.Intent.createChooser(sendIntent, "Share '${profile.name}'")
+                            context.startActivity(shareIntent)
+                        },
                         onReset = {
                             profileToReset = profile
                         },
@@ -253,6 +270,59 @@ fun VirtualControllerScreen(
             },
             dismissButton = {
                 TextButton(onClick = { profileToDuplicate = null }) {
+                    Text("Cancel", color = Color.White)
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    }
+
+    // Rename Custom Layout Dialog
+    if (profileToRename != null) {
+        var renameInput by remember(profileToRename) { mutableStateOf(profileToRename!!.name) }
+        AlertDialog(
+            onDismissRequest = { profileToRename = null },
+            title = { Text("Rename Custom Layout", color = Color.White) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        "Enter a new name for '${profileToRename!!.name}':",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedTextField(
+                        value = renameInput,
+                        onValueChange = { renameInput = it },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = NeonPalette.Cyan,
+                            unfocusedBorderColor = Color.Gray
+                        )
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val target = profileToRename!!
+                        val trimmed = renameInput.trim()
+                        if (trimmed.isNotEmpty() && trimmed != target.name) {
+                            val success = layoutManager.renameProfile(target.name, trimmed)
+                            if (success) {
+                                Toast.makeText(context, "Renamed to '$trimmed'", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Could not rename layout", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        profileToRename = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan)
+                ) {
+                    Text("Rename", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { profileToRename = null }) {
                     Text("Cancel", color = Color.White)
                 }
             },
@@ -433,6 +503,8 @@ private fun LayoutProfileCard(
     onEditHud: () -> Unit,
     onOpenStudio: () -> Unit,
     onDuplicate: () -> Unit,
+    onRename: () -> Unit,
+    onShare: () -> Unit,
     onReset: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -465,6 +537,19 @@ private fun LayoutProfileCard(
                             color = Color.White
                         )
                     )
+                    if (!profile.isDefault) {
+                        IconButton(
+                            onClick = onRename,
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                Icons.Rounded.Edit,
+                                contentDescription = "Rename layout",
+                                tint = NeonPalette.Cyan.copy(alpha = 0.7f),
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
                     // Protection badge
                     if (profile.isDefault) {
                         Surface(
@@ -672,6 +757,37 @@ private fun LayoutProfileCard(
                             tint = Color.White.copy(alpha = 0.7f),
                             modifier = Modifier.size(18.dp)
                         )
+                    }
+                }
+
+                // Custom Layouts only: Rename & Share
+                if (!profile.isDefault) {
+                    item {
+                        IconButton(
+                            onClick = onRename,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                Icons.Rounded.Edit,
+                                contentDescription = "Rename custom layout",
+                                tint = NeonPalette.Cyan.copy(alpha = 0.85f),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
+                    item {
+                        IconButton(
+                            onClick = onShare,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                Icons.Rounded.Share,
+                                contentDescription = "Share custom layout",
+                                tint = Color.White.copy(alpha = 0.7f),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
 

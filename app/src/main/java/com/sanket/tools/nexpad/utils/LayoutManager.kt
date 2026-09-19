@@ -146,6 +146,47 @@ class LayoutManager(private val context: Context) {
         return removed
     }
 
+    /**
+     * Renames a custom layout profile.
+     * Default layouts (1 to 5) cannot be renamed.
+     * Returns true on success, false if oldName is default or not found.
+     */
+    fun renameProfile(oldName: String, newName: String): Boolean {
+        val trimmedNew = newName.trim()
+        if (trimmedNew.isEmpty()) return false
+        if (oldName == trimmedNew) return true
+
+        val isDefault = getDefaultLayoutProfiles().any { it.name.equals(oldName, ignoreCase = true) }
+        if (isDefault) {
+            return false
+        }
+
+        val existing = loadProfile(oldName) ?: return false
+        val wasActive = getActiveProfile().name.equals(oldName, ignoreCase = true)
+
+        val customNames = (prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()).toMutableSet()
+        customNames.remove(oldName)
+        customNames.add(trimmedNew)
+
+        val renamed = existing.copy(name = trimmedNew, isDefault = false)
+        val canonicalProfile = renamed.copy(positions = renamed.canonicalPositions())
+        val jsonString = json.encodeToString(canonicalProfile)
+
+        prefs.edit()
+            .putStringSet("custom_profile_names", customNames)
+            .remove("profile_$oldName")
+            .putString("profile_$trimmedNew", jsonString)
+            .apply()
+
+        if (wasActive) {
+            setActiveProfile(trimmedNew)
+        } else {
+            refreshProfilesFlow()
+        }
+
+        return true
+    }
+
     /** Reset a default layout to its original factory coordinates. */
     fun resetDefaultProfile(name: String): LayoutProfile? {
         val factoryDefault = getDefaultLayoutProfiles().find { it.name.equals(name, ignoreCase = true) } ?: return null
