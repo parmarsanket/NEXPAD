@@ -11,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
@@ -32,7 +33,7 @@ fun ScanLine(
         label = "scanlineOffset"
     )
 
-    Canvas(modifier) {
+    Canvas(modifier.graphicsLayer()) {
         drawRect(
             brush = Brush.verticalGradient(
                 listOf(

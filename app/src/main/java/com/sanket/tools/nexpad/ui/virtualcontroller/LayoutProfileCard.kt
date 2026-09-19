@@ -7,7 +7,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,6 +15,7 @@ import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,6 +48,7 @@ fun LayoutProfileCard(
     onReset: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val cardShape = remember { RoundedCornerShape(16.dp) }
     val borderColor = if (isDragging) NeonPalette.Cyan else if (isActive) NeonPalette.Cyan else Color.White.copy(alpha = 0.12f)
     val borderWidth = if (isDragging) 2.5.dp else if (isActive) 2.dp else 1.dp
 
@@ -69,15 +70,15 @@ fun LayoutProfileCard(
                 scaleX = scale
                 scaleY = scale
                 shadowElevation = elevation.toPx()
-                shape = RoundedCornerShape(16.dp)
+                shape = cardShape
                 clip = false
             }
-            .clip(RoundedCornerShape(16.dp))
+            .clip(cardShape)
             .background(
                 if (isDragging) MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)
                 else MaterialTheme.colorScheme.surface.copy(alpha = 0.90f)
             )
-            .border(borderWidth, borderColor, RoundedCornerShape(16.dp))
+            .border(borderWidth, borderColor, cardShape)
             .padding(16.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -213,12 +214,13 @@ fun LayoutProfileCard(
             }
 
             // Button Pills Preview Row
-            val buttonKeys = profile.positions.keys.toList()
+            val buttonKeys = remember(profile.positions) { profile.positions.keys.toList() }
+            val previewKeys = remember(buttonKeys) { buttonKeys.take(6) }
+            val remainingCount = remember(buttonKeys) { maxOf(0, buttonKeys.size - 6) }
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
                     shape = RoundedCornerShape(6.dp),
@@ -233,7 +235,7 @@ fun LayoutProfileCard(
                     )
                 }
 
-                buttonKeys.take(12).forEach { key ->
+                previewKeys.forEach { key ->
                     Surface(
                         shape = RoundedCornerShape(6.dp),
                         color = Color.White.copy(alpha = 0.04f)
@@ -247,9 +249,9 @@ fun LayoutProfileCard(
                         )
                     }
                 }
-                if (buttonKeys.size > 12) {
+                if (remainingCount > 0) {
                     Text(
-                        "+${buttonKeys.size - 12} more",
+                        "+$remainingCount more",
                         fontSize = 10.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.align(Alignment.CenterVertically)
@@ -260,162 +262,146 @@ fun LayoutProfileCard(
             HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
 
             // Action Buttons
-            LazyRow(
-                modifier = Modifier.fillMaxWidth(),
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (!isActive) {
-                    item {
-                        OutlinedButton(
-                            onClick = onSetActive,
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Cyan),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.7f)),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                            modifier = Modifier.height(36.dp)
-                        ) {
-                            Icon(Icons.Rounded.CheckCircle, contentDescription = null, modifier = Modifier.size(14.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("Set Active", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                        }
-                    }
-                }
-
-                item {
-                    Button(
-                        onClick = onPlay,
+                    OutlinedButton(
+                        onClick = onSetActive,
                         shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Cyan),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.7f)),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                         modifier = Modifier.height(36.dp)
                     ) {
-                        Icon(Icons.Rounded.SportsEsports, contentDescription = null, tint = Color.Black, modifier = Modifier.size(14.dp))
+                        Icon(Icons.Rounded.CheckCircle, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Play", color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text("Set Active", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
 
-                item {
-                    OutlinedButton(
-                        onClick = onEditHud,
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                        modifier = Modifier.height(36.dp)
-                    ) {
-                        Icon(Icons.Rounded.DashboardCustomize, contentDescription = null, modifier = Modifier.size(14.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("HUD", fontSize = 12.sp)
-                    }
+                Button(
+                    onClick = onPlay,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    Icon(Icons.Rounded.SportsEsports, contentDescription = null, tint = Color.Black, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Play", color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+
+                OutlinedButton(
+                    onClick = onEditHud,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    Icon(Icons.Rounded.DashboardCustomize, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("HUD", fontSize = 12.sp)
                 }
 
                 if (!profile.isDefault) {
-                    item {
-                        OutlinedButton(
-                            onClick = onOpenStudio,
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Purple),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Purple.copy(alpha = 0.6f)),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                            modifier = Modifier.height(36.dp)
-                        ) {
-                            Icon(Icons.Rounded.Palette, contentDescription = null, tint = NeonPalette.Purple, modifier = Modifier.size(14.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("Studio", fontSize = 12.sp, color = NeonPalette.Purple, fontWeight = FontWeight.SemiBold)
-                        }
+                    OutlinedButton(
+                        onClick = onOpenStudio,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Purple),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Purple.copy(alpha = 0.6f)),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        Icon(Icons.Rounded.Palette, contentDescription = null, tint = NeonPalette.Purple, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Studio", fontSize = 12.sp, color = NeonPalette.Purple, fontWeight = FontWeight.SemiBold)
                     }
                 }
 
-                item {
+                IconButton(
+                    onClick = onDuplicate,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        Icons.Rounded.ContentCopy,
+                        contentDescription = "Duplicate layout",
+                        tint = Color.White.copy(alpha = 0.7f),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
+                // Custom Layouts only: Rename & Share
+                if (!profile.isDefault) {
                     IconButton(
-                        onClick = onDuplicate,
+                        onClick = onRename,
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
-                            Icons.Rounded.ContentCopy,
-                            contentDescription = "Duplicate layout",
+                            Icons.Rounded.Edit,
+                            contentDescription = "Rename custom layout",
+                            tint = NeonPalette.Cyan.copy(alpha = 0.85f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onShare,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            Icons.Rounded.Share,
+                            contentDescription = "Share custom layout",
                             tint = Color.White.copy(alpha = 0.7f),
                             modifier = Modifier.size(18.dp)
                         )
                     }
                 }
 
-                // Custom Layouts only: Rename & Share
-                if (!profile.isDefault) {
-                    item {
-                        IconButton(
-                            onClick = onRename,
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(
-                                Icons.Rounded.Edit,
-                                contentDescription = "Rename custom layout",
-                                tint = NeonPalette.Cyan.copy(alpha = 0.85f),
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-
-                    item {
-                        IconButton(
-                            onClick = onShare,
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(
-                                Icons.Rounded.Share,
-                                contentDescription = "Share custom layout",
-                                tint = Color.White.copy(alpha = 0.7f),
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                }
-
                 if (profile.isDefault) {
-                    item {
-                        IconButton(
-                            onClick = onReset,
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(
-                                Icons.Rounded.RestartAlt,
-                                contentDescription = "Reset factory default",
-                                tint = NeonPalette.Purple.copy(alpha = 0.85f),
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
+                    IconButton(
+                        onClick = onReset,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            Icons.Rounded.RestartAlt,
+                            contentDescription = "Reset factory default",
+                            tint = NeonPalette.Purple.copy(alpha = 0.85f),
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
                 }
 
-                item {
-                    // Delete button
-                    if (profile.isDefault) {
-                        // Protected - Disabled with Lock icon
-                        IconButton(
-                            onClick = onDelete,
-                            modifier = Modifier.size(36.dp),
-                            colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White.copy(alpha = 0.25f))
-                        ) {
-                            Icon(
-                                Icons.Rounded.Lock,
-                                contentDescription = "Protected default layout cannot be deleted",
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    } else {
-                        IconButton(
-                            onClick = onDelete,
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(
-                                Icons.Rounded.Delete,
-                                contentDescription = "Delete custom layout",
-                                tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
+                // Delete button
+                if (profile.isDefault) {
+                    // Protected - Disabled with Lock icon
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.size(36.dp),
+                        colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White.copy(alpha = 0.25f))
+                    ) {
+                        Icon(
+                            Icons.Rounded.Lock,
+                            contentDescription = "Protected default layout cannot be deleted",
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                } else {
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            Icons.Rounded.Delete,
+                            contentDescription = "Delete custom layout",
+                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
                 }
             }

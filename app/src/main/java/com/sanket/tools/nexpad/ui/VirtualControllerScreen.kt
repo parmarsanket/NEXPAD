@@ -129,7 +129,16 @@ fun VirtualControllerScreen(
         }
 
         LaunchedEffect(reorderableLazyGridState.isAnyItemDragging) {
-            isAnyItemDragging = reorderableLazyGridState.isAnyItemDragging
+            val dragging = reorderableLazyGridState.isAnyItemDragging
+            if (isAnyItemDragging && !dragging) {
+                // Drag completed, persist new order
+                val newOrder = localProfiles.map { it.name }
+                if (newOrder != profiles.map { it.name }) {
+                    layoutManager.saveProfileOrder(newOrder)
+                    Toast.makeText(context, "Layout order updated", Toast.LENGTH_SHORT).show()
+                }
+            }
+            isAnyItemDragging = dragging
         }
 
         LaunchedEffect(profiles) {
@@ -139,7 +148,7 @@ fun VirtualControllerScreen(
         }
 
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-            val layout = adaptiveLayoutSpec(maxWidth, maxHeight)
+            val layout = remember(maxWidth, maxHeight) { adaptiveLayoutSpec(maxWidth, maxHeight) }
 
             CyberGrid(modifier = Modifier.matchParentSize())
             ScanLine(modifier = Modifier.matchParentSize())
@@ -159,12 +168,20 @@ fun VirtualControllerScreen(
                 horizontalArrangement = Arrangement.spacedBy(layout.paneSpacing)
             ) {
                 // Info banner spans full width
-                item(key = "hub_banner", span = { GridItemSpan(maxLineSpan) }) {
+                item(
+                    key = "hub_banner",
+                    span = { GridItemSpan(maxLineSpan) },
+                    contentType = "hub_banner"
+                ) {
                     LayoutHubBanner()
                 }
 
                 // Layout Profiles List
-                items(localProfiles, key = { it.name }) { profile ->
+                items(
+                    items = localProfiles,
+                    key = { it.name },
+                    contentType = { "layout_profile_card" }
+                ) { profile ->
                     ReorderableItem(
                         state = reorderableLazyGridState,
                         key = profile.name,
@@ -181,31 +198,13 @@ fun VirtualControllerScreen(
                             modifier = Modifier
                                 .longPressDraggableHandle(
                                     onDragStarted = {
-                                        isAnyItemDragging = true
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    },
-                                    onDragStopped = {
-                                        isAnyItemDragging = false
-                                        val newOrder = localProfiles.map { it.name }
-                                        if (newOrder != profiles.map { it.name }) {
-                                            layoutManager.saveProfileOrder(newOrder)
-                                            Toast.makeText(context, "Layout order updated", Toast.LENGTH_SHORT).show()
-                                        }
                                     }
                                 ),
                             dragHandleModifier = Modifier
                                 .draggableHandle(
                                     onDragStarted = {
-                                        isAnyItemDragging = true
                                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    },
-                                    onDragStopped = {
-                                        isAnyItemDragging = false
-                                        val newOrder = localProfiles.map { it.name }
-                                        if (newOrder != profiles.map { it.name }) {
-                                            layoutManager.saveProfileOrder(newOrder)
-                                            Toast.makeText(context, "Layout order updated", Toast.LENGTH_SHORT).show()
-                                        }
                                     }
                                 ),
                             profile = profile,
