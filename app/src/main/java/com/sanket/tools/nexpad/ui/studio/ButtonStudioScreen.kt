@@ -323,17 +323,35 @@ fun ButtonStudioScreen(
                     }
                 },
                 actions = {
-                    // Contextual Done button
+                    // Contextual Done / Selected Outlined Button on the right
                     if (isContextual || currentMode == ButtonStudioMode.BUTTON_EDITOR) {
-                        IconButton(
+                        OutlinedButton(
                             onClick = { navController.popBackStack() },
-                            modifier = Modifier.size(34.dp)
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = NeonPalette.Cyan
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                NeonPalette.Cyan.copy(alpha = 0.8f)
+                            ),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            modifier = Modifier
+                                .height(30.dp)
+                                .padding(end = 6.dp)
                         ) {
                             Icon(
                                 Icons.Rounded.Check,
-                                contentDescription = "Done",
+                                contentDescription = "Selected",
                                 tint = NeonPalette.Cyan,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                "Selected",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NeonPalette.Cyan
                             )
                         }
                     }
@@ -506,20 +524,22 @@ fun ButtonStudioScreen(
                                     (type == ButtonStudioType.DEFAULT && chosenSkins[targetKey] == null)
 
                             // In VIEWER mode, NEVER glow/highlight as applied.
-                            // In EDITOR mode, glow if applied to that particular layout.
+                            // In EDITOR and BUTTON_EDITOR mode, glow if applied to that particular layout.
                             val isAppliedToProfile = if (currentMode == ButtonStudioMode.VIEWER) {
                                 false
-                            } else if (isContextual) {
+                            } else if (isContextual || currentMode == ButtonStudioMode.BUTTON_EDITOR) {
                                 val selectedId = contextualSelectedAssetId
-                                if (type == ButtonStudioType.DEFAULT) {
-                                    selectedId == null || selectedId.isBlank()
+                                val isDefaultSelected = selectedId.isNullOrBlank() || selectedId.startsWith("builtin.default_")
+                                if (isDefaultSelected) {
+                                    type == ButtonStudioType.DEFAULT || def.manifest.id.startsWith("builtin.default_")
                                 } else {
                                     def.manifest.id == selectedId
                                 }
                             } else {
                                 val currentCustomId = activeProfile?.positions?.get(targetKey)?.customComponentId
-                                if (type == ButtonStudioType.DEFAULT) {
-                                    currentCustomId == null
+                                val isDefaultSelected = currentCustomId.isNullOrBlank() || currentCustomId.startsWith("builtin.default_")
+                                if (isDefaultSelected) {
+                                    type == ButtonStudioType.DEFAULT || def.manifest.id.startsWith("builtin.default_")
                                 } else {
                                     currentCustomId == def.manifest.id
                                 }
@@ -533,16 +553,17 @@ fun ButtonStudioScreen(
                                     if (currentMode == ButtonStudioMode.VIEWER) {
                                         // VIEWER MODE: Open sandbox test & preview popup
                                         previewTarget = def
-                                    } else if (isContextual) {
-                                        // CONTEXTUAL EDITOR MODE: Select or deselect for targetControlKey
+                                    } else if (isContextual || currentMode == ButtonStudioMode.BUTTON_EDITOR) {
+                                        // CONTEXTUAL EDITOR / BUTTON_EDITOR MODE: Select or deselect for targetControlKey
                                         if (isAppliedToProfile) {
                                             contextualSelectedAssetId = null
                                             navigationViewModel?.commitAssetSelection("")
-                                            Toast.makeText(context, "Deselected skin for $targetKey", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, "Reverted $targetKey to Default", Toast.LENGTH_SHORT).show()
                                         } else {
-                                            val newAssetId = if (type == ButtonStudioType.DEFAULT) null else def.manifest.id
-                                            contextualSelectedAssetId = newAssetId
-                                            navigationViewModel?.commitAssetSelection(newAssetId ?: "")
+                                            val isDefaultSkin = type == ButtonStudioType.DEFAULT || def.manifest.id.startsWith("builtin.default_")
+                                            val newAssetId = if (isDefaultSkin) "" else def.manifest.id
+                                            contextualSelectedAssetId = if (newAssetId.isBlank()) null else newAssetId
+                                            navigationViewModel?.commitAssetSelection(newAssetId)
                                             Toast.makeText(context, "Selected ${def.manifest.name} for $targetKey", Toast.LENGTH_SHORT).show()
                                         }
                                     } else {

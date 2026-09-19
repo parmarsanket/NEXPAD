@@ -55,8 +55,8 @@ fun StudioGridCard(
     val context = LocalContext.current
     val type = remember(def.manifest.id) { resolveButtonSourceType(def) }
 
-    // Stop glowing in VIEWER mode. In EDITOR mode, glow buttons applied to the particular layout.
-    val isHighlight = mode == ButtonStudioMode.EDITOR && isAppliedToActiveProfile
+    // Stop glowing in VIEWER mode. In EDITOR and BUTTON_EDITOR mode, glow buttons applied to the particular layout.
+    val isHighlight = (mode == ButtonStudioMode.EDITOR || mode == ButtonStudioMode.BUTTON_EDITOR) && isAppliedToActiveProfile
     val animatedBorderColor by animateColorAsState(
         targetValue = if (isHighlight) NeonPalette.Cyan else Color.White.copy(alpha = 0.08f),
         label = "gridCardBorderColor"
@@ -66,7 +66,7 @@ fun StudioGridCard(
         label = "gridCardBorderWidth"
     )
     val animatedContainerColor by animateColorAsState(
-        targetValue = if (isHighlight) Color(0xFF0F1E33) else Color(0xFF0C1322),
+        targetValue = if (isHighlight) Color(0xFF0F2644) else Color(0xFF0C1322),
         label = "gridCardBgColor"
     )
 
@@ -85,23 +85,34 @@ fun StudioGridCard(
                 .background(Color(0xFF040810)),
             contentAlignment = Alignment.Center
         ) {
-            // In Editor mode, show an applied badge for the layout's active button
-            if (mode == ButtonStudioMode.EDITOR && isAppliedToActiveProfile) {
-                Box(
+            // In Editor or Button Editor mode, show an applied badge with Selected text for the active button
+            if ((mode == ButtonStudioMode.EDITOR || mode == ButtonStudioMode.BUTTON_EDITOR) && isAppliedToActiveProfile) {
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = NeonPalette.Cyan.copy(alpha = 0.22f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan),
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .padding(6.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(NeonPalette.Cyan.copy(alpha = 0.2f))
-                        .border(1.dp, NeonPalette.Cyan, RoundedCornerShape(4.dp))
-                        .padding(horizontal = 5.dp, vertical = 2.dp)
                 ) {
-                    Icon(
-                        Icons.Rounded.CheckCircle,
-                        contentDescription = null,
-                        tint = NeonPalette.Cyan,
-                        modifier = Modifier.size(12.dp)
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Icon(
+                            Icons.Rounded.CheckCircle,
+                            contentDescription = null,
+                            tint = NeonPalette.Cyan,
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Text(
+                            text = "Selected",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = NeonPalette.Cyan
+                        )
+                    }
                 }
             }
 
