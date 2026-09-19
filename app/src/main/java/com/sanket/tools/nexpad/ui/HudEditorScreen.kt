@@ -151,46 +151,40 @@ fun HudEditorScreen(
         val density = LocalDensity.current
         val coroutineScope = rememberCoroutineScope()
 
-        // Top Navigation Bar drag & dock state
+        // Auto-Dodge Coordinator for intelligent collision-avoidance overlay physics
         val defaultTopBarHeightPx = with(density) { 56.dp.toPx() }
-        var topBarHeightPx by remember { mutableFloatStateOf(defaultTopBarHeightPx) }
-        val topBarAnimatable = remember { Animatable(0f) }
-        var isDraggingTopBar by remember { mutableStateOf(false) }
-        val maxTopBarOffsetY = (screenHeightPx - topBarHeightPx).coerceAtLeast(0f)
-
-        // Docked Control Panel (Inspector) drag & dock state
         val defaultInspectorHeightPx = with(density) { 120.dp.toPx() }
-        var inspectorHeightPx by remember { mutableFloatStateOf(defaultInspectorHeightPx) }
-        val maxInspectorOffsetY = (screenHeightPx - inspectorHeightPx).coerceAtLeast(0f)
-        val inspectorAnimatable = remember { Animatable(maxInspectorOffsetY) }
-        var isDraggingInspector by remember { mutableStateOf(false) }
-        var userHasDraggedInspector by remember { mutableStateOf(false) }
+        val topBarAnimatable = remember { Animatable(0f) }
+        val inspectorAnimatable = remember { Animatable((screenHeightPx - defaultInspectorHeightPx).coerceAtLeast(0f)) }
 
-        // Smart initial placement when selecting elements: auto-dock opposite to element if user hasn't dragged
-        LaunchedEffect(selectedControl) {
-            if (selectedControl != null && !userHasDraggedInspector) {
-                val elem = elements[selectedControl]
-                if (elem != null) {
-                    val isTopHalf = elem.transform.yRatio < 0.48f
-                    val targetY = if (isTopHalf) {
-                        (screenHeightPx - inspectorHeightPx).coerceAtLeast(0f)
-                    } else {
-                        val topOffset = topBarAnimatable.value
-                        if (topOffset < 80f) {
-                            (topBarHeightPx + with(density) { 8.dp.toPx() }).coerceAtMost(maxInspectorOffsetY)
-                        } else {
-                            with(density) { 8.dp.toPx() }
-                        }
-                    }
-                    inspectorAnimatable.animateTo(
-                        targetValue = targetY,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioLowBouncy,
-                            stiffness = 500f
-                        )
-                    )
-                }
-            }
+        val autoDodgeCoordinator = remember {
+            HudAutoDodgeCoordinator(
+                topBarAnimatable = topBarAnimatable,
+                inspectorAnimatable = inspectorAnimatable,
+                coroutineScope = coroutineScope,
+                density = density
+            )
+        }
+
+        // Keep screen and overlay dimensions up-to-date in coordinator
+        LaunchedEffect(screenWidthPx, screenHeightPx) {
+            autoDodgeCoordinator.updateDimensions(
+                width = screenWidthPx,
+                height = screenHeightPx,
+                topBarH = defaultTopBarHeightPx,
+                inspectorH = defaultInspectorHeightPx
+            )
+        }
+
+        // Real-time button tracking: when element is selected or moves during drag/nudge, auto-dodge
+        val selectedElement = selectedControl?.let { elements[it] }
+        LaunchedEffect(
+            selectedControl,
+            selectedElement?.transform?.xRatio,
+            selectedElement?.transform?.yRatio,
+            selectedElement?.transform?.scale
+        ) {
+            autoDodgeCoordinator.onElementPositionChanged(selectedElement)
         }
 
         // 1. Fullscreen Touch Canvas (Zero-Recomposition GPU Rendering)
@@ -205,7 +199,7 @@ fun HudEditorScreen(
             onDragDelta = { control, dx, dy -> viewModel.nudge(control, dx, dy) }
         )
 
-        // 2. Top Navigation Bar (Draggable up/down with snap-to-dock)
+        // 2. Top Navigation Bar (Draggable up/down with auto-dodge & snap-to-dock)
         HudTopBar(
             profileName = profile.name,
             isDefault = profile.isDefault,
@@ -218,37 +212,31 @@ fun HudEditorScreen(
                     navController.popBackStack()
                 }
             },
-            isDragging = isDraggingTopBar,
-            onDragStart = { isDraggingTopBar = true },
-            onDragEnd = { isDraggingTopBar = false },
+            isDragging = autoDodgeCoordinator.isDraggingTopBar,
+            onDragStart = { autoDodgeCoordinator.isDraggingTopBar = true },
+            onDragEnd = { autoDodgeCoordinator.onTopBarDragEnd() },
             onDragY = { deltaY ->
                 coroutineScope.launch {
-                    topBarAnimatable.snapTo((topBarAnimatable.value + deltaY).coerceIn(0f, maxTopBarOffsetY))
+                    topBarAnimatable.snapTo((topBarAnimatable.value + deltaY).coerceIn(0f, autoDodgeCoordinator.maxTopBarOffsetY))
                 }
             },
-            onToggleDock = {
-                val currentY = topBarAnimatable.value
-                val targetY = if (currentY < maxTopBarOffsetY / 2f) maxTopBarOffsetY else 0f
-                coroutineScope.launch {
-                    topBarAnimatable.animateTo(
-                        targetValue = targetY,
-                        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = 500f)
-                    )
-                }
-            },
+            onToggleDock = { autoDodgeCoordinator.toggleTopBarDock() },
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .offset { IntOffset(0, topBarAnimatable.value.roundToInt()) }
                 .onGloballyPositioned { coordinates ->
-                    topBarHeightPx = coordinates.size.height.toFloat()
+                    val h = coordinates.size.height.toFloat()
+                    if (h > 0f && autoDodgeCoordinator.topBarHeightPx != h) {
+                        autoDodgeCoordinator.topBarHeightPx = h
+                    }
                 }
         )
 
-        // 3. Docked Control Panel for Selected Element (Draggable up/down with snap-to-dock)
+        // 3. Docked Control Panel for Selected Element (Draggable up/down with auto-dodge & snap-to-dock)
         if (selectedControl != null && elements.containsKey(selectedControl)) {
-            val selectedElement = elements[selectedControl]!!
+            val element = elements[selectedControl]!!
             HudDockedInspector(
-                element = selectedElement,
+                element = element,
                 compatibleSkins = compatibleSkins,
                 screenWidthPx = screenWidthPx,
                 screenHeightPx = screenHeightPx,
@@ -258,12 +246,10 @@ fun HudEditorScreen(
                 onOpacityChange = { viewModel.setOpacity(selectedControl!!, it) },
                 onCycleSkin = { viewModel.cycleNextSkin(selectedControl!!) },
                 onOpenStudio = {
-                    // Begin a contextual selection session so Button Studio knows
-                    // which control and profile it is serving.
                     navigationViewModel?.beginAssetSelection(
                         profileName = profile.name,
                         controlKey = selectedControl!!,
-                        currentAssetId = selectedElement.skinId,
+                        currentAssetId = element.skinId,
                         originScreen = OriginScreen.HUD_EDITOR
                     )
                     navController.navigate(
@@ -271,56 +257,30 @@ fun HudEditorScreen(
                             mode = "editor",
                             profileName = profile.name,
                             controlKey = selectedControl!!,
-                            currentAssetId = selectedElement.skinId
+                            currentAssetId = element.skinId
                         )
                     )
                 },
                 onResetPos = { viewModel.resetControlToDefault(selectedControl!!) },
                 onRemove = { viewModel.removeControl(selectedControl!!) },
-                isDragging = isDraggingInspector,
-                onDragStart = { isDraggingInspector = true },
-                onDragEnd = { isDraggingInspector = false },
+                isDragging = autoDodgeCoordinator.isDraggingInspector,
+                onDragStart = { autoDodgeCoordinator.isDraggingInspector = true },
+                onDragEnd = { autoDodgeCoordinator.onInspectorDragEnd() },
                 onDragY = { deltaY ->
-                    userHasDraggedInspector = true
                     coroutineScope.launch {
                         inspectorAnimatable.snapTo(
-                            (inspectorAnimatable.value + deltaY).coerceIn(0f, maxInspectorOffsetY)
+                            (inspectorAnimatable.value + deltaY).coerceIn(0f, autoDodgeCoordinator.maxInspectorOffsetY)
                         )
                     }
                 },
-                onToggleDock = {
-                    userHasDraggedInspector = true
-                    val currentY = inspectorAnimatable.value
-                    val targetY = if (currentY < maxInspectorOffsetY / 2f) {
-                        maxInspectorOffsetY
-                    } else {
-                        val topOffset = topBarAnimatable.value
-                        if (topOffset < 80f) {
-                            (topBarHeightPx + with(density) { 8.dp.toPx() }).coerceAtMost(maxInspectorOffsetY)
-                        } else {
-                            with(density) { 8.dp.toPx() }
-                        }
-                    }
-                    coroutineScope.launch {
-                        inspectorAnimatable.animateTo(
-                            targetValue = targetY,
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = 500f)
-                        )
-                    }
-                },
+                onToggleDock = { autoDodgeCoordinator.toggleInspectorDock() },
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .offset { IntOffset(0, inspectorAnimatable.value.roundToInt()) }
                     .onGloballyPositioned { coordinates ->
                         val newHeight = coordinates.size.height.toFloat()
-                        if (inspectorHeightPx != newHeight) {
-                            val wasAtBottom = kotlin.math.abs(maxInspectorOffsetY - inspectorAnimatable.value) < 15f
-                            inspectorHeightPx = newHeight
-                            if (wasAtBottom && !userHasDraggedInspector) {
-                                coroutineScope.launch {
-                                    inspectorAnimatable.snapTo((screenHeightPx - newHeight).coerceAtLeast(0f))
-                                }
-                            }
+                        if (newHeight > 0f && autoDodgeCoordinator.inspectorHeightPx != newHeight) {
+                            autoDodgeCoordinator.inspectorHeightPx = newHeight
                         }
                     }
             )
