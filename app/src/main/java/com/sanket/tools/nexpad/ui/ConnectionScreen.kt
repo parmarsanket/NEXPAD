@@ -1,83 +1,32 @@
 package com.sanket.tools.nexpad.ui
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Bluetooth
-import androidx.compose.material.icons.rounded.ExpandLess
-import androidx.compose.material.icons.rounded.ExpandMore
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Usb
-import androidx.compose.material.icons.rounded.Wifi
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import com.sanket.tools.nexpad.ui.layout.adaptiveLayoutSpec
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.sanket.tools.nexpad.ui.AppNavigator
 import com.sanket.tools.nexpad.ui.components.badge.HeaderStatusPill
+import com.sanket.tools.nexpad.ui.components.common.NexpadTopAppBar
 import com.sanket.tools.nexpad.ui.components.connection.ActiveSessionCard
-import com.sanket.tools.nexpad.ui.components.connection.BluetoothDeviceCard
-import com.sanket.tools.nexpad.ui.components.connection.ConnectionSection
-import com.sanket.tools.nexpad.ui.components.connection.ManualIpCard
-import com.sanket.tools.nexpad.ui.components.connection.ServerEntryCard
-import com.sanket.tools.nexpad.ui.components.connection.UsbAdbCard
-import com.sanket.tools.nexpad.ui.components.connection.UsbAoaCard
-import com.sanket.tools.nexpad.ui.components.connection.UsbTetheringCard
-import com.sanket.tools.nexpad.ui.theme.NeonPalette
+import com.sanket.tools.nexpad.ui.components.connection.ConnectionHubStatusCard
+import com.sanket.tools.nexpad.ui.components.connection.ConnectionTransportsContent
+import com.sanket.tools.nexpad.ui.layout.adaptiveLayoutSpec
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConnectionScreen(
     navController: AppNavigator,
@@ -127,169 +76,52 @@ fun ConnectionScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "Connection Hub",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.5.sp
-                        )
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
-                        )
-                    }
-                },
+            NexpadTopAppBar(
+                title = "Connection Hub",
+                subtitle = "Transports & Pairing Management",
+                onBack = { navController.popBackStack() },
                 actions = {
                     HeaderStatusPill(
                         isConnected = isConnected,
                         disconnectedText = "Idle",
                         modifier = Modifier.padding(end = 16.dp)
                     )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = Color.White
-                )
+                }
             )
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
-    @Composable
-    fun TransportsContent() {
-        Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-            // -------------------------------------------------------------
-            // 2. DISCOVERED COMPUTERS (Wi-Fi & USB Tethering)
-            // -------------------------------------------------------------
-            ConnectionSection(
-                icon = Icons.Rounded.Wifi,
-                title = "Network Discovery (Wi-Fi / Tethering)",
-                subtitle = "Automatic broadcast discovery on local network"
-            ) {
-                val wifiServers = discoveredServers.filter { !it.isUsbTethering }
-                val tetherServers = discoveredServers.filter { it.isUsbTethering }
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            val layout = adaptiveLayoutSpec(maxWidth, maxHeight)
 
-                if (discoveredServers.isEmpty()) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = NeonPalette.DarkCard),
-                        shape = RoundedCornerShape(14.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(18.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Text(
-                                "No computers discovered on LAN yet",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            OutlinedButton(
-                                onClick = { viewModel.startDiscovery() },
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Cyan),
-                                border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f)),
-                                shape = RoundedCornerShape(10.dp)
-                            ) {
-                                Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text("Rescan Network", style = MaterialTheme.typography.labelMedium)
-                            }
-                        }
-                    }
-                } else {
-                    // USB Tethering Servers First
-                    tetherServers.forEach { server ->
-                        ServerEntryCard(
-                            server = server,
-                            isTethering = true,
-                            onConnect = {
-                                Log.d("NEXPAD", "⏱️ [BENCHMARK] User CLICKED Connect (USB Tethering) in ConnectionHub for ${server.name} (${server.ipAddress}:${server.port})")
-                                viewModel.connect(server.ipAddress, server.port, server.name)
-                            }
-                        )
-                    }
-                    // Wi-Fi Servers
-                    wifiServers.forEach { server ->
-                        ServerEntryCard(
-                            server = server,
-                            isTethering = false,
-                            onConnect = {
-                                Log.d("NEXPAD", "⏱️ [BENCHMARK] User CLICKED Connect (Wi-Fi) in ConnectionHub for ${server.name} (${server.ipAddress}:${server.port})")
-                                viewModel.connect(server.ipAddress, server.port, server.name)
-                            }
-                        )
-                    }
-                }
-
-                // Manual IP Toggle Button
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(onClick = { showManualIpCard = !showManualIpCard }) {
-                        Icon(
-                            if (showManualIpCard) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                            contentDescription = null,
-                            tint = NeonPalette.Cyan,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            if (showManualIpCard) "Hide Manual IP" else "Manual IP Connect",
-                            color = NeonPalette.Cyan,
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
-                }
-
-                if (showManualIpCard) {
-                    ManualIpCard(
-                        manualIp = manualIp,
-                        manualPort = manualPort,
-                        onIpChange = { manualIp = it },
-                        onPortChange = { manualPort = it },
-                        onConnect = {
-                            val port = manualPort.toIntOrNull() ?: 9999
-                            if (manualIp.isNotBlank()) {
-                                viewModel.connect(manualIp.trim(), port, "Manual PC")
-                            } else {
-                                Toast.makeText(context, "Enter a valid IP address", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    )
-                }
-            }
-
-            // -------------------------------------------------------------
-            // 3. USB CONNECTIONS (AOA, ADB, Tethering)
-            // -------------------------------------------------------------
-            ConnectionSection(
-                icon = Icons.Rounded.Usb,
-                title = "USB Hardware Links",
-                subtitle = "Zero-latency physical cable connections"
-            ) {
-                UsbAoaCard(
+            val transportsComposable = @Composable {
+                ConnectionTransportsContent(
+                    discoveredServers = discoveredServers,
+                    pairedDevices = pairedDevices,
+                    manualIp = manualIp,
+                    manualPort = manualPort,
+                    showManualIpCard = showManualIpCard,
                     isAoaAttached = isAoaAttached,
                     isUsbCableConnected = isUsbCableConnected,
-                    onConnectAoa = { viewModel.switchToAoaConnection() }
-                )
-
-                UsbAdbCard(
-                    isUsbCableConnected = isUsbCableConnected,
-                    isAdbOn = viewModel.isUsbDebuggingEnabled(),
                     isAdbAvailable = isAdbAvailable,
                     adbServerName = adbServerName,
+                    isUsbDebuggingEnabled = viewModel.isUsbDebuggingEnabled(),
+                    onManualIpChange = { manualIp = it },
+                    onManualPortChange = { manualPort = it },
+                    onToggleManualIpCard = { showManualIpCard = !showManualIpCard },
+                    onConnectServer = { ip, port, name ->
+                        viewModel.connect(ip, port, name)
+                    },
+                    onConnectAoa = { viewModel.switchToAoaConnection() },
                     onConnectAdb = { viewModel.switchToAdbConnection() },
+                    onConnectBluetooth = { address, name ->
+                        viewModel.switchToBluetoothConnection(address, name)
+                    },
+                    onRescanNetwork = { viewModel.startDiscovery() },
                     onOpenDeveloperSettings = {
                         try {
                             val intent = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
@@ -297,10 +129,7 @@ fun ConnectionScreen(
                         } catch (_: Exception) {
                             Toast.makeText(context, "Developer settings not found", Toast.LENGTH_SHORT).show()
                         }
-                    }
-                )
-
-                UsbTetheringCard(
+                    },
                     onOpenTetheringSettings = {
                         try {
                             val intent = Intent().apply {
@@ -310,287 +139,93 @@ fun ConnectionScreen(
                         } catch (_: Exception) {
                             Toast.makeText(context, "Cannot open tethering settings directly", Toast.LENGTH_SHORT).show()
                         }
+                    },
+                    onReloadBluetoothDevices = {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            val hasPerm = ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.BLUETOOTH_CONNECT
+                            ) == PackageManager.PERMISSION_GRANTED
+                            if (!hasPerm) {
+                                bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+                            } else {
+                                pairedDevices = viewModel.getPairedBluetoothDevices()
+                            }
+                        } else {
+                            pairedDevices = viewModel.getPairedBluetoothDevices()
+                        }
+                    },
+                    onOpenBluetoothSettings = {
+                        try {
+                            context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
+                        } catch (_: Exception) {}
                     }
                 )
             }
 
-            // -------------------------------------------------------------
-            // 4. BLUETOOTH CLASSIC
-            // -------------------------------------------------------------
-            ConnectionSection(
-                icon = Icons.Rounded.Bluetooth,
-                title = "Bluetooth Classic",
-                subtitle = "RFCOMM serial wireless link"
-            ) {
-                if (pairedDevices.isEmpty()) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = NeonPalette.DarkCard),
-                        shape = RoundedCornerShape(14.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+            if (layout.useTwoPaneLayout) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = layout.horizontalPadding, vertical = layout.verticalPadding),
+                    horizontalArrangement = Arrangement.spacedBy(layout.paneSpacing)
+                ) {
+                    // Left Sticky Pane
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Text(
-                                "No paired Bluetooth computers found.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                        if (isConnected) {
+                            ActiveSessionCard(
+                                stats = connectionStats,
+                                onDisconnect = { viewModel.disconnect() }
                             )
-                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                OutlinedButton(
-                                    onClick = {
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                            val hasPerm = ContextCompat.checkSelfPermission(
-                                                context,
-                                                Manifest.permission.BLUETOOTH_CONNECT
-                                            ) == PackageManager.PERMISSION_GRANTED
-                                            if (!hasPerm) {
-                                                bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
-                                            } else {
-                                                pairedDevices = viewModel.getPairedBluetoothDevices()
-                                            }
-                                        } else {
-                                            pairedDevices = viewModel.getPairedBluetoothDevices()
-                                        }
-                                    },
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Cyan),
-                                    border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f)),
-                                    shape = RoundedCornerShape(10.dp)
-                                ) {
-                                    Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(Modifier.width(6.dp))
-                                    Text("Reload Paired", style = MaterialTheme.typography.labelMedium)
+                        } else {
+                            ConnectionHubStatusCard(
+                                isUsbCableConnected = isUsbCableConnected,
+                                isAoaAttached = isAoaAttached,
+                                isAdbAvailable = isAdbAvailable,
+                                onRescan = { viewModel.startDiscovery() },
+                                onOpenBluetoothSettings = {
+                                    try {
+                                        context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
+                                    } catch (_: Exception) {}
                                 }
-
-                                OutlinedButton(
-                                    onClick = {
-                                        try {
-                                            context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
-                                        } catch (_: Exception) {}
-                                    },
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)),
-                                    shape = RoundedCornerShape(10.dp)
-                                ) {
-                                    Text("Pair in Settings", style = MaterialTheme.typography.labelMedium)
-                                }
-                            }
+                            )
                         }
                     }
-                } else {
-                    pairedDevices.forEach { device ->
-                        @SuppressLint("MissingPermission")
-                        val devName = device.name ?: "Unknown Device"
-                        val devAddress = device.address
 
-                        BluetoothDeviceCard(
-                            name = devName,
-                            address = devAddress,
-                            onConnect = { viewModel.switchToBluetoothConnection(devAddress, devName) }
-                        )
+                    // Right Scrollable Pane
+                    Column(
+                        modifier = Modifier
+                            .weight(1.25f)
+                            .fillMaxHeight()
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(24.dp)
+                    ) {
+                        transportsComposable()
                     }
                 }
-            }
-
-            Spacer(Modifier.height(16.dp))
-        }
-    }
-
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(innerPadding)
-    ) {
-        val layout = adaptiveLayoutSpec(maxWidth, maxHeight)
-
-        if (layout.useTwoPaneLayout) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = layout.horizontalPadding, vertical = layout.verticalPadding),
-                horizontalArrangement = Arrangement.spacedBy(layout.paneSpacing)
-            ) {
-                // Left Sticky Pane
+            } else {
+                // Single Column (Portrait)
                 Column(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = layout.horizontalPadding, vertical = layout.verticalPadding),
+                    verticalArrangement = Arrangement.spacedBy(layout.contentSpacing)
                 ) {
                     if (isConnected) {
                         ActiveSessionCard(
                             stats = connectionStats,
                             onDisconnect = { viewModel.disconnect() }
                         )
-                    } else {
-                        ConnectionHubStatusCard(
-                            isUsbCableConnected = isUsbCableConnected,
-                            isAoaAttached = isAoaAttached,
-                            isAdbAvailable = isAdbAvailable,
-                            onRescan = { viewModel.startDiscovery() },
-                            onOpenBluetoothSettings = {
-                                try {
-                                    context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
-                                } catch (_: Exception) {}
-                            }
-                        )
                     }
-                }
-
-                // Right Scrollable Pane
-                Column(
-                    modifier = Modifier
-                        .weight(1.25f)
-                        .fillMaxHeight()
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(24.dp)
-                ) {
-                    TransportsContent()
-                }
-            }
-        } else {
-            // Single Column (Portrait)
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = layout.horizontalPadding, vertical = layout.verticalPadding),
-                verticalArrangement = Arrangement.spacedBy(layout.contentSpacing)
-            ) {
-                if (isConnected) {
-                    ActiveSessionCard(
-                        stats = connectionStats,
-                        onDisconnect = { viewModel.disconnect() }
-                    )
-                }
-                TransportsContent()
-            }
-        }
-    }
-}
-}
-
-@Composable
-private fun ConnectionHubStatusCard(
-    isUsbCableConnected: Boolean,
-    isAoaAttached: Boolean,
-    isAdbAvailable: Boolean,
-    onRescan: () -> Unit,
-    onOpenBluetoothSettings: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = NeonPalette.DarkCard),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.3f))
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "Link Status",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Text(
-                    "Standby",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.Yellow,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Text(
-                "Connect via local Wi-Fi, USB cable (AOA / ADB / Tethering), or Bluetooth Classic.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
-
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatusIndicatorRow(
-                    label = "USB Cable",
-                    status = if (isUsbCableConnected) "Plugged In" else "Disconnected",
-                    isGood = isUsbCableConnected
-                )
-                StatusIndicatorRow(
-                    label = "AOA Accessory",
-                    status = if (isAoaAttached) "Attached" else "Ready",
-                    isGood = isAoaAttached
-                )
-                StatusIndicatorRow(
-                    label = "ADB Server",
-                    status = if (isAdbAvailable) "Online" else "Offline",
-                    isGood = isAdbAvailable
-                )
-            }
-
-            Spacer(Modifier.height(4.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onRescan,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Cyan),
-                    border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f)),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(15.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Rescan", style = MaterialTheme.typography.labelMedium)
-                }
-
-                OutlinedButton(
-                    onClick = onOpenBluetoothSettings,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(Icons.Rounded.Bluetooth, contentDescription = null, modifier = Modifier.size(15.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("BT Pair", style = MaterialTheme.typography.labelMedium)
+                    transportsComposable()
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun StatusIndicatorRow(label: String, status: String, isGood: Boolean) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            status,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            color = if (isGood) NeonPalette.Green else Color.Gray
-        )
     }
 }

@@ -1,47 +1,21 @@
 package com.sanket.tools.nexpad.ui
 
 import android.content.SharedPreferences
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import com.sanket.tools.nexpad.ui.layout.adaptiveLayoutSpec
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.ui.AppNavigator
+import com.sanket.tools.nexpad.ui.components.common.NexpadTopAppBar
+import com.sanket.tools.nexpad.ui.components.effects.CyberGrid
+import com.sanket.tools.nexpad.ui.components.effects.ScanLine
+import com.sanket.tools.nexpad.ui.layout.adaptiveLayoutSpec
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
@@ -62,162 +36,159 @@ fun SettingsScreen(
     }
 
     var ipAddress by remember { mutableStateOf(sharedPref.getString("LAST_IP", "") ?: "") }
-
     val scrollState = rememberScrollState()
 
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF121212)),
-        contentAlignment = Alignment.TopCenter
-    ) {
-        val layout = adaptiveLayoutSpec(maxWidth, maxHeight)
-
-        Column(
-            modifier = Modifier
-                .widthIn(max = layout.formMaxWidth)
-                .fillMaxWidth()
-                .padding(horizontal = layout.horizontalPadding, vertical = layout.verticalPadding)
-                .verticalScroll(scrollState)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                        contentDescription = "Back",
-                        tint = Color.White
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Settings", fontSize = 24.sp, color = Color.White)
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // PC Connection
-            Text("Manual PC Connection (Fallback)", color = Color.LightGray)
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedTextField(
-                    value = ipAddress,
-                    onValueChange = { ipAddress = it },
-                    label = { Text("IP Address", color = Color.Gray) },
-                    modifier = Modifier.weight(1f),
-                    enabled = !isConnected,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedBorderColor = NeonPalette.Green,
-                        unfocusedBorderColor = Color.DarkGray
-                    )
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Button(
-                    onClick = {
-                        if (isConnected) {
-                            viewModel.disconnect()
-                        } else {
-                            if (ipAddress.isNotBlank()) {
-                                sharedPref.edit().putString("LAST_IP", ipAddress).apply()
-                                viewModel.connect(ipAddress, 9999)
-                            }
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isConnected) NeonPalette.Red else Color(0xFF00C853)
-                    )
-                ) {
-                    Text(if (isConnected) "Disconnect" else "Connect")
-                }
-            }
-
-            if (diagnosticLog.isNotEmpty()) {
-                Text("Network Diagnostics", color = Color.LightGray, fontSize = 13.sp, modifier = Modifier.padding(top = 12.dp))
-                Text(
-                    diagnosticLog.takeLast(8).joinToString("\n"),
-                    color = Color(0xFF9E9E9E),
-                    fontSize = 10.sp,
-                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Elite Customization Options
-            Text("Elite Controller Settings", color = Color.LightGray)
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("RGB Lighting", color = Color.White)
-                Spacer(modifier = Modifier.weight(1f))
-                Switch(
-                    checked = currentProfile.isRgbEnabled,
-                    onCheckedChange = {
-                        layoutManager.saveProfile(currentProfile.copy(isRgbEnabled = it))
-                    },
-                    colors = SwitchDefaults.colors(checkedThumbColor = NeonPalette.Green, checkedTrackColor = Color.DarkGray)
-                )
-            }
-
-            var rumbleIntensity by remember { mutableFloatStateOf(sharedPref.getFloat("RUMBLE_INTENSITY", 1.0f)) }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            Text("Haptics & Vibration", color = Color.LightGray)
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Rumble Intensity Master Volume: ${(rumbleIntensity * 100).toInt()}%", color = Color.White)
-            }
-            Slider(
-                value = rumbleIntensity,
-                onValueChange = {
-                    rumbleIntensity = it
-                    sharedPref.edit().putFloat("RUMBLE_INTENSITY", it).apply()
-                },
-                valueRange = 0f..1.0f,
-                colors = SliderDefaults.colors(thumbColor = NeonPalette.Green, activeTrackColor = NeonPalette.Green)
+    Scaffold(
+        topBar = {
+            NexpadTopAppBar(
+                title = "Settings",
+                subtitle = "App & Controller Configuration",
+                onBack = { navController.popBackStack() }
             )
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { padding ->
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            CyberGrid(modifier = Modifier.matchParentSize())
+            ScanLine(modifier = Modifier.matchParentSize())
 
-            Spacer(modifier = Modifier.height(16.dp))
+            val layout = adaptiveLayoutSpec(maxWidth, maxHeight)
 
-            var rumbleMode by remember { mutableStateOf(sharedPref.getString("RUMBLE_MODE", "min") ?: "min") }
-
-            Text("Rumble Mode (Stereo Mix)", color = Color.LightGray)
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Column(
+                modifier = Modifier
+                    .widthIn(max = layout.formMaxWidth)
+                    .fillMaxWidth()
+                    .padding(horizontal = layout.horizontalPadding, vertical = layout.verticalPadding)
+                    .verticalScroll(scrollState)
             ) {
-                val modes = listOf(
-                    "smart" to "Smart",
-                    "max" to "Max",
-                    "avg" to "Avg",
-                    "min" to "Min"
-                )
-
-                modes.forEach { (id, label) ->
-                    val isSelected = rumbleMode == id
+                // PC Connection
+                Text("Manual PC Connection (Fallback)", color = Color.LightGray)
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = ipAddress,
+                        onValueChange = { ipAddress = it },
+                        label = { Text("IP Address", color = Color.Gray) },
+                        modifier = Modifier.weight(1f),
+                        enabled = !isConnected,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = NeonPalette.Green,
+                            unfocusedBorderColor = Color.DarkGray
+                        )
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
                     Button(
                         onClick = {
-                            rumbleMode = id
-                            sharedPref.edit().putString("RUMBLE_MODE", id).apply()
+                            if (isConnected) {
+                                viewModel.disconnect()
+                            } else {
+                                if (ipAddress.isNotBlank()) {
+                                    sharedPref.edit().putString("LAST_IP", ipAddress).apply()
+                                    viewModel.connect(ipAddress, 9999)
+                                }
+                            }
                         },
-                        modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isSelected) NeonPalette.Green else Color.DarkGray,
-                            contentColor = if (isSelected) Color.Black else Color.White
+                            containerColor = if (isConnected) NeonPalette.Red else Color(0xFF00C853)
                         )
                     ) {
-                        Text(label)
+                        Text(if (isConnected) "Disconnect" else "Connect")
+                    }
+                }
+
+                if (diagnosticLog.isNotEmpty()) {
+                    Text("Network Diagnostics", color = Color.LightGray, fontSize = 13.sp, modifier = Modifier.padding(top = 12.dp))
+                    Text(
+                        diagnosticLog.takeLast(8).joinToString("\n"),
+                        color = Color(0xFF9E9E9E),
+                        fontSize = 10.sp,
+                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Elite Customization Options
+                Text("Elite Controller Settings", color = Color.LightGray)
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("RGB Lighting", color = Color.White)
+                    Spacer(modifier = Modifier.weight(1f))
+                    Switch(
+                        checked = currentProfile.isRgbEnabled,
+                        onCheckedChange = {
+                            layoutManager.saveProfile(currentProfile.copy(isRgbEnabled = it))
+                        },
+                        colors = SwitchDefaults.colors(checkedThumbColor = NeonPalette.Green, checkedTrackColor = Color.DarkGray)
+                    )
+                }
+
+                var rumbleIntensity by remember { mutableFloatStateOf(sharedPref.getFloat("RUMBLE_INTENSITY", 1.0f)) }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                Text("Haptics & Vibration", color = Color.LightGray)
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Rumble Intensity Master Volume: ${(rumbleIntensity * 100).toInt()}%", color = Color.White)
+                }
+                Slider(
+                    value = rumbleIntensity,
+                    onValueChange = {
+                        rumbleIntensity = it
+                        sharedPref.edit().putFloat("RUMBLE_INTENSITY", it).apply()
+                    },
+                    valueRange = 0f..1.0f,
+                    colors = SliderDefaults.colors(thumbColor = NeonPalette.Green, activeTrackColor = NeonPalette.Green)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                var rumbleMode by remember { mutableStateOf(sharedPref.getString("RUMBLE_MODE", "min") ?: "min") }
+
+                Text("Rumble Mode (Stereo Mix)", color = Color.LightGray)
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val modes = listOf(
+                        "smart" to "Smart",
+                        "max" to "Max",
+                        "avg" to "Avg",
+                        "min" to "Min"
+                    )
+
+                    modes.forEach { (id, label) ->
+                        val isSelected = rumbleMode == id
+                        Button(
+                            onClick = {
+                                rumbleMode = id
+                                sharedPref.edit().putString("RUMBLE_MODE", id).apply()
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isSelected) NeonPalette.Green else Color.DarkGray,
+                                contentColor = if (isSelected) Color.Black else Color.White
+                            )
+                        ) {
+                            Text(label)
+                        }
                     }
                 }
             }
-
-            // Gyro settings have been moved to the Desktop app.
         }
     }
 }
