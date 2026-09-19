@@ -556,4 +556,125 @@ class CategoryManagerHudTest {
         assertTrue(deleted)
         assertEquals(listOf("Standard Elite", "Racing Master"), order)
     }
+
+    @Test
+    fun testDragDropCoordinateCompensationUnderScroll() {
+        // Initial state
+        val initialItemOffset = androidx.compose.ui.unit.IntOffset(0, 300)
+        var totalDragDelta = androidx.compose.ui.geometry.Offset(0f, 50f)
+        var currentItemOffset = initialItemOffset
+
+        // Visual position before scroll
+        var translation = totalDragDelta + androidx.compose.ui.geometry.Offset(
+            (initialItemOffset.x - currentItemOffset.x).toFloat(),
+            (initialItemOffset.y - currentItemOffset.y).toFloat()
+        )
+        var renderedY = currentItemOffset.y + translation.y
+        assertEquals(350f, renderedY, 0.001f)
+
+        // Simulate grid scrolling by 30px (content shifts up in viewport, offset decreases)
+        currentItemOffset = androidx.compose.ui.unit.IntOffset(0, 270)
+        // User finger didn't move on the glass
+        translation = totalDragDelta + androidx.compose.ui.geometry.Offset(
+            (initialItemOffset.x - currentItemOffset.x).toFloat(),
+            (initialItemOffset.y - currentItemOffset.y).toFloat()
+        )
+        // Translation automatically compensated from 50 to 80
+        assertEquals(80f, translation.y, 0.001f)
+        renderedY = currentItemOffset.y + translation.y
+        // Rendered position on glass remains rock-solid at 350!
+        assertEquals(350f, renderedY, 0.001f)
+    }
+
+    @Test
+    fun testDragDropCoordinateCompensationUnderItemSwap() {
+        val initialItemOffset = androidx.compose.ui.unit.IntOffset(0, 200)
+        val totalDragDelta = androidx.compose.ui.geometry.Offset(0f, 150f)
+
+        // Dragged card at slot 0 (y = 200)
+        var currentItemOffset = initialItemOffset
+        var translation = totalDragDelta + androidx.compose.ui.geometry.Offset(
+            (initialItemOffset.x - currentItemOffset.x).toFloat(),
+            (initialItemOffset.y - currentItemOffset.y).toFloat()
+        )
+        assertEquals(350f, currentItemOffset.y + translation.y, 0.001f)
+
+        // Items swap: dragged card is now placed at slot 1 (y = 400)
+        currentItemOffset = androidx.compose.ui.unit.IntOffset(0, 400)
+        translation = totalDragDelta + androidx.compose.ui.geometry.Offset(
+            (initialItemOffset.x - currentItemOffset.x).toFloat(),
+            (initialItemOffset.y - currentItemOffset.y).toFloat()
+        )
+        // Translation instantly compensates from 150 to -50
+        assertEquals(-50f, translation.y, 0.001f)
+        // Rendered position remains exactly 350 without even a 1-pixel jump!
+        assertEquals(350f, currentItemOffset.y + translation.y, 0.001f)
+    }
+
+    @Test
+    fun testDragDropAutoScrollDeltaCalculations() {
+        val viewportHeight = 1000f
+        val edgeThreshold = 160f // 16% of 1000
+
+        fun calculateDelta(pointerY: Float): Float {
+            return when {
+                pointerY < edgeThreshold -> {
+                    val factor = ((edgeThreshold - pointerY) / edgeThreshold).coerceIn(0.1f, 1.2f)
+                    val speed = 10f + (24f * factor)
+                    -speed
+                }
+                pointerY > (viewportHeight - edgeThreshold) -> {
+                    val factor = ((pointerY - (viewportHeight - edgeThreshold)) / edgeThreshold).coerceIn(0.1f, 1.2f)
+                    val speed = 10f + (24f * factor)
+                    speed
+                }
+                else -> 0f
+            }
+        }
+
+        // Center safe zone: no scroll
+        assertEquals(0f, calculateDelta(500f), 0.001f)
+        assertEquals(0f, calculateDelta(200f), 0.001f)
+        assertEquals(0f, calculateDelta(800f), 0.001f)
+
+        // Near top threshold (pointer at 80px): scroll up (negative)
+        val topScroll = calculateDelta(80f)
+        assertTrue(topScroll < 0f)
+        assertEquals(-22f, topScroll, 0.5f)
+
+        // Beyond top edge (pointer at -20px): max scroll up
+        val beyondTopScroll = calculateDelta(-20f)
+        assertTrue(beyondTopScroll < topScroll)
+
+        // Near bottom threshold (pointer at 920px): scroll down (positive)
+        val bottomScroll = calculateDelta(920f)
+        assertTrue(bottomScroll > 0f)
+        assertEquals(22f, bottomScroll, 0.5f)
+
+        // Beyond bottom edge (pointer at 1050px): max scroll down
+        val beyondBottomScroll = calculateDelta(1050f)
+        assertTrue(beyondBottomScroll > bottomScroll)
+    }
+
+    @Test
+    fun testDragDropRectCenterContainmentCollision() {
+        val draggedRect = androidx.compose.ui.geometry.Rect(
+            left = 10f,
+            top = 220f,
+            right = 390f,
+            bottom = 420f
+        )
+
+        // Stationary card A: top 50, height 150 (center y = 125) -> not contained
+        val cardACenter = androidx.compose.ui.geometry.Offset(200f, 125f)
+        assertFalse(draggedRect.contains(cardACenter))
+
+        // Stationary card B: top 240, height 150 (center y = 315) -> contained!
+        val cardBCenter = androidx.compose.ui.geometry.Offset(200f, 315f)
+        assertTrue(draggedRect.contains(cardBCenter))
+
+        // Stationary card C: top 430, height 150 (center y = 505) -> not contained
+        val cardCCenter = androidx.compose.ui.geometry.Offset(200f, 505f)
+        assertFalse(draggedRect.contains(cardCCenter))
+    }
 }

@@ -3,11 +3,15 @@ package com.sanket.tools.nexpad.ui
 import android.content.pm.ActivityInfo
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -26,11 +30,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import com.sanket.tools.nexpad.ui.AppNavigator
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.CategoryType
@@ -54,6 +62,7 @@ fun HudEditorScreen(
     navigationViewModel: NavigationViewModel? = null,
     initialProfileName: String? = null,
     initialControlKey: String? = null,
+    gamepadViewModel: GamepadViewModel? = null,
     viewModel: HudEditorViewModel = viewModel(
         factory = HudEditorViewModelFactory(
             layoutManager = layoutManager,
@@ -69,7 +78,11 @@ fun HudEditorScreen(
     val compatibleSkins by viewModel.compatibleSkins.collectAsState()
     val hasUnsavedChanges by viewModel.hasUnsavedChanges.collectAsState()
 
-    val dummyGamepadViewModel = viewModel<GamepadViewModel>()
+    val effectiveGamepadViewModel: GamepadViewModel = gamepadViewModel ?: remember(context) {
+        (context as? androidx.activity.ComponentActivity)?.let { activity ->
+            androidx.lifecycle.ViewModelProvider(activity)[GamepadViewModel::class.java]
+        }
+    } ?: viewModel<GamepadViewModel>(context as androidx.lifecycle.ViewModelStoreOwner)
     var showAddDialog by remember { mutableStateOf(false) }
 
     // Unsaved-changes guard: show dialog before leaving if edits exist
@@ -133,6 +146,50 @@ fun HudEditorScreen(
     ) {
         val screenWidthPx = maxOf(constraints.maxWidth, constraints.maxHeight).toFloat()
         val screenHeightPx = minOf(constraints.maxWidth, constraints.maxHeight).toFloat()
+        val density = LocalDensity.current
+        val coroutineScope = rememberCoroutineScope()
+
+        // Top Navigation Bar drag & dock state
+        val defaultTopBarHeightPx = with(density) { 56.dp.toPx() }
+        var topBarHeightPx by remember { mutableFloatStateOf(defaultTopBarHeightPx) }
+        val topBarAnimatable = remember { Animatable(0f) }
+        var isDraggingTopBar by remember { mutableStateOf(false) }
+        val maxTopBarOffsetY = (screenHeightPx - topBarHeightPx).coerceAtLeast(0f)
+
+        // Docked Control Panel (Inspector) drag & dock state
+        val defaultInspectorHeightPx = with(density) { 120.dp.toPx() }
+        var inspectorHeightPx by remember { mutableFloatStateOf(defaultInspectorHeightPx) }
+        val maxInspectorOffsetY = (screenHeightPx - inspectorHeightPx).coerceAtLeast(0f)
+        val inspectorAnimatable = remember { Animatable(maxInspectorOffsetY) }
+        var isDraggingInspector by remember { mutableStateOf(false) }
+        var userHasDraggedInspector by remember { mutableStateOf(false) }
+
+        // Smart initial placement when selecting elements: auto-dock opposite to element if user hasn't dragged
+        LaunchedEffect(selectedControl) {
+            if (selectedControl != null && !userHasDraggedInspector) {
+                val elem = elements[selectedControl]
+                if (elem != null) {
+                    val isTopHalf = elem.transform.yRatio < 0.48f
+                    val targetY = if (isTopHalf) {
+                        (screenHeightPx - inspectorHeightPx).coerceAtLeast(0f)
+                    } else {
+                        val topOffset = topBarAnimatable.value
+                        if (topOffset < 80f) {
+                            (topBarHeightPx + with(density) { 8.dp.toPx() }).coerceAtMost(maxInspectorOffsetY)
+                        } else {
+                            with(density) { 8.dp.toPx() }
+                        }
+                    }
+                    inspectorAnimatable.animateTo(
+                        targetValue = targetY,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioLowBouncy,
+                            stiffness = 500f
+                        )
+                    )
+                }
+            }
+        }
 
         // 1. Fullscreen Touch Canvas (Zero-Recomposition GPU Rendering)
         HudCanvas(
@@ -141,12 +198,12 @@ fun HudEditorScreen(
             screenWidthPx = screenWidthPx,
             screenHeightPx = screenHeightPx,
             isRgbEnabled = profile.isRgbEnabled,
-            dummyViewModel = dummyGamepadViewModel,
+            dummyViewModel = effectiveGamepadViewModel,
             onSelect = { viewModel.selectControl(it) },
             onDragDelta = { control, dx, dy -> viewModel.nudge(control, dx, dy) }
         )
 
-        // 2. Top Navigation Bar
+        // 2. Top Navigation Bar (Draggable up/down with snap-to-dock)
         HudTopBar(
             profileName = profile.name,
             isDefault = profile.isDefault,
@@ -159,10 +216,33 @@ fun HudEditorScreen(
                     navController.popBackStack()
                 }
             },
-            modifier = Modifier.align(Alignment.TopCenter)
+            isDragging = isDraggingTopBar,
+            onDragStart = { isDraggingTopBar = true },
+            onDragEnd = { isDraggingTopBar = false },
+            onDragY = { deltaY ->
+                coroutineScope.launch {
+                    topBarAnimatable.snapTo((topBarAnimatable.value + deltaY).coerceIn(0f, maxTopBarOffsetY))
+                }
+            },
+            onToggleDock = {
+                val currentY = topBarAnimatable.value
+                val targetY = if (currentY < maxTopBarOffsetY / 2f) maxTopBarOffsetY else 0f
+                coroutineScope.launch {
+                    topBarAnimatable.animateTo(
+                        targetValue = targetY,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = 500f)
+                    )
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .offset { IntOffset(0, topBarAnimatable.value.roundToInt()) }
+                .onGloballyPositioned { coordinates ->
+                    topBarHeightPx = coordinates.size.height.toFloat()
+                }
         )
 
-        // 3. Docked Control Panel for Selected Element
+        // 3. Docked Control Panel for Selected Element (Draggable up/down with snap-to-dock)
         if (selectedControl != null && elements.containsKey(selectedControl)) {
             val selectedElement = elements[selectedControl]!!
             HudDockedInspector(
@@ -195,9 +275,52 @@ fun HudEditorScreen(
                 },
                 onResetPos = { viewModel.resetControlToDefault(selectedControl!!) },
                 onRemove = { viewModel.removeControl(selectedControl!!) },
-                modifier = Modifier.align(
-                    if (selectedElement.transform.yRatio < 0.48f) Alignment.BottomCenter else Alignment.TopCenter
-                )
+                isDragging = isDraggingInspector,
+                onDragStart = { isDraggingInspector = true },
+                onDragEnd = { isDraggingInspector = false },
+                onDragY = { deltaY ->
+                    userHasDraggedInspector = true
+                    coroutineScope.launch {
+                        inspectorAnimatable.snapTo(
+                            (inspectorAnimatable.value + deltaY).coerceIn(0f, maxInspectorOffsetY)
+                        )
+                    }
+                },
+                onToggleDock = {
+                    userHasDraggedInspector = true
+                    val currentY = inspectorAnimatable.value
+                    val targetY = if (currentY < maxInspectorOffsetY / 2f) {
+                        maxInspectorOffsetY
+                    } else {
+                        val topOffset = topBarAnimatable.value
+                        if (topOffset < 80f) {
+                            (topBarHeightPx + with(density) { 8.dp.toPx() }).coerceAtMost(maxInspectorOffsetY)
+                        } else {
+                            with(density) { 8.dp.toPx() }
+                        }
+                    }
+                    coroutineScope.launch {
+                        inspectorAnimatable.animateTo(
+                            targetValue = targetY,
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = 500f)
+                        )
+                    }
+                },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .offset { IntOffset(0, inspectorAnimatable.value.roundToInt()) }
+                    .onGloballyPositioned { coordinates ->
+                        val newHeight = coordinates.size.height.toFloat()
+                        if (inspectorHeightPx != newHeight) {
+                            val wasAtBottom = kotlin.math.abs(maxInspectorOffsetY - inspectorAnimatable.value) < 15f
+                            inspectorHeightPx = newHeight
+                            if (wasAtBottom && !userHasDraggedInspector) {
+                                coroutineScope.launch {
+                                    inspectorAnimatable.snapTo((screenHeightPx - newHeight).coerceAtLeast(0f))
+                                }
+                            }
+                        }
+                    }
             )
         }
 
@@ -422,6 +545,7 @@ private fun HudCanvas(
 
 /**
  * Top Navigation Bar for HUD Editor.
+ * Draggable and movable vertically (up/down) with snap-to-dock toggle.
  */
 @Composable
 private fun HudTopBar(
@@ -431,96 +555,191 @@ private fun HudTopBar(
     onBack: () -> Unit,
     onOpenPalette: () -> Unit,
     onSave: () -> Unit,
+    isDragging: Boolean = false,
+    onDragStart: () -> Unit = {},
+    onDragEnd: () -> Unit = {},
+    onDragY: (Float) -> Unit = {},
+    onToggleDock: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val borderColor = if (isDragging) NeonPalette.Cyan else Color.White.copy(alpha = 0.15f)
+    val borderWidth = if (isDragging) 1.5.dp else 1.dp
+    val shadowElevation = if (isDragging) 16.dp else 8.dp
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
-        shadowElevation = 8.dp
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = if (isDragging) 0.98f else 0.92f),
+        border = androidx.compose.foundation.BorderStroke(borderWidth, borderColor),
+        shadowElevation = shadowElevation
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Left: Back button + Profile Name
+        Column(modifier = Modifier.fillMaxWidth()) {
             Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                IconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = Color.White)
-                }
-
-                Column {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Text(
-                            text = profileName,
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = Color.White)
-                        )
-                        if (isDefault) {
-                            Surface(
-                                shape = CircleShape,
-                                color = NeonPalette.Cyan.copy(alpha = 0.15f),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f))
-                            ) {
-                                Text(
-                                    "DEFAULT",
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = NeonPalette.Cyan,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
+                // Left: Back button + Profile Name
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    IconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
 
-                    Text(
-                        text = if (hasUnsavedChanges) "• Unsaved changes" else "Touch button to customize",
-                        fontSize = 10.sp,
-                        color = if (hasUnsavedChanges) Color(0xFFFFB703) else MaterialTheme.colorScheme.onSurfaceVariant
+                    Column(
+                        modifier = Modifier.pointerInput(Unit) {
+                            detectVerticalDragGestures(
+                                onDragStart = { onDragStart() },
+                                onDragEnd = { onDragEnd() },
+                                onDragCancel = { onDragEnd() },
+                                onVerticalDrag = { change, dragAmount ->
+                                    change.consume()
+                                    onDragY(dragAmount)
+                                }
+                            )
+                        }
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = profileName,
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = Color.White)
+                            )
+                            if (isDefault) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = NeonPalette.Cyan.copy(alpha = 0.15f),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f))
+                                ) {
+                                    Text(
+                                        "DEFAULT",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = NeonPalette.Cyan,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Text(
+                            text = if (hasUnsavedChanges) "• Unsaved changes" else "Touch button to customize",
+                            fontSize = 10.sp,
+                            color = if (hasUnsavedChanges) Color(0xFFFFB703) else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                // Center: Dedicated Drag Handle Affordance ("MOVE" pill)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isDragging) NeonPalette.Cyan.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.08f))
+                        .border(
+                            1.dp,
+                            if (isDragging) NeonPalette.Cyan else Color.White.copy(alpha = 0.15f),
+                            RoundedCornerShape(8.dp)
+                        )
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onTap = { onToggleDock() }
+                            )
+                        }
+                        .pointerInput(Unit) {
+                            detectVerticalDragGestures(
+                                onDragStart = { onDragStart() },
+                                onDragEnd = { onDragEnd() },
+                                onDragCancel = { onDragEnd() },
+                                onVerticalDrag = { change, dragAmount ->
+                                    change.consume()
+                                    onDragY(dragAmount)
+                                }
+                            )
+                        }
+                        .padding(horizontal = 12.dp, vertical = 5.dp)
+                ) {
+                    Icon(
+                        Icons.Rounded.DragHandle,
+                        contentDescription = "Drag up/down or tap to flip",
+                        tint = if (isDragging) NeonPalette.Cyan else Color.White.copy(alpha = 0.7f),
+                        modifier = Modifier.size(16.dp)
                     )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        "MOVE",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black,
+                        color = if (isDragging) NeonPalette.Cyan else Color.White.copy(alpha = 0.8f)
+                    )
+                }
+
+                // Right: Actions (Buttons Palette, Save)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onOpenPalette,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier.height(34.dp)
+                    ) {
+                        Icon(Icons.Rounded.AddCircleOutline, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Buttons", fontSize = 11.sp)
+                    }
+
+                    Button(
+                        onClick = onSave,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
+                        modifier = Modifier.height(34.dp)
+                    ) {
+                        Icon(Icons.Rounded.Save, contentDescription = null, tint = Color.Black, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("SAVE", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
 
-            // Right: Actions (Buttons Palette, Save)
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            // Bottom edge drag indicator strip
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures(
+                            onDragStart = { onDragStart() },
+                            onDragEnd = { onDragEnd() },
+                            onDragCancel = { onDragEnd() },
+                            onVerticalDrag = { change, dragAmount ->
+                                change.consume()
+                                onDragY(dragAmount)
+                            }
+                        )
+                    },
+                contentAlignment = Alignment.Center
             ) {
-                OutlinedButton(
-                    onClick = onOpenPalette,
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                    modifier = Modifier.height(34.dp)
-                ) {
-                    Icon(Icons.Rounded.AddCircleOutline, contentDescription = null, modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Buttons", fontSize = 11.sp)
-                }
-
-                Button(
-                    onClick = onSave,
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
-                    modifier = Modifier.height(34.dp)
-                ) {
-                    Icon(Icons.Rounded.Save, contentDescription = null, tint = Color.Black, modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("SAVE", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                }
+                Box(
+                    modifier = Modifier
+                        .width(36.dp)
+                        .height(3.dp)
+                        .clip(CircleShape)
+                        .background(if (isDragging) NeonPalette.Cyan else Color.White.copy(alpha = 0.25f))
+                )
             }
         }
     }
@@ -529,6 +748,7 @@ private fun HudTopBar(
 /**
  * Docked Control Panel (Inspector) for the selected HUD element.
  * Provides fine-tuning nudge arrows, scale, opacity, category-safe skins, and reset/remove.
+ * Draggable and movable vertically (up/down) with snap-to-dock toggle.
  */
 @Composable
 private fun HudDockedInspector(
@@ -544,26 +764,61 @@ private fun HudDockedInspector(
     onOpenStudio: () -> Unit,
     onResetPos: () -> Unit,
     onRemove: () -> Unit,
+    isDragging: Boolean = false,
+    onDragStart: () -> Unit = {},
+    onDragEnd: () -> Unit = {},
+    onDragY: (Float) -> Unit = {},
+    onToggleDock: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val transform = element.transform
+    val borderColor = if (isDragging) NeonPalette.Cyan else NeonPalette.Cyan.copy(alpha = 0.5f)
+    val borderWidth = if (isDragging) 1.5.dp else 1.dp
+    val shadowElevation = if (isDragging) 20.dp else 12.dp
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 6.dp),
         shape = RoundedCornerShape(14.dp),
-        color = Color(0xFF0F172A).copy(alpha = 0.95f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f)),
-        shadowElevation = 12.dp
+        color = Color(0xFF0F172A).copy(alpha = if (isDragging) 0.98f else 0.95f),
+        border = androidx.compose.foundation.BorderStroke(borderWidth, borderColor),
+        shadowElevation = shadowElevation
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            // Row 1: Header + Close
+            // Top Drag Handle Pill Strip
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures(
+                            onDragStart = { onDragStart() },
+                            onDragEnd = { onDragEnd() },
+                            onDragCancel = { onDragEnd() },
+                            onVerticalDrag = { change, dragAmount ->
+                                change.consume()
+                                onDragY(dragAmount)
+                            }
+                        )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(44.dp)
+                        .height(4.dp)
+                        .clip(CircleShape)
+                        .background(if (isDragging) NeonPalette.Cyan else Color.White.copy(alpha = 0.35f))
+                )
+            }
+
+            // Row 1: Header + Move Handle + Close
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -571,7 +826,20 @@ private fun HudDockedInspector(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .pointerInput(Unit) {
+                            detectVerticalDragGestures(
+                                onDragStart = { onDragStart() },
+                                onDragEnd = { onDragEnd() },
+                                onDragCancel = { onDragEnd() },
+                                onVerticalDrag = { change, dragAmount ->
+                                    change.consume()
+                                    onDragY(dragAmount)
+                                }
+                            )
+                        }
                 ) {
                     val emoji = element.emoji
                     Text(
@@ -623,6 +891,51 @@ private fun HudDockedInspector(
                             color = Color.LightGray
                         )
                     }
+                }
+
+                // Center: Dedicated Drag Handle Affordance ("MOVE" pill)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isDragging) NeonPalette.Cyan.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.08f))
+                        .border(
+                            1.dp,
+                            if (isDragging) NeonPalette.Cyan else Color.White.copy(alpha = 0.15f),
+                            RoundedCornerShape(8.dp)
+                        )
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onTap = { onToggleDock() }
+                            )
+                        }
+                        .pointerInput(Unit) {
+                            detectVerticalDragGestures(
+                                onDragStart = { onDragStart() },
+                                onDragEnd = { onDragEnd() },
+                                onDragCancel = { onDragEnd() },
+                                onVerticalDrag = { change, dragAmount ->
+                                    change.consume()
+                                    onDragY(dragAmount)
+                                }
+                            )
+                        }
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Icon(
+                        Icons.Rounded.DragHandle,
+                        contentDescription = "Drag up/down or tap to flip",
+                        tint = if (isDragging) NeonPalette.Cyan else Color.White.copy(alpha = 0.7f),
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        "MOVE",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black,
+                        color = if (isDragging) NeonPalette.Cyan else Color.White.copy(alpha = 0.8f)
+                    )
                 }
 
                 IconButton(onClick = onClose, modifier = Modifier.size(28.dp)) {

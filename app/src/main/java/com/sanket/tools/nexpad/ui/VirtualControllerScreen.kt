@@ -4,7 +4,6 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,9 +22,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,13 +38,15 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyGridState
+import sh.calvin.reorderable.rememberScroller
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.ui.AppNavigator
@@ -66,14 +72,7 @@ fun VirtualControllerScreen(
     val haptic = LocalHapticFeedback.current
 
     var localProfiles by remember { mutableStateOf(profiles) }
-    var draggingProfileName by remember { mutableStateOf<String?>(null) }
-    var dragOffset by remember { mutableStateOf(Offset.Zero) }
-
-    LaunchedEffect(profiles) {
-        if (draggingProfileName == null) {
-            localProfiles = profiles
-        }
-    }
+    var isAnyItemDragging by remember { mutableStateOf(false) }
 
     var showAddDialog by remember { mutableStateOf(false) }
     var profileToDuplicate by remember { mutableStateOf<LayoutProfile?>(null) }
@@ -104,30 +103,35 @@ fun VirtualControllerScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(
+                        onClick = { navController.popBackStack() },
+                        enabled = !isAnyItemDragging
+                    ) {
                         Icon(
                             Icons.AutoMirrored.Rounded.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color.White
+                            tint = if (isAnyItemDragging) Color.White.copy(alpha = 0.4f) else Color.White
                         )
                     }
                 },
                 actions = {
                     OutlinedButton(
                         onClick = { navController.navigate(ScreenKey.ButtonStudio(mode = "viewer")) },
+                        enabled = !isAnyItemDragging,
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Purple),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Purple.copy(alpha = 0.7f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Purple.copy(alpha = if (isAnyItemDragging) 0.3f else 0.7f)),
                         shape = RoundedCornerShape(10.dp),
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                         modifier = Modifier.padding(end = 6.dp).height(36.dp)
                     ) {
-                        Icon(Icons.Rounded.Palette, contentDescription = null, tint = NeonPalette.Purple, modifier = Modifier.size(15.dp))
+                        Icon(Icons.Rounded.Palette, contentDescription = null, tint = if (isAnyItemDragging) NeonPalette.Purple.copy(alpha = 0.4f) else NeonPalette.Purple, modifier = Modifier.size(15.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Button Studio", color = NeonPalette.Purple, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Text("Button Studio", color = if (isAnyItemDragging) NeonPalette.Purple.copy(alpha = 0.4f) else NeonPalette.Purple, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                     }
 
                     Button(
                         onClick = { showAddDialog = true },
+                        enabled = !isAnyItemDragging,
                         colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan),
                         shape = RoundedCornerShape(10.dp),
                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
@@ -139,25 +143,67 @@ fun VirtualControllerScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
             )
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
+        // Calibrated dynamic scroller: ramps velocity smoothly from fine precision at 140dp to fast scroll at the edge
+        val reorderableLazyGridState = rememberReorderableLazyGridState(
+            lazyGridState = gridState,
+            scrollThreshold = 140.dp,
+            scrollThresholdPadding = PaddingValues(
+                top = padding.calculateTopPadding(),
+                bottom = padding.calculateBottomPadding()
+            ),
+            scroller = rememberScroller(
+                scrollableState = gridState,
+                pixelAmountProvider = {
+                    (gridState.layoutInfo.viewportSize.height * 0.04f).coerceIn(45f, 95f)
+                }
+            )
+        ) { from, to ->
+            val fromKey = from.key as? String ?: return@rememberReorderableLazyGridState
+            val toKey = to.key as? String ?: return@rememberReorderableLazyGridState
+            if (fromKey == "hub_banner" || toKey == "hub_banner") return@rememberReorderableLazyGridState
+
+            val fromIdx = localProfiles.indexOfFirst { it.name == fromKey }
+            val toIdx = localProfiles.indexOfFirst { it.name == toKey }
+            if (fromIdx != -1 && toIdx != -1 && fromIdx != toIdx) {
+                localProfiles = localProfiles.toMutableList().apply {
+                    add(toIdx, removeAt(fromIdx))
+                }
+            }
+        }
+
+        LaunchedEffect(reorderableLazyGridState.isAnyItemDragging) {
+            isAnyItemDragging = reorderableLazyGridState.isAnyItemDragging
+        }
+
+        LaunchedEffect(profiles) {
+            if (!reorderableLazyGridState.isAnyItemDragging) {
+                localProfiles = profiles
+            }
+        }
+
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val layout = adaptiveLayoutSpec(maxWidth, maxHeight)
 
             CyberGrid(modifier = Modifier.matchParentSize())
             ScanLine(modifier = Modifier.matchParentSize())
 
+            // Full-screen touch capture area with contentPadding so the pointer never disconnects at the top bar
             LazyVerticalGrid(
                 state = gridState,
                 columns = GridCells.Fixed(if (layout.useTwoPaneLayout) 2 else 1),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(horizontal = layout.horizontalPadding, vertical = layout.verticalPadding),
+                contentPadding = PaddingValues(
+                    top = padding.calculateTopPadding() + layout.verticalPadding,
+                    bottom = padding.calculateBottomPadding() + layout.verticalPadding,
+                    start = layout.horizontalPadding,
+                    end = layout.horizontalPadding
+                ),
+                modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(layout.contentSpacing),
                 horizontalArrangement = Arrangement.spacedBy(layout.paneSpacing)
             ) {
@@ -168,140 +214,104 @@ fun VirtualControllerScreen(
 
                 // Layout Profiles List
                 items(localProfiles, key = { it.name }) { profile ->
-                    val isDragging = profile.name == draggingProfileName
-                    val isActive = profile.name.equals(activeProfileName, ignoreCase = true)
-                    LayoutProfileCard(
-                        modifier = Modifier
-                            .zIndex(if (isDragging) 10f else 1f)
-                            .graphicsLayer {
-                                if (isDragging) {
-                                    translationX = dragOffset.x
-                                    translationY = dragOffset.y
-                                    scaleX = 1.03f
-                                    scaleY = 1.03f
-                                    shadowElevation = 16f
-                                }
-                            }
-                            .pointerInput(profile.name) {
-                                detectDragGesturesAfterLongPress(
-                                    onDragStart = {
-                                        draggingProfileName = profile.name
-                                        dragOffset = Offset.Zero
+                    ReorderableItem(
+                        state = reorderableLazyGridState,
+                        key = profile.name,
+                        animateItemModifier = Modifier.animateItem(
+                            placementSpec = spring(
+                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                stiffness = 300f
+                            )
+                        )
+                    ) { isDragging ->
+                        val isActive = profile.name.equals(activeProfileName, ignoreCase = true)
+
+                        LayoutProfileCard(
+                            modifier = Modifier
+                                .longPressDraggableHandle(
+                                    onDragStarted = {
+                                        isAnyItemDragging = true
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     },
-                                    onDrag = { change, dragAmount ->
-                                        change.consume()
-                                        dragOffset += dragAmount
-
-                                        val currentItem = gridState.layoutInfo.visibleItemsInfo
-                                            .firstOrNull { it.key == draggingProfileName }
-
-                                        if (currentItem != null) {
-                                            val currentCenterX = currentItem.offset.x + (currentItem.size.width / 2f) + dragOffset.x
-                                            val currentCenterY = currentItem.offset.y + (currentItem.size.height / 2f) + dragOffset.y
-
-                                            // Auto-scroll when dragging near top/bottom boundaries
-                                            val viewportHeight = gridState.layoutInfo.viewportSize.height
-                                            if (viewportHeight > 0) {
-                                                if (currentCenterY < 120f) {
-                                                    gridState.dispatchRawDelta(-16f)
-                                                } else if (currentCenterY > viewportHeight - 120f) {
-                                                    gridState.dispatchRawDelta(16f)
-                                                }
-                                            }
-
-                                            // Find target card item overlapping the dragged card center
-                                            val targetItem = gridState.layoutInfo.visibleItemsInfo.firstOrNull { itemInfo ->
-                                                itemInfo.key != "hub_banner" &&
-                                                itemInfo.key != draggingProfileName &&
-                                                currentCenterX >= itemInfo.offset.x &&
-                                                currentCenterX <= itemInfo.offset.x + itemInfo.size.width &&
-                                                currentCenterY >= itemInfo.offset.y &&
-                                                currentCenterY <= itemInfo.offset.y + itemInfo.size.height
-                                            }
-
-                                            if (targetItem != null) {
-                                                val fromIndex = localProfiles.indexOfFirst { it.name == draggingProfileName }
-                                                val toIndex = localProfiles.indexOfFirst { it.name == targetItem.key }
-                                                if (fromIndex != -1 && toIndex != -1 && fromIndex != toIndex) {
-                                                    val deltaX = (currentItem.offset.x - targetItem.offset.x).toFloat()
-                                                    val deltaY = (currentItem.offset.y - targetItem.offset.y).toFloat()
-                                                    dragOffset += Offset(deltaX, deltaY)
-                                                    localProfiles = localProfiles.toMutableList().apply {
-                                                        add(toIndex, removeAt(fromIndex))
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    },
-                                    onDragEnd = {
-                                        draggingProfileName?.let {
-                                            layoutManager.saveProfileOrder(localProfiles.map { it.name })
+                                    onDragStopped = {
+                                        isAnyItemDragging = false
+                                        val newOrder = localProfiles.map { it.name }
+                                        if (newOrder != profiles.map { it.name }) {
+                                            layoutManager.saveProfileOrder(newOrder)
                                             Toast.makeText(context, "Layout order updated", Toast.LENGTH_SHORT).show()
                                         }
-                                        draggingProfileName = null
-                                        dragOffset = Offset.Zero
-                                    },
-                                    onDragCancel = {
-                                        draggingProfileName = null
-                                        dragOffset = Offset.Zero
                                     }
-                                )
-                            },
-                        profile = profile,
-                        isActive = isActive,
-                        isDragging = isDragging,
-                        onSetActive = {
-                            layoutManager.setActiveProfile(profile.name)
-                            Toast.makeText(context, "Activated ${profile.name}", Toast.LENGTH_SHORT).show()
-                        },
-                        onPlay = {
-                            layoutManager.setActiveProfile(profile.name)
-                            navController.navigate("gamepad")
-                        },
-                        onEditHud = {
-                            if (profile.isDefault) {
-                                // Preset protection: require creating a custom copy first
-                                profileToEditAsPreset = profile
-                            } else {
+                                ),
+                            dragHandleModifier = Modifier
+                                .draggableHandle(
+                                    onDragStarted = {
+                                        isAnyItemDragging = true
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    },
+                                    onDragStopped = {
+                                        isAnyItemDragging = false
+                                        val newOrder = localProfiles.map { it.name }
+                                        if (newOrder != profiles.map { it.name }) {
+                                            layoutManager.saveProfileOrder(newOrder)
+                                            Toast.makeText(context, "Layout order updated", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                ),
+                            profile = profile,
+                            isActive = isActive,
+                            isDragging = isDragging,
+                            onSetActive = {
                                 layoutManager.setActiveProfile(profile.name)
-                                navController.navigate(ScreenKey.Editor(profileName = profile.name))
+                                Toast.makeText(context, "Activated ${profile.name}", Toast.LENGTH_SHORT).show()
+                            },
+                            onPlay = {
+                                layoutManager.setActiveProfile(profile.name)
+                                navController.navigate("gamepad")
+                            },
+                            onEditHud = {
+                                if (profile.isDefault) {
+                                    // Preset protection: require creating a custom copy first
+                                    profileToEditAsPreset = profile
+                                } else {
+                                    layoutManager.setActiveProfile(profile.name)
+                                    navController.navigate(ScreenKey.Editor(profileName = profile.name))
+                                }
+                            },
+                            onOpenStudio = {
+                                layoutManager.setActiveProfile(profile.name)
+                                navController.navigate(ScreenKey.ButtonStudio(mode = "editor", profileName = profile.name))
+                            },
+                            onDuplicate = {
+                                profileToDuplicate = profile
+                            },
+                            onRename = {
+                                profileToRename = profile
+                            },
+                            onShare = {
+                                val sendIntent = android.content.Intent().apply {
+                                    action = android.content.Intent.ACTION_SEND
+                                    putExtra(android.content.Intent.EXTRA_TITLE, "NEXPAD Layout: ${profile.name}")
+                                    putExtra(
+                                        android.content.Intent.EXTRA_TEXT,
+                                        "🎮 NEXPAD Controller Layout: ${profile.name} (${profile.positions.size} controls)\nDesigned with NEXPAD."
+                                    )
+                                    type = "text/plain"
+                                }
+                                val shareIntent = android.content.Intent.createChooser(sendIntent, "Share '${profile.name}'")
+                                context.startActivity(shareIntent)
+                            },
+                            onReset = {
+                                profileToReset = profile
+                            },
+                            onDelete = {
+                                if (profile.isDefault) {
+                                    Toast.makeText(context, "Default layouts are protected and cannot be deleted", Toast.LENGTH_LONG).show()
+                                } else {
+                                    profileToDelete = profile
+                                }
                             }
-                        },
-                        onOpenStudio = {
-                            layoutManager.setActiveProfile(profile.name)
-                            navController.navigate(ScreenKey.ButtonStudio(mode = "editor", profileName = profile.name))
-                        },
-                        onDuplicate = {
-                            profileToDuplicate = profile
-                        },
-                        onRename = {
-                            profileToRename = profile
-                        },
-                        onShare = {
-                            val sendIntent = android.content.Intent().apply {
-                                action = android.content.Intent.ACTION_SEND
-                                putExtra(android.content.Intent.EXTRA_TITLE, "NEXPAD Layout: ${profile.name}")
-                                putExtra(
-                                    android.content.Intent.EXTRA_TEXT,
-                                    "🎮 NEXPAD Controller Layout: ${profile.name} (${profile.positions.size} controls)\nDesigned with NEXPAD."
-                                )
-                                type = "text/plain"
-                            }
-                            val shareIntent = android.content.Intent.createChooser(sendIntent, "Share '${profile.name}'")
-                            context.startActivity(shareIntent)
-                        },
-                        onReset = {
-                            profileToReset = profile
-                        },
-                        onDelete = {
-                            if (profile.isDefault) {
-                                Toast.makeText(context, "Default layouts are protected and cannot be deleted", Toast.LENGTH_LONG).show()
-                            } else {
-                                profileToDelete = profile
-                            }
-                        }
-                    )
+                        )
+                    }
                 }
             }
         }
@@ -598,6 +608,7 @@ private fun LayoutHubBanner() {
 @Composable
 private fun LayoutProfileCard(
     modifier: Modifier = Modifier,
+    dragHandleModifier: Modifier = Modifier,
     profile: LayoutProfile,
     isActive: Boolean,
     isDragging: Boolean = false,
@@ -614,9 +625,27 @@ private fun LayoutProfileCard(
     val borderColor = if (isDragging) NeonPalette.Cyan else if (isActive) NeonPalette.Cyan else Color.White.copy(alpha = 0.12f)
     val borderWidth = if (isDragging) 2.5.dp else if (isActive) 2.dp else 1.dp
 
+    val scale by animateFloatAsState(
+        targetValue = if (isDragging) 1.025f else 1.0f,
+        animationSpec = spring(stiffness = 400f),
+        label = "cardDragScale"
+    )
+    val elevation by animateDpAsState(
+        targetValue = if (isDragging) 12.dp else 0.dp,
+        animationSpec = spring(stiffness = 400f),
+        label = "cardDragElevation"
+    )
+
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                shadowElevation = elevation.toPx()
+                shape = RoundedCornerShape(16.dp)
+                clip = false
+            }
             .clip(RoundedCornerShape(16.dp))
             .background(
                 if (isDragging) MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)
@@ -732,13 +761,18 @@ private fun LayoutProfileCard(
                         }
                     }
 
-                    // Drag Handle affordance icon
-                    Icon(
-                        Icons.Rounded.DragHandle,
-                        contentDescription = "Long press to drag & reorder",
-                        tint = if (isDragging) NeonPalette.Cyan else Color.White.copy(alpha = 0.35f),
-                        modifier = Modifier.size(20.dp)
-                    )
+                    // Drag Handle affordance icon with generous touch target
+                    Box(
+                        modifier = dragHandleModifier.size(40.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Rounded.DragHandle,
+                            contentDescription = "Drag to reorder",
+                            tint = if (isDragging) NeonPalette.Cyan else Color.White.copy(alpha = 0.45f),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
             }
 

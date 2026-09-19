@@ -284,9 +284,12 @@ class GamepadNetworkManager(
 
     fun close() {
         transmitJob?.cancel()
+        transmitJob = null
         signalPollJob?.cancel()
+        signalPollJob = null
         releaseWifiLock()
         connection.close()
+        syncServer.stop()
         _isConnected.value = false
         gamepadDispatcher.close()
     }

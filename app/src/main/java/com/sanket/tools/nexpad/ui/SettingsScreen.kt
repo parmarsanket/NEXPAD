@@ -55,9 +55,13 @@ fun SettingsScreen(
 ) {
     val isConnected by viewModel.isConnected.collectAsState()
     val diagnosticLog by viewModel.diagnosticLog.collectAsState()
+    val profiles by layoutManager.profilesFlow.collectAsState()
+    val activeProfileName by layoutManager.activeProfileNameFlow.collectAsState()
+    val currentProfile = remember(profiles, activeProfileName) {
+        profiles.find { it.name.equals(activeProfileName, ignoreCase = true) } ?: layoutManager.getActiveProfile()
+    }
 
     var ipAddress by remember { mutableStateOf(sharedPref.getString("LAST_IP", "") ?: "") }
-    var profile by remember { mutableStateOf(layoutManager.getActiveProfile()) }
 
     val scrollState = rememberScrollState()
 
@@ -150,10 +154,9 @@ fun SettingsScreen(
                 Text("RGB Lighting", color = Color.White)
                 Spacer(modifier = Modifier.weight(1f))
                 Switch(
-                    checked = profile.isRgbEnabled,
+                    checked = currentProfile.isRgbEnabled,
                     onCheckedChange = {
-                        profile = profile.copy(isRgbEnabled = it)
-                        layoutManager.saveProfile(profile)
+                        layoutManager.saveProfile(currentProfile.copy(isRgbEnabled = it))
                     },
                     colors = SwitchDefaults.colors(checkedThumbColor = NeonPalette.Green, checkedTrackColor = Color.DarkGray)
                 )

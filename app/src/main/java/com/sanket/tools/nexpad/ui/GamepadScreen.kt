@@ -17,6 +17,9 @@ import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import androidx.compose.ui.layout.layout
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import com.sanket.tools.nexpad.ui.components.badge.HeaderStatusPill
 import kotlin.math.roundToInt
 import android.os.Build
 import kotlinx.coroutines.launch
@@ -243,6 +246,13 @@ fun GamepadScreen(
             }
         }
     }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            rumbleResetJob?.cancel()
+            vibrator.cancel()
+        }
+    }
     
     BoxWithConstraints(
         modifier = Modifier
@@ -255,13 +265,22 @@ fun GamepadScreen(
         // Back Button & Connection Status
         Row(
             modifier = Modifier.align(Alignment.TopStart).padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            IconButton(onClick = onBack) {
-                Text("⬅️", fontSize = 24.sp, color = MaterialTheme.colorScheme.onBackground)
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                    contentDescription = "Back",
+                    tint = MaterialTheme.colorScheme.onBackground
+                )
             }
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(if (isConnected) "🟢 Connected" else "🔴 Disconnected", color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.labelMedium)
+            HeaderStatusPill(
+                isConnected = isConnected
+            )
         }
 
         // Render mapped components with center-based placement

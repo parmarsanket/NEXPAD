@@ -97,7 +97,8 @@ fun NavigationGraph(
                         layoutManager = layoutManager,
                         navigationViewModel = navigationViewModel,
                         initialProfileName = key.profileName,
-                        initialControlKey = key.controlKey
+                        initialControlKey = key.controlKey,
+                        gamepadViewModel = viewModel
                     )
                 }
                 is ScreenKey.VirtualController -> {
@@ -128,7 +129,8 @@ fun NavigationGraph(
                         initialMode = mode,
                         targetProfileName = key.profileName,
                         targetControlKey = key.controlKey,
-                        targetCurrentAssetId = key.currentAssetId
+                        targetCurrentAssetId = key.currentAssetId,
+                        gamepadViewModel = viewModel
                     )
                 }
                 else -> {

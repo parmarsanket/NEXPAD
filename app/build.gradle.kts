@@ -72,4 +72,7 @@ dependencies {
     
     // Modern Icons (Material Icons Extended)
     implementation("androidx.compose.material:material-icons-extended")
+    
+    // Reorderable Drag and Drop
+    implementation(libs.reorderable)
 }

@@ -138,12 +138,23 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        lifecycleScope.launch {
+            viewModel.isConnected.collect { connected ->
+                if (connected) {
+                    motionSensorManager.start()
+                } else {
+                    motionSensorManager.stop()
+                }
+            }
+        }
     }
 
     override fun onResume() {
         super.onResume()
         viewModel.checkAoaAccessory()
-        motionSensorManager.start()
+        if (viewModel.isConnected.value) {
+            motionSensorManager.start()
+        }
     }
 
     override fun onPause() {

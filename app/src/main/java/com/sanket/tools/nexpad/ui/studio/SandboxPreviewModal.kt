@@ -47,7 +47,8 @@ fun SandboxPreviewModal(
     onApplyToProfile: () -> Unit = {},
     onAddToHud: () -> Unit = {},
     onExportJson: () -> Unit = {},
-    onDelete: () -> Unit = {}
+    onDelete: () -> Unit = {},
+    gamepadViewModel: GamepadViewModel? = null
 ) {
     var telemetryAction by remember { mutableStateOf("READY — Tap or drag to test") }
     var axisValues by remember { mutableStateOf(Pair(0f, 0f)) }
@@ -158,7 +159,11 @@ fun SandboxPreviewModal(
                     contentAlignment = Alignment.Center
                 ) {
                     val context = LocalContext.current
-                    val testViewModel = viewModel<GamepadViewModel>()
+                    val testViewModel: GamepadViewModel = gamepadViewModel ?: remember(context) {
+                        (context as? androidx.activity.ComponentActivity)?.let { activity ->
+                            androidx.lifecycle.ViewModelProvider(activity)[GamepadViewModel::class.java]
+                        }
+                    } ?: viewModel<GamepadViewModel>(context as androidx.lifecycle.ViewModelStoreOwner)
                     val isDefaultNative = componentDef.manifest.id.startsWith("builtin.default_")
                     val isRemote = componentDef.manifest.id.startsWith("rc.")
                     val remoteDoc = remember(componentDef.manifest.id) {

@@ -43,6 +43,7 @@ import com.sanket.tools.nexpad.ui.studio.components.*
 import com.sanket.tools.nexpad.ui.studio.model.*
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.utils.LayoutManager
+import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
 /**
  * Modern, high-performance Button Studio Screen.
@@ -64,7 +65,8 @@ fun ButtonStudioScreen(
     /** The CategoryManager control key being edited contextually (e.g. "RT"). Null = Viewer Mode. */
     targetControlKey: String? = null,
     /** The asset ID currently applied to targetControlKey. Used for "✓ Current" badge. */
-    targetCurrentAssetId: String? = null
+    targetCurrentAssetId: String? = null,
+    gamepadViewModel: GamepadViewModel? = null
 ) {
     val context = LocalContext.current
     val clipboard = LocalClipboard.current
@@ -514,6 +516,7 @@ fun ButtonStudioScreen(
             componentDef = target,
             isAppliedToActiveProfile = false,
             applyButtonLabel = null, // Viewer mode: test & preview only
+            gamepadViewModel = gamepadViewModel,
             onDismiss = { previewTarget = null },
             onApplyToProfile = {},
             onAddToHud = {},
