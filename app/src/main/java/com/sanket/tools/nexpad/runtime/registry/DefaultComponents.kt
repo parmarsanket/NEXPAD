@@ -1180,6 +1180,102 @@ object DefaultComponents {
         size = NxpSize(widthDp = 150, heightDp = 150)
     )
 
+    val DEFAULT_STICK_LSB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_lsb",
+            name = "Default Left Stick Button (LSB)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.LSB.key,
+            description = "Standalone left thumbstick click button (L3 / LSB) for sprint or special actions."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#151515",
+            opacity = 0.92f,
+            borderColor = "#00E5FF",
+            borderWidth = 2f,
+            glowColor = "#00E5FF",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.90f, fillColor = "#00E5FF", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "LSB", color = "#00E5FF", pressedColor = "#000000", fontSize = 14f),
+        size = NxpSize(widthDp = 70, heightDp = 70)
+    )
+
+    val DEFAULT_STICK_RSB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_rsb",
+            name = "Default Right Stick Button (RSB)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.RSB.key,
+            description = "Standalone right thumbstick click button (R3 / RSB) for melee, crouch, or zoom actions."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#151515",
+            opacity = 0.92f,
+            borderColor = "#FF007F",
+            borderWidth = 2f,
+            glowColor = "#FF007F",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.90f, fillColor = "#FF007F", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "RSB", color = "#FF007F", pressedColor = "#000000", fontSize = 14f),
+        size = NxpSize(widthDp = 70, heightDp = 70)
+    )
+
+    val DEFAULT_STICK_LTP = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_ltp",
+            name = "Default Left Touchpad (LTP)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.JOYSTICK.id,
+            defaultControl = ControlKey.LTP.key,
+            description = "Console-grade dynamic floating-center movement touchpad for mobile twin-stick gaming."
+        ),
+        geometry = NxpGeometry(type = "RoundedRectangle", cornerRadius = 26f),
+        visual = NxpVisual(
+            fillColor = "#131418",
+            opacity = 0.92f,
+            borderColor = "#00E5FF",
+            borderWidth = 2f,
+            glowColor = "#00E5FF",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(scale = 0.98f, fillColor = "#181A20", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "LTP", color = "#00E5FF", pressedColor = "#FFFFFF", fontSize = 16f),
+        size = NxpSize(widthDp = 180, heightDp = 180)
+    )
+
+    val DEFAULT_STICK_RTP = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_rtp",
+            name = "Default Right Touchpad (RTP)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.JOYSTICK.id,
+            defaultControl = ControlKey.RTP.key,
+            description = "Console-grade swipe-to-look camera trackpad with instant stop and momentum decay."
+        ),
+        geometry = NxpGeometry(type = "RoundedRectangle", cornerRadius = 26f),
+        visual = NxpVisual(
+            fillColor = "#131418",
+            opacity = 0.92f,
+            borderColor = "#FF007F",
+            borderWidth = 2f,
+            glowColor = "#FF007F",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(scale = 0.98f, fillColor = "#181A20", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "RTP", color = "#FF007F", pressedColor = "#FFFFFF", fontSize = 16f),
+        size = NxpSize(widthDp = 180, heightDp = 180)
+    )
+
     val DEFAULT_DPAD = NxpComponentDef(
         manifest = NxpManifest(
             id = "builtin.default_dpad",
@@ -1596,6 +1692,10 @@ object DefaultComponents {
         DEFAULT_BUTTON_Y,
         DEFAULT_STICK_LS,
         DEFAULT_STICK_RS,
+        DEFAULT_STICK_LSB,
+        DEFAULT_STICK_RSB,
+        DEFAULT_STICK_LTP,
+        DEFAULT_STICK_RTP,
         DEFAULT_DPAD,
         DEFAULT_DPAD_UP,
         DEFAULT_DPAD_DOWN,

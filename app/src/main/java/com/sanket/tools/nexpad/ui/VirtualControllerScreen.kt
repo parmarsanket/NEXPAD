@@ -215,7 +215,7 @@ fun VirtualControllerScreen(
                                 Toast.makeText(context, "Activated ${profile.name}", Toast.LENGTH_SHORT).show()
                             },
                             onPlay = {
-                                layoutManager.setActiveProfile(profile.name)
+//                                layoutManager.setActiveProfile(profile.name)
                                 navController.navigate("gamepad")
                             },
                             onEditHud = {

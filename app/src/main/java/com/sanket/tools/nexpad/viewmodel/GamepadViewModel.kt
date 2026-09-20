@@ -299,8 +299,8 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
             ControlKey.RB      -> inputState.btnR1 = isPressed
             ControlKey.LT      -> inputState.triggerL2 = if (isPressed) 1f else 0f
             ControlKey.RT      -> inputState.triggerR2 = if (isPressed) 1f else 0f
-            ControlKey.LS      -> inputState.btnL3 = isPressed
-            ControlKey.RS      -> inputState.btnR3 = isPressed
+            ControlKey.LS, ControlKey.LSB -> inputState.btnL3 = isPressed
+            ControlKey.RS, ControlKey.RSB -> inputState.btnR3 = isPressed
             ControlKey.START   -> inputState.btnStart = isPressed
             ControlKey.BACK    -> inputState.btnSelect = isPressed
             ControlKey.GUIDE   -> inputState.btnGuide = isPressed
@@ -312,7 +312,7 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
             ControlKey.M2      -> inputState.btnM2 = isPressed
             ControlKey.M3      -> inputState.btnM3 = isPressed
             ControlKey.M4      -> inputState.btnM4 = isPressed
-            null, ControlKey.DPAD -> {}
+            null, ControlKey.DPAD, ControlKey.LTP, ControlKey.RTP -> {}
         }
     }
 

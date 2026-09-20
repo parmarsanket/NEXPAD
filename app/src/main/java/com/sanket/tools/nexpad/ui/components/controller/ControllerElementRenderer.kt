@@ -48,12 +48,13 @@ fun ControllerElementRenderer(
         val K = com.sanket.tools.nexpad.model.NexpadKeys
         if (remoteDoc != null) {
             val targetControl = when {
-                key.equals(K.LS, ignoreCase = true) || key.equals("L3", ignoreCase = true) -> NexPadControl.Stick(isLeft = true)
-                key.equals(K.RS, ignoreCase = true) || key.equals("R3", ignoreCase = true) -> NexPadControl.Stick(isLeft = false)
+                key.equals(K.LSB, ignoreCase = true) || key.equals(K.RSB, ignoreCase = true) || key.equals("L3", ignoreCase = true) || key.equals("R3", ignoreCase = true) -> NexPadControl.Button(key)
+                key.equals(K.LS, ignoreCase = true) -> NexPadControl.Stick(isLeft = true)
+                key.equals(K.RS, ignoreCase = true) -> NexPadControl.Stick(isLeft = false)
                 key.equals(K.LT, ignoreCase = true) || key.equals(K.RT, ignoreCase = true) -> NexPadControl.Trigger(key.uppercase())
                 key.uppercase() in listOf(K.UP, K.DOWN, K.LEFT, K.RIGHT) -> NexPadControl.DPad(key.uppercase())
                 remoteDoc.manifest.category.equals("JOYSTICK", ignoreCase = true) ->
-                    NexPadControl.Stick(isLeft = remoteDoc.manifest.defaultControl.uppercase() != K.RS && remoteDoc.manifest.defaultControl.uppercase() != "R3")
+                    NexPadControl.Stick(isLeft = remoteDoc.manifest.defaultControl.uppercase() != K.RS && remoteDoc.manifest.defaultControl.uppercase() != "R3" && remoteDoc.manifest.defaultControl.uppercase() != K.RSB)
                 else -> NexPadControl.Button(key)
             }
             NxprcCanvasRenderer(
@@ -74,8 +75,9 @@ fun ControllerElementRenderer(
     val K = com.sanket.tools.nexpad.model.NexpadKeys
     if (customDef != null) {
         val targetControl = when {
-            key == K.LS -> NexPadControl.Stick(isLeft = true)
-            key == K.RS -> NexPadControl.Stick(isLeft = false)
+            key == K.LSB || key == K.RSB -> NexPadControl.Button(key)
+            key == K.LS || key == K.LTP -> NexPadControl.Stick(isLeft = true)
+            key == K.RS || key == K.RTP -> NexPadControl.Stick(isLeft = false)
             key == K.LT || key == K.RT -> NexPadControl.Trigger(key)
             key in listOf(K.UP, K.DOWN, K.LEFT, K.RIGHT) -> NexPadControl.DPad(key)
             else -> NexPadControl.Button(key)
@@ -100,6 +102,36 @@ fun ControllerElementRenderer(
         ControlKey.RS -> RealisticJoystick(
             isLeft = false,
             isConnected = isConnected,
+            viewModel = viewModel,
+            isRgbEnabled = isRgbEnabled
+        )
+        ControlKey.LTP -> RealisticTouchPad(
+            isLeft = true,
+            isConnected = isConnected,
+            viewModel = viewModel,
+            onVibrate = onVibrate,
+            isRgbEnabled = isRgbEnabled
+        )
+        ControlKey.RTP -> RealisticTouchPad(
+            isLeft = false,
+            isConnected = isConnected,
+            viewModel = viewModel,
+            onVibrate = onVibrate,
+            isRgbEnabled = isRgbEnabled
+        )
+        ControlKey.LSB -> RealisticStickButton(
+            isLeft = true,
+            key = K.LSB,
+            isConnected = isConnected,
+            onVibrate = onVibrate,
+            viewModel = viewModel,
+            isRgbEnabled = isRgbEnabled
+        )
+        ControlKey.RSB -> RealisticStickButton(
+            isLeft = false,
+            key = K.RSB,
+            isConnected = isConnected,
+            onVibrate = onVibrate,
             viewModel = viewModel,
             isRgbEnabled = isRgbEnabled
         )

@@ -1,5 +1,6 @@
 package com.sanket.tools.nexpad.ui.studio.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,6 +20,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -72,6 +74,10 @@ fun StaticDefaultButtonPreview(
 
             ControlKey.LS -> StaticRealisticJoystick(isLeft = true)
             ControlKey.RS -> StaticRealisticJoystick(isLeft = false)
+            ControlKey.LSB -> StaticRealisticStickButton(isLeft = true)
+            ControlKey.RSB -> StaticRealisticStickButton(isLeft = false)
+            ControlKey.LTP -> StaticRealisticTouchPad(isLeft = true)
+            ControlKey.RTP -> StaticRealisticTouchPad(isLeft = false)
 
             ControlKey.DPAD -> StaticRealisticDPad()
             ControlKey.UP, ControlKey.DOWN, ControlKey.LEFT, ControlKey.RIGHT -> StaticRealisticDPadButton(direction = key)
@@ -217,6 +223,185 @@ private fun StaticRealisticJoystick(
                 fontWeight = FontWeight.Bold
             )
         }
+    }
+}
+
+/**
+ * Exact visual match for ui/components/controller/RealisticStickButton (in RealisticJoystick.kt)
+ */
+@Composable
+private fun StaticRealisticStickButton(
+    isLeft: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val key = if (isLeft) "LSB" else "RSB"
+    val accentColor = if (isLeft) Color.Cyan else Color(0xFFFF007F)
+
+    val baseGradient = Brush.radialGradient(
+        colors = listOf(Color(0xFF333333), Color(0xFF141414)),
+        center = Offset(0.35f, 0.35f),
+        radius = 160f
+    )
+
+    val dishGradient = Brush.radialGradient(
+        colors = listOf(Color(0xFF252525), Color(0xFF121212)),
+        center = Offset(0.5f, 0.5f),
+        radius = 90f
+    )
+
+    val shadow = Modifier.shadow(
+        elevation = 10.dp,
+        shape = CircleShape,
+        ambientColor = accentColor.copy(alpha = 0.5f),
+        spotColor = accentColor
+    )
+
+    Box(
+        modifier = modifier
+            .size(70.dp)
+            .then(shadow)
+            .clip(CircleShape)
+            .background(baseGradient),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val minDim = size.minDimension
+            // Outer bevel rim
+            drawCircle(
+                color = Color.White.copy(alpha = 0.35f),
+                radius = minDim / 2f - 2f,
+                style = Stroke(width = 3f)
+            )
+
+            // Dashed knurled grip ring
+            drawCircle(
+                color = Color.Black.copy(alpha = 0.6f),
+                radius = minDim / 2f - 6f,
+                style = Stroke(
+                    width = 3.5f,
+                    pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(5f, 5f), 0f)
+                )
+            )
+
+            // Inner concave dish ring
+            drawCircle(
+                color = accentColor.copy(alpha = 0.35f),
+                radius = minDim / 2f - 12f,
+                style = Stroke(width = 2f)
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(dishGradient),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = key,
+                color = accentColor,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 0.5.sp
+            )
+        }
+    }
+}
+
+/**
+ * Exact visual match for ui/components/controller/RealisticTouchPad.kt
+ */
+@Composable
+private fun StaticRealisticTouchPad(
+    isLeft: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val accentColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
+    val shape = RoundedCornerShape(26.dp)
+
+    val surfaceGradient = Brush.radialGradient(
+        colors = listOf(Color(0xFF23252B), Color(0xFF131418), Color(0xFF0B0C0E)),
+        center = Offset(0.4f, 0.4f),
+        radius = 280f
+    )
+
+    Box(
+        modifier = modifier
+            .size(180.dp)
+            .shadow(12.dp, shape, ambientColor = Color.Black, spotColor = Color.Black)
+            .clip(shape)
+            .background(surfaceGradient)
+            .border(BorderStroke(2.dp, Color(0xFF353C4A)), shape),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize().padding(8.dp)) {
+            val center = Offset(size.width / 2f, size.height / 2f)
+            val guideStroke = Stroke(
+                width = 1.5f,
+                pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(6f, 6f))
+            )
+
+            // Inner guide rings
+            drawCircle(
+                color = Color.White.copy(alpha = 0.07f),
+                radius = size.minDimension / 3.0f,
+                center = center,
+                style = guideStroke
+            )
+            drawCircle(
+                color = accentColor.copy(alpha = 0.12f),
+                radius = size.minDimension / 2.2f,
+                center = center,
+                style = guideStroke
+            )
+
+            // Center tactile crosshair
+            val tickLen = 8f
+            drawLine(
+                color = Color.White.copy(alpha = 0.18f),
+                start = Offset(center.x - tickLen, center.y),
+                end = Offset(center.x + tickLen, center.y),
+                strokeWidth = 2f
+            )
+            drawLine(
+                color = Color.White.copy(alpha = 0.18f),
+                start = Offset(center.x, center.y - tickLen),
+                end = Offset(center.x, center.y + tickLen),
+                strokeWidth = 2f
+            )
+
+            // Idle center dot
+            drawCircle(
+                color = accentColor.copy(alpha = 0.6f),
+                radius = 5f,
+                center = center
+            )
+        }
+
+        Text(
+            text = if (isLeft) "TOUCH MOVE • LTP" else "TOUCH LOOK • RTP",
+            fontSize = 10.sp,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Bold,
+            color = accentColor.copy(alpha = 0.65f),
+            letterSpacing = 1.2.sp,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 10.dp)
+        )
+
+        Text(
+            text = if (isLeft) "TAP: L3" else "TAP: R3",
+            fontSize = 9.sp,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Normal,
+            color = Color.White.copy(alpha = 0.35f),
+            letterSpacing = 0.8.sp,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 10.dp)
+        )
     }
 }
 

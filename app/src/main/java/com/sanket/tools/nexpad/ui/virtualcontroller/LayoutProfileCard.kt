@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -49,7 +50,8 @@ fun LayoutProfileCard(
     onDelete: () -> Unit
 ) {
     val cardShape = remember { RoundedCornerShape(16.dp) }
-    val borderColor = if (isDragging) NeonPalette.Cyan else if (isActive) NeonPalette.Cyan else Color.White.copy(alpha = 0.12f)
+    val borderColor = if (isDragging) NeonPalette.Purple else if (isActive) NeonPalette.Cyan else Color.White.copy(alpha = 0.12f)
+    val borderColorBtn = if (isDragging) NeonPalette.Purple else if (isActive) NeonPalette.Cyan else Color.White.copy(alpha = 0.45f)
     val borderWidth = if (isDragging) 2.5.dp else if (isActive) 2.dp else 1.dp
 
     val scale by animateFloatAsState(
@@ -190,13 +192,13 @@ fun LayoutProfileCard(
 
                     // Drag Handle affordance icon with generous touch target
                     Box(
-                        modifier = dragHandleModifier.size(40.dp),
+                        modifier = dragHandleModifier.size(30.dp).border(width = 1.dp, color = borderColorBtn, shape = CircleShape ),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            Icons.Rounded.DragHandle,
+                            Icons.Default.DragHandle,
                             contentDescription = "Drag to reorder",
-                            tint = if (isDragging) NeonPalette.Cyan else Color.White.copy(alpha = 0.45f),
+                            tint = borderColorBtn,
                             modifier = Modifier.size(22.dp)
                         )
                     }

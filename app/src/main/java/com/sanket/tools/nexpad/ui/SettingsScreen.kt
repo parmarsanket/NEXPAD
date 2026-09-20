@@ -134,6 +134,55 @@ fun SettingsScreen(
                     )
                 }
 
+                var rightStickCameraMode by remember {
+                    mutableStateOf(sharedPref.getBoolean("RIGHT_STICK_CAMERA_MODE", true))
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Right Stick Free-Look Camera Mode", color = Color.White)
+                        Text(
+                            "Relative swipe touchpad (Genshin / FPS style) instead of fixed anchor stick",
+                            color = Color.Gray,
+                            fontSize = 11.sp
+                        )
+                    }
+                    Switch(
+                        checked = rightStickCameraMode,
+                        onCheckedChange = {
+                            rightStickCameraMode = it
+                            sharedPref.edit().putBoolean("RIGHT_STICK_CAMERA_MODE", it).apply()
+                        },
+                        colors = SwitchDefaults.colors(checkedThumbColor = NeonPalette.Green, checkedTrackColor = Color.DarkGray)
+                    )
+                }
+
+                var cameraSensitivity by remember {
+                    mutableFloatStateOf(sharedPref.getFloat("CAMERA_SENSITIVITY", 1.0f))
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Camera Look Sensitivity: ${String.format(java.util.Locale.US, "%.1fx", cameraSensitivity)}",
+                        color = Color.White
+                    )
+                }
+                Slider(
+                    value = cameraSensitivity,
+                    onValueChange = {
+                        cameraSensitivity = it
+                        sharedPref.edit().putFloat("CAMERA_SENSITIVITY", it).apply()
+                    },
+                    valueRange = 0.2f..3.0f,
+                    steps = 27,
+                    colors = SliderDefaults.colors(thumbColor = NeonPalette.Green, activeTrackColor = NeonPalette.Green)
+                )
+
                 var rumbleIntensity by remember { mutableFloatStateOf(sharedPref.getFloat("RUMBLE_INTENSITY", 1.0f)) }
 
                 Spacer(modifier = Modifier.height(32.dp))

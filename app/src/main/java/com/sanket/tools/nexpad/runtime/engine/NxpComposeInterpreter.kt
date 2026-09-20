@@ -17,7 +17,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -38,10 +42,12 @@ import com.sanket.tools.nexpad.runtime.model.NexPadControl
 import com.sanket.tools.nexpad.runtime.model.NexPadInputTarget
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
 import com.sanket.tools.nexpad.runtime.model.NxpGeometry
+import com.sanket.tools.nexpad.ui.components.controller.calculateGamingStickMagnitude
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
+import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -445,8 +451,140 @@ private fun RenderNxpJoystick(
     val ringColor = parseHexColor(def.visual.borderColor, Color(0xFF00F0FF))
     val thumbColor = parseHexColor(def.pressed?.fillColor ?: def.visual.borderColor, Color(0xFF00F0FF))
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val (isCameraMode, cameraSensitivity) = remember(context, stickControl.isLeft, def.manifest) {
+        val isTouchpad = def.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
+                def.manifest.defaultControl.contains("RTP", ignoreCase = true) ||
+                def.manifest.defaultControl.contains("LTP", ignoreCase = true)
+        if (isTouchpad) {
+            val sp = context.getSharedPreferences("nexpad_prefs", android.content.Context.MODE_PRIVATE)
+            Pair(true, sp.getFloat("CAMERA_SENSITIVITY", 1.0f))
+        } else if (!stickControl.isLeft) {
+            val sp = context.getSharedPreferences("nexpad_prefs", android.content.Context.MODE_PRIVATE)
+            Pair(
+                sp.getBoolean("RIGHT_STICK_CAMERA_MODE", true),
+                sp.getFloat("CAMERA_SENSITIVITY", 1.0f)
+            )
+        } else {
+            Pair(false, 1.0f)
+        }
+    }
+    val coroutineScope = rememberCoroutineScope()
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+
     val gestureModifier = if (!isInteractive) {
         Modifier
+    } else if (isCameraMode) {
+        Modifier.pointerInput(isConnected, stickControl, cameraSensitivity, density) {
+            awaitEachGesture {
+                val down = awaitFirstDown(requireUnconsumed = false)
+                val startTime = System.currentTimeMillis()
+                var previousTouchX = down.position.x
+                var previousTouchY = down.position.y
+                var previousTimeMs = startTime
+                var currentStickX = 0f
+                var currentStickY = 0f
+                var lastSpeed = 0f
+                var decayJob: Job? = null
+                inputTarget.onStickMove(stickControl, 0f, 0f)
+
+                while (true) {
+                    val event = awaitPointerEvent()
+                    val change = event.changes.firstOrNull { it.id == down.id }
+                    if (change == null || !change.pressed) break
+                    change.consume()
+
+                    val currentTouchX = change.position.x
+                    val currentTouchY = change.position.y
+                    val deltaX = currentTouchX - previousTouchX
+                    val deltaY = currentTouchY - previousTouchY
+                    previousTouchX = currentTouchX
+                    previousTouchY = currentTouchY
+
+                    var finalDeltaX = deltaX
+                    var finalDeltaY = deltaY
+                    val absX = kotlin.math.abs(deltaX)
+                    val absY = kotlin.math.abs(deltaY)
+                    if (absX > 3.0f * absY) {
+                        finalDeltaY *= 0.5f // Suppress vertical wobble during horizontal turns
+                    } else if (absY > 3.0f * absX) {
+                        finalDeltaX *= 0.5f // Suppress horizontal wobble during vertical looks
+                    }
+
+                    val distPx = hypot(finalDeltaX, finalDeltaY)
+                    val distDp = distPx / density
+
+                    if (distDp > 0.15f) {
+                        val currentTimeMs = System.currentTimeMillis()
+                        val dtSec = ((currentTimeMs - previousTimeMs).coerceAtLeast(1L)) / 1000f
+                        previousTimeMs = currentTimeMs
+                        val speedDpPerSec = distDp / dtSec
+                        lastSpeed = speedDpPerSec
+
+                        val stickMagnitude = calculateGamingStickMagnitude(speedDpPerSec, cameraSensitivity)
+
+                        if (stickMagnitude > 0f) {
+                            val dirX = finalDeltaX / distPx
+                            val dirY = finalDeltaY / distPx
+
+                            val targetStickX = (dirX * stickMagnitude).coerceIn(-1f, 1f)
+                            val targetStickY = (-dirY * stickMagnitude).coerceIn(-1f, 1f)
+
+                            currentStickX = 0.70f * targetStickX + 0.30f * currentStickX
+                            currentStickY = 0.70f * targetStickY + 0.30f * currentStickY
+
+                            inputTarget.onStickMove(stickControl, currentStickX, currentStickY)
+
+                            thumbOffset = Offset(
+                                (currentStickX * maxRadiusPx).coerceIn(-maxRadiusPx, maxRadiusPx),
+                                (-currentStickY * maxRadiusPx).coerceIn(-maxRadiusPx, maxRadiusPx)
+                            )
+
+                            decayJob?.cancel()
+                            decayJob = coroutineScope.launch {
+                                delay(40)
+                                currentStickX *= 0.3f
+                                currentStickY *= 0.3f
+                                inputTarget.onStickMove(stickControl, currentStickX, currentStickY)
+                                thumbOffset = Offset(
+                                    currentStickX * maxRadiusPx,
+                                    -currentStickY * maxRadiusPx
+                                )
+                                delay(30)
+                                currentStickX = 0f
+                                currentStickY = 0f
+                                inputTarget.onStickMove(stickControl, 0f, 0f)
+                                thumbOffset = Offset.Zero
+                                lastSpeed = 0f
+                            }
+                        }
+                    }
+                }
+                decayJob?.cancel()
+                if (lastSpeed > 400f) {
+                    val coastSteps = ((lastSpeed / 200f).toInt()).coerceIn(3, 7)
+                    coroutineScope.launch {
+                        var coastX = currentStickX
+                        var coastY = currentStickY
+                        repeat(coastSteps) {
+                            coastX *= 0.68f
+                            coastY *= 0.68f
+                            inputTarget.onStickMove(stickControl, coastX, coastY)
+                            thumbOffset = Offset(
+                                coastX * maxRadiusPx,
+                                -coastY * maxRadiusPx
+                            )
+                            delay(16)
+                        }
+                        thumbOffset = Offset.Zero
+                        inputTarget.onStickMove(stickControl, 0f, 0f)
+                    }
+                } else {
+                    thumbOffset = Offset.Zero
+                    inputTarget.onStickMove(stickControl, 0f, 0f)
+                }
+            }
+        }
     } else {
         Modifier.pointerInput(isConnected, stickControl) {
             detectDragGestures(
@@ -462,7 +600,7 @@ private fun RenderNxpJoystick(
                 onDrag = { change, dragAmount ->
                     change.consume()
                     val newOffset = thumbOffset + dragAmount
-                    val distance = sqrt(newOffset.x * newOffset.x + newOffset.y * newOffset.y)
+                    val distance = kotlin.math.sqrt(newOffset.x * newOffset.x + newOffset.y * newOffset.y)
                     val clamped = if (distance > maxRadiusPx) {
                         Offset(newOffset.x / distance * maxRadiusPx, newOffset.y / distance * maxRadiusPx)
                     } else newOffset

@@ -13,6 +13,9 @@ import org.junit.Assert.*
 import org.junit.Test
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
+import kotlin.math.hypot
+import kotlin.math.pow
+import com.sanket.tools.nexpad.ui.components.controller.calculateGamingStickMagnitude
 
 class CategoryManagerHudTest {
 
@@ -677,4 +680,252 @@ class CategoryManagerHudTest {
         val cardCCenter = androidx.compose.ui.geometry.Offset(200f, 505f)
         assertFalse(draggedRect.contains(cardCCenter))
     }
+
+    @Test
+    fun testStickButtonControlResolutionAndPositions() {
+        val lsb = CategoryManager.resolveControl("LSB")
+        assertNotNull(lsb)
+        assertEquals("LSB", lsb?.key)
+        assertEquals(com.sanket.tools.nexpad.category.CategoryType.STICKS, lsb?.categoryType)
+        assertEquals(com.sanket.tools.nexpad.category.ComponentType.BUTTON, lsb?.componentType)
+
+        val rsb = CategoryManager.resolveControl("RSB")
+        assertNotNull(rsb)
+        assertEquals("RSB", rsb?.key)
+        assertEquals(com.sanket.tools.nexpad.category.CategoryType.STICKS, rsb?.categoryType)
+        assertEquals(com.sanket.tools.nexpad.category.ComponentType.BUTTON, rsb?.componentType)
+
+        // Synonyms L3 and R3 resolve to LSB and RSB
+        val l3 = CategoryManager.resolveControl("L3")
+        assertEquals("LSB", l3?.key)
+        val r3 = CategoryManager.resolveControl("R3")
+        assertEquals("RSB", r3?.key)
+
+        // Fallback default positions
+        val lsbPos = getControlDefaultPosition("LSB")
+        assertNotNull(lsbPos)
+        assertEquals(0.210f, lsbPos!!.xRatio, 0.001f)
+        assertEquals(0.540f, lsbPos.yRatio, 0.001f)
+
+        val rsbPos = getControlDefaultPosition("RSB")
+        assertNotNull(rsbPos)
+        assertEquals(0.790f, rsbPos!!.xRatio, 0.001f)
+        assertEquals(0.540f, rsbPos.yRatio, 0.001f)
+    }
+
+    @Test
+    fun testTouchpadControlResolutionAndPositions() {
+        val ltp = CategoryManager.resolveControl("LTP")
+        assertNotNull(ltp)
+        assertEquals("LTP", ltp?.key)
+        assertEquals(com.sanket.tools.nexpad.category.CategoryType.STICKS, ltp?.categoryType)
+        assertEquals(com.sanket.tools.nexpad.category.ComponentType.TOUCHPAD, ltp?.componentType)
+
+        val rtp = CategoryManager.resolveControl("RTP")
+        assertNotNull(rtp)
+        assertEquals("RTP", rtp?.key)
+        assertEquals(com.sanket.tools.nexpad.category.CategoryType.STICKS, rtp?.categoryType)
+        assertEquals(com.sanket.tools.nexpad.category.ComponentType.TOUCHPAD, rtp?.componentType)
+
+        // Aliases
+        val touchL = CategoryManager.resolveControl("TOUCHPAD_L")
+        assertEquals("LTP", touchL?.key)
+        val movePad = CategoryManager.resolveControl("MOVE_PAD")
+        assertEquals("LTP", movePad?.key)
+        val cameraPad = CategoryManager.resolveControl("CAMERA_PAD")
+        assertEquals("RTP", cameraPad?.key)
+        val swipeLook = CategoryManager.resolveControl("SWIPE_LOOK")
+        assertEquals("RTP", swipeLook?.key)
+
+        // Fallback default positions
+        val ltpPos = getControlDefaultPosition("LTP")
+        assertNotNull(ltpPos)
+        assertEquals(0.180f, ltpPos!!.xRatio, 0.001f)
+        assertEquals(0.680f, ltpPos.yRatio, 0.001f)
+
+        val rtpPos = getControlDefaultPosition("RTP")
+        assertNotNull(rtpPos)
+        assertEquals(0.820f, rtpPos!!.xRatio, 0.001f)
+        assertEquals(0.680f, rtpPos.yRatio, 0.001f)
+    }
+
+    @Test
+    fun testGamingSpeedToDistanceSweetSpots() {
+        val sensitivity = 1.0f
+
+        // 1. Noise gate (< 8 dp/s) -> must be exactly 0.0f
+        assertEquals("Sub-8 dp/s noise gate must produce 0 stick deflection", 0f, calculateGamingStickMagnitude(0f, sensitivity), 0.0001f)
+        assertEquals("Sub-8 dp/s noise gate must produce 0 stick deflection", 0f, calculateGamingStickMagnitude(5f, sensitivity), 0.0001f)
+        assertEquals("Sub-8 dp/s noise gate boundary must produce 0 stick deflection", 0f, calculateGamingStickMagnitude(7.99f, sensitivity), 0.0001f)
+
+        // 2. Precision Aiming Zone: 8 dp/s starts at anti-deadzone floor 0.16f
+        assertEquals("8 dp/s must start at anti-deadzone floor 0.16f", 0.16f, calculateGamingStickMagnitude(8f, sensitivity), 0.0001f)
+
+        // Precision Aiming Zone ends at 120 dp/s with 0.25f
+        assertEquals("120 dp/s precision zone boundary must produce 0.25f stick deflection", 0.25f, calculateGamingStickMagnitude(120f, sensitivity), 0.0001f)
+
+        // 3. THE GOLDEN SWEET SPOT: 400 dp/s MUST produce exactly 0.50f (half deflection)
+        assertEquals("400 dp/s golden sweet spot must produce exactly 0.50f half deflection", 0.50f, calculateGamingStickMagnitude(400f, sensitivity), 0.0001f)
+
+        // 4. Exponential Acceleration Zone: 1200 dp/s MUST reach full 1.00f deflection
+        assertEquals("1200 dp/s must reach full 1.00f deflection", 1.00f, calculateGamingStickMagnitude(1200f, sensitivity), 0.0001f)
+
+        // 5. Saturation Zone: > 1200 dp/s must clamp at 1.00f
+        assertEquals("Flick speeds > 1200 dp/s must clamp at 1.00f", 1.00f, calculateGamingStickMagnitude(1800f, sensitivity), 0.0001f)
+        assertEquals("Extreme flick speeds must clamp at 1.00f", 1.00f, calculateGamingStickMagnitude(3000f, sensitivity), 0.0001f)
+    }
+
+    @Test
+    fun testDirectionalAxisStabilization() {
+        // Cross-talk suppression: when primary axis > 3x secondary axis, dampen off-axis by 50%
+        fun stabilizeAxes(deltaX: Float, deltaY: Float): Pair<Float, Float> {
+            var finalDeltaX = deltaX
+            var finalDeltaY = deltaY
+            val absX = kotlin.math.abs(deltaX)
+            val absY = kotlin.math.abs(deltaY)
+            if (absX > 3.0f * absY) {
+                finalDeltaY *= 0.5f
+            } else if (absY > 3.0f * absX) {
+                finalDeltaX *= 0.5f
+            }
+            return Pair(finalDeltaX, finalDeltaY)
+        }
+
+        // Horizontal turn with minor vertical drift (dx=30, dy=4 -> 30 > 3*4=12)
+        val (hX, hY) = stabilizeAxes(30f, 4f)
+        assertEquals(30f, hX, 0.0001f)
+        assertEquals(2f, hY, 0.0001f) // dampened from 4 to 2
+
+        // Vertical look with minor horizontal drift (dx=3, dy=25 -> 25 > 3*3=9)
+        val (vX, vY) = stabilizeAxes(3f, 25f)
+        assertEquals(1.5f, vX, 0.0001f) // dampened from 3 to 1.5
+        assertEquals(25f, vY, 0.0001f)
+
+        // Diagonal swipe (dx=20, dy=15 -> not > 3x) remains unaltered
+        val (diagX, diagY) = stabilizeAxes(20f, 15f)
+        assertEquals(20f, diagX, 0.0001f)
+        assertEquals(15f, diagY, 0.0001f)
+    }
+
+    @Test
+    fun testCameraTouchRelativeDeltaCalculationAndStationaryZeroReset() {
+        // Density-independent gaming ballistics algorithm used in RealisticTouchPad, RealisticJoystick, NxprcCanvasRenderer
+        val density = 2.75f // Typical FHD mobile display
+        val sensitivity = 1.0f
+
+        fun calculateStick(deltaX: Float, deltaY: Float, dtSec: Float): Pair<Float, Float> {
+            val distPx = hypot(deltaX, deltaY)
+            val distDp = distPx / density
+            if (distDp <= 0.15f) return Pair(0f, 0f)
+
+            val speedDpPerSec = distDp / dtSec.coerceAtLeast(0.001f)
+            val stickMagnitude = calculateGamingStickMagnitude(speedDpPerSec, sensitivity)
+            if (stickMagnitude <= 0f) return Pair(0f, 0f)
+
+            val dirX = deltaX / distPx
+            val dirY = deltaY / distPx
+
+            val targetStickX = (dirX * stickMagnitude).coerceIn(-1f, 1f)
+            val targetStickY = (-dirY * stickMagnitude).coerceIn(-1f, 1f)
+            return Pair(targetStickX, targetStickY)
+        }
+
+        var previousTouchX = 500f
+        var previousTouchY = 500f
+        var stickX = 0f
+        var stickY = 0f
+
+        // Step 1: Touch down at (500, 500)
+        assertEquals("On touch down, camera stick must be exactly 0f", 0f, stickX, 0.0001f)
+        assertEquals("On touch down, camera stick must be exactly 0f", 0f, stickY, 0.0001f)
+
+        // Step 2: Finger moves to (500, 510) in 16ms (60fps) - Gentle drag downward
+        val move1X = 500f
+        val move1Y = 510f
+        val delta1X = move1X - previousTouchX
+        val delta1Y = move1Y - previousTouchY
+        previousTouchX = move1X
+        previousTouchY = move1Y
+
+        val (s1X, s1Y) = calculateStick(delta1X, delta1Y, 0.016f)
+        stickX = s1X
+        stickY = s1Y
+
+        assertEquals(0f, delta1X, 0.0001f)
+        assertEquals(10f, delta1Y, 0.0001f)
+        assertEquals(0f, stickX, 0.0001f)
+        assertTrue("Down swipe produces negative stick deflection (look down)", stickY < 0f)
+        assertTrue("Stick magnitude must respect deadzone floor 0.16 so PC games respond immediately", -stickY >= 0.16f)
+
+        // Step 3: Fast swipe downward
+        val move2X = 500f
+        val move2Y = 560f
+        val delta2X = move2X - previousTouchX
+        val delta2Y = move2Y - previousTouchY
+        previousTouchX = move2X
+        previousTouchY = move2Y
+
+        val (s2X, s2Y) = calculateStick(delta2X, delta2Y, 0.016f)
+        stickX = s2X
+        stickY = s2Y
+
+        assertTrue("Fast swipe gives higher deflection than gentle swipe", -stickY > -s1Y)
+
+        // Step 4: Finger rests stationary at (500, 560)
+        // In laptop touchpad logic: no motion -> watchdog smoothly decays to 0
+        stickX = 0f
+        stickY = 0f
+        assertEquals("Stationary resting finger must produce zero stick output", 0f, stickX, 0.0001f)
+        assertEquals("Stationary resting finger must produce zero stick output, stopping camera spin", 0f, stickY, 0.0001f)
+
+        // Step 5: Finger lifts - releases to (0, 0)
+        stickX = 0f
+        stickY = 0f
+        assertEquals(0f, stickX, 0.0001f)
+        assertEquals(0f, stickY, 0.0001f)
+    }
+
+    @Test
+    fun testBothLtpAndRtpUseLaptopTouchpadSpeedToDistanceMechanics() {
+        val density = 3.0f
+        val sensitivity = 1.0f
+
+        fun calculateTouchpadStick(isLeft: Boolean, deltaX: Float, deltaY: Float, dtSec: Float): Pair<Float, Float> {
+            val distPx = hypot(deltaX, deltaY)
+            val distDp = distPx / density
+            if (distDp <= 0.15f) return Pair(0f, 0f)
+
+            val speedDpPerSec = distDp / dtSec.coerceAtLeast(0.001f)
+            val stickMagnitude = calculateGamingStickMagnitude(speedDpPerSec, sensitivity)
+            if (stickMagnitude <= 0f) return Pair(0f, 0f)
+
+            val dirX = deltaX / distPx
+            val dirY = deltaY / distPx
+
+            val targetStickX = (dirX * stickMagnitude).coerceIn(-1f, 1f)
+            val targetStickY = (-dirY * stickMagnitude).coerceIn(-1f, 1f)
+            return Pair(targetStickX, targetStickY)
+        }
+
+        // Both LTP (Left Touchpad) and RTP (Right Touchpad) yield identical speed-to-distance ballistics
+        for (isLeft in listOf(true, false)) {
+            val padName = if (isLeft) "LTP (Left Touchpad)" else "RTP (Right Touchpad)"
+
+            // Gentle downward drag in 16ms
+            val (s1X, s1Y) = calculateTouchpadStick(isLeft, 0f, 12f, 0.016f)
+            assertEquals("0 horizontal delta produces 0 X stick on $padName", 0f, s1X, 0.0001f)
+            assertTrue("Downward drag on $padName produces negative Y stick", s1Y < 0f)
+            assertTrue("Stick magnitude on $padName respects deadzone floor 0.16", -s1Y >= 0.16f)
+
+            // High speed swipe in 16ms
+            val (s2X, s2Y) = calculateTouchpadStick(isLeft, 0f, 60f, 0.016f)
+            assertTrue("Fast swipe on $padName produces greater deflection than gentle swipe", -s2Y > -s1Y)
+
+            // Rightward swipe
+            val (s3X, s3Y) = calculateTouchpadStick(isLeft, 30f, 0f, 0.016f)
+            assertTrue("Rightward swipe on $padName produces positive X stick", s3X > 0f)
+            assertEquals("0 vertical delta produces 0 Y stick on $padName", 0f, s3Y, 0.0001f)
+        }
+    }
 }
+

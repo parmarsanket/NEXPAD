@@ -107,6 +107,10 @@ fun getControlDefaultPosition(canonicalKey: String): Position? {
         K.DOWN  -> Position(0.320f, 0.830f, scale = 0.85f)
         K.LEFT  -> Position(0.260f, 0.740f, scale = 0.85f)
         K.RIGHT -> Position(0.380f, 0.740f, scale = 0.85f)
+        K.LSB   -> Position(0.210f, 0.540f, scale = 0.80f)
+        K.RSB   -> Position(0.790f, 0.540f, scale = 0.80f)
+        K.LTP   -> Position(0.180f, 0.680f, scale = 1.0f)
+        K.RTP   -> Position(0.820f, 0.680f, scale = 1.0f)
         else    -> null
     }
 }
