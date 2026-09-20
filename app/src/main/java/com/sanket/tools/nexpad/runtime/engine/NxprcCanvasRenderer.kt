@@ -31,10 +31,14 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.category.CategoryManager
+import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpad.runtime.model.NexPadControl
 import com.sanket.tools.nexpad.runtime.model.NexPadInputTarget
 import com.sanket.tools.nexpad.nxprc.*
+import com.sanket.tools.nexpad.ui.components.controller.PlayStationSymbol
+import com.sanket.tools.nexpad.ui.components.controller.getPlayStationShape
 import com.sanket.tools.nexpad.ui.components.controller.calculateGamingStickMagnitude
 import com.sanket.tools.nexpad.ui.components.controller.VelocityRingBuffer
 import kotlinx.coroutines.launch
@@ -132,7 +136,8 @@ fun NxprcCanvasRenderer(
     modifier: Modifier = Modifier,
     overrideSizeDp: Int? = null,
     rumbleIntensity: Float = 0f,
-    isInteractive: Boolean = true
+    isInteractive: Boolean = true,
+    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX
 ) {
     var isPressed by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
@@ -1301,6 +1306,7 @@ fun NxprcCanvasRenderer(
                     }
             ) {
                 textLayers.forEach { tl ->
+                    val resolvedText = CategoryManager.resolveGlyphForStyle(tl.text, document.manifest.defaultControl, labelStyle)
                     val fontSp = (tl.fontSizeSp * scaleFactor).sp
                     val fontWeight = if (tl.fontWeight >= 900) FontWeight.Black else if (tl.fontWeight >= 700) FontWeight.Bold else FontWeight.Normal
                     val isLayerCap = isTwoStageStick && document.canvas.layers.indexOf(tl).let { it != -1 && it in capIndicesSet }
@@ -1309,31 +1315,56 @@ fun NxprcCanvasRenderer(
                     val offX = (tl.offsetXRatio * buttonW).dp + stickShiftX
                     val offY = (tl.offsetYRatio * buttonH).dp + stickShiftY
 
-                    if (tl.textShadows.isNotEmpty()) {
-                        tl.textShadows.forEach { ts ->
-                            Text(
-                                text = tl.text,
-                                color = Color(ts.color),
-                                fontSize = fontSp,
-                                fontWeight = fontWeight,
-                                modifier = Modifier.offset(
-                                    x = offX + (ts.offsetX * scaleFactor).dp,
-                                    y = offY + (ts.offsetY * scaleFactor).dp
+                    val psShape = getPlayStationShape(resolvedText)
+                    val glyphSizeDp = (tl.fontSizeSp * scaleFactor * 1.20f).dp
+                    if (psShape != null) {
+                        if (tl.textShadows.isNotEmpty()) {
+                            tl.textShadows.forEach { ts ->
+                                PlayStationSymbol(
+                                    shape = psShape,
+                                    color = Color(ts.color),
+                                    size = glyphSizeDp,
+                                    modifier = Modifier.offset(
+                                        x = offX + (ts.offsetX * scaleFactor).dp,
+                                        y = offY + (ts.offsetY * scaleFactor).dp
+                                    )
                                 )
-                            )
+                            }
                         }
+                        PlayStationSymbol(
+                            shape = psShape,
+                            color = Color(tl.textColor),
+                            size = glyphSizeDp,
+                            modifier = Modifier.offset(x = offX, y = offY)
+                        )
+                    } else {
+                        if (tl.textShadows.isNotEmpty()) {
+                            tl.textShadows.forEach { ts ->
+                                Text(
+                                    text = resolvedText,
+                                    color = Color(ts.color),
+                                    fontSize = fontSp,
+                                    fontWeight = fontWeight,
+                                    modifier = Modifier.offset(
+                                        x = offX + (ts.offsetX * scaleFactor).dp,
+                                        y = offY + (ts.offsetY * scaleFactor).dp
+                                    )
+                                )
+                            }
+                        }
+                        Text(
+                            text = resolvedText,
+                            color = Color(tl.textColor),
+                            fontSize = fontSp,
+                            fontWeight = fontWeight,
+                            modifier = Modifier.offset(x = offX, y = offY)
+                        )
                     }
-                    Text(
-                        text = tl.text,
-                        color = Color(tl.textColor),
-                        fontSize = fontSp,
-                        fontWeight = fontWeight,
-                        modifier = Modifier.offset(x = offX, y = offY)
-                    )
                 }
             }
         } else if (glyph != null || document.canvas.layers.any { it is CanvasLayer.CenterGlyph }) {
-            val centerText = glyph?.text ?: document.manifest.defaultControl
+            val rawCenterText = glyph?.text ?: document.manifest.defaultControl
+            val centerText = CategoryManager.resolveGlyphForStyle(rawCenterText, document.manifest.defaultControl, labelStyle)
             val textColor = glyph?.textColor ?: 0xFFF5F5F5L
             val baseFontSp = glyph?.fontSizeSp ?: (viewBox * 0.32f)
             val fontSp = (baseFontSp * scaleFactor).sp
@@ -1357,47 +1388,89 @@ fun NxprcCanvasRenderer(
                         }
                     }
             ) {
-                val extraShadows = glyph?.textShadows ?: emptyList()
-                if (extraShadows.isNotEmpty()) {
-                    extraShadows.forEach { ts ->
-                        Text(
-                            text = centerText,
-                            color = Color(ts.color),
-                            fontSize = fontSp,
-                            fontWeight = fontWeight,
-                            modifier = Modifier.offset(
-                                x = (ts.offsetX * scaleFactor).dp,
-                                y = (ts.offsetY * scaleFactor).dp
+                val psShape = getPlayStationShape(centerText)
+                val glyphSizeDp = (baseFontSp * scaleFactor * 1.20f).dp
+                if (psShape != null) {
+                    val extraShadows = glyph?.textShadows ?: emptyList()
+                    if (extraShadows.isNotEmpty()) {
+                        extraShadows.forEach { ts ->
+                            PlayStationSymbol(
+                                shape = psShape,
+                                color = Color(ts.color),
+                                size = glyphSizeDp,
+                                modifier = Modifier.offset(
+                                    x = (ts.offsetX * scaleFactor).dp,
+                                    y = (ts.offsetY * scaleFactor).dp
+                                )
                             )
-                        )
+                        }
+                    } else {
+                        glyph?.shadowColor?.let { sc ->
+                            PlayStationSymbol(
+                                shape = psShape,
+                                color = Color(sc),
+                                size = glyphSizeDp,
+                                modifier = Modifier.offset(y = (glyph.shadowOffsetY * scaleFactor).dp)
+                            )
+                        }
+                        glyph?.highlightColor?.let { hc ->
+                            PlayStationSymbol(
+                                shape = psShape,
+                                color = Color(hc),
+                                size = glyphSizeDp,
+                                modifier = Modifier.offset(y = (-1f * scaleFactor).dp)
+                            )
+                        }
                     }
+                    // Foreground PlayStation symbol
+                    PlayStationSymbol(
+                        shape = psShape,
+                        color = Color(textColor),
+                        size = glyphSizeDp
+                    )
                 } else {
-                    glyph?.shadowColor?.let { sc ->
-                        Text(
-                            text = centerText,
-                            color = Color(sc),
-                            fontSize = fontSp,
-                            fontWeight = fontWeight,
-                            modifier = Modifier.offset(y = (glyph.shadowOffsetY * scaleFactor).dp)
-                        )
+                    val extraShadows = glyph?.textShadows ?: emptyList()
+                    if (extraShadows.isNotEmpty()) {
+                        extraShadows.forEach { ts ->
+                            Text(
+                                text = centerText,
+                                color = Color(ts.color),
+                                fontSize = fontSp,
+                                fontWeight = fontWeight,
+                                modifier = Modifier.offset(
+                                    x = (ts.offsetX * scaleFactor).dp,
+                                    y = (ts.offsetY * scaleFactor).dp
+                                )
+                            )
+                        }
+                    } else {
+                        glyph?.shadowColor?.let { sc ->
+                            Text(
+                                text = centerText,
+                                color = Color(sc),
+                                fontSize = fontSp,
+                                fontWeight = fontWeight,
+                                modifier = Modifier.offset(y = (glyph.shadowOffsetY * scaleFactor).dp)
+                            )
+                        }
+                        glyph?.highlightColor?.let { hc ->
+                            Text(
+                                text = centerText,
+                                color = Color(hc),
+                                fontSize = fontSp,
+                                fontWeight = fontWeight,
+                                modifier = Modifier.offset(y = (-1f * scaleFactor).dp)
+                            )
+                        }
                     }
-                    glyph?.highlightColor?.let { hc ->
-                        Text(
-                            text = centerText,
-                            color = Color(hc),
-                            fontSize = fontSp,
-                            fontWeight = fontWeight,
-                            modifier = Modifier.offset(y = (-1f * scaleFactor).dp)
-                        )
-                    }
+                    // Foreground text
+                    Text(
+                        text = centerText,
+                        color = Color(textColor),
+                        fontSize = fontSp,
+                        fontWeight = fontWeight
+                    )
                 }
-                // Foreground text
-                Text(
-                    text = centerText,
-                    color = Color(textColor),
-                    fontSize = fontSp,
-                    fontWeight = fontWeight
-                )
             }
         }
     }

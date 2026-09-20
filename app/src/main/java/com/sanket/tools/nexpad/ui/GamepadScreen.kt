@@ -305,7 +305,8 @@ fun GamepadScreen(
                     viewModel = viewModel,
                     onVibrate = safeOnVibrate,
                     customComponentId = position.customComponentId,
-                    sensitivity = position.sensitivity
+                    sensitivity = position.sensitivity,
+                    labelStyle = profile.controllerLabelStyle
                 )
             }
         }

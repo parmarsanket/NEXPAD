@@ -12,8 +12,10 @@ import com.sanket.tools.nexpad.runtime.engine.NxprcCanvasRenderer
 import com.sanket.tools.nexpad.runtime.engine.NxpComposeInterpreter
 import com.sanket.tools.nexpad.runtime.model.NexPadControl
 import com.sanket.tools.nexpad.runtime.model.asInputTarget
+import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.CategoryType
 import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
 
@@ -29,7 +31,8 @@ fun ControllerElementRenderer(
     viewModel: GamepadViewModel,
     onVibrate: () -> Unit = {},
     customComponentId: String? = null,
-    sensitivity: Float? = null
+    sensitivity: Float? = null,
+    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX
 ) {
     val context = LocalContext.current
     val isDefaultNative = customComponentId == null || customComponentId.startsWith("builtin.default_")
@@ -66,7 +69,8 @@ fun ControllerElementRenderer(
                 assignedControl = targetControl,
                 isConnected = isConnected,
                 inputTarget = viewModel.asInputTarget(onVibrate),
-                rumbleIntensity = rumbleIntensity
+                rumbleIntensity = rumbleIntensity,
+                labelStyle = labelStyle
             )
             return
         }
@@ -96,6 +100,7 @@ fun ControllerElementRenderer(
     }
 
     val ctrl = ControlKey.fromIdentifier(key)
+    val displayLabel = CategoryManager.getLabelForStyle(key, labelStyle)
     when (ctrl) {
         ControlKey.LS -> RealisticJoystick(
             isLeft = true,
@@ -131,7 +136,8 @@ fun ControllerElementRenderer(
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
+            isRgbEnabled = isRgbEnabled,
+            displayLabel = displayLabel
         )
         ControlKey.RSB -> RealisticStickButton(
             isLeft = false,
@@ -139,7 +145,8 @@ fun ControllerElementRenderer(
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
+            isRgbEnabled = isRgbEnabled,
+            displayLabel = displayLabel
         )
         ControlKey.DPAD -> RealisticDPad(
             isConnected = isConnected,
@@ -159,28 +166,32 @@ fun ControllerElementRenderer(
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
+            isRgbEnabled = isRgbEnabled,
+            displayLabel = displayLabel
         )
         ControlKey.RT -> RealisticTrigger(
             key = K.RT,
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
+            isRgbEnabled = isRgbEnabled,
+            displayLabel = displayLabel
         )
         ControlKey.LB -> RealisticBumper(
             key = K.LB,
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
+            isRgbEnabled = isRgbEnabled,
+            displayLabel = displayLabel
         )
         ControlKey.RB -> RealisticBumper(
             key = K.RB,
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
+            isRgbEnabled = isRgbEnabled,
+            displayLabel = displayLabel
         )
         ControlKey.A -> RealisticButton(
             key = K.A,
@@ -188,7 +199,8 @@ fun ControllerElementRenderer(
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
+            isRgbEnabled = isRgbEnabled,
+            displayLabel = displayLabel
         )
         ControlKey.B -> RealisticButton(
             key = K.B,
@@ -196,7 +208,8 @@ fun ControllerElementRenderer(
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
+            isRgbEnabled = isRgbEnabled,
+            displayLabel = displayLabel
         )
         ControlKey.X -> RealisticButton(
             key = K.X,
@@ -204,7 +217,8 @@ fun ControllerElementRenderer(
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
+            isRgbEnabled = isRgbEnabled,
+            displayLabel = displayLabel
         )
         ControlKey.Y -> RealisticButton(
             key = K.Y,
@@ -212,7 +226,8 @@ fun ControllerElementRenderer(
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
+            isRgbEnabled = isRgbEnabled,
+            displayLabel = displayLabel
         )
         ControlKey.GUIDE, ControlKey.START, ControlKey.BACK, ControlKey.SHARE -> RealisticSystemButton(
             key = key,
@@ -249,7 +264,8 @@ fun ControllerElementRenderer(
                 isConnected = isConnected,
                 onVibrate = onVibrate,
                 viewModel = viewModel,
-                isRgbEnabled = isRgbEnabled
+                isRgbEnabled = isRgbEnabled,
+                displayLabel = displayLabel
             )
         }
     }

@@ -196,7 +196,8 @@ fun HudEditorScreen(
             isRgbEnabled = profile.isRgbEnabled,
             dummyViewModel = effectiveGamepadViewModel,
             onSelect = { viewModel.selectControl(it) },
-            onDragDelta = { control, dx, dy -> viewModel.nudge(control, dx, dy) }
+            onDragDelta = { control, dx, dy -> viewModel.nudge(control, dx, dy) },
+            labelStyle = profile.controllerLabelStyle
         )
 
         // 2. Top Navigation Bar (Draggable up/down with auto-dodge & snap-to-dock)
@@ -211,6 +212,10 @@ fun HudEditorScreen(
                     Toast.makeText(context, "Layout '${profile.name}' saved!", Toast.LENGTH_SHORT).show()
                     navController.popBackStack()
                 }
+            },
+            labelStyle = profile.controllerLabelStyle,
+            onUpdateLabelStyle = { newStyle ->
+                viewModel.updateLabelStyle(newStyle)
             },
             isDragging = autoDodgeCoordinator.isDraggingTopBar,
             onDragStart = { autoDodgeCoordinator.isDraggingTopBar = true },

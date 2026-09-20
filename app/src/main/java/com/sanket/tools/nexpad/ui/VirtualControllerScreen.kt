@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.model.LayoutProfile
 import com.sanket.tools.nexpad.model.getDefaultLayoutProfiles
 import com.sanket.tools.nexpad.ui.components.common.NexpadTopAppBar
@@ -259,6 +260,10 @@ fun VirtualControllerScreen(
                                 } else {
                                     profileToDelete = profile
                                 }
+                            },
+                            onUpdateLabelStyle = { newStyle ->
+                                layoutManager.setProfileLabelStyle(profile.name, newStyle)
+                                Toast.makeText(context, "${profile.name}: ${newStyle.displayName}", Toast.LENGTH_SHORT).show()
                             }
                         )
                     }

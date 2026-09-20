@@ -9,11 +9,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.AddCircleOutline
-import androidx.compose.material.icons.rounded.DragHandle
-import androidx.compose.material.icons.rounded.Save
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,6 +20,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 /**
@@ -41,6 +40,8 @@ fun HudTopBar(
     onDragEnd: () -> Unit = {},
     onDragY: (Float) -> Unit = {},
     onToggleDock: () -> Unit = {},
+    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
+    onUpdateLabelStyle: (ControllerLabelStyle) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val borderColor = if (isDragging) NeonPalette.Cyan else Color.White.copy(alpha = 0.15f)
@@ -164,11 +165,68 @@ fun HudTopBar(
                     )
                 }
 
-                // Right: Actions (Buttons Palette, Save)
+                // Right: Actions (Label Style, Buttons Palette, Save)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    var showStyleMenu by remember { mutableStateOf(false) }
+                    Box {
+                        OutlinedButton(
+                            onClick = { showStyleMenu = true },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                            modifier = Modifier.height(34.dp)
+                        ) {
+                            val isXbox = labelStyle == ControllerLabelStyle.XBOX
+                            Text(
+                                if (isXbox) "Xbox" else "PS",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isXbox) NeonPalette.Green else NeonPalette.Cyan
+                            )
+                            Icon(
+                                Icons.Rounded.ArrowDropDown,
+                                contentDescription = "Button Label Style",
+                                modifier = Modifier.size(16.dp),
+                                tint = Color.White.copy(alpha = 0.7f)
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = showStyleMenu,
+                            onDismissRequest = { showStyleMenu = false },
+                            modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Xbox Style (A, B, X, Y)") },
+                                onClick = {
+                                    onUpdateLabelStyle(ControllerLabelStyle.XBOX)
+                                    showStyleMenu = false
+                                },
+                                leadingIcon = {
+                                    if (labelStyle == ControllerLabelStyle.XBOX) {
+                                        Icon(Icons.Rounded.Check, contentDescription = null, tint = NeonPalette.Cyan)
+                                    }
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("PlayStation Style (✕, ○, □, △)") },
+                                onClick = {
+                                    onUpdateLabelStyle(ControllerLabelStyle.PLAYSTATION)
+                                    showStyleMenu = false
+                                },
+                                leadingIcon = {
+                                    if (labelStyle == ControllerLabelStyle.PLAYSTATION) {
+                                        Icon(Icons.Rounded.Check, contentDescription = null, tint = NeonPalette.Cyan)
+                                    }
+                                }
+                            )
+                        }
+                    }
+
                     OutlinedButton(
                         onClick = onOpenPalette,
                         shape = RoundedCornerShape(8.dp),

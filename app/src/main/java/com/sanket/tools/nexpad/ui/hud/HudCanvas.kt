@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.model.HudElement
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
@@ -44,7 +45,8 @@ fun HudCanvas(
     dummyViewModel: GamepadViewModel,
     onSelect: (String) -> Unit,
     onDragDelta: (String, Float, Float) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX
 ) {
     val context = LocalContext.current
     val registry = remember { ComponentRegistry.getInstance(context) }
@@ -82,7 +84,8 @@ fun HudCanvas(
                         viewModel = dummyViewModel,
                         onVibrate = {},
                         customComponentId = element.skinId,
-                        sensitivity = element.transform.sensitivity
+                        sensitivity = element.transform.sensitivity,
+                        labelStyle = labelStyle
                     )
 
                     // Broken asset warning badge when custom component is missing

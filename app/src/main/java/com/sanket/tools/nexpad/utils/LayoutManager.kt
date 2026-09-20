@@ -2,6 +2,7 @@ package com.sanket.tools.nexpad.utils
 
 import android.content.Context
 import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.model.LayoutProfile
 import com.sanket.tools.nexpad.model.Position
 import com.sanket.tools.nexpad.model.defaultPositions
@@ -272,11 +273,19 @@ class LayoutManager(private val context: Context) {
             isDefault = false,
             isRgbEnabled = baseProfile.isRgbEnabled,
             positions = positions,
-            description = "Custom Layout based on ${baseProfile.name}"
+            description = "Custom Layout based on ${baseProfile.name}",
+            labelStyle = baseProfile.labelStyle
         )
 
         saveProfile(newProfile, activate = true)
         return newProfile
+    }
+
+    /** Updates the button labeling style (Xbox vs PlayStation) for a profile. */
+    fun setProfileLabelStyle(profileName: String, style: ControllerLabelStyle) {
+        val profile = loadProfile(profileName) ?: return
+        val wasActive = getActiveProfile().name.equals(profileName, ignoreCase = true)
+        saveProfile(profile.copy(labelStyle = style.id), activate = wasActive)
     }
 
     /** Set the active layout profile. */

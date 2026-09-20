@@ -24,8 +24,12 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.CategoryType
 import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.category.ControllerLabelStyle
+import com.sanket.tools.nexpad.ui.components.controller.PlayStationSymbol
+import com.sanket.tools.nexpad.ui.components.controller.getPlayStationShape
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 private val crossShape = GenericShape { size, _ ->
@@ -57,36 +61,38 @@ private val crossShape = GenericShape { size, _ ->
 @Composable
 fun StaticDefaultButtonPreview(
     controlKey: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX
 ) {
     val ctrl = ControlKey.fromIdentifier(controlKey)
     val key = ctrl?.key ?: controlKey.uppercase()
+    val displayLabel = CategoryManager.getLabelForStyle(key, labelStyle)
 
     Box(
         modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
         when (ctrl) {
-            ControlKey.A -> StaticRealisticButton(key = "A", buttonColor = Color(0xFF00C853))
-            ControlKey.B -> StaticRealisticButton(key = "B", buttonColor = Color(0xFFD50000))
-            ControlKey.X -> StaticRealisticButton(key = "X", buttonColor = Color(0xFF2962FF))
-            ControlKey.Y -> StaticRealisticButton(key = "Y", buttonColor = Color(0xFFFFD600))
+            ControlKey.A -> StaticRealisticButton(key = displayLabel, buttonColor = Color(0xFF00C853))
+            ControlKey.B -> StaticRealisticButton(key = displayLabel, buttonColor = Color(0xFFD50000))
+            ControlKey.X -> StaticRealisticButton(key = displayLabel, buttonColor = Color(0xFF2962FF))
+            ControlKey.Y -> StaticRealisticButton(key = displayLabel, buttonColor = Color(0xFFFFD600))
 
             ControlKey.LS -> StaticRealisticJoystick(isLeft = true)
             ControlKey.RS -> StaticRealisticJoystick(isLeft = false)
-            ControlKey.LSB -> StaticRealisticStickButton(isLeft = true)
-            ControlKey.RSB -> StaticRealisticStickButton(isLeft = false)
+            ControlKey.LSB -> StaticRealisticStickButton(isLeft = true, label = displayLabel)
+            ControlKey.RSB -> StaticRealisticStickButton(isLeft = false, label = displayLabel)
             ControlKey.LTP -> StaticRealisticTouchPad(isLeft = true)
             ControlKey.RTP -> StaticRealisticTouchPad(isLeft = false)
 
             ControlKey.DPAD -> StaticRealisticDPad()
             ControlKey.UP, ControlKey.DOWN, ControlKey.LEFT, ControlKey.RIGHT -> StaticRealisticDPadButton(direction = key)
 
-            ControlKey.LT -> StaticRealisticTrigger(key = "LT", isLeft = true)
-            ControlKey.RT -> StaticRealisticTrigger(key = "RT", isLeft = false)
+            ControlKey.LT -> StaticRealisticTrigger(key = displayLabel, isLeft = true)
+            ControlKey.RT -> StaticRealisticTrigger(key = displayLabel, isLeft = false)
 
-            ControlKey.LB -> StaticRealisticBumper(key = "LB", isLeft = true)
-            ControlKey.RB -> StaticRealisticBumper(key = "RB", isLeft = false)
+            ControlKey.LB -> StaticRealisticBumper(key = displayLabel, isLeft = true)
+            ControlKey.RB -> StaticRealisticBumper(key = displayLabel, isLeft = false)
 
             ControlKey.GUIDE -> StaticRealisticSystemButton(label = "⨂", textColor = NeonPalette.Cyan)
             ControlKey.START -> StaticRealisticSystemButton(label = "☰", textColor = Color.White)
@@ -98,7 +104,7 @@ fun StaticDefaultButtonPreview(
             else -> when (ctrl?.categoryType) {
                 CategoryType.SYSTEM -> StaticRealisticSystemButton(label = key.take(2), textColor = Color.White)
                 CategoryType.MACROS -> StaticRealisticMacroButton(label = key)
-                else -> StaticRealisticButton(key = key.take(3), buttonColor = Color.Gray)
+                else -> StaticRealisticButton(key = displayLabel.take(3), buttonColor = Color.Gray)
             }
         }
     }
@@ -150,13 +156,22 @@ private fun StaticRealisticButton(
             )
         }
 
-        // Colored Text for the button (e.g. A, B, X, Y)
-        Text(
-            text = key,
-            color = buttonColor,
-            fontSize = 32.sp,
-            fontWeight = FontWeight.Bold
-        )
+        // Colored Text or PlayStation vector glyph for the button
+        val psShape = getPlayStationShape(key)
+        if (psShape != null) {
+            PlayStationSymbol(
+                shape = psShape,
+                color = buttonColor,
+                size = 38.dp
+            )
+        } else {
+            Text(
+                text = key,
+                color = buttonColor,
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 
@@ -232,9 +247,10 @@ private fun StaticRealisticJoystick(
 @Composable
 private fun StaticRealisticStickButton(
     isLeft: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    label: String? = null
 ) {
-    val key = if (isLeft) "LSB" else "RSB"
+    val key = label ?: if (isLeft) "LSB" else "RSB"
     val accentColor = if (isLeft) Color.Cyan else Color(0xFFFF007F)
 
     val baseGradient = Brush.radialGradient(

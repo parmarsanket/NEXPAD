@@ -1,6 +1,7 @@
 package com.sanket.tools.nexpad.model
 
 import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.model.NexpadKeys as K
 import kotlinx.serialization.Serializable
 
@@ -10,8 +11,12 @@ data class LayoutProfile(
     val isDefault: Boolean = false,
     val isRgbEnabled: Boolean = true,
     val positions: Map<String, Position> = standardElitePositions(),
-    val description: String = ""
+    val description: String = "",
+    val labelStyle: String = "XBOX"
 ) {
+    val controllerLabelStyle: ControllerLabelStyle
+        get() = ControllerLabelStyle.fromId(labelStyle)
+
     /** Returns positions with all keys normalized to canonical ControlKey identifiers. */
     fun canonicalPositions(): Map<String, Position> {
         val normalized = mutableMapOf<String, Position>()

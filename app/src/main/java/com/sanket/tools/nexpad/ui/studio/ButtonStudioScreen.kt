@@ -32,6 +32,7 @@ import com.sanket.tools.nexpad.ui.ScreenKey
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.CategoryType
 import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.model.Position
 import com.sanket.tools.nexpad.model.defaultPositions
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
@@ -89,6 +90,9 @@ fun ButtonStudioScreen(
                 layoutManager?.getActiveProfile()
             }
         )
+    }
+    var studioLabelStyle by remember(activeProfile) {
+        mutableStateOf(activeProfile?.controllerLabelStyle ?: ControllerLabelStyle.XBOX)
     }
     var contextualSelectedAssetId by remember(targetCurrentAssetId) { mutableStateOf(targetCurrentAssetId) }
 
@@ -356,6 +360,76 @@ fun ButtonStudioScreen(
                         }
                     }
 
+                    // Controller Button Label Style (Xbox vs PlayStation) — in VIEWER and EDITOR modes (strictly NOT in BUTTON_EDITOR)
+                    if (currentMode == ButtonStudioMode.VIEWER || currentMode == ButtonStudioMode.EDITOR) {
+                        var showStyleDropdown by remember { mutableStateOf(false) }
+                        Box {
+                            OutlinedButton(
+                                onClick = { showStyleDropdown = true },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                modifier = Modifier
+                                    .height(30.dp)
+                                    .padding(end = 6.dp)
+                            ) {
+                                val isXbox = studioLabelStyle == ControllerLabelStyle.XBOX
+                                Text(
+                                    if (isXbox) "Xbox" else "PS",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (isXbox) NeonPalette.Green else NeonPalette.Cyan
+                                )
+                                Icon(
+                                    Icons.Rounded.ArrowDropDown,
+                                    contentDescription = "Button Label Style",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = Color.White.copy(alpha = 0.7f)
+                                )
+                            }
+
+                            DropdownMenu(
+                                expanded = showStyleDropdown,
+                                onDismissRequest = { showStyleDropdown = false },
+                                modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Xbox Style (A, B, X, Y)") },
+                                    onClick = {
+                                        studioLabelStyle = ControllerLabelStyle.XBOX
+                                        if (currentMode == ButtonStudioMode.EDITOR && activeProfile != null && layoutManager != null) {
+                                            layoutManager.setProfileLabelStyle(activeProfile!!.name, ControllerLabelStyle.XBOX)
+                                            activeProfile = activeProfile?.copy(labelStyle = ControllerLabelStyle.XBOX.id)
+                                        }
+                                        showStyleDropdown = false
+                                    },
+                                    leadingIcon = {
+                                        if (studioLabelStyle == ControllerLabelStyle.XBOX) {
+                                            Icon(Icons.Rounded.Check, contentDescription = null, tint = NeonPalette.Cyan)
+                                        }
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("PlayStation Style (✕, ○, □, △)") },
+                                    onClick = {
+                                        studioLabelStyle = ControllerLabelStyle.PLAYSTATION
+                                        if (currentMode == ButtonStudioMode.EDITOR && activeProfile != null && layoutManager != null) {
+                                            layoutManager.setProfileLabelStyle(activeProfile!!.name, ControllerLabelStyle.PLAYSTATION)
+                                            activeProfile = activeProfile?.copy(labelStyle = ControllerLabelStyle.PLAYSTATION.id)
+                                        }
+                                        showStyleDropdown = false
+                                    },
+                                    leadingIcon = {
+                                        if (studioLabelStyle == ControllerLabelStyle.PLAYSTATION) {
+                                            Icon(Icons.Rounded.Check, contentDescription = null, tint = NeonPalette.Cyan)
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+
                     // Import Menu — ONLY in VIEWER mode! (In EDITOR mode, import icon is removed)
                     if (currentMode == ButtonStudioMode.VIEWER) {
                         Box {
@@ -549,6 +623,7 @@ fun ButtonStudioScreen(
                                 def = def,
                                 mode = currentMode,
                                 isAppliedToActiveProfile = isAppliedToProfile,
+                                labelStyle = studioLabelStyle,
                                 onClick = {
                                     if (currentMode == ButtonStudioMode.VIEWER) {
                                         // VIEWER MODE: Open sandbox test & preview popup
@@ -610,6 +685,7 @@ fun ButtonStudioScreen(
             isAppliedToActiveProfile = false,
             applyButtonLabel = null, // Viewer mode: test & preview only
             gamepadViewModel = gamepadViewModel,
+            labelStyle = studioLabelStyle,
             onDismiss = { previewTarget = null },
             onApplyToProfile = {},
             onAddToHud = {},

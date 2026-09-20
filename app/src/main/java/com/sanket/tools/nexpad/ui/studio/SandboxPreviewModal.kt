@@ -25,6 +25,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sanket.tools.nexpad.category.CategoryManager
+import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.runtime.engine.NxprcCanvasRenderer
 import com.sanket.tools.nexpad.runtime.engine.NxpComposeInterpreter
 import com.sanket.tools.nexpad.runtime.model.NexPadControl
@@ -48,7 +49,8 @@ fun SandboxPreviewModal(
     onAddToHud: () -> Unit = {},
     onExportJson: () -> Unit = {},
     onDelete: () -> Unit = {},
-    gamepadViewModel: GamepadViewModel? = null
+    gamepadViewModel: GamepadViewModel? = null,
+    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX
 ) {
     var telemetryAction by remember { mutableStateOf("READY — Tap or drag to test") }
     var axisValues by remember { mutableStateOf(Pair(0f, 0f)) }
@@ -226,7 +228,8 @@ fun SandboxPreviewModal(
                                     telemetryAction = "TAP • $controlKey (Haptic)"
                                     eventCount++
                                 },
-                                customComponentId = null
+                                customComponentId = null,
+                                labelStyle = labelStyle
                             )
                         } else if (remoteDoc != null) {
                             val isStickCategory = componentDef.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
@@ -253,7 +256,8 @@ fun SandboxPreviewModal(
                                 assignedControl = control,
                                 isConnected = true,
                                 inputTarget = sandboxTarget,
-                                overrideSizeDp = 140
+                                overrideSizeDp = 140,
+                                labelStyle = labelStyle
                             )
                         } else {
                             val isStickCategory = componentDef.manifest.category.equals("JOYSTICK", ignoreCase = true) ||

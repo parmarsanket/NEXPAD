@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.clickable
 import com.sanket.tools.nexpad.category.CategoryManager
+import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.runtime.engine.NxprcCanvasRenderer
 import com.sanket.tools.nexpad.runtime.engine.NxpComposeInterpreter
 import com.sanket.tools.nexpad.runtime.model.NexPadControl
@@ -51,7 +52,8 @@ fun StudioGridCard(
     scale: Float = 0.50f, // <-- Adjust size from 0.0f to 1.0f according to your preference
     onClick: () -> Unit,
     onToggleSelectInBuilder: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX
 ) {
     val context = LocalContext.current
     val type = remember(def.manifest.id) { resolveButtonSourceType(def) }
@@ -141,7 +143,7 @@ fun StudioGridCard(
                 contentAlignment = Alignment.Center
             ) {
                 if (type == ButtonStudioType.DEFAULT) {
-                    StaticDefaultButtonPreview(controlKey = controlKey)
+                    StaticDefaultButtonPreview(controlKey = controlKey, labelStyle = labelStyle)
                 } else if (type == ButtonStudioType.REMOTE_COMPOSE) {
                     val remoteRegistry = remember { RemoteComponentRegistry.getInstance(context) }
                     val doc = remember(def.manifest.id) { remoteRegistry.getComponent(def.manifest.id) }
@@ -170,7 +172,8 @@ fun StudioGridCard(
                             assignedControl = targetControl,
                             isConnected = false,
                             inputTarget = NoOpInputTarget,
-                            isInteractive = false
+                            isInteractive = false,
+                            labelStyle = labelStyle
                         )
                     } else {
                         val isStickCategory = def.manifest.category.equals("JOYSTICK", ignoreCase = true) ||

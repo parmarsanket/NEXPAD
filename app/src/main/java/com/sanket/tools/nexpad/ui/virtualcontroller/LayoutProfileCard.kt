@@ -16,7 +16,9 @@ import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,7 +27,11 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.category.CategoryManager
+import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.model.LayoutProfile
+import com.sanket.tools.nexpad.ui.components.controller.PlayStationSymbol
+import com.sanket.tools.nexpad.ui.components.controller.getPlayStationShape
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 /**
@@ -47,7 +53,8 @@ fun LayoutProfileCard(
     onRename: () -> Unit,
     onShare: () -> Unit,
     onReset: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onUpdateLabelStyle: (ControllerLabelStyle) -> Unit = {}
 ) {
     val cardShape = remember { RoundedCornerShape(16.dp) }
     val borderColor = if (isDragging) NeonPalette.Purple else if (isActive) NeonPalette.Cyan else Color.White.copy(alpha = 0.12f)
@@ -238,17 +245,33 @@ fun LayoutProfileCard(
                 }
 
                 previewKeys.forEach { key ->
+                    val displayKey = CategoryManager.getLabelForStyle(key, profile.controllerLabelStyle)
+                    val psShape = getPlayStationShape(displayKey)
                     Surface(
                         shape = RoundedCornerShape(6.dp),
                         color = Color.White.copy(alpha = 0.04f)
                     ) {
-                        Text(
-                            key,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
-                        )
+                        if (psShape != null) {
+                            Box(
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 5.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                PlayStationSymbol(
+                                    shape = psShape,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    size = 11.dp,
+                                    strokeWidth = 1.6.dp
+                                )
+                            }
+                        } else {
+                            Text(
+                                displayKey,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
+                            )
+                        }
                     }
                 }
                 if (remainingCount > 0) {
@@ -296,6 +319,63 @@ fun LayoutProfileCard(
                     Icon(Icons.Rounded.SportsEsports, contentDescription = null, tint = Color.Black, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(4.dp))
                     Text("Play", color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+
+                var showStyleDropdown by remember { mutableStateOf(false) }
+                Box {
+                    OutlinedButton(
+                        onClick = { showStyleDropdown = true },
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        val isXbox = profile.controllerLabelStyle == ControllerLabelStyle.XBOX
+                        Text(
+                            if (isXbox) "Xbox" else "PlayStation",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (isXbox) NeonPalette.Green else NeonPalette.Cyan
+                        )
+                        Icon(
+                            Icons.Rounded.ArrowDropDown,
+                            contentDescription = "Button Label Style",
+                            modifier = Modifier.size(16.dp),
+                            tint = Color.White.copy(alpha = 0.7f)
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = showStyleDropdown,
+                        onDismissRequest = { showStyleDropdown = false },
+                        modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Xbox Style (A, B, X, Y, LB, LT, LSB)") },
+                            onClick = {
+                                onUpdateLabelStyle(ControllerLabelStyle.XBOX)
+                                showStyleDropdown = false
+                            },
+                            leadingIcon = {
+                                if (profile.controllerLabelStyle == ControllerLabelStyle.XBOX) {
+                                    Icon(Icons.Rounded.Check, contentDescription = null, tint = NeonPalette.Cyan)
+                                }
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("PlayStation Style (✕, ○, □, △, L1, L2, L3)") },
+                            onClick = {
+                                onUpdateLabelStyle(ControllerLabelStyle.PLAYSTATION)
+                                showStyleDropdown = false
+                            },
+                            leadingIcon = {
+                                if (profile.controllerLabelStyle == ControllerLabelStyle.PLAYSTATION) {
+                                    Icon(Icons.Rounded.Check, contentDescription = null, tint = NeonPalette.Cyan)
+                                }
+                            }
+                        )
+                    }
                 }
 
                 OutlinedButton(

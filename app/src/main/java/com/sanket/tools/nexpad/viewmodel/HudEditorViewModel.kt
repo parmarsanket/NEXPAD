@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.model.HudElement
 import com.sanket.tools.nexpad.model.LayoutProfile
 import com.sanket.tools.nexpad.model.LayoutSkin
@@ -378,6 +379,12 @@ class HudEditorViewModel(
             )
         }
         _elements.value = elementMap
+        _hasUnsavedChanges.value = true
+    }
+
+    /** Updates the button labeling style (Xbox vs PlayStation) for the current layout. */
+    fun updateLabelStyle(style: ControllerLabelStyle) {
+        _currentProfile.value = _currentProfile.value.copy(labelStyle = style.id)
         _hasUnsavedChanges.value = true
     }
 

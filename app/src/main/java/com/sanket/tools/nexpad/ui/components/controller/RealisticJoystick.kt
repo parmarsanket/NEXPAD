@@ -317,7 +317,8 @@ fun RealisticStickButton(
     onVibrate: () -> Unit,
     viewModel: GamepadViewModel,
     isRgbEnabled: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    displayLabel: String? = null
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
@@ -414,7 +415,7 @@ fun RealisticStickButton(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = key,
+                text = displayLabel ?: key,
                 color = if (isPressed) Color.White else accentColor,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Black,

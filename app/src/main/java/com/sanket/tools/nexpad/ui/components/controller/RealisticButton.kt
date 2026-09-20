@@ -32,7 +32,8 @@ fun RealisticButton(
     onVibrate: () -> Unit, 
     viewModel: GamepadViewModel, 
     isRgbEnabled: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    displayLabel: String? = null
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
@@ -101,12 +102,22 @@ fun RealisticButton(
             )
         }
 
-        // Colored Text for the button (e.g. A, B, X, Y)
-        Text(
-            text = key,
-            color = buttonColor.copy(alpha = if (isPressed) 0.6f else 1f),
-            fontSize = 32.sp,
-            fontWeight = FontWeight.Bold
-        )
+        // Colored Face Symbol or Text for the button (e.g. A, B, X, Y or ✕, ○, □, △)
+        val activeLabel = displayLabel ?: key
+        val psShape = getPlayStationShape(activeLabel)
+        if (psShape != null) {
+            PlayStationSymbol(
+                shape = psShape,
+                color = buttonColor.copy(alpha = if (isPressed) 0.6f else 1f),
+                size = 38.dp
+            )
+        } else {
+            Text(
+                text = activeLabel,
+                color = buttonColor.copy(alpha = if (isPressed) 0.6f else 1f),
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }

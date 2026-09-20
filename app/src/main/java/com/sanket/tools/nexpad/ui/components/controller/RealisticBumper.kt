@@ -30,7 +30,8 @@ fun RealisticBumper(
     onVibrate: () -> Unit,
     viewModel: GamepadViewModel,
     isRgbEnabled: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    displayLabel: String? = null
 ) {
     var isPressed by remember { mutableStateOf(false) }
     val isLeft = key.uppercase() == com.sanket.tools.nexpad.model.NexpadKeys.LB
@@ -91,6 +92,6 @@ fun RealisticBumper(
         } else {
             Color.White.copy(alpha = 0.75f)
         }
-        Text(key, color = labelColor, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+        Text(displayLabel ?: key, color = labelColor, fontWeight = FontWeight.Bold, fontSize = 18.sp)
     }
 }

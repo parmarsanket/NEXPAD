@@ -17,6 +17,9 @@ import kotlin.math.hypot
 import kotlin.math.pow
 import com.sanket.tools.nexpad.ui.components.controller.calculateGamingStickMagnitude
 import com.sanket.tools.nexpad.ui.components.controller.VelocityRingBuffer
+import com.sanket.tools.nexpad.ui.components.controller.PlayStationShape
+import com.sanket.tools.nexpad.ui.components.controller.getPlayStationShape
+import com.sanket.tools.nexpad.ui.components.controller.isPlayStationSymbol
 
 class CategoryManagerHudTest {
 
@@ -1081,6 +1084,52 @@ class CategoryManagerHudTest {
         val maxVal = stickOutputs.maxOrNull() ?: 0f
         val delta = maxVal - minVal
         assertTrue("Stick deflection ripple under constant speed must be < 0.02 (no flickering), was $delta", delta < 0.02f)
+    }
+
+    @Test
+    fun testPlayStationGlyphShapeResolution() {
+        // Canonical PlayStation face symbols
+        assertEquals(PlayStationShape.CROSS, getPlayStationShape("✕"))
+        assertEquals(PlayStationShape.CIRCLE, getPlayStationShape("○"))
+        assertEquals(PlayStationShape.SQUARE, getPlayStationShape("□"))
+        assertEquals(PlayStationShape.TRIANGLE, getPlayStationShape("△"))
+
+        // Accepted variations
+        assertEquals(PlayStationShape.CROSS, getPlayStationShape("×"))
+        assertEquals(PlayStationShape.CROSS, getPlayStationShape("CROSS"))
+        assertEquals(PlayStationShape.CIRCLE, getPlayStationShape("◯"))
+        assertEquals(PlayStationShape.CIRCLE, getPlayStationShape("CIRCLE"))
+        assertEquals(PlayStationShape.SQUARE, getPlayStationShape("◻"))
+        assertEquals(PlayStationShape.SQUARE, getPlayStationShape("SQUARE"))
+        assertEquals(PlayStationShape.TRIANGLE, getPlayStationShape("▲"))
+        assertEquals(PlayStationShape.TRIANGLE, getPlayStationShape("∆"))
+        assertEquals(PlayStationShape.TRIANGLE, getPlayStationShape("TRIANGLE"))
+
+        // Boolean helper
+        assertTrue(isPlayStationSymbol("✕"))
+        assertTrue(isPlayStationSymbol("○"))
+        assertTrue(isPlayStationSymbol("□"))
+        assertTrue(isPlayStationSymbol("△"))
+
+        // Non-PlayStation symbols and words must return null & false
+        assertNull(getPlayStationShape("A"))
+        assertNull(getPlayStationShape("B"))
+        assertNull(getPlayStationShape("X"))
+        assertNull(getPlayStationShape("Y"))
+        assertNull(getPlayStationShape("LB"))
+        assertNull(getPlayStationShape("L1"))
+        assertNull(getPlayStationShape("RB"))
+        assertNull(getPlayStationShape("R1"))
+        assertNull(getPlayStationShape("ATTACK"))
+        assertNull(getPlayStationShape("DASH"))
+        assertNull(getPlayStationShape("FIRE"))
+        assertNull(getPlayStationShape("JUMP"))
+        assertNull(getPlayStationShape(null))
+        assertNull(getPlayStationShape(""))
+
+        assertFalse(isPlayStationSymbol("A"))
+        assertFalse(isPlayStationSymbol("ATTACK"))
+        assertFalse(isPlayStationSymbol(null))
     }
 }
 
