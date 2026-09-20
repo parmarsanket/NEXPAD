@@ -88,6 +88,7 @@ fun RealisticTouchPad(
     viewModel: GamepadViewModel,
     onVibrate: () -> Unit = {},
     isRgbEnabled: Boolean = false,
+    sensitivity: Float? = null,
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -121,9 +122,26 @@ fun RealisticTouchPad(
 
     val context = LocalContext.current
     val density = LocalDensity.current.density
-    val cameraSensitivity = remember(context) {
-        val sp = context.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
-        sp.getFloat("CAMERA_SENSITIVITY", 1.0f)
+    val padKey = if (isLeft) "LTP" else "RTP"
+    val effectiveSensitivity = remember(context, sensitivity, padKey) {
+        if (sensitivity != null && sensitivity > 0f) {
+            sensitivity
+        } else {
+            val sp = context.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
+            val specificSens = sp.getFloat("TOUCHPAD_SENSITIVITY_$padKey", -1f)
+            if (specificSens > 0f) {
+                specificSens
+            } else {
+                val globalPadSens = sp.getFloat("TOUCHPAD_SENSITIVITY", -1f)
+                if (globalPadSens > 0f) {
+                    globalPadSens
+                } else {
+                    // Default base sensitivity: 1.5f (50% increase over previous 1.0f base)
+                    val camSens = sp.getFloat("CAMERA_SENSITIVITY", 1.0f)
+                    camSens * 1.5f
+                }
+            }
+        }
     }
 
     Box(
@@ -139,7 +157,7 @@ fun RealisticTouchPad(
                 ),
                 shape
             )
-            .pointerInput(isLeft, cameraSensitivity, density) {
+            .pointerInput(isLeft, effectiveSensitivity, density) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     val startTime = System.currentTimeMillis()
@@ -204,7 +222,7 @@ fun RealisticTouchPad(
                             val speedDpPerSec = distDp / dtSec
                             lastSpeed = speedDpPerSec
 
-                            val stickMagnitude = calculateGamingStickMagnitude(speedDpPerSec, cameraSensitivity)
+                            val stickMagnitude = calculateGamingStickMagnitude(speedDpPerSec, effectiveSensitivity)
 
                             if (stickMagnitude > 0f) {
                                 val dirX = finalDeltaX / distPx

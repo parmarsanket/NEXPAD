@@ -229,6 +229,18 @@ class HudEditorViewModel(
         updateTransform(key, current.transform.xRatio, current.transform.yRatio, opacity = newOpacity)
     }
 
+    fun setSensitivity(controlKey: String, newSensitivity: Float) {
+        val key = controlKey.uppercase()
+        val current = _elements.value[key] ?: return
+        val clamped = newSensitivity.coerceIn(0.5f, 4.0f)
+        val updated = current.copy(
+            transform = current.transform.copy(sensitivity = clamped)
+        )
+        _elements.value = _elements.value + (key to updated)
+        _hasUnsavedChanges.value = true
+        layoutManager.updateTouchpadSensitivity(key, clamped)
+    }
+
     fun setSkin(controlKey: String, skinId: String?) {
         val key = controlKey.uppercase()
         val current = _elements.value[key] ?: return

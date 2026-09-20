@@ -458,7 +458,13 @@ private fun RenderNxpJoystick(
                 def.manifest.defaultControl.contains("LTP", ignoreCase = true)
         if (isTouchpad) {
             val sp = context.getSharedPreferences("nexpad_prefs", android.content.Context.MODE_PRIVATE)
-            Pair(true, sp.getFloat("CAMERA_SENSITIVITY", 1.0f))
+            val padKey = if (stickControl.isLeft) "LTP" else "RTP"
+            val specificSens = sp.getFloat("TOUCHPAD_SENSITIVITY_$padKey", -1f)
+            val sens = if (specificSens > 0f) specificSens else {
+                val globalPadSens = sp.getFloat("TOUCHPAD_SENSITIVITY", -1f)
+                if (globalPadSens > 0f) globalPadSens else sp.getFloat("CAMERA_SENSITIVITY", 1.0f) * 1.5f
+            }
+            Pair(true, sens)
         } else if (!stickControl.isLeft) {
             val sp = context.getSharedPreferences("nexpad_prefs", android.content.Context.MODE_PRIVATE)
             Pair(

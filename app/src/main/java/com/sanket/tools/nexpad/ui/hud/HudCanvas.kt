@@ -81,7 +81,8 @@ fun HudCanvas(
                         isRgbEnabled = isRgbEnabled,
                         viewModel = dummyViewModel,
                         onVibrate = {},
-                        customComponentId = element.skinId
+                        customComponentId = element.skinId,
+                        sensitivity = element.transform.sensitivity
                     )
 
                     // Broken asset warning badge when custom component is missing

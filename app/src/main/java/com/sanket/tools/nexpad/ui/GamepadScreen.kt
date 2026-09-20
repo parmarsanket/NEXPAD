@@ -304,7 +304,8 @@ fun GamepadScreen(
                     isRgbEnabled = profile.isRgbEnabled,
                     viewModel = viewModel,
                     onVibrate = safeOnVibrate,
-                    customComponentId = position.customComponentId
+                    customComponentId = position.customComponentId,
+                    sensitivity = position.sensitivity
                 )
             }
         }

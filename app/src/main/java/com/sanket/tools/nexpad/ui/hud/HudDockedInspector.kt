@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,6 +43,7 @@ fun HudDockedInspector(
     onNudge: (Float, Float) -> Unit,
     onScaleChange: (Float) -> Unit,
     onOpacityChange: (Float) -> Unit,
+    onSensitivityChange: ((Float) -> Unit)? = null,
     onCycleSkin: () -> Unit,
     onOpenStudio: () -> Unit,
     onResetPos: () -> Unit,
@@ -53,6 +56,11 @@ fun HudDockedInspector(
     modifier: Modifier = Modifier
 ) {
     val transform = element.transform
+    val isTouchpad = element.controlKey.equals("LTP", ignoreCase = true) ||
+            element.controlKey.equals("RTP", ignoreCase = true) ||
+            element.categoryTitle.equals("TOUCHPAD", ignoreCase = true) ||
+            element.spec?.componentType == com.sanket.tools.nexpad.category.ComponentType.TOUCHPAD
+
     val borderColor = if (isDragging) NeonPalette.Cyan else NeonPalette.Cyan.copy(alpha = 0.5f)
     val borderWidth = if (isDragging) 1.5.dp else 1.dp
     val shadowElevation = if (isDragging) 20.dp else 12.dp
@@ -151,6 +159,22 @@ fun HudDockedInspector(
                         )
                     }
 
+                    if (isTouchpad) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = NeonPalette.Green.copy(alpha = 0.18f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Green.copy(alpha = 0.5f))
+                        ) {
+                            Text(
+                                text = "Sens: ${String.format(java.util.Locale.US, "%.1fx", transform.sensitivity)}",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NeonPalette.Green,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
                     if (isMissingAsset) {
                         Surface(
                             shape = RoundedCornerShape(4.dp),
@@ -226,9 +250,11 @@ fun HudDockedInspector(
 
             HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
 
-            // Row 2: Controls (Nudge, Scale, Opacity, Skin, Actions)
+            // Row 2: Controls (Nudge, Scale, Opacity, Sensitivity, Skin, Actions)
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -307,6 +333,48 @@ fun HudDockedInspector(
                         modifier = Modifier.width(80.dp),
                         colors = SliderDefaults.colors(thumbColor = NeonPalette.Purple, activeTrackColor = NeonPalette.Purple)
                     )
+                }
+
+                // 3.5. Touchpad Sensitivity Controls (Dedicated for LTP / RTP)
+                if (isTouchpad && onSensitivityChange != null) {
+                    VerticalDivider(modifier = Modifier.height(28.dp), color = Color.White.copy(alpha = 0.1f))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "Sens: ${String.format(java.util.Locale.US, "%.1fx", transform.sensitivity)}",
+                            fontSize = 11.sp,
+                            color = NeonPalette.Green,
+                            fontWeight = FontWeight.Bold
+                        )
+                        IconButton(
+                            onClick = {
+                                val newSens = ((transform.sensitivity - 0.1f) * 10f).roundToInt() / 10f
+                                onSensitivityChange(newSens.coerceIn(0.5f, 4.0f))
+                            },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(Icons.Rounded.Remove, contentDescription = "Decrease Sensitivity", tint = Color.White, modifier = Modifier.size(16.dp))
+                        }
+                        Slider(
+                            value = transform.sensitivity,
+                            onValueChange = { onSensitivityChange(it) },
+                            valueRange = 0.5f..4.0f,
+                            modifier = Modifier.width(90.dp),
+                            colors = SliderDefaults.colors(thumbColor = NeonPalette.Green, activeTrackColor = NeonPalette.Green)
+                        )
+                        IconButton(
+                            onClick = {
+                                val newSens = ((transform.sensitivity + 0.1f) * 10f).roundToInt() / 10f
+                                onSensitivityChange(newSens.coerceIn(0.5f, 4.0f))
+                            },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(Icons.Rounded.Add, contentDescription = "Increase Sensitivity", tint = Color.White, modifier = Modifier.size(16.dp))
+                        }
+                    }
                 }
 
                 VerticalDivider(modifier = Modifier.height(28.dp), color = Color.White.copy(alpha = 0.1f))

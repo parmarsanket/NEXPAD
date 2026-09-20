@@ -298,4 +298,14 @@ class LayoutManager(private val context: Context) {
             ?: all.firstOrNull()
             ?: LayoutProfile(name = effectiveName)
     }
+
+    /** Updates touchpad sensitivity preferences in nexpad_prefs. */
+    fun updateTouchpadSensitivity(key: String, sens: Float) {
+        val sp = context.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
+        val upperKey = key.uppercase()
+        sp.edit()
+            .putFloat("TOUCHPAD_SENSITIVITY_$upperKey", sens)
+            .putFloat("TOUCHPAD_SENSITIVITY", sens)
+            .apply()
+    }
 }

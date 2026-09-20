@@ -48,7 +48,8 @@ data class Position(
     val yRatio: Float,
     val scale: Float = 1.0f,
     val opacity: Float = 1.0f,
-    val customComponentId: String? = null
+    val customComponentId: String? = null,
+    val sensitivity: Float? = null
 )
 
 /** Default Layout 1: Standard Elite matching physical Xbox ergonomics (Aspect-Ratio Corrected). */

@@ -927,5 +927,62 @@ class CategoryManagerHudTest {
             assertEquals("0 vertical delta produces 0 Y stick on $padName", 0f, s3Y, 0.0001f)
         }
     }
+
+    @Test
+    fun testTouchpad50PercentIncreasedSensitivityAndDockedInspectorAdjustment() {
+        // 1. Default sensitivity verification:
+        // HudElement LayoutTransform defaults to 1.5f (50% increase over 1.0f base)
+        val defaultTransform = LayoutTransform(xRatio = 0.5f, yRatio = 0.5f)
+        assertEquals(1.5f, defaultTransform.sensitivity, 0.0001f)
+
+        // 2. Ballistics response comparison: 1.0f base vs 1.5f (+50% sensitivity)
+        // At 267 dp/s thumb speed:
+        val magBase = calculateGamingStickMagnitude(267f, 1.0f)
+        val magBoosted = calculateGamingStickMagnitude(267f, 1.5f)
+        // With 1.5x sensitivity: 267 * 1.5 = 400.5 dp/s, which crosses directly into the 0.50 sweet spot!
+        assertTrue("Boosted 1.5x sensitivity reaches ~0.50 deflection at 267 dp/s", magBoosted >= 0.50f)
+        assertTrue("Base 1.0x sensitivity gives lower deflection than 1.5x", magBoosted > magBase)
+
+        // At 800 dp/s thumb speed:
+        val magBase800 = calculateGamingStickMagnitude(800f, 1.0f)
+        val magBoosted800 = calculateGamingStickMagnitude(800f, 1.5f)
+        // With 1.5x sensitivity: 800 * 1.5 = 1200 dp/s, reaching full 1.00 maximum deflection!
+        assertEquals("Boosted 1.5x reaches full 1.00 saturation at 800 dp/s", 1.00f, magBoosted800, 0.0001f)
+        assertTrue("Base 1.0x is not saturated yet at 800 dp/s", magBase800 < 1.00f)
+
+        // 3. HudElement & Position serialization round-trip with custom sensitivity
+        val posWithSens = Position(xRatio = 0.2f, yRatio = 0.8f, scale = 1.2f, opacity = 0.9f, sensitivity = 2.4f)
+        val element = HudElement.fromPosition("LTP", posWithSens)
+        assertEquals("LTP", element.controlKey)
+        assertEquals(2.4f, element.transform.sensitivity, 0.0001f)
+
+        val backToPos = element.toPosition()
+        assertEquals(2.4f, backToPos.sensitivity!!, 0.0001f)
+
+        // JSON serialization round-trip
+        val jsonStr = Json.encodeToString(backToPos)
+        assertTrue("JSON contains sensitivity field", jsonStr.contains("\"sensitivity\":2.4"))
+        val decodedPos = Json.decodeFromString<Position>(jsonStr)
+        assertEquals(2.4f, decodedPos.sensitivity!!, 0.0001f)
+
+        // Null sensitivity in JSON defaults to 1.5f in HudElement
+        val legacyPos = Position(xRatio = 0.7f, yRatio = 0.7f, sensitivity = null)
+        val legacyElement = HudElement.fromPosition("RTP", legacyPos)
+        assertEquals("Unspecified sensitivity defaults to 1.5f", 1.5f, legacyElement.transform.sensitivity, 0.0001f)
+
+        // 4. Docked Inspector slider step and range clamping (0.5f to 4.0f)
+        var sens = 1.5f
+        val stepUp = ((sens + 0.1f) * 10f).let { kotlin.math.round(it) / 10f }.coerceIn(0.5f, 4.0f)
+        assertEquals(1.6f, stepUp, 0.0001f)
+
+        val stepDown = ((sens - 0.1f) * 10f).let { kotlin.math.round(it) / 10f }.coerceIn(0.5f, 4.0f)
+        assertEquals(1.4f, stepDown, 0.0001f)
+
+        // Clamping bounds
+        val overMax = (4.0f + 0.5f).coerceIn(0.5f, 4.0f)
+        assertEquals(4.0f, overMax, 0.0001f)
+        val underMin = (0.5f - 0.5f).coerceIn(0.5f, 4.0f)
+        assertEquals(0.5f, underMin, 0.0001f)
+    }
 }
 

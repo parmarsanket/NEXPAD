@@ -12,7 +12,8 @@ data class LayoutTransform(
     val xRatio: Float,
     val yRatio: Float,
     val scale: Float = 1.0f,
-    val opacity: Float = 1.0f
+    val opacity: Float = 1.0f,
+    val sensitivity: Float = 1.5f
 )
 
 /**
@@ -68,7 +69,8 @@ data class HudElement(
         yRatio = transform.yRatio,
         scale = transform.scale,
         opacity = transform.opacity,
-        customComponentId = skinId
+        customComponentId = skinId,
+        sensitivity = transform.sensitivity
     )
 
     companion object {
@@ -78,7 +80,8 @@ data class HudElement(
                 xRatio = position.xRatio,
                 yRatio = position.yRatio,
                 scale = position.scale,
-                opacity = position.opacity
+                opacity = position.opacity,
+                sensitivity = position.sensitivity ?: 1.5f
             ),
             skinId = position.customComponentId
         )

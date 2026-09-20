@@ -176,7 +176,13 @@ fun NxprcCanvasRenderer(
                 document.manifest.defaultControl.equals(NexpadKeys.LTP, ignoreCase = true)
         if (isTouchpad) {
             val sp = context.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
-            Pair(true, sp.getFloat("CAMERA_SENSITIVITY", 1.0f))
+            val padKey = if (stick.isLeft) "LTP" else "RTP"
+            val specificSens = sp.getFloat("TOUCHPAD_SENSITIVITY_$padKey", -1f)
+            val sens = if (specificSens > 0f) specificSens else {
+                val globalPadSens = sp.getFloat("TOUCHPAD_SENSITIVITY", -1f)
+                if (globalPadSens > 0f) globalPadSens else sp.getFloat("CAMERA_SENSITIVITY", 1.0f) * 1.5f
+            }
+            Pair(true, sens)
         } else if (!stick.isLeft) {
             val sp = context.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
             Pair(

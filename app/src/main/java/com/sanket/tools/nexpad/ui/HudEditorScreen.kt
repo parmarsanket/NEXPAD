@@ -244,6 +244,7 @@ fun HudEditorScreen(
                 onNudge = { dx, dy -> viewModel.nudge(selectedControl!!, dx, dy) },
                 onScaleChange = { viewModel.setScale(selectedControl!!, it) },
                 onOpacityChange = { viewModel.setOpacity(selectedControl!!, it) },
+                onSensitivityChange = { viewModel.setSensitivity(selectedControl!!, it) },
                 onCycleSkin = { viewModel.cycleNextSkin(selectedControl!!) },
                 onOpenStudio = {
                     navigationViewModel?.beginAssetSelection(

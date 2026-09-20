@@ -28,7 +28,8 @@ fun ControllerElementRenderer(
     isRgbEnabled: Boolean,
     viewModel: GamepadViewModel,
     onVibrate: () -> Unit = {},
-    customComponentId: String? = null
+    customComponentId: String? = null,
+    sensitivity: Float? = null
 ) {
     val context = LocalContext.current
     val isDefaultNative = customComponentId == null || customComponentId.startsWith("builtin.default_")
@@ -110,14 +111,16 @@ fun ControllerElementRenderer(
             isConnected = isConnected,
             viewModel = viewModel,
             onVibrate = onVibrate,
-            isRgbEnabled = isRgbEnabled
+            isRgbEnabled = isRgbEnabled,
+            sensitivity = sensitivity
         )
         ControlKey.RTP -> RealisticTouchPad(
             isLeft = false,
             isConnected = isConnected,
             viewModel = viewModel,
             onVibrate = onVibrate,
-            isRgbEnabled = isRgbEnabled
+            isRgbEnabled = isRgbEnabled,
+            sensitivity = sensitivity
         )
         ControlKey.LSB -> RealisticStickButton(
             isLeft = true,
