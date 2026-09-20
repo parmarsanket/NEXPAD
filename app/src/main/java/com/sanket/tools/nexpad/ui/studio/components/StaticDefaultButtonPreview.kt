@@ -392,7 +392,7 @@ private fun StaticRealisticTouchPad(
         )
 
         Text(
-            text = if (isLeft) "TAP: L3" else "TAP: R3",
+            text = "2.0X BALLISTICS",
             fontSize = 9.sp,
             fontFamily = FontFamily.Monospace,
             fontWeight = FontWeight.Normal,
