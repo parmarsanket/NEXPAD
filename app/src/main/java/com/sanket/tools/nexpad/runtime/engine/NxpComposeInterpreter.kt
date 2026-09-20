@@ -462,7 +462,7 @@ private fun RenderNxpJoystick(
             val specificSens = sp.getFloat("TOUCHPAD_SENSITIVITY_$padKey", -1f)
             val sens = if (specificSens > 0f) specificSens else {
                 val globalPadSens = sp.getFloat("TOUCHPAD_SENSITIVITY", -1f)
-                if (globalPadSens > 0f) globalPadSens else sp.getFloat("CAMERA_SENSITIVITY", 1.0f) * 1.5f
+                if (globalPadSens > 0f) globalPadSens else sp.getFloat("CAMERA_SENSITIVITY", 1.0f) * 2.0f
             }
             Pair(true, sens)
         } else if (!stickControl.isLeft) {

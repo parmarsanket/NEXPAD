@@ -929,26 +929,26 @@ class CategoryManagerHudTest {
     }
 
     @Test
-    fun testTouchpad50PercentIncreasedSensitivityAndDockedInspectorAdjustment() {
+    fun testTouchpad2xDefaultSensitivityAndDockedInspectorAdjustment() {
         // 1. Default sensitivity verification:
-        // HudElement LayoutTransform defaults to 1.5f (50% increase over 1.0f base)
+        // HudElement LayoutTransform defaults to 2.0f (2x default sensitivity)
         val defaultTransform = LayoutTransform(xRatio = 0.5f, yRatio = 0.5f)
-        assertEquals(1.5f, defaultTransform.sensitivity, 0.0001f)
+        assertEquals(2.0f, defaultTransform.sensitivity, 0.0001f)
 
-        // 2. Ballistics response comparison: 1.0f base vs 1.5f (+50% sensitivity)
-        // At 267 dp/s thumb speed:
-        val magBase = calculateGamingStickMagnitude(267f, 1.0f)
-        val magBoosted = calculateGamingStickMagnitude(267f, 1.5f)
-        // With 1.5x sensitivity: 267 * 1.5 = 400.5 dp/s, which crosses directly into the 0.50 sweet spot!
-        assertTrue("Boosted 1.5x sensitivity reaches ~0.50 deflection at 267 dp/s", magBoosted >= 0.50f)
-        assertTrue("Base 1.0x sensitivity gives lower deflection than 1.5x", magBoosted > magBase)
+        // 2. Ballistics response comparison: 1.0f base vs 2.0f (2x default sensitivity)
+        // At 200 dp/s thumb speed:
+        val magBase200 = calculateGamingStickMagnitude(200f, 1.0f)
+        val mag2x200 = calculateGamingStickMagnitude(200f, 2.0f)
+        // With 2.0x sensitivity: 200 * 2.0 = 400 dp/s, which hits the 0.50 sweet spot!
+        assertEquals("2.0x sensitivity hits 0.50 deflection at 200 dp/s", 0.50f, mag2x200, 0.001f)
+        assertTrue("Base 1.0x sensitivity gives lower deflection than 2.0x", mag2x200 > magBase200)
 
-        // At 800 dp/s thumb speed:
-        val magBase800 = calculateGamingStickMagnitude(800f, 1.0f)
-        val magBoosted800 = calculateGamingStickMagnitude(800f, 1.5f)
-        // With 1.5x sensitivity: 800 * 1.5 = 1200 dp/s, reaching full 1.00 maximum deflection!
-        assertEquals("Boosted 1.5x reaches full 1.00 saturation at 800 dp/s", 1.00f, magBoosted800, 0.0001f)
-        assertTrue("Base 1.0x is not saturated yet at 800 dp/s", magBase800 < 1.00f)
+        // At 600 dp/s thumb speed:
+        val magBase600 = calculateGamingStickMagnitude(600f, 1.0f)
+        val mag2x600 = calculateGamingStickMagnitude(600f, 2.0f)
+        // With 2.0x sensitivity: 600 * 2.0 = 1200 dp/s, reaching full 1.00 maximum deflection!
+        assertEquals("2.0x sensitivity reaches full 1.00 saturation at 600 dp/s", 1.00f, mag2x600, 0.0001f)
+        assertTrue("Base 1.0x is not saturated yet at 600 dp/s", magBase600 < 1.00f)
 
         // 3. HudElement & Position serialization round-trip with custom sensitivity
         val posWithSens = Position(xRatio = 0.2f, yRatio = 0.8f, scale = 1.2f, opacity = 0.9f, sensitivity = 2.4f)
@@ -965,24 +965,45 @@ class CategoryManagerHudTest {
         val decodedPos = Json.decodeFromString<Position>(jsonStr)
         assertEquals(2.4f, decodedPos.sensitivity!!, 0.0001f)
 
-        // Null sensitivity in JSON defaults to 1.5f in HudElement
+        // Null sensitivity in JSON defaults to 2.0f in HudElement
         val legacyPos = Position(xRatio = 0.7f, yRatio = 0.7f, sensitivity = null)
         val legacyElement = HudElement.fromPosition("RTP", legacyPos)
-        assertEquals("Unspecified sensitivity defaults to 1.5f", 1.5f, legacyElement.transform.sensitivity, 0.0001f)
+        assertEquals("Unspecified sensitivity defaults to 2.0f", 2.0f, legacyElement.transform.sensitivity, 0.0001f)
 
         // 4. Docked Inspector slider step and range clamping (0.5f to 4.0f)
-        var sens = 1.5f
+        var sens = 2.0f
         val stepUp = ((sens + 0.1f) * 10f).let { kotlin.math.round(it) / 10f }.coerceIn(0.5f, 4.0f)
-        assertEquals(1.6f, stepUp, 0.0001f)
+        assertEquals(2.1f, stepUp, 0.0001f)
 
         val stepDown = ((sens - 0.1f) * 10f).let { kotlin.math.round(it) / 10f }.coerceIn(0.5f, 4.0f)
-        assertEquals(1.4f, stepDown, 0.0001f)
+        assertEquals(1.9f, stepDown, 0.0001f)
 
         // Clamping bounds
         val overMax = (4.0f + 0.5f).coerceIn(0.5f, 4.0f)
         assertEquals(4.0f, overMax, 0.0001f)
         val underMin = (0.5f - 0.5f).coerceIn(0.5f, 4.0f)
         assertEquals(0.5f, underMin, 0.0001f)
+    }
+
+    @Test
+    fun testCenterClickSeparatedIntoStandaloneStickButtons() {
+        // Dedicated standalone buttons (LSB, RSB) handle stick click (L3, R3)
+        val lsb = CategoryManager.getControl("LSB")
+        val rsb = CategoryManager.getControl("RSB")
+        assertNotNull("LSB exists in category manager", lsb)
+        assertNotNull("RSB exists in category manager", rsb)
+        assertEquals("LSB is in STICKS category", com.sanket.tools.nexpad.category.CategoryType.STICKS, lsb?.categoryType)
+        assertEquals("RSB is in STICKS category", com.sanket.tools.nexpad.category.CategoryType.STICKS, rsb?.categoryType)
+        assertEquals("LSB component type is BUTTON", com.sanket.tools.nexpad.category.ComponentType.BUTTON, lsb?.componentType)
+        assertEquals("RSB component type is BUTTON", com.sanket.tools.nexpad.category.ComponentType.BUTTON, rsb?.componentType)
+
+        // Touchpads (LTP, RTP) are pure TOUCHPAD components with no accidental click mechanism
+        val ltp = CategoryManager.getControl("LTP")
+        val rtp = CategoryManager.getControl("RTP")
+        assertNotNull("LTP exists in category manager", ltp)
+        assertNotNull("RTP exists in category manager", rtp)
+        assertEquals("LTP component type is TOUCHPAD", com.sanket.tools.nexpad.category.ComponentType.TOUCHPAD, ltp?.componentType)
+        assertEquals("RTP component type is TOUCHPAD", com.sanket.tools.nexpad.category.ComponentType.TOUCHPAD, rtp?.componentType)
     }
 }
 

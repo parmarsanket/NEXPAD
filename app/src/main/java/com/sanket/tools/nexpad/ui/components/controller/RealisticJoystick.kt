@@ -106,7 +106,6 @@ fun RealisticJoystick(
                     var currentStickX = 0f
                     var currentStickY = 0f
                     var lastSpeed = 0f
-                    var totalDistMoved = 0f
 
                     if (isCameraMode) {
                         // ── Right Stick Camera Mode: Pure relative touch ──
@@ -122,7 +121,6 @@ fun RealisticJoystick(
                         val currentTouchY = change.position.y
                         val deltaX = currentTouchX - previousTouchX
                         val deltaY = currentTouchY - previousTouchY
-                        totalDistMoved += hypot(deltaX, deltaY)
 
                         previousTouchX = currentTouchX
                         previousTouchY = currentTouchY
@@ -242,18 +240,6 @@ fun RealisticJoystick(
                             thumbOffsetX = 0f
                             thumbOffsetY = 0f
                             viewModel.updateRightStick(0f, 0f)
-                        }
-                    }
-
-                    // Tactile tap detection for L3 / R3
-                    val touchDuration = System.currentTimeMillis() - startTime
-                    if (totalDistMoved < 18f && touchDuration < 280) {
-                        val buttonName = if (isLeft) "L3" else "R3"
-                        Log.d("NEXPAD_DEBUG", "Tap -> Triggered $buttonName")
-                        coroutineScope.launch {
-                            viewModel.updateButton(buttonName, true)
-                            delay(100.milliseconds)
-                            viewModel.updateButton(buttonName, false)
                         }
                     }
                 }

@@ -55,7 +55,8 @@ import kotlin.time.Duration.Companion.milliseconds
  *   swipe velocity/deltas into Right Stick (RS X/Y) camera deflection, with immediate stop when stationary
  *   and gentle trackball decay on release.
  *
- * Single/double taps actuate stick click (L3/LSB or R3/RSB) with tactile haptic feedback.
+ * Dedicated standalone buttons (LSB/RSB) handle stick click (L3/R3), keeping touchpad input
+ * pure and free of accidental center click triggers.
  */
 /**
  * Professional 3-zone gaming speed-to-distance transfer function.
@@ -136,9 +137,9 @@ fun RealisticTouchPad(
                 if (globalPadSens > 0f) {
                     globalPadSens
                 } else {
-                    // Default base sensitivity: 1.5f (50% increase over previous 1.0f base)
+                    // Default base sensitivity: 2.0f (2x default sensitivity)
                     val camSens = sp.getFloat("CAMERA_SENSITIVITY", 1.0f)
-                    camSens * 1.5f
+                    camSens * 2.0f
                 }
             }
         }
@@ -160,12 +161,10 @@ fun RealisticTouchPad(
             .pointerInput(isLeft, effectiveSensitivity, density) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
-                    val startTime = System.currentTimeMillis()
                     var previousTouchX = down.position.x
                     var previousTouchY = down.position.y
-                    var totalDistMoved = 0f
 
-                    var previousTimeMs = startTime
+                    var previousTimeMs = System.currentTimeMillis()
                     var currentStickX = 0f
                     var currentStickY = 0f
                     var lastSpeed = 0f
@@ -191,7 +190,6 @@ fun RealisticTouchPad(
                         val currentTouchY = change.position.y
                         val deltaX = currentTouchX - previousTouchX
                         val deltaY = currentTouchY - previousTouchY
-                        totalDistMoved += hypot(deltaX, deltaY)
 
                         previousTouchX = currentTouchX
                         previousTouchY = currentTouchY
@@ -298,18 +296,6 @@ fun RealisticTouchPad(
                             viewModel.updateRightStick(0f, 0f)
                         }
                     }
-
-                    // Tap detection for L3/R3: triggers only on a short stationary tap
-                    val touchDuration = System.currentTimeMillis() - startTime
-                    if (totalDistMoved < 18f && touchDuration < 280) {
-                        val buttonName = if (isLeft) "L3" else "R3"
-                        onVibrate()
-                        coroutineScope.launch {
-                            viewModel.updateButton(buttonName, true)
-                            delay(100.milliseconds)
-                            viewModel.updateButton(buttonName, false)
-                        }
-                    }
                 }
             },
         contentAlignment = Alignment.Center
@@ -387,19 +373,6 @@ fun RealisticTouchPad(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(top = 10.dp)
-        )
-
-        // Subtext hint
-        Text(
-            text = if (isLeft) "TAP: L3" else "TAP: R3",
-            fontSize = 9.sp,
-            fontFamily = FontFamily.Monospace,
-            fontWeight = FontWeight.Normal,
-            color = Color.White.copy(alpha = 0.35f),
-            letterSpacing = 0.8.sp,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 10.dp)
         )
     }
 }
