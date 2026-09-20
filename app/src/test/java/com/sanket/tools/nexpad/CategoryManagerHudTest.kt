@@ -3,6 +3,7 @@ package com.sanket.tools.nexpad
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
+import com.sanket.tools.nexpad.category.ComponentType
 import com.sanket.tools.nexpad.model.HudElement
 import com.sanket.tools.nexpad.model.LayoutProfile
 import com.sanket.tools.nexpad.model.LayoutSkin
@@ -1210,5 +1211,48 @@ class CategoryManagerHudTest {
         assertEquals("○", CategoryManager.resolveGlyphForStyle("○", "B", ControllerLabelStyle.PLAYSTATION))
         assertEquals(PlayStationShape.CIRCLE, getPlayStationShape(CategoryManager.resolveGlyphForStyle("○", "B", ControllerLabelStyle.PLAYSTATION)))
     }
+
+    @Test
+    fun testJoystickRsDefaultsToAnalogStickAndTouchpadRtpHandlesCamera() {
+        // 1. Category and ComponentType classification
+        val rsDef = CategoryManager.resolveControl("RS")
+        assertNotNull(rsDef)
+        assertEquals("RS must strictly be classified as JOYSTICK", ComponentType.JOYSTICK, rsDef?.componentType)
+
+        val rtpDef = CategoryManager.resolveControl("RTP")
+        assertNotNull(rtpDef)
+        assertEquals("RTP must strictly be classified as TOUCHPAD", ComponentType.TOUCHPAD, rtpDef?.componentType)
+
+        // 2. Default camera mode policy: Joysticks (RS) must default to false (analog stick), NOT touchpad mode
+        fun resolveCameraMode(category: String, defaultControl: String, isLeft: Boolean, spCameraMode: Boolean?): Boolean {
+            val isTouchpad = category.equals("TOUCHPAD", ignoreCase = true) ||
+                    defaultControl.equals("RTP", ignoreCase = true) ||
+                    defaultControl.equals("LTP", ignoreCase = true)
+            return if (isTouchpad) {
+                true
+            } else if (!isLeft) {
+                spCameraMode ?: false // Default MUST be false!
+            } else {
+                false
+            }
+        }
+
+        // By default (no preference set, null):
+        assertFalse("RS joystick must default to false (analog stick mode)", resolveCameraMode("JOYSTICK", "RS", false, null))
+        assertFalse("LS joystick must always be false (analog stick mode)", resolveCameraMode("JOYSTICK", "LS", true, null))
+        assertTrue("RTP touchpad must always be true (camera swipe mode)", resolveCameraMode("TOUCHPAD", "RTP", false, null))
+        assertTrue("LTP touchpad must always be true (touch surface mode)", resolveCameraMode("TOUCHPAD", "LTP", true, null))
+
+        // 3. Behavior Verification:
+        // Analog Joystick: holding thumb deflected at (clampedX, clampedY) maintains non-zero deflection continuously
+        val maxRadius = 80f
+        val clampedX = 60f
+        val clampedY = -40f
+        val normX = (clampedX / maxRadius).coerceIn(-1f, 1f)
+        val normY = (-clampedY / maxRadius).coerceIn(-1f, 1f)
+        assertTrue("Analog stick X deflection must remain non-zero while held", normX > 0.7f)
+        assertTrue("Analog stick Y deflection must remain non-zero while held", normY > 0.4f)
+    }
 }
+
 

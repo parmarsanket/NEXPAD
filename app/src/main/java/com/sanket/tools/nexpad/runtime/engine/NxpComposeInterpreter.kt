@@ -469,7 +469,7 @@ private fun RenderNxpJoystick(
         } else if (!stickControl.isLeft) {
             val sp = context.getSharedPreferences("nexpad_prefs", android.content.Context.MODE_PRIVATE)
             Pair(
-                sp.getBoolean("RIGHT_STICK_CAMERA_MODE", true),
+                sp.getBoolean("RIGHT_STICK_CAMERA_MODE", false),
                 sp.getFloat("CAMERA_SENSITIVITY", 1.0f)
             )
         } else {

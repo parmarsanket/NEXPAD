@@ -82,6 +82,13 @@ class MainActivity : ComponentActivity() {
         }
 
         val sharedPref = getSharedPreferences("nexpad_prefs", MODE_PRIVATE)
+        // Ensure Joystick RS defaults to true analog stick behavior, keeping Touchpads (RTP) dedicated
+        if (!sharedPref.getBoolean("RS_ANALOG_DEFAULT_MIGRATION_V1", false)) {
+            sharedPref.edit()
+                .putBoolean("RIGHT_STICK_CAMERA_MODE", false)
+                .putBoolean("RS_ANALOG_DEFAULT_MIGRATION_V1", true)
+                .apply()
+        }
         
         // We no longer auto-connect on startup. 
         // The user must click the device from the Discovery list to connect.

@@ -135,7 +135,7 @@ fun SettingsScreen(
                 }
 
                 var rightStickCameraMode by remember {
-                    mutableStateOf(sharedPref.getBoolean("RIGHT_STICK_CAMERA_MODE", true))
+                    mutableStateOf(sharedPref.getBoolean("RIGHT_STICK_CAMERA_MODE", false))
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
