@@ -43,6 +43,7 @@ import com.sanket.tools.nexpad.runtime.model.NexPadInputTarget
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
 import com.sanket.tools.nexpad.runtime.model.NxpGeometry
 import com.sanket.tools.nexpad.ui.components.controller.calculateGamingStickMagnitude
+import com.sanket.tools.nexpad.ui.components.controller.VelocityRingBuffer
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -492,6 +493,7 @@ private fun RenderNxpJoystick(
                 var currentStickY = 0f
                 var lastSpeed = 0f
                 var decayJob: Job? = null
+                val velocityBuffer = VelocityRingBuffer(8)
                 inputTarget.onStickMove(stickControl, 0f, 0f)
 
                 while (true) {
@@ -524,10 +526,13 @@ private fun RenderNxpJoystick(
                         val currentTimeMs = System.currentTimeMillis()
                         val dtSec = ((currentTimeMs - previousTimeMs).coerceAtLeast(1L)) / 1000f
                         previousTimeMs = currentTimeMs
-                        val speedDpPerSec = distDp / dtSec
-                        lastSpeed = speedDpPerSec
 
-                        val stickMagnitude = calculateGamingStickMagnitude(speedDpPerSec, cameraSensitivity)
+                        // Push sample into ring buffer for windowed average (eliminates frame-timing jitter)
+                        velocityBuffer.push(distDp, dtSec)
+                        val smoothedSpeed = velocityBuffer.averageSpeed()
+                        lastSpeed = smoothedSpeed
+
+                        val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, cameraSensitivity)
 
                         if (stickMagnitude > 0f) {
                             val dirX = finalDeltaX / distPx
@@ -536,8 +541,9 @@ private fun RenderNxpJoystick(
                             val targetStickX = (dirX * stickMagnitude).coerceIn(-1f, 1f)
                             val targetStickY = (-dirY * stickMagnitude).coerceIn(-1f, 1f)
 
-                            currentStickX = 0.70f * targetStickX + 0.30f * currentStickX
-                            currentStickY = 0.70f * targetStickY + 0.30f * currentStickY
+                            // Smooth response (EMA) — heavier smoothing absorbs remaining per-frame noise
+                            currentStickX = 0.55f * targetStickX + 0.45f * currentStickX
+                            currentStickY = 0.55f * targetStickY + 0.45f * currentStickY
 
                             inputTarget.onStickMove(stickControl, currentStickX, currentStickY)
 
@@ -546,17 +552,28 @@ private fun RenderNxpJoystick(
                                 (-currentStickY * maxRadiusPx).coerceIn(-maxRadiusPx, maxRadiusPx)
                             )
 
+                            // Adaptive stationary watchdog: timeout scales with speed
+                            val decayTimeoutMs = (120L - (smoothedSpeed / 20f).toLong()).coerceIn(50L, 120L)
                             decayJob?.cancel()
                             decayJob = coroutineScope.launch {
-                                delay(40)
-                                currentStickX *= 0.3f
-                                currentStickY *= 0.3f
+                                delay(decayTimeoutMs)
+                                // 3-stage gentle decay
+                                currentStickX *= 0.5f
+                                currentStickY *= 0.5f
                                 inputTarget.onStickMove(stickControl, currentStickX, currentStickY)
                                 thumbOffset = Offset(
                                     currentStickX * maxRadiusPx,
                                     -currentStickY * maxRadiusPx
                                 )
                                 delay(30)
+                                currentStickX *= 0.2f
+                                currentStickY *= 0.2f
+                                inputTarget.onStickMove(stickControl, currentStickX, currentStickY)
+                                thumbOffset = Offset(
+                                    currentStickX * maxRadiusPx,
+                                    -currentStickY * maxRadiusPx
+                                )
+                                delay(25)
                                 currentStickX = 0f
                                 currentStickY = 0f
                                 inputTarget.onStickMove(stickControl, 0f, 0f)
@@ -567,8 +584,9 @@ private fun RenderNxpJoystick(
                     }
                 }
                 decayJob?.cancel()
-                if (lastSpeed > 400f) {
-                    val coastSteps = ((lastSpeed / 200f).toInt()).coerceIn(3, 7)
+                val releaseSpeed = velocityBuffer.peakSpeed()
+                if (releaseSpeed > 400f) {
+                    val coastSteps = ((releaseSpeed / 200f).toInt()).coerceIn(3, 7)
                     coroutineScope.launch {
                         var coastX = currentStickX
                         var coastY = currentStickY

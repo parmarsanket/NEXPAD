@@ -229,9 +229,20 @@ fun SandboxPreviewModal(
                                 customComponentId = null
                             )
                         } else if (remoteDoc != null) {
+                            val isStickCategory = componentDef.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
+                                    componentDef.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
+                                    controlKey.equals("LS", ignoreCase = true) ||
+                                    controlKey.equals("RS", ignoreCase = true) ||
+                                    controlKey.equals("LTP", ignoreCase = true) ||
+                                    controlKey.equals("RTP", ignoreCase = true)
+                            val isRightStick = controlKey.equals("RS", ignoreCase = true) ||
+                                    controlKey.equals("RTP", ignoreCase = true) ||
+                                    componentDef.manifest.defaultControl.equals("RS", ignoreCase = true) ||
+                                    componentDef.manifest.defaultControl.equals("RTP", ignoreCase = true) ||
+                                    componentDef.manifest.id.contains("rtp", ignoreCase = true)
                             val control = when {
-                                componentDef.manifest.category.equals("JOYSTICK", ignoreCase = true) ->
-                                    NexPadControl.Stick(isLeft = !controlKey.contains("R", ignoreCase = true))
+                                isStickCategory ->
+                                    NexPadControl.Stick(isLeft = !isRightStick)
                                 componentDef.manifest.category.equals("TRIGGER", ignoreCase = true) ->
                                     NexPadControl.Trigger(key = controlKey)
                                 else ->
@@ -245,9 +256,20 @@ fun SandboxPreviewModal(
                                 overrideSizeDp = 140
                             )
                         } else {
+                            val isStickCategory = componentDef.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
+                                    componentDef.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
+                                    controlKey.equals("LS", ignoreCase = true) ||
+                                    controlKey.equals("RS", ignoreCase = true) ||
+                                    controlKey.equals("LTP", ignoreCase = true) ||
+                                    controlKey.equals("RTP", ignoreCase = true)
+                            val isRightStick = controlKey.equals("RS", ignoreCase = true) ||
+                                    controlKey.equals("RTP", ignoreCase = true) ||
+                                    componentDef.manifest.defaultControl.equals("RS", ignoreCase = true) ||
+                                    componentDef.manifest.defaultControl.equals("RTP", ignoreCase = true) ||
+                                    componentDef.manifest.id.contains("rtp", ignoreCase = true)
                             val control = when {
-                                componentDef.manifest.category.equals("JOYSTICK", ignoreCase = true) ->
-                                    NexPadControl.Stick(isLeft = !controlKey.contains("R", ignoreCase = true))
+                                isStickCategory ->
+                                    NexPadControl.Stick(isLeft = !isRightStick)
                                 componentDef.manifest.category.equals("TRIGGER", ignoreCase = true) ->
                                     NexPadControl.Trigger(key = controlKey)
                                 else ->

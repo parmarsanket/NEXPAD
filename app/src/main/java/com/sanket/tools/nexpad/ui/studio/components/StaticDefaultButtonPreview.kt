@@ -319,6 +319,7 @@ private fun StaticRealisticTouchPad(
 ) {
     val accentColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
     val shape = RoundedCornerShape(26.dp)
+    val innerShape = RoundedCornerShape(18.dp)
 
     val surfaceGradient = Brush.radialGradient(
         colors = listOf(Color(0xFF23252B), Color(0xFF131418), Color(0xFF0B0C0E)),
@@ -332,52 +333,23 @@ private fun StaticRealisticTouchPad(
             .shadow(12.dp, shape, ambientColor = Color.Black, spotColor = Color.Black)
             .clip(shape)
             .background(surfaceGradient)
-            .border(BorderStroke(2.dp, Color(0xFF353C4A)), shape),
+            .border(BorderStroke(2.dp, Color(0xFF353C4A)), shape)
+            .padding(14.dp),
         contentAlignment = Alignment.Center
     ) {
-        Canvas(modifier = Modifier.fillMaxSize().padding(8.dp)) {
-            val center = Offset(size.width / 2f, size.height / 2f)
-            val guideStroke = Stroke(
-                width = 1.5f,
-                pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(6f, 6f))
-            )
-
-            // Inner guide rings
-            drawCircle(
-                color = Color.White.copy(alpha = 0.07f),
-                radius = size.minDimension / 3.0f,
-                center = center,
-                style = guideStroke
-            )
-            drawCircle(
-                color = accentColor.copy(alpha = 0.12f),
-                radius = size.minDimension / 2.2f,
-                center = center,
-                style = guideStroke
-            )
-
-            // Center tactile crosshair
-            val tickLen = 8f
-            drawLine(
-                color = Color.White.copy(alpha = 0.18f),
-                start = Offset(center.x - tickLen, center.y),
-                end = Offset(center.x + tickLen, center.y),
-                strokeWidth = 2f
-            )
-            drawLine(
-                color = Color.White.copy(alpha = 0.18f),
-                start = Offset(center.x, center.y - tickLen),
-                end = Offset(center.x, center.y + tickLen),
-                strokeWidth = 2f
-            )
-
-            // Idle center dot
-            drawCircle(
-                color = accentColor.copy(alpha = 0.6f),
-                radius = 5f,
-                center = center
-            )
-        }
+        // Flat stationary trackpad surface
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(innerShape)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(Color.White.copy(alpha = 0.03f), Color.Transparent),
+                        radius = 200f
+                    )
+                )
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)), innerShape)
+        )
 
         Text(
             text = if (isLeft) "TOUCH MOVE • LTP" else "TOUCH LOOK • RTP",
@@ -388,7 +360,7 @@ private fun StaticRealisticTouchPad(
             letterSpacing = 1.2.sp,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 10.dp)
+                .padding(top = 4.dp)
         )
 
         Text(
@@ -400,7 +372,7 @@ private fun StaticRealisticTouchPad(
             letterSpacing = 0.8.sp,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 10.dp)
+                .padding(bottom = 4.dp)
         )
     }
 }

@@ -36,6 +36,7 @@ import com.sanket.tools.nexpad.runtime.model.NexPadControl
 import com.sanket.tools.nexpad.runtime.model.NexPadInputTarget
 import com.sanket.tools.nexpad.nxprc.*
 import com.sanket.tools.nexpad.ui.components.controller.calculateGamingStickMagnitude
+import com.sanket.tools.nexpad.ui.components.controller.VelocityRingBuffer
 import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.cos
@@ -164,8 +165,20 @@ fun NxprcCanvasRenderer(
             document.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
             document.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
             document.manifest.defaultControl.uppercase() in listOf(NexpadKeys.LS, NexpadKeys.RS, NexpadKeys.LTP, NexpadKeys.RTP)
-    val stick = (assignedControl as? NexPadControl.Stick)
-        ?: NexPadControl.Stick(isLeft = document.manifest.defaultControl.uppercase() != NexpadKeys.RS && document.manifest.defaultControl.uppercase() != "R3" && document.manifest.defaultControl.uppercase() != NexpadKeys.RTP)
+    val stick = run {
+        val defCtrl = document.manifest.defaultControl.uppercase()
+        val docId = document.manifest.id.lowercase()
+        when {
+            defCtrl == NexpadKeys.RTP || defCtrl == NexpadKeys.RS || defCtrl == "R3" || docId.contains("rtp") ->
+                NexPadControl.Stick(isLeft = false)
+            defCtrl == NexpadKeys.LTP || defCtrl == NexpadKeys.LS || defCtrl == "L3" || docId.contains("ltp") ->
+                NexPadControl.Stick(isLeft = true)
+            assignedControl is NexPadControl.Stick ->
+                assignedControl
+            else ->
+                NexPadControl.Stick(isLeft = defCtrl != NexpadKeys.RS && defCtrl != "R3" && defCtrl != NexpadKeys.RTP && !defCtrl.contains("RIGHT"))
+        }
+    }
     var thumbOffsetX by remember { mutableFloatStateOf(0f) }
     var thumbOffsetY by remember { mutableFloatStateOf(0f) }
 
@@ -329,15 +342,14 @@ fun NxprcCanvasRenderer(
                     isPressed = true
                     val maxRadius = widthDp * 0.28f * density
                     val deadzoneRadius = 6f * density
-                    val startTime = System.currentTimeMillis()
-                    var maxDistEver = 0f
                     var previousTouchX = down.position.x
                     var previousTouchY = down.position.y
-                    var previousTimeMs = startTime
+                    var previousTimeMs = System.currentTimeMillis()
                     var currentStickX = 0f
                     var currentStickY = 0f
                     var lastSpeed = 0f
                     var decayJob: kotlinx.coroutines.Job? = null
+                    val velocityBuffer = VelocityRingBuffer(8)
 
                     val centerX = size.width / 2f
                     val centerY = size.height / 2f
@@ -351,9 +363,6 @@ fun NxprcCanvasRenderer(
                             val vecX = rawPos.x - centerX
                             val vecY = rawPos.y - centerY
                             val dist = hypot(vecX, vecY)
-                            if (dist > maxDistEver) {
-                                maxDistEver = dist
-                            }
 
                             val (clampedX, clampedY) = if (dist > maxRadius) {
                                 val angle = kotlin.math.atan2(vecY, vecX)
@@ -386,11 +395,6 @@ fun NxprcCanvasRenderer(
                         previousTouchX = currentTouchX
                         previousTouchY = currentTouchY
 
-                        val dist = hypot(deltaX, deltaY)
-                        if (dist > maxDistEver) {
-                            maxDistEver = dist
-                        }
-
                         if (isCameraMode) {
                             var finalDeltaX = deltaX
                             var finalDeltaY = deltaY
@@ -409,10 +413,13 @@ fun NxprcCanvasRenderer(
                                 val currentTimeMs = System.currentTimeMillis()
                                 val dtSec = ((currentTimeMs - previousTimeMs).coerceAtLeast(1L)) / 1000f
                                 previousTimeMs = currentTimeMs
-                                val speedDpPerSec = distDp / dtSec
-                                lastSpeed = speedDpPerSec
 
-                                val stickMagnitude = calculateGamingStickMagnitude(speedDpPerSec, cameraSensitivity)
+                                // Push sample into ring buffer for windowed average (eliminates frame-timing jitter)
+                                velocityBuffer.push(distDp, dtSec)
+                                val smoothedSpeed = velocityBuffer.averageSpeed()
+                                lastSpeed = smoothedSpeed
+
+                                val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, cameraSensitivity)
 
                                 if (stickMagnitude > 0f) {
                                     val dirX = finalDeltaX / distPx
@@ -421,23 +428,33 @@ fun NxprcCanvasRenderer(
                                     val targetStickX = (dirX * stickMagnitude).coerceIn(-1f, 1f)
                                     val targetStickY = (-dirY * stickMagnitude).coerceIn(-1f, 1f)
 
-                                    currentStickX = 0.70f * targetStickX + 0.30f * currentStickX
-                                    currentStickY = 0.70f * targetStickY + 0.30f * currentStickY
+                                    // Smooth response (EMA) — heavier smoothing absorbs remaining per-frame noise
+                                    currentStickX = 0.55f * targetStickX + 0.45f * currentStickX
+                                    currentStickY = 0.55f * targetStickY + 0.45f * currentStickY
 
                                     inputTarget.onStickMove(stick, currentStickX, currentStickY)
 
                                     thumbOffsetX = (currentStickX * maxRadius).coerceIn(-maxRadius, maxRadius)
                                     thumbOffsetY = (-currentStickY * maxRadius).coerceIn(-maxRadius, maxRadius)
 
+                                    // Adaptive stationary watchdog: timeout scales with speed
+                                    val decayTimeoutMs = (120L - (smoothedSpeed / 20f).toLong()).coerceIn(50L, 120L)
                                     decayJob?.cancel()
                                     decayJob = coroutineScope.launch {
-                                        kotlinx.coroutines.delay(40)
-                                        currentStickX *= 0.3f
-                                        currentStickY *= 0.3f
+                                        kotlinx.coroutines.delay(decayTimeoutMs)
+                                        // 3-stage gentle decay
+                                        currentStickX *= 0.5f
+                                        currentStickY *= 0.5f
                                         inputTarget.onStickMove(stick, currentStickX, currentStickY)
                                         thumbOffsetX = (currentStickX * maxRadius)
                                         thumbOffsetY = (-currentStickY * maxRadius)
                                         kotlinx.coroutines.delay(30)
+                                        currentStickX *= 0.2f
+                                        currentStickY *= 0.2f
+                                        inputTarget.onStickMove(stick, currentStickX, currentStickY)
+                                        thumbOffsetX = (currentStickX * maxRadius)
+                                        thumbOffsetY = (-currentStickY * maxRadius)
+                                        kotlinx.coroutines.delay(25)
                                         currentStickX = 0f
                                         currentStickY = 0f
                                         inputTarget.onStickMove(stick, 0f, 0f)
@@ -470,8 +487,9 @@ fun NxprcCanvasRenderer(
                     // Release: reset input and spring back to center
                     isPressed = false
                     decayJob?.cancel()
-                    if (isCameraMode && lastSpeed > 400f) {
-                        val coastSteps = ((lastSpeed / 200f).toInt()).coerceIn(3, 7)
+                    val releaseSpeed = velocityBuffer.peakSpeed()
+                    if (isCameraMode && releaseSpeed > 400f) {
+                        val coastSteps = ((releaseSpeed / 200f).toInt()).coerceIn(3, 7)
                         coroutineScope.launch {
                             var coastX = currentStickX
                             var coastY = currentStickY
@@ -507,17 +525,6 @@ fun NxprcCanvasRenderer(
                             }
                         }
                         inputTarget.onStickMove(stick, 0f, 0f)
-                    }
-
-                    // Axial L3/R3 thumbstick click on short tap near center
-                    val touchDuration = System.currentTimeMillis() - startTime
-                    if (maxDistEver < 12f * density && touchDuration < 300) {
-                        inputTarget.triggerHaptic()
-                        coroutineScope.launch {
-                            inputTarget.onButtonPress(buttonControl)
-                            kotlinx.coroutines.delay(100)
-                            inputTarget.onButtonRelease(buttonControl)
-                        }
                     }
                 }
             }
@@ -618,8 +625,10 @@ fun NxprcCanvasRenderer(
             .then(gestureModifier),
         contentAlignment = Alignment.Center
     ) {
-        val isTwoStageStick = isStick && document.canvas.capLayerIndices.isNotEmpty()
-        val capIndicesSet = remember(document) { document.canvas.capLayerIndices.toSet() }
+        val isTouchpad = document.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
+                document.manifest.defaultControl.uppercase() in listOf(NexpadKeys.LTP, NexpadKeys.RTP)
+        val isTwoStageStick = isStick && !isTouchpad && document.canvas.capLayerIndices.isNotEmpty()
+        val capIndicesSet = remember(document) { if (isTouchpad) emptySet() else document.canvas.capLayerIndices.toSet() }
 
         Box(
             modifier = Modifier
@@ -630,8 +639,8 @@ fun NxprcCanvasRenderer(
                     scaleY = if (isTwoStageStick) 1f else finalScale
                     rotationZ = if (hasDynamicTracks) trackRotation else 0f
                     alpha = if (hasDynamicTracks) trackOpacity.coerceIn(0f, 1f) else 1f
-                    translationX = (if (isTwoStageStick) 0f else thumbOffsetX) + rumbleShakeX + (trackTranslateX * density)
-                    translationY = (if (isTwoStageStick) 0f else thumbOffsetY) + (pressOffsetYAnim * density) + (pullProgress.value * document.animations.triggerMaxPullDepth * density) + rumbleShakeY + (trackTranslateY * density)
+                    translationX = (if (isTwoStageStick || isTouchpad) 0f else thumbOffsetX) + rumbleShakeX + (trackTranslateX * density)
+                    translationY = (if (isTwoStageStick || isTouchpad) 0f else thumbOffsetY) + (pressOffsetYAnim * density) + (pullProgress.value * document.animations.triggerMaxPullDepth * density) + rumbleShakeY + (trackTranslateY * density)
 
                     val activeHueAngle = if (hasDynamicTracks && trackHueAngle != 0f) {
                         trackHueAngle

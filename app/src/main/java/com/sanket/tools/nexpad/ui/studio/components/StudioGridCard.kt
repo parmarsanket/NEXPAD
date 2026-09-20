@@ -146,12 +146,20 @@ fun StudioGridCard(
                     val remoteRegistry = remember { RemoteComponentRegistry.getInstance(context) }
                     val doc = remember(def.manifest.id) { remoteRegistry.getComponent(def.manifest.id) }
                     if (doc != null) {
+                    val isStickCategory = doc.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
+                            doc.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
+                            controlKey.equals(K.LS, ignoreCase = true) ||
+                            controlKey.equals(K.RS, ignoreCase = true) ||
+                            controlKey.equals(K.LTP, ignoreCase = true) ||
+                            controlKey.equals(K.RTP, ignoreCase = true)
+                    val isRightStick = controlKey.equals(K.RS, ignoreCase = true) ||
+                            controlKey.equals(K.RTP, ignoreCase = true) ||
+                            doc.manifest.defaultControl.equals(K.RS, ignoreCase = true) ||
+                            doc.manifest.defaultControl.equals(K.RTP, ignoreCase = true) ||
+                            doc.manifest.id.contains("rtp", ignoreCase = true)
                     val targetControl = when {
                         controlKey.equals(K.LSB, ignoreCase = true) || controlKey.equals(K.RSB, ignoreCase = true) -> NexPadControl.Button(controlKey)
-                        controlKey.equals(K.LS, ignoreCase = true) || controlKey.equals(K.LTP, ignoreCase = true) -> NexPadControl.Stick(isLeft = true)
-                        controlKey.equals(K.RS, ignoreCase = true) || controlKey.equals(K.RTP, ignoreCase = true) -> NexPadControl.Stick(isLeft = false)
-                        doc.manifest.category.equals("JOYSTICK", ignoreCase = true) ->
-                            NexPadControl.Stick(isLeft = !controlKey.contains("R", ignoreCase = true))
+                        isStickCategory -> NexPadControl.Stick(isLeft = !isRightStick)
                         controlKey.equals(K.LT, ignoreCase = true) || controlKey.equals(K.RT, ignoreCase = true) -> NexPadControl.Trigger(controlKey)
                         doc.manifest.category.equals("TRIGGER", ignoreCase = true) ->
                             NexPadControl.Trigger(controlKey)
@@ -165,11 +173,22 @@ fun StudioGridCard(
                             isInteractive = false
                         )
                     } else {
+                        val isStickCategory = def.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
+                                def.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
+                                controlKey.equals(K.LS, ignoreCase = true) ||
+                                controlKey.equals(K.RS, ignoreCase = true) ||
+                                controlKey.equals(K.LTP, ignoreCase = true) ||
+                                controlKey.equals(K.RTP, ignoreCase = true)
+                        val isRightStick = controlKey.equals(K.RS, ignoreCase = true) ||
+                                controlKey.equals(K.RTP, ignoreCase = true) ||
+                                def.manifest.defaultControl.equals(K.RS, ignoreCase = true) ||
+                                def.manifest.defaultControl.equals(K.RTP, ignoreCase = true) ||
+                                def.manifest.id.contains("rtp", ignoreCase = true)
                         val control = when {
                             controlKey.equals(K.LSB, ignoreCase = true) || controlKey.equals(K.RSB, ignoreCase = true) ->
                                 NexPadControl.Button(controlKey)
-                            def.manifest.category.equals("JOYSTICK", ignoreCase = true) ->
-                                NexPadControl.Stick(isLeft = !controlKey.contains("R"))
+                            isStickCategory ->
+                                NexPadControl.Stick(isLeft = !isRightStick)
                             def.manifest.category.equals("TRIGGER", ignoreCase = true) ->
                                 NexPadControl.Trigger(key = controlKey)
                             else ->
@@ -184,9 +203,20 @@ fun StudioGridCard(
                         )
                     }
                 } else {
+                    val isStickCategory = def.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
+                            def.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
+                            controlKey.equals(K.LS, ignoreCase = true) ||
+                            controlKey.equals(K.RS, ignoreCase = true) ||
+                            controlKey.equals(K.LTP, ignoreCase = true) ||
+                            controlKey.equals(K.RTP, ignoreCase = true)
+                    val isRightStick = controlKey.equals(K.RS, ignoreCase = true) ||
+                            controlKey.equals(K.RTP, ignoreCase = true) ||
+                            def.manifest.defaultControl.equals(K.RS, ignoreCase = true) ||
+                            def.manifest.defaultControl.equals(K.RTP, ignoreCase = true) ||
+                            def.manifest.id.contains("rtp", ignoreCase = true)
                     val control = when {
-                        def.manifest.category.equals("JOYSTICK", ignoreCase = true) ->
-                            NexPadControl.Stick(isLeft = !controlKey.contains("R"))
+                        isStickCategory ->
+                            NexPadControl.Stick(isLeft = !isRightStick)
                         def.manifest.category.equals("TRIGGER", ignoreCase = true) ->
                             NexPadControl.Trigger(key = controlKey)
                         else ->

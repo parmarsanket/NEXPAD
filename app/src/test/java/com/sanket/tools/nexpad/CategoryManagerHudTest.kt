@@ -16,6 +16,7 @@ import kotlinx.serialization.encodeToString
 import kotlin.math.hypot
 import kotlin.math.pow
 import com.sanket.tools.nexpad.ui.components.controller.calculateGamingStickMagnitude
+import com.sanket.tools.nexpad.ui.components.controller.VelocityRingBuffer
 
 class CategoryManagerHudTest {
 
@@ -1004,6 +1005,82 @@ class CategoryManagerHudTest {
         assertNotNull("RTP exists in category manager", rtp)
         assertEquals("LTP component type is TOUCHPAD", com.sanket.tools.nexpad.category.ComponentType.TOUCHPAD, ltp?.componentType)
         assertEquals("RTP component type is TOUCHPAD", com.sanket.tools.nexpad.category.ComponentType.TOUCHPAD, rtp?.componentType)
+    }
+
+    @Test
+    fun testVelocityRingBufferSmoothing() {
+        val buffer = VelocityRingBuffer(8)
+        assertEquals(0f, buffer.averageSpeed(), 0.0001f)
+        assertEquals(0f, buffer.peakSpeed(), 0.0001f)
+
+        // Simulate finger moving at 200 dp/s, with touch events arriving at jittery intervals
+        // (4ms, 24ms, 8ms, 16ms, 12ms, 20ms, 6ms, 18ms)
+        val durations = floatArrayOf(0.004f, 0.024f, 0.008f, 0.016f, 0.012f, 0.020f, 0.006f, 0.018f)
+        val expectedSpeed = 200f // dp/s
+
+        for (dt in durations) {
+            val dist = expectedSpeed * dt
+            buffer.push(dist, dt)
+        }
+
+        // The windowed average across all 8 samples should match exactly 200 dp/s
+        assertEquals("Windowed average must filter out timing jitter and match true speed", expectedSpeed, buffer.averageSpeed(), 0.05f)
+        assertEquals("Peak speed for constant physical motion should equal expected speed", expectedSpeed, buffer.peakSpeed(), 0.05f)
+
+        // Push a flick spike
+        buffer.push(100f, 0.016f) // 100 / 0.016 = 6250 dp/s flick
+        assertTrue("Peak speed must capture flick spike", buffer.peakSpeed() > 6000f)
+
+        // Buffer clear resets state
+        buffer.clear()
+        assertEquals(0f, buffer.averageSpeed(), 0.0001f)
+        assertEquals(0f, buffer.peakSpeed(), 0.0001f)
+    }
+
+    @Test
+    fun testConstantSpeedProducesStableOutput() {
+        val buffer = VelocityRingBuffer(8)
+        val sensitivity = 1.0f
+
+        // Jittery dt times simulating real Android touch timestamps (vsync/scheduling jitter)
+        val jitterDts = floatArrayOf(
+            0.012f, 0.020f, 0.008f, 0.024f, 0.016f, 0.014f, 0.018f, 0.010f,
+            0.022f, 0.011f, 0.019f, 0.015f, 0.017f, 0.013f, 0.021f, 0.016f
+        )
+        val constantPhysicalSpeed = 300f // dp/s
+
+        var currentStickX = 0f
+        val stickOutputs = mutableListOf<Float>()
+
+        for (i in 0 until 32) {
+            val dt = jitterDts[i % jitterDts.size]
+            val dist = constantPhysicalSpeed * dt
+            buffer.push(dist, dt)
+
+            val avgSpeed = buffer.averageSpeed()
+            val magnitude = calculateGamingStickMagnitude(avgSpeed, sensitivity)
+
+            // Direction is purely horizontal (+X)
+            val targetStickX = magnitude
+            currentStickX = 0.55f * targetStickX + 0.45f * currentStickX
+
+            // Record stick values once ring buffer is filled (index >= 8)
+            if (i >= 8) {
+                stickOutputs.add(currentStickX)
+            }
+        }
+
+        // Check stability: the stick magnitude at 300 dp/s should be close to expected curve value:
+        // 120..400 dp/s zone -> 0.25 + 0.25 * ((300 - 120) / 280) = 0.25 + 0.25 * (180/280) = ~0.4107
+        val expectedMag = calculateGamingStickMagnitude(constantPhysicalSpeed, sensitivity)
+        for (output in stickOutputs) {
+            assertEquals("Output must remain stable under jittery touch delivery", expectedMag, output, 0.015f)
+        }
+
+        val minVal = stickOutputs.minOrNull() ?: 0f
+        val maxVal = stickOutputs.maxOrNull() ?: 0f
+        val delta = maxVal - minVal
+        assertTrue("Stick deflection ripple under constant speed must be < 0.02 (no flickering), was $delta", delta < 0.02f)
     }
 }
 

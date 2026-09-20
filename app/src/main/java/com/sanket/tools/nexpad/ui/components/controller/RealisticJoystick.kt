@@ -106,6 +106,7 @@ fun RealisticJoystick(
                     var currentStickX = 0f
                     var currentStickY = 0f
                     var lastSpeed = 0f
+                    val velocityBuffer = VelocityRingBuffer(8)
 
                     if (isCameraMode) {
                         // ── Right Stick Camera Mode: Pure relative touch ──
@@ -145,10 +146,13 @@ fun RealisticJoystick(
                                 val currentTimeMs = System.currentTimeMillis()
                                 val dtSec = ((currentTimeMs - previousTimeMs).coerceAtLeast(1L)) / 1000f
                                 previousTimeMs = currentTimeMs
-                                val speedDpPerSec = distDp / dtSec
-                                lastSpeed = speedDpPerSec
 
-                                val stickMagnitude = calculateGamingStickMagnitude(speedDpPerSec, cameraSensitivity)
+                                // Push sample into ring buffer for windowed average (eliminates frame-timing jitter)
+                                velocityBuffer.push(distDp, dtSec)
+                                val smoothedSpeed = velocityBuffer.averageSpeed()
+                                lastSpeed = smoothedSpeed
+
+                                val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, cameraSensitivity)
 
                                 if (stickMagnitude > 0f) {
                                     val dirX = finalDeltaX / distPx
@@ -157,9 +161,9 @@ fun RealisticJoystick(
                                     val targetStickX = (dirX * stickMagnitude).coerceIn(-1f, 1f)
                                     val targetStickY = (-dirY * stickMagnitude).coerceIn(-1f, 1f) // Up is positive Y
 
-                                    // Smooth response (EMA)
-                                    currentStickX = 0.70f * targetStickX + 0.30f * currentStickX
-                                    currentStickY = 0.70f * targetStickY + 0.30f * currentStickY
+                                    // Smooth response (EMA) — heavier smoothing absorbs remaining per-frame noise
+                                    currentStickX = 0.55f * targetStickX + 0.45f * currentStickX
+                                    currentStickY = 0.55f * targetStickY + 0.45f * currentStickY
 
                                     viewModel.updateRightStick(currentStickX, currentStickY)
 
@@ -167,16 +171,24 @@ fun RealisticJoystick(
                                     thumbOffsetX = (currentStickX * maxRadius).coerceIn(-maxRadius, maxRadius)
                                     thumbOffsetY = (-currentStickY * maxRadius).coerceIn(-maxRadius, maxRadius)
 
-                                    // Stationary watchdog: smoothly decay to 0 if finger rests on glass
+                                    // Adaptive stationary watchdog: timeout scales with speed
+                                    val decayTimeoutMs = (120L - (smoothedSpeed / 20f).toLong()).coerceIn(50L, 120L)
                                     decayJob?.cancel()
                                     decayJob = coroutineScope.launch {
-                                        delay(40.milliseconds)
-                                        currentStickX *= 0.3f
-                                        currentStickY *= 0.3f
+                                        delay(decayTimeoutMs.milliseconds)
+                                        // 3-stage gentle decay
+                                        currentStickX *= 0.5f
+                                        currentStickY *= 0.5f
                                         viewModel.updateRightStick(currentStickX, currentStickY)
                                         thumbOffsetX = (currentStickX * maxRadius)
                                         thumbOffsetY = (-currentStickY * maxRadius)
                                         delay(30.milliseconds)
+                                        currentStickX *= 0.2f
+                                        currentStickY *= 0.2f
+                                        viewModel.updateRightStick(currentStickX, currentStickY)
+                                        thumbOffsetX = (currentStickX * maxRadius)
+                                        thumbOffsetY = (-currentStickY * maxRadius)
+                                        delay(25.milliseconds)
                                         currentStickX = 0f
                                         currentStickY = 0f
                                         viewModel.updateRightStick(0f, 0f)
@@ -219,8 +231,9 @@ fun RealisticJoystick(
                         thumbOffsetY = 0f
                         viewModel.updateLeftStick(0f, 0f)
                     } else {
-                        if (isCameraMode && lastSpeed > 400f) {
-                            val coastSteps = ((lastSpeed / 200f).toInt()).coerceIn(3, 7)
+                        val releaseSpeed = velocityBuffer.peakSpeed()
+                        if (isCameraMode && releaseSpeed > 400f) {
+                            val coastSteps = ((releaseSpeed / 200f).toInt()).coerceIn(3, 7)
                             coroutineScope.launch {
                                 var coastX = currentStickX
                                 var coastY = currentStickY

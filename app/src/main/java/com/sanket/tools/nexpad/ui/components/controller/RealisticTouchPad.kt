@@ -58,8 +58,65 @@ import kotlin.time.Duration.Companion.milliseconds
  * Dedicated standalone buttons (LSB/RSB) handle stick click (L3/R3), keeping touchpad input
  * pure and free of accidental center click triggers.
  */
+
 /**
- * Professional 3-zone gaming speed-to-distance transfer function.
+ * Circular buffer averaging the last [capacity] touch samples for stable
+ * velocity estimation. Eliminates frame-timing jitter that causes flickering
+ * on Android capacitive touchscreens where touch events arrive at inconsistent
+ * intervals (4ms, 8ms, 16ms, 20ms).
+ *
+ * Instead of single-frame `dist / dt` (which spikes on short frames and dips on long frames),
+ * this computes `totalDist / totalTime` over the window — exactly how Synaptics, ELAN,
+ * and Apple trackpad firmware smooth velocity.
+ */
+internal class VelocityRingBuffer(private val capacity: Int = 8) {
+    private val distances = FloatArray(capacity)
+    private val durations = FloatArray(capacity)
+    private var head = 0
+    private var count = 0
+
+    fun push(distDp: Float, dtSec: Float) {
+        distances[head] = distDp
+        durations[head] = dtSec.coerceAtLeast(0.001f)
+        head = (head + 1) % capacity
+        if (count < capacity) count++
+    }
+
+    /** Windowed average velocity: totalDist / totalTime over the buffer */
+    fun averageSpeed(): Float {
+        if (count == 0) return 0f
+        var totalDist = 0f
+        var totalTime = 0f
+        val start = if (count < capacity) 0 else head
+        for (i in 0 until count) {
+            val idx = (start + i) % capacity
+            totalDist += distances[idx]
+            totalTime += durations[idx]
+        }
+        return if (totalTime > 0f) totalDist / totalTime else 0f
+    }
+
+    /** Peak instantaneous speed in the window (used for momentum coasting on release) */
+    fun peakSpeed(): Float {
+        if (count == 0) return 0f
+        var maxSpeed = 0f
+        val start = if (count < capacity) 0 else head
+        for (i in 0 until count) {
+            val idx = (start + i) % capacity
+            val speed = distances[idx] / durations[idx].coerceAtLeast(0.001f)
+            if (speed > maxSpeed) maxSpeed = speed
+        }
+        return maxSpeed
+    }
+
+    fun clear() {
+        head = 0
+        count = 0
+    }
+}
+
+/**
+ * Professional 5-zone gaming speed-to-distance transfer function.
  *
  * Calibrated Sweet Spots:
  * - Noise Gate: < 8 dp/s -> 0.0 (anti-jitter)
@@ -168,6 +225,7 @@ fun RealisticTouchPad(
                     var currentStickX = 0f
                     var currentStickY = 0f
                     var lastSpeed = 0f
+                    val velocityBuffer = VelocityRingBuffer(8)
 
                     isDragging = true
                     touchX = down.position.x
@@ -217,10 +275,13 @@ fun RealisticTouchPad(
                             val currentTimeMs = System.currentTimeMillis()
                             val dtSec = ((currentTimeMs - previousTimeMs).coerceAtLeast(1L)) / 1000f
                             previousTimeMs = currentTimeMs
-                            val speedDpPerSec = distDp / dtSec
-                            lastSpeed = speedDpPerSec
 
-                            val stickMagnitude = calculateGamingStickMagnitude(speedDpPerSec, effectiveSensitivity)
+                            // Push sample into ring buffer for windowed average (eliminates frame-timing jitter)
+                            velocityBuffer.push(distDp, dtSec)
+                            val smoothedSpeed = velocityBuffer.averageSpeed()
+                            lastSpeed = smoothedSpeed
+
+                            val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, effectiveSensitivity)
 
                             if (stickMagnitude > 0f) {
                                 val dirX = finalDeltaX / distPx
@@ -229,9 +290,9 @@ fun RealisticTouchPad(
                                 val targetStickX = (dirX * stickMagnitude).coerceIn(-1f, 1f)
                                 val targetStickY = (-dirY * stickMagnitude).coerceIn(-1f, 1f) // Up is positive Y
 
-                                // Smooth response (EMA) to eliminate finger jitter
-                                currentStickX = 0.70f * targetStickX + 0.30f * currentStickX
-                                currentStickY = 0.70f * targetStickY + 0.30f * currentStickY
+                                // Smooth response (EMA) — heavier smoothing absorbs remaining per-frame noise
+                                currentStickX = 0.55f * targetStickX + 0.45f * currentStickX
+                                currentStickY = 0.55f * targetStickY + 0.45f * currentStickY
 
                                 if (isLeft) {
                                     viewModel.updateLeftStick(currentStickX, currentStickY)
@@ -239,18 +300,29 @@ fun RealisticTouchPad(
                                     viewModel.updateRightStick(currentStickX, currentStickY)
                                 }
 
-                                // Stationary watchdog: smoothly decays when finger stops moving
+                                // Adaptive stationary watchdog: timeout scales with speed so fast
+                                // dragging never races against the decay timer
+                                val decayTimeoutMs = (120L - (smoothedSpeed / 20f).toLong()).coerceIn(50L, 120L)
                                 decayJob?.cancel()
                                 decayJob = coroutineScope.launch {
-                                    delay(40.milliseconds)
-                                    currentStickX *= 0.3f
-                                    currentStickY *= 0.3f
+                                    delay(decayTimeoutMs)
+                                    // 3-stage gentle decay (prevents harsh snap-to-zero flicker)
+                                    currentStickX *= 0.5f
+                                    currentStickY *= 0.5f
                                     if (isLeft) {
                                         viewModel.updateLeftStick(currentStickX, currentStickY)
                                     } else {
                                         viewModel.updateRightStick(currentStickX, currentStickY)
                                     }
                                     delay(30.milliseconds)
+                                    currentStickX *= 0.2f
+                                    currentStickY *= 0.2f
+                                    if (isLeft) {
+                                        viewModel.updateLeftStick(currentStickX, currentStickY)
+                                    } else {
+                                        viewModel.updateRightStick(currentStickX, currentStickY)
+                                    }
+                                    delay(25.milliseconds)
                                     currentStickX = 0f
                                     currentStickY = 0f
                                     if (isLeft) {
@@ -267,9 +339,10 @@ fun RealisticTouchPad(
                     // On pointer release
                     isDragging = false
                     decayJob?.cancel()
-                    if (lastSpeed > 400f) {
+                    val releaseSpeed = velocityBuffer.peakSpeed()
+                    if (releaseSpeed > 400f) {
                         // Dynamic momentum coasting: faster flick gives longer, smoother coast
-                        val coastSteps = ((lastSpeed / 200f).toInt()).coerceIn(3, 7)
+                        val coastSteps = ((releaseSpeed / 200f).toInt()).coerceIn(3, 7)
                         coroutineScope.launch {
                             var coastX = currentStickX
                             var coastY = currentStickY
@@ -300,67 +373,21 @@ fun RealisticTouchPad(
             },
         contentAlignment = Alignment.Center
     ) {
-        // Laser-etched tactile guides and dynamic reticle Canvas
-        Canvas(modifier = Modifier.fillMaxSize().padding(8.dp)) {
-            val center = Offset(size.width / 2f, size.height / 2f)
-            val guideStroke = Stroke(
-                width = 1.5f,
-                pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f))
-            )
-
-            // Inner guide rings
-            drawCircle(
-                color = Color.White.copy(alpha = 0.07f * activeAlpha),
-                radius = size.minDimension / 3.0f,
-                center = center,
-                style = guideStroke
-            )
-            drawCircle(
-                color = accentColor.copy(alpha = 0.12f * activeAlpha),
-                radius = size.minDimension / 2.2f,
-                center = center,
-                style = guideStroke
-            )
-
-            // Center tactile crosshair
-            val tickLen = 8f
-            drawLine(
-                color = Color.White.copy(alpha = 0.18f),
-                start = Offset(center.x - tickLen, center.y),
-                end = Offset(center.x + tickLen, center.y),
-                strokeWidth = 2f
-            )
-            drawLine(
-                color = Color.White.copy(alpha = 0.18f),
-                start = Offset(center.x, center.y - tickLen),
-                end = Offset(center.x, center.y + tickLen),
-                strokeWidth = 2f
-            )
-
-            if (isDragging) {
-                val current = Offset(touchX, touchY)
-
-                drawCircle(
-                    color = accentColor.copy(alpha = 0.22f),
-                    radius = 30f,
-                    center = current
-                )
-                drawCircle(
-                    color = accentColor.copy(alpha = 0.75f),
-                    radius = 20f,
-                    center = current,
-                    style = Stroke(
-                        width = 2f,
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 5f))
+        // Flat stationary trackpad surface
+        val innerShape = RoundedCornerShape(18.dp)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(14.dp)
+                .clip(innerShape)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(Color.White.copy(alpha = 0.03f), Color.Transparent),
+                        radius = 200f
                     )
                 )
-                drawCircle(
-                    color = accentColor,
-                    radius = 4f,
-                    center = current
-                )
-            }
-        }
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)), innerShape)
+        )
 
         // Tactile Header Label
         Text(
@@ -373,6 +400,19 @@ fun RealisticTouchPad(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(top = 10.dp)
+        )
+
+        // Tactile Footer
+        Text(
+            text = "2.0X BALLISTICS",
+            fontSize = 9.sp,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Normal,
+            color = Color.White.copy(alpha = 0.35f),
+            letterSpacing = 0.8.sp,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 10.dp)
         )
     }
 }
