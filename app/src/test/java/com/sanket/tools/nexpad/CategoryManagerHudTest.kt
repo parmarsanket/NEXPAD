@@ -2,6 +2,7 @@ package com.sanket.tools.nexpad
 
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.model.HudElement
 import com.sanket.tools.nexpad.model.LayoutProfile
 import com.sanket.tools.nexpad.model.LayoutSkin
@@ -1130,6 +1131,84 @@ class CategoryManagerHudTest {
         assertFalse(isPlayStationSymbol("A"))
         assertFalse(isPlayStationSymbol("ATTACK"))
         assertFalse(isPlayStationSymbol(null))
+    }
+
+    @Test
+    fun testStarterAndAiPromptGeneratedCodeResolutionPipeline() {
+        // 1. Starter Code Buttons (defaultControl = "A", "B", "X", "Y")
+        val starterButtons = listOf("A", "B", "X", "Y", "LB", "RB", "LT", "RT", "LSB", "RSB")
+
+        for (btn in starterButtons) {
+            // Under Xbox Style
+            val xboxLabel = CategoryManager.resolveGlyphForStyle(btn, btn, ControllerLabelStyle.XBOX)
+            assertEquals(btn, xboxLabel)
+            assertNull("Xbox label should not be a PlayStation vector shape", getPlayStationShape(xboxLabel))
+
+            // Under PlayStation Style
+            val psLabel = CategoryManager.resolveGlyphForStyle(btn, btn, ControllerLabelStyle.PLAYSTATION)
+            when (btn) {
+                "A" -> {
+                    assertEquals("✕", psLabel)
+                    assertEquals(PlayStationShape.CROSS, getPlayStationShape(psLabel))
+                }
+                "B" -> {
+                    assertEquals("○", psLabel)
+                    assertEquals(PlayStationShape.CIRCLE, getPlayStationShape(psLabel))
+                }
+                "X" -> {
+                    assertEquals("□", psLabel)
+                    assertEquals(PlayStationShape.SQUARE, getPlayStationShape(psLabel))
+                }
+                "Y" -> {
+                    assertEquals("△", psLabel)
+                    assertEquals(PlayStationShape.TRIANGLE, getPlayStationShape(psLabel))
+                }
+                "LB" -> {
+                    assertEquals("L1", psLabel)
+                    assertNull("L1 is rendered as text", getPlayStationShape(psLabel))
+                }
+                "RB" -> {
+                    assertEquals("R1", psLabel)
+                    assertNull("R1 is rendered as text", getPlayStationShape(psLabel))
+                }
+                "LT" -> {
+                    assertEquals("L2", psLabel)
+                    assertNull("L2 is rendered as text", getPlayStationShape(psLabel))
+                }
+                "RT" -> {
+                    assertEquals("R2", psLabel)
+                    assertNull("R2 is rendered as text", getPlayStationShape(psLabel))
+                }
+                "LSB" -> {
+                    assertEquals("L3", psLabel)
+                    assertNull("L3 is rendered as text", getPlayStationShape(psLabel))
+                }
+                "RSB" -> {
+                    assertEquals("R3", psLabel)
+                    assertNull("R3 is rendered as text", getPlayStationShape(psLabel))
+                }
+            }
+        }
+
+        // 2. AI Prompt Generated Buttons with Custom Action Words
+        val aiActionWords = listOf("ATTACK", "DASH", "FIRE", "JUMP", "SPRINT", "CROUCH", "RELOAD", "BLOCK")
+        for (word in aiActionWords) {
+            val xboxRes = CategoryManager.resolveGlyphForStyle(word, "A", ControllerLabelStyle.XBOX)
+            val psRes = CategoryManager.resolveGlyphForStyle(word, "A", ControllerLabelStyle.PLAYSTATION)
+            assertEquals("Custom action words must remain 100% untouched under Xbox", word, xboxRes)
+            assertEquals("Custom action words must remain 100% untouched under PlayStation", word, psRes)
+            assertNull("Custom action words must never resolve to PlayStation shape", getPlayStationShape(xboxRes))
+            assertNull("Custom action words must never resolve to PlayStation shape", getPlayStationShape(psRes))
+        }
+
+        // 3. AI Prompt Generated Buttons where user authored with PlayStation symbols
+        assertEquals("A", CategoryManager.resolveGlyphForStyle("✕", "A", ControllerLabelStyle.XBOX))
+        assertEquals("✕", CategoryManager.resolveGlyphForStyle("✕", "A", ControllerLabelStyle.PLAYSTATION))
+        assertEquals(PlayStationShape.CROSS, getPlayStationShape(CategoryManager.resolveGlyphForStyle("✕", "A", ControllerLabelStyle.PLAYSTATION)))
+
+        assertEquals("B", CategoryManager.resolveGlyphForStyle("○", "B", ControllerLabelStyle.XBOX))
+        assertEquals("○", CategoryManager.resolveGlyphForStyle("○", "B", ControllerLabelStyle.PLAYSTATION))
+        assertEquals(PlayStationShape.CIRCLE, getPlayStationShape(CategoryManager.resolveGlyphForStyle("○", "B", ControllerLabelStyle.PLAYSTATION)))
     }
 }
 
