@@ -611,8 +611,21 @@ private fun RenderNxpJoystick(
         }
     } else {
         Modifier.pointerInput(isConnected, stickControl) {
+            val centerX = size.width / 2f
+            val centerY = size.height / 2f
             detectDragGestures(
-                onDragStart = {},
+                onDragStart = { downOffset ->
+                    val vecX = downOffset.x - centerX
+                    val vecY = downOffset.y - centerY
+                    val dist = kotlin.math.hypot(vecX, vecY)
+                    val clamped = if (dist > maxRadiusPx) {
+                        Offset(vecX / dist * maxRadiusPx, vecY / dist * maxRadiusPx)
+                    } else Offset(vecX, vecY)
+                    thumbOffset = clamped
+                    val normX = (clamped.x / maxRadiusPx).coerceIn(-1.0f, 1.0f)
+                    val normY = (-clamped.y / maxRadiusPx).coerceIn(-1.0f, 1.0f)
+                    inputTarget.onStickMove(stickControl, normX, normY)
+                },
                 onDragEnd = {
                     thumbOffset = Offset.Zero
                     inputTarget.onStickMove(stickControl, 0f, 0f)
@@ -621,13 +634,14 @@ private fun RenderNxpJoystick(
                     thumbOffset = Offset.Zero
                     inputTarget.onStickMove(stickControl, 0f, 0f)
                 },
-                onDrag = { change, dragAmount ->
+                onDrag = { change, _ ->
                     change.consume()
-                    val newOffset = thumbOffset + dragAmount
-                    val distance = kotlin.math.sqrt(newOffset.x * newOffset.x + newOffset.y * newOffset.y)
-                    val clamped = if (distance > maxRadiusPx) {
-                        Offset(newOffset.x / distance * maxRadiusPx, newOffset.y / distance * maxRadiusPx)
-                    } else newOffset
+                    val vecX = change.position.x - centerX
+                    val vecY = change.position.y - centerY
+                    val dist = kotlin.math.hypot(vecX, vecY)
+                    val clamped = if (dist > maxRadiusPx) {
+                        Offset(vecX / dist * maxRadiusPx, vecY / dist * maxRadiusPx)
+                    } else Offset(vecX, vecY)
                     thumbOffset = clamped
 
                     val normX = (clamped.x / maxRadiusPx).coerceIn(-1.0f, 1.0f)

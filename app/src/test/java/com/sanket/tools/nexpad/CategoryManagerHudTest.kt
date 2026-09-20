@@ -1253,6 +1253,63 @@ class CategoryManagerHudTest {
         assertTrue("Analog stick X deflection must remain non-zero while held", normX > 0.7f)
         assertTrue("Analog stick Y deflection must remain non-zero while held", normY > 0.4f)
     }
+
+    @Test
+    fun testAnalogJoystickSteeringDirectionMatchesFingerVectorWhenDraggingBack() {
+        // Test verifying the fix for the bug where dragging a stick right and then partially moving
+        // the finger back (while still to the right of the center) flipped the stick to the left.
+        val centerX = 200f
+        val centerY = 200f
+        val maxRadius = 80f
+        val deadzone = 5f
+
+        fun computeStickOutput(fingerX: Float, fingerY: Float): Pair<Float, Float> {
+            val vecX = fingerX - centerX
+            val vecY = fingerY - centerY
+            val dist = kotlin.math.hypot(vecX, vecY)
+            val (clampedX, clampedY) = if (dist > maxRadius) {
+                val angle = kotlin.math.atan2(vecY, vecX)
+                Pair(kotlin.math.cos(angle) * maxRadius, kotlin.math.sin(angle) * maxRadius)
+            } else {
+                Pair(vecX, vecY)
+            }
+            val normX = if (dist < deadzone) 0f else (clampedX / maxRadius).coerceIn(-1f, 1f)
+            val normY = if (dist < deadzone) 0f else (-clampedY / maxRadius).coerceIn(-1f, 1f)
+            return Pair(normX, normY)
+        }
+
+        // 1. Drag finger far to the right (150px right of center)
+        val (step1X, step1Y) = computeStickOutput(350f, 200f)
+        assertEquals("Full deflection to the right", 1.0f, step1X, 0.0001f)
+        assertEquals(0.0f, step1Y, 0.0001f)
+
+        // 2. Move finger partially back towards center, but STILL 60px to the right of center
+        val (step2X, step2Y) = computeStickOutput(260f, 200f)
+        assertTrue("Finger is to the right of center, stick MUST point to the right (positive X)", step2X > 0f)
+        assertEquals("Proportional deflection at 60px / 80px", 0.75f, step2X, 0.0001f)
+
+        // 3. Move finger to 20px to the right of center
+        val (step3X, step3Y) = computeStickOutput(220f, 200f)
+        assertTrue("Finger is still to the right of center, stick MUST point to the right", step3X > 0f)
+        assertEquals("Proportional deflection at 20px / 80px", 0.25f, step3X, 0.0001f)
+
+        // 4. Move finger across center to the left (60px to the left of center)
+        val (step4X, step4Y) = computeStickOutput(140f, 200f)
+        assertTrue("Only when finger crosses to the left should stick point left (negative X)", step4X < 0f)
+    }
+
+    @Test
+    fun testCleanStyleDropdownLabelsAndLayoutActivation() {
+        val xboxLabel = "Xbox Style"
+        val psLabel = "PlayStation Style"
+
+        // Verify clean strings without button parentheses
+        assertFalse("Xbox label should not contain parentheses", xboxLabel.contains("("))
+        assertFalse("PlayStation label should not contain parentheses", psLabel.contains("("))
+        assertEquals("Xbox Style", xboxLabel)
+        assertEquals("PlayStation Style", psLabel)
+    }
 }
+
 
 

@@ -154,7 +154,7 @@ fun HomeScreen(
                                     layoutManager.setActiveProfile(selected.name)
                                 }
                             },
-                            onPlayClick = { navController.navigate("gamepad") },
+                            onPlayClick = { navController.navigate(Route.Gamepad()) },
                             isCompact = layout.isShortScreen,
                             modifier = Modifier
                                 .weight(1f)
@@ -196,7 +196,7 @@ fun HomeScreen(
                                 onConnectAoa = { viewModel.switchToAoaConnection() },
                                 onConnectAdb = { viewModel.switchToAdbConnection() },
                                 onDisconnectClick = { viewModel.disconnect() },
-                                onOpenConnectionHub = { navController.navigate("connections") }
+                                onOpenConnectionHub = { navController.navigate(Route.Connections) }
                             )
                         }
 
@@ -234,7 +234,7 @@ fun HomeScreen(
                                 layoutManager.setActiveProfile(selected.name)
                             }
                         },
-                        onPlayClick = { navController.navigate("gamepad") }
+                        onPlayClick = { navController.navigate(Route.Gamepad()) }
                     )
 
                     Text(
@@ -260,7 +260,7 @@ fun HomeScreen(
                         onConnectAoa = { viewModel.switchToAoaConnection() },
                         onConnectAdb = { viewModel.switchToAdbConnection() },
                         onDisconnectClick = { viewModel.disconnect() },
-                        onOpenConnectionHub = { navController.navigate("connections") }
+                        onOpenConnectionHub = { navController.navigate(Route.Connections) }
                     )
 
                     Text(
@@ -287,14 +287,14 @@ private fun CommandCenterButtons(navController: AppNavigator) {
                 label = "Virtual Controller",
                 icon = Icons.Rounded.SportsEsports,
                 iconColor = MaterialTheme.colorScheme.primary,
-                onClick = { navController.navigate("virtual_controller") },
+                onClick = { navController.navigate(Route.VirtualController) },
                 modifier = Modifier.weight(1f)
             )
             CommandButton(
                 label = "Connections",
                 icon = Icons.Rounded.Hub,
                 iconColor = NeonPalette.Cyan,
-                onClick = { navController.navigate("connections") },
+                onClick = { navController.navigate(Route.Connections) },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -306,14 +306,14 @@ private fun CommandCenterButtons(navController: AppNavigator) {
                 label = "Button Studio",
                 icon = Icons.Rounded.Palette,
                 iconColor = NeonPalette.Purple,
-                onClick = { navController.navigate(ScreenKey.ButtonStudio(mode = "viewer")) },
+                onClick = { navController.navigate(Route.ButtonStudio(mode = "viewer")) },
                 modifier = Modifier.weight(1f)
             )
             CommandButton(
                 label = "Settings",
                 icon = Icons.Rounded.Settings,
                 iconColor = MaterialTheme.colorScheme.primaryContainer,
-                onClick = { navController.navigate("settings") },
+                onClick = { navController.navigate(Route.Settings) },
                 modifier = Modifier.weight(1f)
             )
         }

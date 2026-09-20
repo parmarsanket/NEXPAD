@@ -39,10 +39,25 @@ import kotlin.math.pow
 fun GamepadScreen(
     viewModel: GamepadViewModel, 
     layoutManager: LayoutManager,
+    navigationViewModel: NavigationViewModel? = null,
+    overrideProfileName: String? = null,
     onBack: () -> Unit,
     onVibrate: () -> Unit
 ) {
-    val profile = layoutManager.getActiveProfile()
+    val activeProfileName by layoutManager.activeProfileNameFlow.collectAsState()
+    val profiles by layoutManager.profilesFlow.collectAsState()
+    val sessionProfileName by (navigationViewModel?.sessionProfileName ?: remember { kotlinx.coroutines.flow.MutableStateFlow(null) }).collectAsState()
+
+    val profile = remember(overrideProfileName, sessionProfileName, activeProfileName, profiles) {
+        val targetName = overrideProfileName ?: sessionProfileName
+        if (!targetName.isNullOrBlank()) {
+            profiles.find { it.name.equals(targetName, ignoreCase = true) }
+                ?: layoutManager.getAllProfiles().find { it.name.equals(targetName, ignoreCase = true) }
+                ?: layoutManager.getActiveProfile()
+        } else {
+            layoutManager.getActiveProfile()
+        }
+    }
     val isConnected by viewModel.isConnected.collectAsState()
     
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -251,6 +266,7 @@ fun GamepadScreen(
         onDispose {
             rumbleResetJob?.cancel()
             vibrator.cancel()
+            navigationViewModel?.clearGamepadSession()
         }
     }
     

@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.ui.AppNavigator
 import com.sanket.tools.nexpad.ui.NavigationViewModel
-import com.sanket.tools.nexpad.ui.ScreenKey
+import com.sanket.tools.nexpad.ui.Route
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.CategoryType
 import com.sanket.tools.nexpad.category.ControlKey
@@ -395,7 +395,7 @@ fun ButtonStudioScreen(
                                 modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text("Xbox Style (A, B, X, Y)") },
+                                    text = { Text("Xbox Style") },
                                     onClick = {
                                         studioLabelStyle = ControllerLabelStyle.XBOX
                                         if (currentMode == ButtonStudioMode.EDITOR && activeProfile != null && layoutManager != null) {
@@ -411,7 +411,7 @@ fun ButtonStudioScreen(
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("PlayStation Style (✕, ○, □, △)") },
+                                    text = { Text("PlayStation Style") },
                                     onClick = {
                                         studioLabelStyle = ControllerLabelStyle.PLAYSTATION
                                         if (currentMode == ButtonStudioMode.EDITOR && activeProfile != null && layoutManager != null) {
@@ -810,6 +810,6 @@ private fun applyButtonToHud(
 ) {
     applyButtonSkinToProfile(def, targetProfileName, layoutManager, context)
     val controlKey = def.manifest.defaultControl.uppercase()
-    navController.navigate(ScreenKey.Editor(profileName = targetProfileName.ifBlank { null }, controlKey = controlKey))
+    navController.navigate(Route.Editor(profileName = targetProfileName.ifBlank { null }, controlKey = controlKey))
 }
 

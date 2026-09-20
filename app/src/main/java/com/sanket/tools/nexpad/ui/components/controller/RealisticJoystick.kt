@@ -99,6 +99,10 @@ fun RealisticJoystick(
             .pointerInput(isLeft, isCameraMode, cameraSensitivity, density) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
+                    val centerX = size.width / 2f
+                    val centerY = size.height / 2f
+                    val deadzoneRadius = 6f
+
                     val startTime = System.currentTimeMillis()
                     var previousTouchX = down.position.x
                     var previousTouchY = down.position.y
@@ -111,6 +115,30 @@ fun RealisticJoystick(
                     if (isCameraMode) {
                         // ── Right Stick Camera Mode: Pure relative touch ──
                         viewModel.updateRightStick(0f, 0f)
+                    } else {
+                        // ── Traditional analog stick steering: Direct vector from center to finger ──
+                        val downVecX = down.position.x - centerX
+                        val downVecY = down.position.y - centerY
+                        val downDist = hypot(downVecX, downVecY)
+
+                        val (clampedX, clampedY) = if (downDist > maxRadius) {
+                            val angle = atan2(downVecY, downVecX)
+                            Pair(cos(angle) * maxRadius, sin(angle) * maxRadius)
+                        } else {
+                            Pair(downVecX, downVecY)
+                        }
+
+                        thumbOffsetX = clampedX
+                        thumbOffsetY = clampedY
+
+                        val normX = if (downDist < deadzoneRadius) 0f else (clampedX / maxRadius).coerceIn(-1f, 1f)
+                        val normY = if (downDist < deadzoneRadius) 0f else (-clampedY / maxRadius).coerceIn(-1f, 1f)
+
+                        if (isLeft) {
+                            viewModel.updateLeftStick(normX, normY)
+                        } else {
+                            viewModel.updateRightStick(normX, normY)
+                        }
                     }
 
                     while (true) {
@@ -199,27 +227,28 @@ fun RealisticJoystick(
                                 }
                             }
                         } else {
-                            // ── Traditional analog stick steering ──
-                            var newX = thumbOffsetX + deltaX
-                            var newY = thumbOffsetY + deltaY
-                            val distance = hypot(newX, newY)
+                            // ── Traditional analog stick steering: Direct vector from center to current touch ──
+                            val vecX = change.position.x - centerX
+                            val vecY = change.position.y - centerY
+                            val dist = hypot(vecX, vecY)
 
-                            if (distance > maxRadius) {
-                                val angle = atan2(newY, newX)
-                                newX = cos(angle) * maxRadius
-                                newY = sin(angle) * maxRadius
+                            val (clampedX, clampedY) = if (dist > maxRadius) {
+                                val angle = atan2(vecY, vecX)
+                                Pair(cos(angle) * maxRadius, sin(angle) * maxRadius)
+                            } else {
+                                Pair(vecX, vecY)
                             }
 
-                            thumbOffsetX = newX
-                            thumbOffsetY = newY
+                            thumbOffsetX = clampedX
+                            thumbOffsetY = clampedY
 
-                            val normalizedX = (newX / maxRadius).coerceIn(-1f, 1f)
-                            val normalizedY = (-newY / maxRadius).coerceIn(-1f, 1f) // Invert Y so up is positive
+                            val normX = if (dist < deadzoneRadius) 0f else (clampedX / maxRadius).coerceIn(-1f, 1f)
+                            val normY = if (dist < deadzoneRadius) 0f else (-clampedY / maxRadius).coerceIn(-1f, 1f) // Invert Y so up is positive
 
                             if (isLeft) {
-                                viewModel.updateLeftStick(normalizedX, normalizedY)
+                                viewModel.updateLeftStick(normX, normY)
                             } else {
-                                viewModel.updateRightStick(normalizedX, normalizedY)
+                                viewModel.updateRightStick(normX, normY)
                             }
                         }
                     }

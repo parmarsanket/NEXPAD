@@ -36,17 +36,17 @@ fun NavigationGraph(
         configuration = SavedStateConfiguration {
             serializersModule = SerializersModule {
                 polymorphic(NavKey::class) {
-                    subclass(ScreenKey.Home::class, ScreenKey.Home.serializer())
-                    subclass(ScreenKey.Settings::class, ScreenKey.Settings.serializer())
-                    subclass(ScreenKey.Connections::class, ScreenKey.Connections.serializer())
-                    subclass(ScreenKey.Editor::class, ScreenKey.Editor.serializer())
-                    subclass(ScreenKey.VirtualController::class, ScreenKey.VirtualController.serializer())
-                    subclass(ScreenKey.Gamepad::class, ScreenKey.Gamepad.serializer())
-                    subclass(ScreenKey.ButtonStudio::class, ScreenKey.ButtonStudio.serializer())
+                    subclass(Route.Home::class, Route.Home.serializer())
+                    subclass(Route.Settings::class, Route.Settings.serializer())
+                    subclass(Route.Connections::class, Route.Connections.serializer())
+                    subclass(Route.Editor::class, Route.Editor.serializer())
+                    subclass(Route.VirtualController::class, Route.VirtualController.serializer())
+                    subclass(Route.Gamepad::class, Route.Gamepad.serializer())
+                    subclass(Route.ButtonStudio::class, Route.ButtonStudio.serializer())
                 }
             }
         },
-        ScreenKey.Home
+        Route.Home
     )
     val navigator = remember(backStack) { Nav3AppNavigator(backStack) }
     val sharedPref = remember(context) { context.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE) }
@@ -82,16 +82,16 @@ fun NavigationGraph(
     ) { key ->
         NavEntry(key) {
             when (key) {
-                is ScreenKey.Home -> {
+                is Route.Home -> {
                     HomeScreen(navController = navigator, layoutManager = layoutManager, viewModel = viewModel)
                 }
-                is ScreenKey.Settings -> {
+                is Route.Settings -> {
                     SettingsScreen(navController = navigator, layoutManager = layoutManager, viewModel = viewModel, sharedPref = sharedPref)
                 }
-                is ScreenKey.Connections -> {
+                is Route.Connections -> {
                     ConnectionScreen(navController = navigator, viewModel = viewModel)
                 }
-                is ScreenKey.Editor -> {
+                is Route.Editor -> {
                     HudEditorScreen(
                         navController = navigator,
                         layoutManager = layoutManager,
@@ -101,22 +101,24 @@ fun NavigationGraph(
                         gamepadViewModel = viewModel
                     )
                 }
-                is ScreenKey.VirtualController -> {
+                is Route.VirtualController -> {
                     VirtualControllerScreen(
                         navController = navigator,
                         layoutManager = layoutManager,
                         navigationViewModel = navigationViewModel
                     )
                 }
-                is ScreenKey.Gamepad -> {
+                is Route.Gamepad -> {
                     GamepadScreen(
                         viewModel = viewModel,
                         layoutManager = layoutManager,
+                        navigationViewModel = navigationViewModel,
+                        overrideProfileName = key.layoutProfileName,
                         onBack = { navigator.popBackStack() },
                         onVibrate = onVibrate
                     )
                 }
-                is ScreenKey.ButtonStudio -> {
+                is Route.ButtonStudio -> {
                     val mode = when {
                         key.mode.equals("button_editor", ignoreCase = true) -> ButtonStudioMode.BUTTON_EDITOR
                         key.mode.equals("editor", ignoreCase = true) || key.mode.equals("select", ignoreCase = true) -> ButtonStudioMode.EDITOR

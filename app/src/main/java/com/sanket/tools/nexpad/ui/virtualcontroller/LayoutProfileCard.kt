@@ -352,7 +352,7 @@ fun LayoutProfileCard(
                         modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Xbox Style (A, B, X, Y, LB, LT, LSB)") },
+                            text = { Text("Xbox Style") },
                             onClick = {
                                 onUpdateLabelStyle(ControllerLabelStyle.XBOX)
                                 showStyleDropdown = false
@@ -364,7 +364,7 @@ fun LayoutProfileCard(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("PlayStation Style (✕, ○, □, △, L1, L2, L3)") },
+                            text = { Text("PlayStation Style") },
                             onClick = {
                                 onUpdateLabelStyle(ControllerLabelStyle.PLAYSTATION)
                                 showStyleDropdown = false

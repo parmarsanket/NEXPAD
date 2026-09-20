@@ -259,7 +259,7 @@ fun HudEditorScreen(
                         originScreen = OriginScreen.HUD_EDITOR
                     )
                     navController.navigate(
-                        ScreenKey.ButtonStudio(
+                        Route.ButtonStudio(
                             mode = "button_editor",
                             profileName = profile.name,
                             controlKey = selectedControl!!,
@@ -333,7 +333,7 @@ fun HudEditorScreen(
                 onOpenStudio = {
                     showAddDialog = false
                     // Palette dialog → Viewer Mode (no context — user is browsing assets)
-                    navController.navigate(ScreenKey.ButtonStudio(mode = "viewer"))
+                    navController.navigate(Route.ButtonStudio(mode = "viewer"))
                 },
                 onDismiss = { showAddDialog = false }
             )

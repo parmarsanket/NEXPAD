@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpad.ui
+package com.sanket.tools.nexpad.ui
 
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -77,5 +77,29 @@ class NavigationViewModel : ViewModel() {
      */
     fun cancelAssetSelection() {
         _editingContext.value = null
+    }
+
+    // ── Transient Gamepad Session (Industry ViewModel Approach) ───────────
+    private val _sessionProfileName = MutableStateFlow<String?>(null)
+
+    /**
+     * The profile name for the currently active gameplay/preview session.
+     * When non-null, GamepadScreen uses this layout without mutating the
+     * user's globally active profile in LayoutManager.
+     */
+    val sessionProfileName: StateFlow<String?> = _sessionProfileName.asStateFlow()
+
+    /**
+     * Start a temporary gameplay session for [profileName].
+     */
+    fun startGamepadSession(profileName: String?) {
+        _sessionProfileName.value = profileName
+    }
+
+    /**
+     * Clear the session once the Gamepad screen is exited.
+     */
+    fun clearGamepadSession() {
+        _sessionProfileName.value = null
     }
 }

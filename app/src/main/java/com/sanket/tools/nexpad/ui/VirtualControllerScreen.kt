@@ -71,7 +71,7 @@ fun VirtualControllerScreen(
                 isNavigationEnabled = !isAnyItemDragging,
                 actions = {
                     OutlinedButton(
-                        onClick = { navController.navigate(ScreenKey.ButtonStudio(mode = "viewer")) },
+                        onClick = { navController.navigate(Route.ButtonStudio(mode = "viewer")) },
                         enabled = !isAnyItemDragging,
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Purple),
                         border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Purple.copy(alpha = if (isAnyItemDragging) 0.3f else 0.7f)),
@@ -216,8 +216,8 @@ fun VirtualControllerScreen(
                                 Toast.makeText(context, "Activated ${profile.name}", Toast.LENGTH_SHORT).show()
                             },
                             onPlay = {
-//                                layoutManager.setActiveProfile(profile.name)
-                                navController.navigate("gamepad")
+                                navigationViewModel?.startGamepadSession(profile.name)
+                                navController.navigate(Route.Gamepad(profile.name))
                             },
                             onEditHud = {
                                 if (profile.isDefault) {
@@ -225,12 +225,12 @@ fun VirtualControllerScreen(
                                     profileToEditAsPreset = profile
                                 } else {
                                     layoutManager.setActiveProfile(profile.name)
-                                    navController.navigate(ScreenKey.Editor(profileName = profile.name))
+                                    navController.navigate(Route.Editor(profileName = profile.name))
                                 }
                             },
                             onOpenStudio = {
                                 layoutManager.setActiveProfile(profile.name)
-                                navController.navigate(ScreenKey.ButtonStudio(mode = "editor", profileName = profile.name))
+                                navController.navigate(Route.ButtonStudio(mode = "editor", profileName = profile.name))
                             },
                             onDuplicate = {
                                 profileToDuplicate = profile
@@ -287,12 +287,12 @@ fun VirtualControllerScreen(
                 layoutManager.setActiveProfile(newProfile.name)
                 Toast.makeText(context, "Created layout '$name'", Toast.LENGTH_SHORT).show()
                 if (openStudioImmediately) {
-                    navController.navigate("button_studio?mode=select&profileName=${android.net.Uri.encode(name)}")
+                    navController.navigate(Route.ButtonStudio(mode = "select", profileName = name))
                 }
             },
             onDesignInStudio = { name ->
                 showAddDialog = false
-                navController.navigate("button_studio?mode=select&profileName=${android.net.Uri.encode(name)}")
+                navController.navigate(Route.ButtonStudio(mode = "select", profileName = name))
             }
         )
     }
@@ -368,7 +368,7 @@ fun VirtualControllerScreen(
                 val copy = layoutManager.createCustomProfile(name = customName, baseProfile = preset)
                 layoutManager.setActiveProfile(copy.name)
                 profileToEditAsPreset = null
-                navController.navigate(ScreenKey.Editor(profileName = copy.name))
+                navController.navigate(Route.Editor(profileName = copy.name))
             },
             onDismiss = { profileToEditAsPreset = null }
         )

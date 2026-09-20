@@ -201,7 +201,7 @@ fun HudTopBar(
                             modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Xbox Style (A, B, X, Y)") },
+                                text = { Text("Xbox Style") },
                                 onClick = {
                                     onUpdateLabelStyle(ControllerLabelStyle.XBOX)
                                     showStyleMenu = false
@@ -213,7 +213,7 @@ fun HudTopBar(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("PlayStation Style (✕, ○, □, △)") },
+                                text = { Text("PlayStation Style") },
                                 onClick = {
                                     onUpdateLabelStyle(ControllerLabelStyle.PLAYSTATION)
                                     showStyleMenu = false

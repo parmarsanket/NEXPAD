@@ -17,16 +17,16 @@ import kotlinx.serialization.Serializable
  *    currently applied asset when launched contextually.
  */
 @Serializable
-sealed interface ScreenKey : NavKey {
+sealed interface Route : NavKey {
 
     @Serializable
-    data object Home : ScreenKey
+    data object Home : Route
 
     @Serializable
-    data object Settings : ScreenKey
+    data object Settings : Route
 
     @Serializable
-    data object Connections : ScreenKey
+    data object Connections : Route
 
     /**
      * HUD Editor destination.
@@ -41,13 +41,15 @@ sealed interface ScreenKey : NavKey {
     data class Editor(
         val profileName: String? = null,
         val controlKey: String? = null
-    ) : ScreenKey
+    ) : Route
 
     @Serializable
-    data object VirtualController : ScreenKey
+    data object VirtualController : Route
 
     @Serializable
-    data object Gamepad : ScreenKey
+    data class Gamepad(
+        val layoutProfileName: String? = null
+    ) : Route
 
     /**
      * Button Studio destination.
@@ -65,5 +67,10 @@ sealed interface ScreenKey : NavKey {
         val profileName: String = "",
         val controlKey: String? = null,
         val currentAssetId: String? = null
-    ) : ScreenKey
+    ) : Route
 }
+
+/**
+ * Backward compatibility alias so both `Route` and `ScreenKey` work interchangeably.
+ */
+typealias ScreenKey = Route
