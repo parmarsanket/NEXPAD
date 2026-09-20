@@ -43,7 +43,7 @@ class LayoutManager(private val context: Context) {
         val posMap = active.positions.toMutableMap()
         val currentPos = posMap[key] ?: defaultPositions()[key] ?: Position(0.5f, 0.5f)
         posMap[key] = currentPos.copy(customComponentId = customComponentId)
-        saveProfile(active.copy(positions = posMap))
+        saveProfile(active.copy(positions = posMap), activate = true)
     }
 
     /** Returns all available profiles: 5 default layouts (with any saved overrides) plus user custom layouts. */
@@ -113,7 +113,7 @@ class LayoutManager(private val context: Context) {
     }
 
     /** Save profile. If it's custom, adds to custom profiles set. */
-    fun saveProfile(profile: LayoutProfile, activate: Boolean = true) {
+    fun saveProfile(profile: LayoutProfile, activate: Boolean = false) {
         val canonicalProfile = profile.copy(positions = profile.canonicalPositions())
         val jsonString = json.encodeToString(canonicalProfile)
         prefs.edit().putString("profile_${canonicalProfile.name}", jsonString).apply()
@@ -253,7 +253,8 @@ class LayoutManager(private val context: Context) {
     fun createCustomProfile(
         name: String,
         baseProfile: LayoutProfile,
-        selectedButtons: Set<String>? = null
+        selectedButtons: Set<String>? = null,
+        activate: Boolean = false
     ): LayoutProfile {
         val baseCanonical = baseProfile.canonicalPositions()
         val positions = if (selectedButtons != null) {
@@ -277,7 +278,7 @@ class LayoutManager(private val context: Context) {
             labelStyle = baseProfile.labelStyle
         )
 
-        saveProfile(newProfile, activate = true)
+        saveProfile(newProfile, activate = activate)
         return newProfile
     }
 

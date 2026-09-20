@@ -145,7 +145,23 @@ class HudEditorViewModel(
     }
 
     fun loadActiveProfile() {
-        val profile = layoutManager.getActiveProfile()
+        loadProfileInternal(layoutManager.getActiveProfile())
+    }
+
+    /**
+     * Load a specific profile by name without altering which layout is globally active in LayoutManager.
+     * Used when HudEditorScreen is opened for a specific profile (e.g. from VirtualControllerScreen)
+     * so that the user can inspect and edit this layout independently while leaving their
+     * active gameplay layout untouched.
+     */
+    fun loadProfileByName(name: String) {
+        val profile = layoutManager.getAllProfiles().find { it.name.equals(name, ignoreCase = true) }
+            ?: layoutManager.loadProfile(name)
+            ?: layoutManager.getActiveProfile()
+        loadProfileInternal(profile)
+    }
+
+    private fun loadProfileInternal(profile: LayoutProfile) {
         _currentProfile.value = profile
 
         val elementMap = mutableMapOf<String, HudElement>()
@@ -157,22 +173,6 @@ class HudEditorViewModel(
         }
         _elements.value = elementMap
         _hasUnsavedChanges.value = false
-    }
-
-    /**
-     * Load a specific profile by name.
-     * Used when HudEditorScreen is opened from VirtualControllerScreen with an explicit profileName
-     * in the ScreenKey — ensures the correct layout is always loaded regardless of which profile
-     * is currently "active" in LayoutManager.
-     */
-    fun loadProfileByName(name: String) {
-        val profile = layoutManager.getAllProfiles().find { it.name == name }
-        if (profile != null) {
-            // Activate it so subsequent saves write to the right profile
-            layoutManager.setActiveProfile(profile.name)
-        }
-        // Reload (now with the correct active profile)
-        loadActiveProfile()
     }
 
     fun selectControl(controlKey: String?) {
@@ -403,7 +403,8 @@ class HudEditorViewModel(
         val updatedProfile = profile.copy(positions = positionMap)
 
         viewModelScope.launch(Dispatchers.IO) {
-            layoutManager.saveProfile(updatedProfile)
+            val wasActive = layoutManager.getActiveProfile().name.equals(updatedProfile.name, ignoreCase = true)
+            layoutManager.saveProfile(updatedProfile, activate = wasActive)
             _currentProfile.value = updatedProfile
             _hasUnsavedChanges.value = false
             launch(Dispatchers.Main) {

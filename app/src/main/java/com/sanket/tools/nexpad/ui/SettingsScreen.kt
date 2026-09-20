@@ -128,7 +128,7 @@ fun SettingsScreen(
                     Switch(
                         checked = currentProfile.isRgbEnabled,
                         onCheckedChange = {
-                            layoutManager.saveProfile(currentProfile.copy(isRgbEnabled = it))
+                            layoutManager.saveProfile(currentProfile.copy(isRgbEnabled = it), activate = true)
                         },
                         colors = SwitchDefaults.colors(checkedThumbColor = NeonPalette.Green, checkedTrackColor = Color.DarkGray)
                     )

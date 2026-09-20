@@ -224,12 +224,10 @@ fun VirtualControllerScreen(
                                     // Preset protection: require creating a custom copy first
                                     profileToEditAsPreset = profile
                                 } else {
-                                    layoutManager.setActiveProfile(profile.name)
                                     navController.navigate(Route.Editor(profileName = profile.name))
                                 }
                             },
                             onOpenStudio = {
-                                layoutManager.setActiveProfile(profile.name)
                                 navController.navigate(Route.ButtonStudio(mode = "editor", profileName = profile.name))
                             },
                             onDuplicate = {
@@ -365,8 +363,7 @@ fun VirtualControllerScreen(
         PresetProtectionDialog(
             preset = preset,
             onConfirm = { customName ->
-                val copy = layoutManager.createCustomProfile(name = customName, baseProfile = preset)
-                layoutManager.setActiveProfile(copy.name)
+                val copy = layoutManager.createCustomProfile(name = customName, baseProfile = preset, activate = false)
                 profileToEditAsPreset = null
                 navController.navigate(Route.Editor(profileName = copy.name))
             },

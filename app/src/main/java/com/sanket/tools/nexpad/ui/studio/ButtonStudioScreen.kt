@@ -741,9 +741,9 @@ private fun applyButtonSkinToProfile(
         // Preset protection: copy-on-write so default presets are never mutated
         val customCopy = layoutManager.createCustomProfile(
             name = "${target.name} Custom",
-            baseProfile = target
+            baseProfile = target,
+            activate = false
         )
-        layoutManager.setActiveProfile(customCopy.name)
         Toast.makeText(
             context,
             "Created '${customCopy.name}' (preset protected)",
@@ -757,7 +757,8 @@ private fun applyButtonSkinToProfile(
     val currentPos = posMap[targetKey] ?: defaultPositions()[targetKey] ?: Position(0.5f, 0.5f)
     posMap[targetKey] = currentPos.copy(customComponentId = customId)
     val updated = effectiveProfile.copy(positions = posMap)
-    layoutManager.saveProfile(updated, activate = true)
+    val wasActive = layoutManager.getActiveProfile().name.equals(updated.name, ignoreCase = true)
+    layoutManager.saveProfile(updated, activate = wasActive)
     return updated
 }
 
@@ -778,9 +779,9 @@ private fun removeCustomSkinFromProfile(
     val effectiveProfile = if (target.isDefault) {
         val customCopy = layoutManager.createCustomProfile(
             name = "${target.name} Custom",
-            baseProfile = target
+            baseProfile = target,
+            activate = false
         )
-        layoutManager.setActiveProfile(customCopy.name)
         Toast.makeText(
             context,
             "Created '${customCopy.name}' (preset protected)",
@@ -794,7 +795,8 @@ private fun removeCustomSkinFromProfile(
     val currentPos = posMap[targetKey] ?: defaultPositions()[targetKey] ?: Position(0.5f, 0.5f)
     posMap[targetKey] = currentPos.copy(customComponentId = null)
     val updated = effectiveProfile.copy(positions = posMap)
-    layoutManager.saveProfile(updated, activate = true)
+    val wasActive = layoutManager.getActiveProfile().name.equals(updated.name, ignoreCase = true)
+    layoutManager.saveProfile(updated, activate = wasActive)
     return updated
 }
 

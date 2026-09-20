@@ -127,4 +127,18 @@ class AndroidNavigation3Test {
         }
         assertEquals(com.sanket.tools.nexpad.ui.studio.model.ButtonStudioMode.BUTTON_EDITOR, resolvedMode)
     }
+
+    @Test
+    fun testHudEditorRouteProfileIsolation() {
+        val backStack = mutableStateListOf<NavKey>(Route.Home)
+        val navigator = Nav3AppNavigator(backStack)
+
+        // Navigating to HUD Editor for a specific profile (e.g. "FPS Pro Custom")
+        navigator.navigate(Route.Editor(profileName = "FPS Pro Custom", controlKey = "RT"))
+        assertEquals(2, navigator.backStack.size)
+
+        val editorKey = navigator.backStack.last() as Route.Editor
+        assertEquals("FPS Pro Custom", editorKey.profileName)
+        assertEquals("RT", editorKey.controlKey)
+    }
 }
