@@ -1590,7 +1590,7 @@ internal fun buildScaledPath(svgData: String, targetRect: Rect): Path {
             val bounds = android.graphics.RectF()
             androidPath.computeBounds(bounds, true)
             if (bounds.width() > 0.001f && bounds.height() > 0.001f) {
-                val isNormalized100 = bounds.left >= -0.01f && bounds.top >= -0.01f && bounds.right <= 100.5f && bounds.bottom <= 100.5f
+                val isNormalized100 = bounds.left >= -5f && bounds.top >= -5f && bounds.right <= 105f && bounds.bottom <= 105f
                 val matrix = android.graphics.Matrix().apply {
                     if (isNormalized100) {
                         postScale(targetRect.width / 100f, targetRect.height / 100f)
