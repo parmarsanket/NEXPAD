@@ -1235,14 +1235,14 @@ fun NxprcCanvasRenderer(
                             }
                         }
                         is CanvasLayer.VectorPath -> {
-                            val brush = createBrush(layer.fill, size)
-                            val angle = if (layer.isRotating && document.animations.idleType == "ROTATE") rotateAngle else layer.rotationDegrees
                             val targetRect = Rect(
                                 buttonLeft + buttonW * layer.offsetXRatio,
                                 buttonTop + buttonH * layer.offsetYRatio,
                                 buttonLeft + buttonW * (layer.offsetXRatio + layer.scale),
                                 buttonTop + buttonH * (layer.offsetYRatio + layer.scale)
                             )
+                            val brush = createBrush(layer.fill, targetRect.size, targetRect.topLeft)
+                            val angle = if (layer.isRotating && document.animations.idleType == "ROTATE") rotateAngle else layer.rotationDegrees
                             val vectorPath = if (layer.pathData.isNotBlank()) {
                                 buildScaledPath(layer.pathData, targetRect)
                             } else null
