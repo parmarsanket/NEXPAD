@@ -140,6 +140,7 @@ fun NxprcCanvasRenderer(
     labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX
 ) {
     var isPressed by remember { mutableStateOf(false) }
+    val currentInputTarget by rememberUpdatedState(inputTarget)
     val coroutineScope = rememberCoroutineScope()
 
     val scaleAnim = if (isInteractive) {
@@ -542,14 +543,14 @@ fun NxprcCanvasRenderer(
                     coroutineScope.launch {
                         pullProgress.animateTo(1f, spring(stiffness = 900f, dampingRatio = 0.7f))
                     }
-                    inputTarget.onTriggerMove(trigger, 1f)
+                    currentInputTarget.onTriggerMove(trigger, 1f)
 
                     val upOrCancel = waitForUpOrCancellation()
                     isPressed = false
                     coroutineScope.launch {
                         pullProgress.animateTo(0f, spring(stiffness = 700f, dampingRatio = 0.7f))
                     }
-                    inputTarget.onTriggerMove(trigger, 0f)
+                    currentInputTarget.onTriggerMove(trigger, 0f)
                 }
             }
         }
@@ -584,10 +585,10 @@ fun NxprcCanvasRenderer(
                         if (newDirs != activeDirs) {
                             val added = newDirs - activeDirs
                             val removed = activeDirs - newDirs
-                            removed.forEach { dir -> inputTarget.onButtonRelease(NexPadControl.Button(dir)) }
+                            removed.forEach { dir -> currentInputTarget.onButtonRelease(NexPadControl.Button(dir)) }
                             added.forEach { dir ->
-                                inputTarget.triggerHaptic()
-                                inputTarget.onButtonPress(NexPadControl.Button(dir))
+                                currentInputTarget.triggerHaptic()
+                                currentInputTarget.onButtonPress(NexPadControl.Button(dir))
                             }
                             activeDirs = newDirs
                         }
@@ -603,7 +604,7 @@ fun NxprcCanvasRenderer(
                             evaluateOffset(pointer.position)
                         }
                     } finally {
-                        activeDirs.forEach { dir -> inputTarget.onButtonRelease(NexPadControl.Button(dir)) }
+                        activeDirs.forEach { dir -> currentInputTarget.onButtonRelease(NexPadControl.Button(dir)) }
                         isPressed = false
                     }
                 }
@@ -614,11 +615,11 @@ fun NxprcCanvasRenderer(
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false)
                     isPressed = true
-                    inputTarget.onButtonPress(buttonControl)
+                    currentInputTarget.onButtonPress(buttonControl)
 
                     val upOrCancel = waitForUpOrCancellation()
                     isPressed = false
-                    inputTarget.onButtonRelease(buttonControl)
+                    currentInputTarget.onButtonRelease(buttonControl)
                 }
             }
         }

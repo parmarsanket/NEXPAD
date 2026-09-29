@@ -56,7 +56,10 @@ fun SandboxPreviewModal(
     var axisValues by remember { mutableStateOf(Pair(0f, 0f)) }
     var eventCount by remember { mutableIntStateOf(0) }
 
-    val sandboxTarget = remember {
+    val context = LocalContext.current
+    val hapticHelper = remember(context) { com.sanket.tools.nexpad.utils.HapticFeedbackHelper(context) }
+
+    val sandboxTarget = remember(hapticHelper) {
         SandboxInputTarget(
             onStateChange = { action ->
                 telemetryAction = action
@@ -64,6 +67,9 @@ fun SandboxPreviewModal(
             },
             onAxisChange = { x, y ->
                 axisValues = Pair(x, y)
+            },
+            onHapticTriggered = {
+                hapticHelper.performButtonClick()
             }
         )
     }
@@ -227,6 +233,7 @@ fun SandboxPreviewModal(
                                 onVibrate = {
                                     telemetryAction = "TAP • $controlKey (Haptic)"
                                     eventCount++
+                                    hapticHelper.performButtonClick()
                                 },
                                 customComponentId = null,
                                 labelStyle = labelStyle

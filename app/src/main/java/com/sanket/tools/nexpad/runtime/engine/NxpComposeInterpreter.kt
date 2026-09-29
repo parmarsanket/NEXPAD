@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -91,6 +92,7 @@ private fun RenderNxpButton(
     isInteractive: Boolean = true
 ) {
     var isPressed by remember { mutableStateOf(false) }
+    val currentInputTarget by rememberUpdatedState(inputTarget)
 
     val pressedState = def.pressed
     val targetScale = if (isPressed) (pressedState?.scale ?: 0.9f) else 1.0f
@@ -135,14 +137,14 @@ private fun RenderNxpButton(
     val gestureModifier = if (!isInteractive) {
         Modifier
     } else {
-        Modifier.pointerInput(isConnected, buttonControl) {
+        Modifier.pointerInput(buttonControl) {
             detectTapGestures(
                 onPress = {
                     isPressed = true
-                    inputTarget.onButtonPress(buttonControl)
+                    currentInputTarget.onButtonPress(buttonControl)
                     tryAwaitRelease()
                     isPressed = false
-                    inputTarget.onButtonRelease(buttonControl)
+                    currentInputTarget.onButtonRelease(buttonControl)
                 }
             )
         }
@@ -211,6 +213,7 @@ private fun RenderNxpDPad(
     isInteractive: Boolean = true
 ) {
     var pressedDirections by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val currentInputTarget by rememberUpdatedState(inputTarget)
 
     val baseBorderColor = parseHexColor(def.visual.borderColor, fallback = Color(0xFF2DD4BF))
     val baseFillColor = parseHexColor(def.visual.fillColor, fallback = Color(0xFF0B1A24)).copy(alpha = def.visual.opacity)
@@ -221,7 +224,7 @@ private fun RenderNxpDPad(
     val gestureModifier = if (!isInteractive) {
         Modifier
     } else {
-        Modifier.pointerInput(isConnected, inputTarget) {
+        Modifier.pointerInput(Unit) {
             awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     down.consume()
@@ -251,13 +254,13 @@ private fun RenderNxpDPad(
                             val added = newDirs - activeDirs
                             val removed = activeDirs - newDirs
                             removed.forEach { dir ->
-                                inputTarget.onButtonRelease(NexPadControl.Button(dir))
+                                currentInputTarget.onButtonRelease(NexPadControl.Button(dir))
                             }
                             added.forEach { dir ->
-                                inputTarget.onButtonPress(NexPadControl.Button(dir))
+                                currentInputTarget.onButtonPress(NexPadControl.Button(dir))
                             }
                             if (added.isNotEmpty()) {
-                                inputTarget.triggerHaptic()
+                                currentInputTarget.triggerHaptic()
                             }
                             activeDirs = newDirs
                             pressedDirections = newDirs
@@ -276,7 +279,7 @@ private fun RenderNxpDPad(
                         }
                     } finally {
                         activeDirs.forEach { dir ->
-                            inputTarget.onButtonRelease(NexPadControl.Button(dir))
+                            currentInputTarget.onButtonRelease(NexPadControl.Button(dir))
                         }
                         pressedDirections = emptySet()
                     }

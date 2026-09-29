@@ -67,7 +67,7 @@ fun RealisticTrigger(
             .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = {
-                        if (isConnected) onVibrate()
+                        onVibrate()
                         isPressed = true
                         viewModel.updateButton(key, true)
                         tryAwaitRelease()

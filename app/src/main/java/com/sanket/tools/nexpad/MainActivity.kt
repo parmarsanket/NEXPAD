@@ -3,9 +3,6 @@ package com.sanket.tools.nexpad
 import android.content.Context
 import android.os.Build
 import android.os.Bundle
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -34,7 +31,7 @@ class MainActivity : ComponentActivity() {
     
     private lateinit var viewModel: GamepadViewModel
     private lateinit var motionSensorManager: MotionSensorManager
-    private lateinit var vibrator: Vibrator
+    private lateinit var hapticFeedbackHelper: com.sanket.tools.nexpad.utils.HapticFeedbackHelper
     private lateinit var layoutManager: LayoutManager
     private var reloadReceiver: android.content.BroadcastReceiver? = null
 
@@ -112,13 +109,8 @@ class MainActivity : ComponentActivity() {
             }
         )
 
-        // Setup Vibrator
-        vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val vibratorManager = getSystemService(VibratorManager::class.java)
-            vibratorManager.defaultVibrator
-        } else {
-            getSystemService(Vibrator::class.java)!!
-        }
+        // Setup HD Haptic Engine
+        hapticFeedbackHelper = com.sanket.tools.nexpad.utils.HapticFeedbackHelper(this)
 
         enableEdgeToEdge()
         setContent {
@@ -132,9 +124,7 @@ class MainActivity : ComponentActivity() {
                         layoutManager = layoutManager,
                         context = this@MainActivity,
                         onVibrate = {
-                            vibrator.vibrate(
-                                VibrationEffect.createOneShot(10, VibrationEffect.DEFAULT_AMPLITUDE)
-                            )
+                            hapticFeedbackHelper.performButtonClick()
                         }
                     )
                 }

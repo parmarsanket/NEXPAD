@@ -120,12 +120,14 @@ fun GamepadScreen(
 
     var isRumbling by remember { mutableStateOf(false) }
     var rumbleResetJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    val hapticHelper = remember(context) { com.sanket.tools.nexpad.utils.HapticFeedbackHelper(context) }
     
-    val safeOnVibrate: () -> Unit = remember { {
-        if (!isRumbling) {
-            onVibrate()
+    val safeOnVibrate: () -> Unit = {
+        val connected = viewModel.isConnected.value
+        if (hapticHelper.canVibrate(connected, isRumbling)) {
+            hapticHelper.performButtonClick()
         }
-    } }
+    }
 
     LaunchedEffect(Unit) {
         val sharedPref = context.getSharedPreferences("nexpad_prefs", android.content.Context.MODE_PRIVATE)

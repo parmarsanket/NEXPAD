@@ -48,13 +48,14 @@ fun GamepadViewModel.asInputTarget(onVibrate: () -> Unit = {}): NexPadInputTarge
             }
         }
 
+        private var isTriggerActive = false
         override fun onTriggerMove(trigger: NexPadControl.Trigger, pressure: Float) {
-            if (pressure > 0.5f) {
+            val pressed = pressure > 0.5f
+            if (pressed && !isTriggerActive) {
                 onVibrate()
-                updateButton(trigger.key, true)
-            } else {
-                updateButton(trigger.key, false)
             }
+            isTriggerActive = pressed
+            updateButton(trigger.key, pressed)
         }
 
         override fun triggerHaptic(type: String) {

@@ -41,7 +41,7 @@ fun GamepadButton(
             .pointerInput(isConnected) {
                 detectTapGestures(
                     onPress = {
-                        if (isConnected) onVibrate()
+                        onVibrate()
                         isPressed = true
                         viewModel.updateButton(text, true)
                         tryAwaitRelease()

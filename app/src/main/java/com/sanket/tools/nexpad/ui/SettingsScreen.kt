@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.ui.AppNavigator
@@ -17,6 +18,7 @@ import com.sanket.tools.nexpad.ui.components.effects.CyberGrid
 import com.sanket.tools.nexpad.ui.components.effects.ScanLine
 import com.sanket.tools.nexpad.ui.layout.adaptiveLayoutSpec
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
+import com.sanket.tools.nexpad.utils.HapticFeedbackHelper
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
@@ -183,11 +185,160 @@ fun SettingsScreen(
                     colors = SliderDefaults.colors(thumbColor = NeonPalette.Green, activeTrackColor = NeonPalette.Green)
                 )
 
+                // ── Controller Touch Haptics ──────────────────────────────────────────
+                val context = LocalContext.current
+                val hapticHelper = remember(context) { HapticFeedbackHelper(context) }
+
+                var buttonHapticsEnabled by remember {
+                    mutableStateOf(sharedPref.getBoolean(HapticFeedbackHelper.PREF_BUTTON_HAPTICS_ENABLED, true))
+                }
+                var vibrateOfflineEnabled by remember {
+                    mutableStateOf(sharedPref.getBoolean(HapticFeedbackHelper.PREF_HAPTICS_OFFLINE_ENABLED, false))
+                }
+                var hapticClickStrength by remember {
+                    mutableFloatStateOf(sharedPref.getFloat(HapticFeedbackHelper.PREF_HAPTICS_CLICK_STRENGTH, 0.1f))
+                }
+                var hapticStyle by remember {
+                    mutableStateOf(
+                        sharedPref.getString(HapticFeedbackHelper.PREF_HAPTICS_STYLE, HapticFeedbackHelper.STYLE_SOFT)
+                            ?: HapticFeedbackHelper.STYLE_SOFT
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                Text("Controller Touch Haptics", color = Color.LightGray)
+
+                // Master Toggle: Button Haptic Feedback
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Button Haptic Feedback", color = Color.White)
+                        Text(
+                            "Tactile mechanical click on controller button press",
+                            color = Color.Gray,
+                            fontSize = 11.sp
+                        )
+                    }
+                    Switch(
+                        checked = buttonHapticsEnabled,
+                        onCheckedChange = {
+                            buttonHapticsEnabled = it
+                            sharedPref.edit().putBoolean(HapticFeedbackHelper.PREF_BUTTON_HAPTICS_ENABLED, it).apply()
+                            if (it) {
+                                hapticHelper.performPreviewClick(style = hapticStyle, strength = hapticClickStrength)
+                            }
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = NeonPalette.Green,
+                            checkedTrackColor = Color(0xFF1E3A2B)
+                        )
+                    )
+                }
+
+                // Sub-Toggle: Vibrate While Disconnected
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Vibrate While Disconnected",
+                            color = if (buttonHapticsEnabled) Color.White else Color.Gray
+                        )
+                        Text(
+                            "Enable button clicks even when not connected to laptop",
+                            color = Color.Gray,
+                            fontSize = 11.sp
+                        )
+                    }
+                    Switch(
+                        checked = vibrateOfflineEnabled,
+                        enabled = buttonHapticsEnabled,
+                        onCheckedChange = {
+                            vibrateOfflineEnabled = it
+                            sharedPref.edit().putBoolean(HapticFeedbackHelper.PREF_HAPTICS_OFFLINE_ENABLED, it).apply()
+                            hapticHelper.performPreviewClick(style = hapticStyle, strength = hapticClickStrength)
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = NeonPalette.Green,
+                            checkedTrackColor = Color(0xFF1E3A2B)
+                        )
+                    )
+                }
+
+                // Slider: Haptic Click Strength
+                Spacer(modifier = Modifier.height(14.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Haptic Click Strength: ${(hapticClickStrength * 100).toInt()}%",
+                        color = if (buttonHapticsEnabled) Color.White else Color.Gray
+                    )
+                }
+                Slider(
+                    value = hapticClickStrength,
+                    enabled = buttonHapticsEnabled,
+                    onValueChange = {
+                        hapticClickStrength = it
+                        sharedPref.edit().putFloat(HapticFeedbackHelper.PREF_HAPTICS_CLICK_STRENGTH, it).apply()
+                    },
+                    onValueChangeFinished = {
+                        hapticHelper.performPreviewClick(style = hapticStyle, strength = hapticClickStrength)
+                    },
+                    valueRange = 0.1f..1.0f,
+                    colors = SliderDefaults.colors(
+                        thumbColor = NeonPalette.Green,
+                        activeTrackColor = NeonPalette.Green
+                    )
+                )
+
+                // Buttons: Haptic Style
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    "Mechanical Click Profile",
+                    color = if (buttonHapticsEnabled) Color.LightGray else Color.Gray,
+                    fontSize = 12.sp
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val styles = listOf(
+                        HapticFeedbackHelper.STYLE_CRISP to "Crisp Click",
+                        HapticFeedbackHelper.STYLE_HEAVY to "Heavy Snap",
+                        HapticFeedbackHelper.STYLE_SOFT to "Soft Tick"
+                    )
+                    styles.forEach { (id, label) ->
+                        val isSelected = hapticStyle == id
+                        Button(
+                            onClick = {
+                                hapticStyle = id
+                                sharedPref.edit().putString(HapticFeedbackHelper.PREF_HAPTICS_STYLE, id).apply()
+                                hapticHelper.performPreviewClick(style = id, strength = hapticClickStrength)
+                            },
+                            enabled = buttonHapticsEnabled,
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isSelected) NeonPalette.Green else Color.DarkGray,
+                                contentColor = if (isSelected) Color.Black else Color.White
+                            )
+                        ) {
+                            Text(label, fontSize = 11.5.sp)
+                        }
+                    }
+                }
+
+                // ── PC Game Rumble ────────────────────────────────────────────────────
                 var rumbleIntensity by remember { mutableFloatStateOf(sharedPref.getFloat("RUMBLE_INTENSITY", 1.0f)) }
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                Text("Haptics & Vibration", color = Color.LightGray)
+                Text("PC Game Rumble (Motor Stream)", color = Color.LightGray)
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
