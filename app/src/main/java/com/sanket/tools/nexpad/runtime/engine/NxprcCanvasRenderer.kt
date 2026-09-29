@@ -1178,30 +1178,67 @@ fun NxprcCanvasRenderer(
                             }
                         }
                         is CanvasLayer.InnerShadow -> {
-                            val arcRadius = size.minDimension / 2f * 0.86f
-                            val arcTopLeft = Offset(centerOffset.x - arcRadius, centerOffset.y - arcRadius)
-                            val arcSize = Size(arcRadius * 2f, arcRadius * 2f)
+                            val createInnerPath = { l: Float, t: Float, w: Float, h: Float, rad: Float, oval: Boolean ->
+                                Path().apply {
+                                    if (oval) {
+                                        addOval(Rect(l, t, l + w, t + h))
+                                    } else {
+                                        addRoundRect(
+                                            androidx.compose.ui.geometry.RoundRect(
+                                                rect = Rect(l, t, l + w, t + h),
+                                                topLeft = CornerRadius(rad, rad),
+                                                topRight = CornerRadius(rad, rad),
+                                                bottomRight = CornerRadius(rad, rad),
+                                                bottomLeft = CornerRadius(rad, rad)
+                                            )
+                                        )
+                                    }
+                                }.asAndroidPath()
+                            }
 
-                            // Top subtle light rim
-                            drawArc(
-                                color = Color(layer.highlightColor),
-                                startAngle = 180f,
-                                sweepAngle = 180f,
-                                useCenter = false,
-                                topLeft = arcTopLeft,
-                                size = arcSize,
-                                style = Stroke(width = layer.strokeWidth * pxPerUnit)
+                            val elementPath = createInnerPath(buttonLeft, buttonTop, buttonW, buttonH, rootTl, rootIsOval)
+
+                            val shadows = listOf(
+                                Triple(Color(layer.highlightColor), Offset(0f, layer.strokeWidth * pxPerUnit * 0.6f), layer.strokeWidth * pxPerUnit * 1.0f),
+                                Triple(Color(layer.shadowColor), Offset(0f, -layer.strokeWidth * pxPerUnit * 1.4f), layer.strokeWidth * pxPerUnit * 2.0f)
                             )
-                            // Bottom dark curved shadow
-                            drawArc(
-                                color = Color(layer.shadowColor),
-                                startAngle = 0f,
-                                sweepAngle = 180f,
-                                useCenter = false,
-                                topLeft = arcTopLeft,
-                                size = arcSize,
-                                style = Stroke(width = layer.strokeWidth * pxPerUnit)
-                            )
+
+                            val nativeCanvas = drawContext.canvas.nativeCanvas
+                            shadows.forEach { (color, sOffset, blurPx) ->
+                                val effAlpha = color.alpha
+                                if (effAlpha <= 0.001f) return@forEach
+                                val shadowColorArgb = color.toArgb()
+
+                                val hLeft = buttonLeft + sOffset.x
+                                val hTop = buttonTop + sOffset.y
+                                val holePath = createInnerPath(hLeft, hTop, buttonW, buttonH, rootTl, rootIsOval)
+                                val margin = blurPx * 3f + kotlin.math.abs(sOffset.y) + 32f
+
+                                val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                                    this.color = shadowColorArgb
+                                    if (blurPx > 0f) {
+                                        maskFilter = android.graphics.BlurMaskFilter(
+                                            (blurPx / 2f).coerceAtLeast(0.5f),
+                                            android.graphics.BlurMaskFilter.Blur.NORMAL
+                                        )
+                                    }
+                                }
+
+                                nativeCanvas.save()
+                                try {
+                                    nativeCanvas.clipPath(elementPath)
+                                    nativeCanvas.clipOutPath(holePath)
+                                    nativeCanvas.drawRect(
+                                        buttonLeft - margin,
+                                        buttonTop - margin,
+                                        buttonLeft + buttonW + margin,
+                                        buttonTop + buttonH + margin,
+                                        paint
+                                    )
+                                } finally {
+                                    nativeCanvas.restore()
+                                }
+                            }
                         }
                         is CanvasLayer.GlossReflection -> {
                             val glossW = buttonW * layer.widthRatio
