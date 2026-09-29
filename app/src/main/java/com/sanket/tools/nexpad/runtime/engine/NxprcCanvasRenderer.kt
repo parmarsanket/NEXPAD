@@ -954,6 +954,18 @@ fun NxprcCanvasRenderer(
                                             val holePath = createBoxPath(hLeft, hTop, hWidth, hHeight, hTl, hTr, hBr, hBl, isOval)
                                             val margin = blurPx * 3f + kotlin.math.abs(sOffset.x) + kotlin.math.abs(sOffset.y) + 32f
 
+                                            val insetPath = android.graphics.Path().apply {
+                                                fillType = android.graphics.Path.FillType.EVEN_ODD
+                                                addRect(
+                                                    boxLeft - margin,
+                                                    boxTop - margin,
+                                                    boxLeft + boxWidth + margin,
+                                                    boxTop + boxHeight + margin,
+                                                    android.graphics.Path.Direction.CW
+                                                )
+                                                addPath(holePath)
+                                            }
+
                                             val nativeCanvas = drawContext.canvas.nativeCanvas
                                             val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                                                 color = shadowColorArgb
@@ -968,14 +980,7 @@ fun NxprcCanvasRenderer(
                                             nativeCanvas.save()
                                             try {
                                                 nativeCanvas.clipPath(elementPath)
-                                                nativeCanvas.clipOutPath(holePath)
-                                                nativeCanvas.drawRect(
-                                                    boxLeft - margin,
-                                                    boxTop - margin,
-                                                    boxLeft + boxWidth + margin,
-                                                    boxTop + boxHeight + margin,
-                                                    paint
-                                                )
+                                                nativeCanvas.drawPath(insetPath, paint)
                                             } finally {
                                                 nativeCanvas.restore()
                                             }
@@ -1214,6 +1219,18 @@ fun NxprcCanvasRenderer(
                                 val holePath = createInnerPath(hLeft, hTop, buttonW, buttonH, rootTl, rootIsOval)
                                 val margin = blurPx * 3f + kotlin.math.abs(sOffset.y) + 32f
 
+                                val insetPath = android.graphics.Path().apply {
+                                    fillType = android.graphics.Path.FillType.EVEN_ODD
+                                    addRect(
+                                        buttonLeft - margin,
+                                        buttonTop - margin,
+                                        buttonLeft + buttonW + margin,
+                                        buttonTop + buttonH + margin,
+                                        android.graphics.Path.Direction.CW
+                                    )
+                                    addPath(holePath)
+                                }
+
                                 val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                                     this.color = shadowColorArgb
                                     if (blurPx > 0f) {
@@ -1227,14 +1244,7 @@ fun NxprcCanvasRenderer(
                                 nativeCanvas.save()
                                 try {
                                     nativeCanvas.clipPath(elementPath)
-                                    nativeCanvas.clipOutPath(holePath)
-                                    nativeCanvas.drawRect(
-                                        buttonLeft - margin,
-                                        buttonTop - margin,
-                                        buttonLeft + buttonW + margin,
-                                        buttonTop + buttonH + margin,
-                                        paint
-                                    )
+                                    nativeCanvas.drawPath(insetPath, paint)
                                 } finally {
                                     nativeCanvas.restore()
                                 }
@@ -1590,25 +1600,30 @@ private fun createBrush(fill: FillBrush, size: Size, topLeft: Offset = Offset.Ze
         is FillBrush.SweepGradient -> {
             val cx = topLeft.x + size.width * fill.centerXRatio
             val cy = topLeft.y + size.height * fill.centerYRatio
-            if (fill.startAngleDegrees != 0f && fill.colors.size >= 2) {
-                val shift = ((fill.startAngleDegrees % 360f + 360f) % 360f) / 360f
+            if (fill.colors.size >= 2) {
+                // In CSS conic-gradient, 0deg points North (12 o'clock / -Y).
+                // Compose Brush.sweepGradient starts at East (3 o'clock / +X).
+                // Therefore: standard_angle = css_angle - 90deg.
+                val startPos = (((fill.startAngleDegrees - 90f) % 360f + 360f) % 360f) / 360f
                 val n = fill.colors.size
                 val rawStops = if (fill.stops.size == n) fill.stops else List(n) { it.toFloat() / (n - 1) }
-                val samples = 36
+                val samples = 72
                 val sampleStops = FloatArray(samples + 1) { it.toFloat() / samples }
                 val colorStops = sampleStops.map { s ->
-                    val origPos = (s - shift + 1.0f) % 1.0f
+                    val origPos = (s - startPos + 1.0f) % 1.0f
                     s to sampleGradientColor(fill.colors, rawStops, origPos)
                 }.toTypedArray()
                 Brush.sweepGradient(
                     colorStops = colorStops,
                     center = Offset(cx, cy)
                 )
-            } else {
+            } else if (fill.colors.isNotEmpty()) {
                 Brush.sweepGradient(
                     colors = fill.colors.map { Color(it) },
                     center = Offset(cx, cy)
                 )
+            } else {
+                SolidColor(Color.Transparent)
             }
         }
     }
