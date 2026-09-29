@@ -318,6 +318,13 @@ private fun StaticRealisticButton(
                 style = Stroke(width = 2.dp.toPx())
             )
 
+            // Layer #6: Socket Bevel Rim — buttonColor outside neon ring
+            drawCircle(
+                color = buttonColor.copy(alpha = 0.12f),
+                radius = ringRadius + 1.5.dp.toPx(),
+                style = Stroke(width = 2.dp.toPx())
+            )
+
             // .lens: Acrylic Glass Lens Specular Reflections
             val lensInset = 1.dp.toPx()
             drawArc(

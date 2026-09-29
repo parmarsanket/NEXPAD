@@ -235,9 +235,9 @@ fun RealisticButton(
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 0.65f
+                            radius = size.minDimension * 1f
                         ),
-                        radius = size.minDimension * 0.65f
+                        radius = size.minDimension * 1f
                     )
                 }
             }
@@ -407,6 +407,13 @@ fun RealisticButton(
                 color = buttonColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
                 radius = ringRadius,
                 style = Stroke(width = 2.dp.toPx())
+            )
+
+            // Layer #6: Socket Bevel Rim — 1px rgba(255, 255, 255, 0.12) outside neon ring
+            drawCircle(
+                color = buttonColor.copy(alpha = 0.12f),
+                radius = ringRadius + 1.5.dp.toPx(),
+                style = if (isPressed)  Stroke(width = 20 .dp.toPx()) else  Stroke(width = 2.dp.toPx())
             )
 
             // .lens: Acrylic Glass Lens Specular Reflections
