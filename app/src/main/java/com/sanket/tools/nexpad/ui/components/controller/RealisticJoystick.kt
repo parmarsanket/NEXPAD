@@ -2,8 +2,11 @@ package com.sanket.tools.nexpad.ui.components.controller
 
 import android.content.Context
 import android.util.Log
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -22,7 +25,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -96,6 +101,16 @@ fun RealisticJoystick(
             .then(rgbShadow)
             .clip(CircleShape)
             .background(baseGradient)
+            .border(
+                width = 2.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF4A5568).copy(alpha = 0.6f),
+                        Color(0xFF1A202C).copy(alpha = 0.9f)
+                    )
+                ),
+                shape = CircleShape
+            )
             .pointerInput(isLeft, isCameraMode, cameraSensitivity, density) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -304,28 +319,60 @@ fun RealisticJoystick(
                 .shadow(12.dp, CircleShape)
                 .clip(CircleShape)
                 .background(thumbGradient)
-        ) {
-            // Thumbstick texture rings
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                drawCircle(
-                    color = Color.Black.copy(alpha = 0.3f),
-                    radius = size.minDimension / 2.5f,
-                    style = Stroke(width = 6f)
-                )
-                drawCircle(
-                    brush = Brush.linearGradient(
-                        colors = listOf(Color.White.copy(alpha = 0.2f), Color.Transparent)
+                .border(
+                    width = 1.5.dp,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color(0xFF718096).copy(alpha = 0.50f), Color(0xFF1A202C))
                     ),
-                    radius = size.minDimension / 2.1f,
-                    style = Stroke(width = 2f)
+                    shape = CircleShape
                 )
+        ) {
+            // Thumbstick texture rings & 4 ergonomic directional grip nibs
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val center = Offset(size.width / 2f, size.height / 2f)
+                val minDim = size.minDimension
+
+                // Outer knurled grip ring
+                drawCircle(
+                    color = Color.Black.copy(alpha = 0.45f),
+                    radius = minDim / 2.3f,
+                    style = Stroke(
+                        width = 4f,
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f), 0f)
+                    )
+                )
+
+                // Inner concave dish shadow ring
+                drawCircle(
+                    color = Color.Black.copy(alpha = 0.60f),
+                    radius = minDim / 2.7f,
+                    style = Stroke(width = 5f)
+                )
+
+                // Top specular highlight arc
+                drawCircle(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.White.copy(alpha = 0.25f), Color.Transparent)
+                    ),
+                    radius = minDim / 2.1f,
+                    style = Stroke(width = 1.5f)
+                )
+
+                // 4 Ergonomic Directional Grip Nibs (12, 3, 6, 9 o'clock)
+                val nibDist = minDim / 2.9f
+                val nibRadius = 2.5f
+                val nibColor = Color.White.copy(alpha = 0.25f)
+                drawCircle(color = nibColor, radius = nibRadius, center = Offset(center.x, center.y - nibDist))
+                drawCircle(color = nibColor, radius = nibRadius, center = Offset(center.x, center.y + nibDist))
+                drawCircle(color = nibColor, radius = nibRadius, center = Offset(center.x - nibDist, center.y))
+                drawCircle(color = nibColor, radius = nibRadius, center = Offset(center.x + nibDist, center.y))
 
                 if (isCameraMode) {
                     // Subtle central look reticle dot in camera mode
                     drawCircle(
-                        color = Color(0xFFFF007F).copy(alpha = 0.45f),
-                        radius = 5f,
-                        center = Offset(size.width / 2f, size.height / 2f)
+                        color = Color(0xFFFF007F).copy(alpha = 0.65f),
+                        radius = 4f,
+                        center = center
                     )
                 }
             }
@@ -336,7 +383,7 @@ fun RealisticJoystick(
 /**
  * Dedicated standalone Thumbstick Button (LSB / RSB or L3 / R3).
  * Provides an ergonomic, tactile direct-click button with an authentic console thumbstick cap design:
- * outer knurled grip ring, concave thumb dish, radial lighting, and haptic feedback.
+ * outer knurled grip ring, concave thumb dish, radial lighting, spring kinematics, and haptic feedback.
  */
 @Composable
 fun RealisticStickButton(
@@ -351,23 +398,41 @@ fun RealisticStickButton(
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
-    val baseGradient = Brush.radialGradient(
-        colors = listOf(
-            if (isPressed) Color(0xFF222222) else Color(0xFF333333),
-            if (isPressed) Color(0xFF0D0D0D) else Color(0xFF141414)
-        ),
-        center = Offset(0.35f, 0.35f),
-        radius = 160f
+    val scaleAnim by animateFloatAsState(
+        targetValue = if (isPressed) 0.89f else 1.0f,
+        animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
+        label = "stick_btn_scale"
+    )
+    val pressOffsetYAnim by animateFloatAsState(
+        targetValue = if (isPressed) 3.5f else 0f,
+        animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
+        label = "stick_btn_offset"
     )
 
-    val dishGradient = Brush.radialGradient(
-        colors = listOf(
-            if (isPressed) Color(0xFF111111) else Color(0xFF252525),
-            if (isPressed) Color(0xFF000000) else Color(0xFF121212)
-        ),
-        center = Offset(0.5f, 0.5f),
-        radius = 90f
-    )
+    val currentOnVibrate by rememberUpdatedState(onVibrate)
+    val currentViewModel by rememberUpdatedState(viewModel)
+
+    val baseGradient = remember(isPressed) {
+        Brush.radialGradient(
+            colors = listOf(
+                if (isPressed) Color(0xFF222834) else Color(0xFF333E4D),
+                if (isPressed) Color(0xFF0D1017) else Color(0xFF141923)
+            ),
+            center = Offset(0.35f, 0.35f),
+            radius = 160f
+        )
+    }
+
+    val dishGradient = remember(isPressed) {
+        Brush.radialGradient(
+            colors = listOf(
+                if (isPressed) Color(0xFF10141C) else Color(0xFF212836),
+                if (isPressed) Color(0xFF000000) else Color(0xFF0F131A)
+            ),
+            center = Offset(0.5f, 0.5f),
+            radius = 90f
+        )
+    }
 
     val accentColor = if (isLeft) Color.Cyan else Color(0xFFFF007F)
 
@@ -390,18 +455,33 @@ fun RealisticStickButton(
     Box(
         modifier = modifier
             .size(70.dp)
+            .graphicsLayer {
+                scaleX = scaleAnim
+                scaleY = scaleAnim
+            }
+            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .then(rgbShadow)
             .clip(CircleShape)
             .background(baseGradient)
+            .border(
+                width = 1.5.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF718096).copy(alpha = if (isPressed) 0.35f else 0.70f),
+                        Color(0xFF1A202C)
+                    )
+                ),
+                shape = CircleShape
+            )
             .pointerInput(key) {
                 detectTapGestures(
                     onPress = {
-                        onVibrate()
+                        currentOnVibrate()
                         isPressed = true
-                        viewModel.updateButton(key, true)
+                        currentViewModel.updateButton(key, true)
                         tryAwaitRelease()
                         isPressed = false
-                        viewModel.updateButton(key, false)
+                        currentViewModel.updateButton(key, false)
                     }
                 )
             },

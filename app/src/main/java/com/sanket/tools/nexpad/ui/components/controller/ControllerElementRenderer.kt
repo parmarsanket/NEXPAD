@@ -195,7 +195,7 @@ fun ControllerElementRenderer(
         )
         ControlKey.A -> RealisticButton(
             key = K.A,
-            buttonColor = Color(0xFF00C853),
+            buttonColor = Color(0xFF3FD25A),
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
@@ -204,7 +204,7 @@ fun ControllerElementRenderer(
         )
         ControlKey.B -> RealisticButton(
             key = K.B,
-            buttonColor = Color(0xFFD50000),
+            buttonColor = Color(0xFFE6474E),
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
@@ -213,7 +213,7 @@ fun ControllerElementRenderer(
         )
         ControlKey.X -> RealisticButton(
             key = K.X,
-            buttonColor = Color(0xFF2962FF),
+            buttonColor = Color(0xFF3F8FE0),
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,
@@ -222,7 +222,7 @@ fun ControllerElementRenderer(
         )
         ControlKey.Y -> RealisticButton(
             key = K.Y,
-            buttonColor = Color(0xFFFFD600),
+            buttonColor = Color(0xFFE0A03F),
             isConnected = isConnected,
             onVibrate = onVibrate,
             viewModel = viewModel,

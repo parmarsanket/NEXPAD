@@ -221,35 +221,40 @@ fun retroArcadePositions(): Map<String, Position> = mapOf(
     K.GUIDE to Position(0.500f, 0.080f, scale = 1.15f)
 )
 
-/** Returns the 5 non-deletable default layout profiles. */
+/** Returns the non-deletable default layout profiles. */
 fun getDefaultLayoutProfiles(): List<LayoutProfile> = listOf(
     LayoutProfile(
         name = "Standard Elite",
         isDefault = true,
+        labelStyle = "XBOX",
         positions = standardElitePositions(),
         description = "Precision Xbox layout with dual triggers, bumpers, and center macro cluster."
     ),
     LayoutProfile(
         name = "FPS Tactical Pro",
         isDefault = true,
+        labelStyle = "XBOX",
         positions = fpsTacticalPositions(),
         description = "Instant hair-trigger response, elevated sticks, and quick slide/jump paddles."
     ),
     LayoutProfile(
         name = "MOBA & Action RPG",
         isDefault = true,
+        labelStyle = "XBOX",
         positions = mobaActionPositions(),
         description = "Ergonomic ability attack arc, targeted skillshots, and quick item macros."
     ),
     LayoutProfile(
         name = "Racing & Simulation",
         isDefault = true,
+        labelStyle = "XBOX",
         positions = racingSimPositions(),
         description = "Large analog throttle & brake triggers, steering stick, and paddle shifters."
     ),
     LayoutProfile(
         name = "Retro Arcade & Fighter",
         isDefault = true,
+        labelStyle = "XBOX",
         positions = retroArcadePositions(),
         description = "Classic 6-button arcade fightstick grid with 8-way directional D-pad."
     )
