@@ -420,11 +420,12 @@ class HudEditorViewModelFactory(
     private val remoteComponentRegistry: RemoteComponentRegistry? = null
 ) : androidx.lifecycle.ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(HudEditorViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return HudEditorViewModel(layoutManager, componentRegistry, remoteComponentRegistry) as T
+        require(modelClass.isAssignableFrom(HudEditorViewModel::class.java)) {
+            "Unknown ViewModel class: ${modelClass.name}"
         }
-        throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
+        return modelClass.cast(
+            HudEditorViewModel(layoutManager, componentRegistry, remoteComponentRegistry)
+        )!!
     }
 }
 

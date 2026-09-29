@@ -222,22 +222,22 @@ fun GamepadScreen(
                 lastAppliedBand = band
                 lastUpdateTimeMs = now
                 
-                @Suppress("DEPRECATION")
                 if (band > 0) {
                     isRumbling = true
                     when (motorProfile.tier) {
                         1 -> {
                             // Tier 1: No amplitude control. Binary vibration only.
-                            vibrator.vibrate(longArrayOf(0, 10000), 0)
+                            vibrator.vibrate(
+                                VibrationEffect.createWaveform(longArrayOf(0, 10000), 0)
+                            )
                         }
                         else -> {
                             // Tier 2 & 3: Full amplitude waveform
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                vibrator.vibrate(VibrationEffect.createWaveform(
-                                    longArrayOf(0, 10000), intArrayOf(0, band), 0))
-                            } else {
-                                vibrator.vibrate(longArrayOf(0, 10000), 0)
-                            }
+                            vibrator.vibrate(
+                                VibrationEffect.createWaveform(
+                                    longArrayOf(0, 10000), intArrayOf(0, band), 0
+                                )
+                            )
                         }
                     }
                 } else {

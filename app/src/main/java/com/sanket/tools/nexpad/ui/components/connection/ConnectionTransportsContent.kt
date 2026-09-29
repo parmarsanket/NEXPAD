@@ -1,6 +1,5 @@
 package com.sanket.tools.nexpad.ui.components.connection
 
-import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
 import android.util.Log
 import androidx.compose.foundation.BorderStroke
@@ -26,6 +25,7 @@ import com.sanket.tools.nexpad.ui.theme.NeonPalette
  * Modular container for connection transports: Network Discovery (Wi-Fi / Tethering),
  * USB Hardware Links (AOA, ADB, Tethering), and Bluetooth Classic.
  */
+@androidx.annotation.RequiresPermission(android.Manifest.permission.BLUETOOTH_CONNECT)
 @Composable
 fun ConnectionTransportsContent(
     discoveredServers: List<DiscoveredServer>,
@@ -238,7 +238,6 @@ fun ConnectionTransportsContent(
                 }
             } else {
                 pairedDevices.forEach { device ->
-                    @SuppressLint("MissingPermission")
                     val devName = device.name ?: "Unknown Device"
                     val devAddress = device.address
 

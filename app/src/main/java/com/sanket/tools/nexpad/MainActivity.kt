@@ -114,11 +114,10 @@ class MainActivity : ComponentActivity() {
 
         // Setup Vibrator
         vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val vibratorManager = getSystemService(VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            val vibratorManager = getSystemService(VibratorManager::class.java)
             vibratorManager.defaultVibrator
         } else {
-            @Suppress("DEPRECATION")
-            getSystemService(VIBRATOR_SERVICE) as Vibrator
+            getSystemService(Vibrator::class.java)!!
         }
 
         enableEdgeToEdge()
@@ -133,12 +132,9 @@ class MainActivity : ComponentActivity() {
                         layoutManager = layoutManager,
                         context = this@MainActivity,
                         onVibrate = {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                vibrator.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
-                            } else {
-                                @Suppress("DEPRECATION")
-                                vibrator.vibrate(50)
-                            }
+                            vibrator.vibrate(
+                                VibrationEffect.createOneShot(10, VibrationEffect.DEFAULT_AMPLITUDE)
+                            )
                         }
                     )
                 }

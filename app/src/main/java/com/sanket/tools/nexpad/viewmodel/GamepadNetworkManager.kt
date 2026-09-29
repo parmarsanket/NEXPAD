@@ -409,21 +409,18 @@ class GamepadNetworkManager(
     private var wifiLock: android.net.wifi.WifiManager.WifiLock? = null
     private var wakeLock: android.os.PowerManager.WakeLock? = null
 
-    @Suppress("DEPRECATION")
     private fun acquireWifiLock() {
         if (wifiLock?.isHeld == true) return
         try {
             val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
-            val lockMode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                android.net.wifi.WifiManager.WIFI_MODE_FULL_LOW_LATENCY
-            } else {
-                android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF
-            }
-            wifiLock = wifiManager.createWifiLock(lockMode, "Nexpad:LowLatencyLock").apply {
+            wifiLock = wifiManager.createWifiLock(
+                android.net.wifi.WifiManager.WIFI_MODE_FULL_LOW_LATENCY,
+                "Nexpad:LowLatencyLock"
+            ).apply {
                 setReferenceCounted(false)
                 acquire()
             }
-            android.util.Log.d("NEXPAD", "🔒 WifiLock Acquired: Mode $lockMode")
+            android.util.Log.d("NEXPAD", "🔒 WifiLock Acquired: WIFI_MODE_FULL_LOW_LATENCY")
             
             if (wakeLock?.isHeld != true) {
                 val powerManager = context.applicationContext.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
