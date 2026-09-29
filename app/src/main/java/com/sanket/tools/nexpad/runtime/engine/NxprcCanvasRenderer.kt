@@ -21,6 +21,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -773,72 +775,74 @@ fun NxprcCanvasRenderer(
                                         addOval(Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight))
                                     }
 
+                                    val createBoxPath = { l: Float, t: Float, w: Float, h: Float, tlR: Float, trR: Float, brR: Float, blR: Float, oval: Boolean ->
+                                        Path().apply {
+                                            if (oval) {
+                                                addOval(Rect(l, t, l + w, t + h))
+                                            } else {
+                                                addRoundRect(
+                                                    androidx.compose.ui.geometry.RoundRect(
+                                                        rect = Rect(l, t, l + w, t + h),
+                                                        topLeft = CornerRadius(tlR, tlR),
+                                                        topRight = CornerRadius(trR, trR),
+                                                        bottomRight = CornerRadius(brR, brR),
+                                                        bottomLeft = CornerRadius(blR, blR)
+                                                    )
+                                                )
+                                            }
+                                        }.asAndroidPath()
+                                    }
+
+                                    val elementPath = createBoxPath(boxLeft, boxTop, boxWidth, boxHeight, tl, tr, br, bl, isOval)
+
                                     // 1. Outset box shadows (drawn bottom-to-top per CSS spec)
                                     layer.boxShadows.filter { !it.isInset }.reversed().forEach { shadow ->
                                         val shadowOffset = Offset(shadow.offsetX * pxPerUnit, shadow.offsetY * pxPerUnit)
                                         val sColor = Color(shadow.color)
                                         val spreadPx = shadow.spreadRadius * pxPerUnit
                                         val blurPx = shadow.blurRadius * pxPerUnit
+                                        val effAlpha = (sColor.alpha * subAlpha).coerceIn(0f, 1f)
+                                        if (effAlpha <= 0.001f) return@forEach
+                                        val shadowColorArgb = sColor.copy(alpha = effAlpha).toArgb()
 
-                                        val steps = if (blurPx > 0.5f) 4 else 1
-                                        for (step in 1..steps) {
-                                            val frac = if (steps > 1) step.toFloat() / steps else 0f
-                                            val currentExtent = spreadPx + blurPx * frac
-                                            val stepAlpha = if (steps > 1) {
-                                                sColor.alpha * subAlpha * ((1.0f - frac * 0.7f) / steps)
-                                            } else {
-                                                sColor.alpha * subAlpha
-                                            }
-                                            val currentColor = sColor.copy(alpha = stepAlpha)
+                                        val sLeft = boxLeft + shadowOffset.x - spreadPx
+                                        val sTop = boxTop + shadowOffset.y - spreadPx
+                                        val sWidth = (boxWidth + spreadPx * 2f).coerceAtLeast(0f)
+                                        val sHeight = (boxHeight + spreadPx * 2f).coerceAtLeast(0f)
+                                        val sTl = (tl + spreadPx).coerceAtLeast(0f)
+                                        val sTr = (tr + spreadPx).coerceAtLeast(0f)
+                                        val sBr = (br + spreadPx).coerceAtLeast(0f)
+                                        val sBl = (bl + spreadPx).coerceAtLeast(0f)
 
-                                            if (isPolygon && isOval) {
-                                                clipPath(ovalClipPath) {
-                                                    drawPath(polygonPath, color = currentColor)
-                                                }
-                                            } else if (isPolygon && hasVariableCorners) {
-                                                clipPath(variablePath) {
-                                                    drawPath(polygonPath, color = currentColor)
-                                                }
-                                            } else if (isPolygon) {
-                                                drawPath(polygonPath, color = currentColor)
-                                            } else if (isOval) {
-                                                drawOval(
-                                                    color = currentColor,
-                                                    topLeft = Offset(boxLeft + shadowOffset.x - currentExtent, boxTop + shadowOffset.y - currentExtent),
-                                                    size = Size(boxWidth + currentExtent * 2f, boxHeight + currentExtent * 2f)
-                                                )
-                                            } else if (hasVariableCorners) {
-                                                val shadowPath = Path().apply {
-                                                    addRoundRect(
-                                                        androidx.compose.ui.geometry.RoundRect(
-                                                            rect = Rect(
-                                                                boxLeft + shadowOffset.x - currentExtent,
-                                                                boxTop + shadowOffset.y - currentExtent,
-                                                                boxLeft + boxWidth + shadowOffset.x + currentExtent,
-                                                                boxTop + boxHeight + shadowOffset.y + currentExtent
-                                                            ),
-                                                            topLeft = CornerRadius(tl + currentExtent, tl + currentExtent),
-                                                            topRight = CornerRadius(tr + currentExtent, tr + currentExtent),
-                                                            bottomRight = CornerRadius(br + currentExtent, br + currentExtent),
-                                                            bottomLeft = CornerRadius(bl + currentExtent, bl + currentExtent)
-                                                        )
-                                                    )
-                                                }
-                                                drawPath(shadowPath, color = currentColor)
-                                            } else {
-                                                drawRoundRect(
-                                                    color = currentColor,
-                                                    topLeft = Offset(boxLeft + shadowOffset.x - currentExtent, boxTop + shadowOffset.y - currentExtent),
-                                                    size = Size(boxWidth + currentExtent * 2f, boxHeight + currentExtent * 2f),
-                                                    cornerRadius = CornerRadius(tl + currentExtent, tl + currentExtent)
+                                        val shadowPath = createBoxPath(sLeft, sTop, sWidth, sHeight, sTl, sTr, sBr, sBl, isOval)
+
+                                        val nativeCanvas = drawContext.canvas.nativeCanvas
+                                        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                                            color = shadowColorArgb
+                                            if (blurPx > 0f) {
+                                                maskFilter = android.graphics.BlurMaskFilter(
+                                                    (blurPx / 2f).coerceAtLeast(0.5f),
+                                                    android.graphics.BlurMaskFilter.Blur.NORMAL
                                                 )
                                             }
+                                        }
+
+                                        nativeCanvas.save()
+                                        try {
+                                            if (!isPolygon) {
+                                                nativeCanvas.clipOutPath(elementPath)
+                                                nativeCanvas.drawPath(shadowPath, paint)
+                                            } else {
+                                                nativeCanvas.drawPath(shadowPath, paint)
+                                            }
+                                        } finally {
+                                            nativeCanvas.restore()
                                         }
                                     }
 
                                     // 2. Main surface fills (stacked bottom-to-top per CSS painter's algorithm)
                                     val allBrushes = if (layer.fills.isNotEmpty()) {
-                                        layer.fills.reversed().map { createBrush(it, Size(boxWidth, boxHeight), Offset(boxLeft, boxTop)) }
+                                        layer.fills.map { createBrush(it, Size(boxWidth, boxHeight), Offset(boxLeft, boxTop)) }
                                     } else {
                                         listOf(createBrush(layer.fill, Size(boxWidth, boxHeight), Offset(boxLeft, boxTop)))
                                     }
@@ -928,47 +932,52 @@ fun NxprcCanvasRenderer(
                                     // 4. Inset box shadows
                                     val insets = layer.boxShadows.filter { it.isInset }
                                     if (insets.isNotEmpty()) {
-                                        val shapeClipPath = Path().apply {
-                                            if (isPolygon) {
-                                                addPath(polygonPath)
-                                            } else if (isOval) {
-                                                addOval(Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight))
-                                            } else if (hasVariableCorners) {
-                                                addPath(variablePath)
-                                            } else {
-                                                addRoundRect(
-                                                    androidx.compose.ui.geometry.RoundRect(
-                                                        left = boxLeft,
-                                                        top = boxTop,
-                                                        right = boxLeft + boxWidth,
-                                                        bottom = boxTop + boxHeight,
-                                                        radiusX = tl,
-                                                        radiusY = tl
-                                                    )
-                                                )
-                                            }
-                                        }
-                                        clipPath(shapeClipPath) {
-                                            insets.forEach { shadow ->
-                                                val inColor = Color(shadow.color)
-                                                val sOffset = Offset(shadow.offsetX * pxPerUnit, shadow.offsetY * pxPerUnit)
-                                                val strokeW = (shadow.blurRadius.takeIf { it > 0f } ?: 3.5f) * pxPerUnit
-                                                if (isOval) {
-                                                    drawOval(
-                                                        color = inColor.copy(alpha = inColor.alpha * layerAlpha),
-                                                        topLeft = Offset(boxLeft + sOffset.x, boxTop + sOffset.y),
-                                                        size = Size(boxWidth, boxHeight),
-                                                        style = Stroke(width = strokeW * 1.5f)
-                                                    )
-                                                } else {
-                                                    drawRoundRect(
-                                                        color = inColor.copy(alpha = inColor.alpha * layerAlpha),
-                                                        topLeft = Offset(boxLeft + sOffset.x, boxTop + sOffset.y),
-                                                        size = Size(boxWidth, boxHeight),
-                                                        cornerRadius = CornerRadius(tl, tl),
-                                                        style = Stroke(width = strokeW * 1.5f)
+                                        insets.forEach { shadow ->
+                                            val inColor = Color(shadow.color)
+                                            val inAlpha = (inColor.alpha * subAlpha).coerceIn(0f, 1f)
+                                            if (inAlpha <= 0.001f) return@forEach
+                                            val shadowColorArgb = inColor.copy(alpha = inAlpha).toArgb()
+
+                                            val sOffset = Offset(shadow.offsetX * pxPerUnit, shadow.offsetY * pxPerUnit)
+                                            val spreadPx = shadow.spreadRadius * pxPerUnit
+                                            val blurPx = shadow.blurRadius * pxPerUnit
+
+                                            val hLeft = boxLeft + sOffset.x + spreadPx
+                                            val hTop = boxTop + sOffset.y + spreadPx
+                                            val hWidth = (boxWidth - spreadPx * 2f).coerceAtLeast(0f)
+                                            val hHeight = (boxHeight - spreadPx * 2f).coerceAtLeast(0f)
+                                            val hTl = (tl - spreadPx).coerceAtLeast(0f)
+                                            val hTr = (tr - spreadPx).coerceAtLeast(0f)
+                                            val hBr = (br - spreadPx).coerceAtLeast(0f)
+                                            val hBl = (bl - spreadPx).coerceAtLeast(0f)
+
+                                            val holePath = createBoxPath(hLeft, hTop, hWidth, hHeight, hTl, hTr, hBr, hBl, isOval)
+                                            val margin = blurPx * 3f + kotlin.math.abs(sOffset.x) + kotlin.math.abs(sOffset.y) + 32f
+
+                                            val nativeCanvas = drawContext.canvas.nativeCanvas
+                                            val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                                                color = shadowColorArgb
+                                                if (blurPx > 0f) {
+                                                    maskFilter = android.graphics.BlurMaskFilter(
+                                                        (blurPx / 2f).coerceAtLeast(0.5f),
+                                                        android.graphics.BlurMaskFilter.Blur.NORMAL
                                                     )
                                                 }
+                                            }
+
+                                            nativeCanvas.save()
+                                            try {
+                                                nativeCanvas.clipPath(elementPath)
+                                                nativeCanvas.clipOutPath(holePath)
+                                                nativeCanvas.drawRect(
+                                                    boxLeft - margin,
+                                                    boxTop - margin,
+                                                    boxLeft + boxWidth + margin,
+                                                    boxTop + boxHeight + margin,
+                                                    paint
+                                                )
+                                            } finally {
+                                                nativeCanvas.restore()
                                             }
                                         }
                                     }
