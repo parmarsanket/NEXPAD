@@ -1324,6 +1324,103 @@ object DefaultComponents {
         size = NxpSize(widthDp = 70, heightDp = 70)
     )
 
+    val ORB_STICK_LS = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.orb_ls",
+            name = "Orb Glass Left Stick (LS)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.JOYSTICK.id,
+            defaultControl = ControlKey.LS.key,
+            description = "Glass sphere analog joystick with glowing liquid core that lags inertially behind movement."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#030304",
+            opacity = 0.95f,
+            borderColor = "#2FD4B6",
+            borderWidth = 2f,
+            glowColor = "#2FD4B6",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(fillColor = "#2FD4B6"),
+        interaction = NxpInteraction(type = "Joystick", deadzone = 0.05f),
+        size = NxpSize(widthDp = 150, heightDp = 150)
+    )
+
+    val ORB_STICK_RS = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.orb_rs",
+            name = "Orb Glass Right Stick (RS)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.JOYSTICK.id,
+            defaultControl = ControlKey.RS.key,
+            description = "Glass sphere analog joystick with glowing liquid core in neon magenta that lags inertially behind movement."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#030304",
+            opacity = 0.95f,
+            borderColor = "#FF3185",
+            borderWidth = 2f,
+            glowColor = "#FF3185",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(fillColor = "#FF3185"),
+        interaction = NxpInteraction(type = "Joystick", deadzone = 0.05f),
+        size = NxpSize(widthDp = 150, heightDp = 150)
+    )
+
+    val ORB_STICK_LSB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.orb_lsb",
+            name = "Orb Glass Left Stick Button (LSB)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.LSB.key,
+            description = "Tactile Orb thumbstick click button (L3 / LSB) with spherical glass cavity and cyan liquid core."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#15171A",
+            opacity = 0.95f,
+            borderColor = "#2FD4B6",
+            borderWidth = 2f,
+            glowColor = "#2FD4B6",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.89f, fillColor = "#2FD4B6", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "LSB", color = "#2FD4B6", pressedColor = "#000000", fontSize = 13f),
+        size = NxpSize(widthDp = 70, heightDp = 70)
+    )
+
+    val ORB_STICK_RSB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.orb_rsb",
+            name = "Orb Glass Right Stick Button (RSB)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.RSB.key,
+            description = "Tactile Orb thumbstick click button (R3 / RSB) with spherical glass cavity and hot-pink liquid core."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#15171A",
+            opacity = 0.95f,
+            borderColor = "#FF3185",
+            borderWidth = 2f,
+            glowColor = "#FF3185",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.89f, fillColor = "#FF3185", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "RSB", color = "#FF3185", pressedColor = "#000000", fontSize = 13f),
+        size = NxpSize(widthDp = 70, heightDp = 70)
+    )
+
+
     val DEFAULT_STICK_LTP = NxpComponentDef(
         manifest = NxpManifest(
             id = "builtin.default_ltp",
@@ -1815,6 +1912,12 @@ object DefaultComponents {
         FLUX_STICK_RS,
         FLUX_STICK_LSB,
         FLUX_STICK_RSB,
+
+        // Orb Glass Suite
+        ORB_STICK_LS,
+        ORB_STICK_RS,
+        ORB_STICK_LSB,
+        ORB_STICK_RSB,
 
         // Custom Cyber / Sci-Fi Variant Skins
         SCIFI_HEX_ATTACK,

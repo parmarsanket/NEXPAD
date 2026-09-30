@@ -167,6 +167,52 @@ object FluxRightJoystickVariant : BaseNativeVariant("builtin.flux_rs", ControlKe
     }
 }
 
+object OrbLeftJoystickVariant : BaseNativeVariant("builtin.orb_ls", ControlKey.LS, "Orb Glass", 103) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        OrbJoystick(
+            isLeft = true,
+            isConnected = context.isConnected,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticOrbJoystick(
+            isLeft = true,
+            modifier = context.modifier
+        )
+    }
+}
+
+object OrbRightJoystickVariant : BaseNativeVariant("builtin.orb_rs", ControlKey.RS, "Orb Glass", 203) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        OrbJoystick(
+            isLeft = false,
+            isConnected = context.isConnected,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticOrbJoystick(
+            isLeft = false,
+            modifier = context.modifier
+        )
+    }
+}
+
 // =========================================================================
 // STICK BUTTON VARIANTS (LSB / RSB or L3 / R3)
 // =========================================================================
@@ -271,6 +317,58 @@ object FluxRightStickButtonVariant : BaseNativeVariant("builtin.flux_rsb", Contr
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticFluxStickButton(
+            isLeft = false,
+            modifier = context.modifier
+        )
+    }
+}
+
+object OrbLeftStickButtonVariant : BaseNativeVariant("builtin.orb_lsb", ControlKey.LSB, "Orb Glass", 303) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        OrbStickButton(
+            isLeft = true,
+            key = K.LSB,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticOrbStickButton(
+            isLeft = true,
+            modifier = context.modifier
+        )
+    }
+}
+
+object OrbRightStickButtonVariant : BaseNativeVariant("builtin.orb_rsb", ControlKey.RSB, "Orb Glass", 403) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        OrbStickButton(
+            isLeft = false,
+            key = K.RSB,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticOrbStickButton(
             isLeft = false,
             modifier = context.modifier
         )
@@ -633,6 +731,12 @@ object DefaultNativeFamily {
         register(FluxRightJoystickVariant)
         register(FluxLeftStickButtonVariant)
         register(FluxRightStickButtonVariant)
+
+        // --- 3. Orb Glass Variants (Liquid Core Analog Sticks & Stick Click Buttons) ---
+        register(OrbLeftJoystickVariant)
+        register(OrbRightJoystickVariant)
+        register(OrbLeftStickButtonVariant)
+        register(OrbRightStickButtonVariant)
     }
 
     /**
@@ -687,7 +791,7 @@ object NativeComponentRegistry {
      */
     fun isNativeBuiltin(id: String?): Boolean {
         if (id.isNullOrBlank()) return true
-        if (id.startsWith("builtin.default_") || id.startsWith("builtin.flux_")) return true
+        if (id.startsWith("builtin.default_") || id.startsWith("builtin.flux_") || id.startsWith("builtin.orb_")) return true
         return DefaultNativeFamily.getVariant(id) != null
     }
 
