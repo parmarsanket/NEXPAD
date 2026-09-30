@@ -3,9 +3,6 @@ package com.sanket.tools.nexpad
 import android.content.Context
 import android.os.Build
 import android.os.Bundle
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -34,7 +31,7 @@ class MainActivity : ComponentActivity() {
     
     private lateinit var viewModel: GamepadViewModel
     private lateinit var motionSensorManager: MotionSensorManager
-    private lateinit var vibrator: Vibrator
+    private lateinit var hapticFeedbackHelper: com.sanket.tools.nexpad.utils.HapticFeedbackHelper
     private lateinit var layoutManager: LayoutManager
     private var reloadReceiver: android.content.BroadcastReceiver? = null
 
@@ -82,6 +79,13 @@ class MainActivity : ComponentActivity() {
         }
 
         val sharedPref = getSharedPreferences("nexpad_prefs", MODE_PRIVATE)
+        // Ensure Joystick RS defaults to true analog stick behavior, keeping Touchpads (RTP) dedicated
+        if (!sharedPref.getBoolean("RS_ANALOG_DEFAULT_MIGRATION_V1", false)) {
+            sharedPref.edit()
+                .putBoolean("RIGHT_STICK_CAMERA_MODE", false)
+                .putBoolean("RS_ANALOG_DEFAULT_MIGRATION_V1", true)
+                .apply()
+        }
         
         // We no longer auto-connect on startup. 
         // The user must click the device from the Discovery list to connect.
@@ -105,14 +109,8 @@ class MainActivity : ComponentActivity() {
             }
         )
 
-        // Setup Vibrator
-        vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val vibratorManager = getSystemService(VIBRATOR_MANAGER_SERVICE) as VibratorManager
-            vibratorManager.defaultVibrator
-        } else {
-            @Suppress("DEPRECATION")
-            getSystemService(VIBRATOR_SERVICE) as Vibrator
-        }
+        // Setup HD Haptic Engine
+        hapticFeedbackHelper = com.sanket.tools.nexpad.utils.HapticFeedbackHelper(this)
 
         enableEdgeToEdge()
         setContent {
@@ -126,24 +124,30 @@ class MainActivity : ComponentActivity() {
                         layoutManager = layoutManager,
                         context = this@MainActivity,
                         onVibrate = {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                vibrator.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
-                            } else {
-                                @Suppress("DEPRECATION")
-                                vibrator.vibrate(50)
-                            }
+                            hapticFeedbackHelper.performButtonClick()
                         }
                     )
                 }
             }
         }
 
+        lifecycleScope.launch {
+            viewModel.isConnected.collect { connected ->
+                if (connected) {
+                    motionSensorManager.start()
+                } else {
+                    motionSensorManager.stop()
+                }
+            }
+        }
     }
 
     override fun onResume() {
         super.onResume()
         viewModel.checkAoaAccessory()
-        motionSensorManager.start()
+        if (viewModel.isConnected.value) {
+            motionSensorManager.start()
+        }
     }
 
     override fun onPause() {

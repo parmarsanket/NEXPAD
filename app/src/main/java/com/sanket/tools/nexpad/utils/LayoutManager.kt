@@ -1,6 +1,8 @@
 package com.sanket.tools.nexpad.utils
 
 import android.content.Context
+import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.model.LayoutProfile
 import com.sanket.tools.nexpad.model.Position
 import com.sanket.tools.nexpad.model.defaultPositions
@@ -15,13 +17,19 @@ class LayoutManager(private val context: Context) {
     private val prefs = context.getSharedPreferences("NEXPAD_LAYOUTS_V3", Context.MODE_PRIVATE)
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
-    /** Ephemeral key indicating which button should be selected/focused when opening HUD editor */
-    var pendingSelectedKey: String? = null
-
     private val _profilesFlow = MutableStateFlow<List<LayoutProfile>>(emptyList())
     val profilesFlow: StateFlow<List<LayoutProfile>> = _profilesFlow.asStateFlow()
 
+    private val _activeProfileNameFlow = MutableStateFlow<String>(
+        prefs.getString("active_profile", "Standard Elite")?.let {
+            if (it == "Standard") "Standard Elite" else it
+        } ?: "Standard Elite"
+    )
+    val activeProfileNameFlow: StateFlow<String> = _activeProfileNameFlow.asStateFlow()
+
     init {
+        val savedName = prefs.getString("active_profile", "Standard Elite") ?: "Standard Elite"
+        _activeProfileNameFlow.value = if (savedName == "Standard") "Standard Elite" else savedName
         refreshProfilesFlow()
     }
 
@@ -29,14 +37,13 @@ class LayoutManager(private val context: Context) {
         _profilesFlow.value = getAllProfiles()
     }
 
-    /** Applies a button skin (or default) to the active profile and pre-selects it for HUD editing */
+    /** Applies a button skin (or default) to the active profile. */
     fun applyButtonSkinToActiveProfile(key: String, customComponentId: String?) {
         val active = getActiveProfile()
         val posMap = active.positions.toMutableMap()
         val currentPos = posMap[key] ?: defaultPositions()[key] ?: Position(0.5f, 0.5f)
         posMap[key] = currentPos.copy(customComponentId = customComponentId)
-        saveProfile(active.copy(positions = posMap))
-        pendingSelectedKey = key
+        saveProfile(active.copy(positions = posMap), activate = true)
     }
 
     /** Returns all available profiles: 5 default layouts (with any saved overrides) plus user custom layouts. */
@@ -50,12 +57,12 @@ class LayoutManager(private val context: Context) {
             if (savedJson != null) {
                 try {
                     val loaded = json.decodeFromString<LayoutProfile>(savedJson)
-                    result.add(loaded.copy(isDefault = true))
+                    result.add(loaded.copy(isDefault = true, positions = loaded.canonicalPositions()))
                 } catch (e: Exception) {
-                    result.add(defaultProfile)
+                    result.add(defaultProfile.copy(positions = defaultProfile.canonicalPositions()))
                 }
             } else {
-                result.add(defaultProfile)
+                result.add(defaultProfile.copy(positions = defaultProfile.canonicalPositions()))
             }
         }
 
@@ -66,29 +73,59 @@ class LayoutManager(private val context: Context) {
             if (savedJson != null) {
                 try {
                     val loaded = json.decodeFromString<LayoutProfile>(savedJson)
-                    result.add(loaded.copy(isDefault = false))
+                    result.add(loaded.copy(isDefault = false, positions = loaded.canonicalPositions()))
                 } catch (e: Exception) {
                     // Ignore corrupted profile
                 }
             }
         }
 
+        // 3. Apply custom ordering if saved
+        val savedOrderJson = prefs.getString("profile_order", null)
+        if (savedOrderJson != null) {
+            try {
+                val orderList = json.decodeFromString<List<String>>(savedOrderJson)
+                val profileMap = result.associateBy { it.name }
+                val orderedResult = mutableListOf<LayoutProfile>()
+                for (name in orderList) {
+                    profileMap[name]?.let { orderedResult.add(it) }
+                }
+                // Append any unlisted profiles (e.g., newly created or defaults not yet in order)
+                for (profile in result) {
+                    if (orderedResult.none { it.name.equals(profile.name, ignoreCase = true) }) {
+                        orderedResult.add(profile)
+                    }
+                }
+                return orderedResult
+            } catch (e: Exception) {
+                // Fallback to un-ordered result on decode issue
+            }
+        }
+
         return result
     }
 
-    /** Save profile. If it's custom, adds to custom profiles set. */
-    fun saveProfile(profile: LayoutProfile, activate: Boolean = true) {
-        val jsonString = json.encodeToString(profile)
-        prefs.edit().putString("profile_${profile.name}", jsonString).apply()
+    /** Saves custom display ordering of layouts and notifies active observers. */
+    fun saveProfileOrder(order: List<String>) {
+        val jsonOrder = json.encodeToString(order)
+        prefs.edit().putString("profile_order", jsonOrder).apply()
+        refreshProfilesFlow()
+    }
 
-        if (!profile.isDefault) {
+    /** Save profile. If it's custom, adds to custom profiles set. */
+    fun saveProfile(profile: LayoutProfile, activate: Boolean = false) {
+        val canonicalProfile = profile.copy(positions = profile.canonicalPositions())
+        val jsonString = json.encodeToString(canonicalProfile)
+        prefs.edit().putString("profile_${canonicalProfile.name}", jsonString).apply()
+
+        if (!canonicalProfile.isDefault) {
             val customNames = (prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()).toMutableSet()
-            customNames.add(profile.name)
+            customNames.add(canonicalProfile.name)
             prefs.edit().putStringSet("custom_profile_names", customNames).apply()
         }
 
         if (activate) {
-            setActiveProfile(profile.name)
+            setActiveProfile(canonicalProfile.name)
         } else {
             refreshProfilesFlow()
         }
@@ -99,12 +136,15 @@ class LayoutManager(private val context: Context) {
         val savedJson = prefs.getString("profile_$name", null)
         if (savedJson != null) {
             return try {
-                json.decodeFromString<LayoutProfile>(savedJson)
+                val loaded = json.decodeFromString<LayoutProfile>(savedJson)
+                loaded.copy(positions = loaded.canonicalPositions())
             } catch (e: Exception) {
                 null
             }
         }
-        return getDefaultLayoutProfiles().find { it.name.equals(name, ignoreCase = true) }
+        return getDefaultLayoutProfiles().find { it.name.equals(name, ignoreCase = true) }?.let {
+            it.copy(positions = it.canonicalPositions())
+        }
     }
 
     /**
@@ -120,10 +160,21 @@ class LayoutManager(private val context: Context) {
 
         val customNames = (prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()).toMutableSet()
         val removed = customNames.remove(name)
-        prefs.edit()
+        val editor = prefs.edit()
             .putStringSet("custom_profile_names", customNames)
             .remove("profile_$name")
-            .apply()
+
+        // Also update saved profile_order
+        val savedOrderJson = prefs.getString("profile_order", null)
+        if (savedOrderJson != null) {
+            try {
+                val orderList = json.decodeFromString<List<String>>(savedOrderJson).toMutableList()
+                if (orderList.removeAll { it.equals(name, ignoreCase = true) }) {
+                    editor.putString("profile_order", json.encodeToString(orderList))
+                }
+            } catch (_: Exception) {}
+        }
+        editor.apply()
 
         // If the deleted profile was active, switch to Default 1 (Standard Elite)
         val activeName = prefs.getString("active_profile", "Standard Elite")
@@ -134,6 +185,60 @@ class LayoutManager(private val context: Context) {
         }
 
         return removed
+    }
+
+    /**
+     * Renames a custom layout profile.
+     * Default layouts (1 to 5) cannot be renamed.
+     * Returns true on success, false if oldName is default or not found.
+     */
+    fun renameProfile(oldName: String, newName: String): Boolean {
+        val trimmedNew = newName.trim()
+        if (trimmedNew.isEmpty()) return false
+        if (oldName == trimmedNew) return true
+
+        val isDefault = getDefaultLayoutProfiles().any { it.name.equals(oldName, ignoreCase = true) }
+        if (isDefault) {
+            return false
+        }
+
+        val existing = loadProfile(oldName) ?: return false
+        val wasActive = getActiveProfile().name.equals(oldName, ignoreCase = true)
+
+        val customNames = (prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()).toMutableSet()
+        customNames.remove(oldName)
+        customNames.add(trimmedNew)
+
+        val renamed = existing.copy(name = trimmedNew, isDefault = false)
+        val canonicalProfile = renamed.copy(positions = renamed.canonicalPositions())
+        val jsonString = json.encodeToString(canonicalProfile)
+
+        val renameEditor = prefs.edit()
+            .putStringSet("custom_profile_names", customNames)
+            .remove("profile_$oldName")
+            .putString("profile_$trimmedNew", jsonString)
+
+        // Also update saved profile_order
+        val savedOrderJson = prefs.getString("profile_order", null)
+        if (savedOrderJson != null) {
+            try {
+                val orderList = json.decodeFromString<List<String>>(savedOrderJson).toMutableList()
+                val idx = orderList.indexOfFirst { it.equals(oldName, ignoreCase = true) }
+                if (idx != -1) {
+                    orderList[idx] = trimmedNew
+                    renameEditor.putString("profile_order", json.encodeToString(orderList))
+                }
+            } catch (_: Exception) {}
+        }
+        renameEditor.apply()
+
+        if (wasActive) {
+            setActiveProfile(trimmedNew)
+        } else {
+            refreshProfilesFlow()
+        }
+
+        return true
     }
 
     /** Reset a default layout to its original factory coordinates. */
@@ -148,12 +253,20 @@ class LayoutManager(private val context: Context) {
     fun createCustomProfile(
         name: String,
         baseProfile: LayoutProfile,
-        selectedButtons: Set<String>? = null
+        selectedButtons: Set<String>? = null,
+        activate: Boolean = false
     ): LayoutProfile {
+        val baseCanonical = baseProfile.canonicalPositions()
         val positions = if (selectedButtons != null) {
-            baseProfile.positions.filterKeys { selectedButtons.contains(it) }
+            val selectedCanonical = selectedButtons.map {
+                ControlKey.fromIdentifier(it)?.key ?: it.uppercase()
+            }.toSet()
+            baseCanonical.filterKeys { k ->
+                val can = ControlKey.fromIdentifier(k)?.key ?: k.uppercase()
+                selectedCanonical.contains(can)
+            }
         } else {
-            baseProfile.positions
+            baseCanonical
         }
 
         val newProfile = LayoutProfile(
@@ -161,16 +274,26 @@ class LayoutManager(private val context: Context) {
             isDefault = false,
             isRgbEnabled = baseProfile.isRgbEnabled,
             positions = positions,
-            description = "Custom Layout based on ${baseProfile.name}"
+            description = "Custom Layout based on ${baseProfile.name}",
+            labelStyle = baseProfile.labelStyle
         )
 
-        saveProfile(newProfile, activate = true)
+        saveProfile(newProfile, activate = activate)
         return newProfile
+    }
+
+    /** Updates the button labeling style (Xbox vs PlayStation) for a profile. */
+    fun setProfileLabelStyle(profileName: String, style: ControllerLabelStyle) {
+        val profile = loadProfile(profileName) ?: return
+        val wasActive = getActiveProfile().name.equals(profileName, ignoreCase = true)
+        saveProfile(profile.copy(labelStyle = style.id), activate = wasActive)
     }
 
     /** Set the active layout profile. */
     fun setActiveProfile(name: String) {
-        prefs.edit().putString("active_profile", name).apply()
+        val effectiveName = if (name == "Standard") "Standard Elite" else name
+        prefs.edit().putString("active_profile", effectiveName).apply()
+        _activeProfileNameFlow.value = effectiveName
         refreshProfilesFlow()
     }
 
@@ -184,5 +307,15 @@ class LayoutManager(private val context: Context) {
         return all.find { it.name.equals(effectiveName, ignoreCase = true) }
             ?: all.firstOrNull()
             ?: LayoutProfile(name = effectiveName)
+    }
+
+    /** Updates touchpad sensitivity preferences in nexpad_prefs. */
+    fun updateTouchpadSensitivity(key: String, sens: Float) {
+        val sp = context.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
+        val upperKey = key.uppercase()
+        sp.edit()
+            .putFloat("TOUCHPAD_SENSITIVITY_$upperKey", sens)
+            .putFloat("TOUCHPAD_SENSITIVITY", sens)
+            .apply()
     }
 }

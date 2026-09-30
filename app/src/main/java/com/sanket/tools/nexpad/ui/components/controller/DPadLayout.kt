@@ -12,13 +12,14 @@ import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
 @Composable
 fun DPadLayout(isConnected: Boolean, onVibrate: () -> Unit, viewModel: GamepadViewModel) {
+    val K = com.sanket.tools.nexpad.model.NexpadKeys
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        GamepadButton("UP", isConnected, onVibrate, viewModel)
+        GamepadButton(K.UP, isConnected, onVibrate, viewModel)
         Row {
-            GamepadButton("LEFT", isConnected, onVibrate, viewModel)
+            GamepadButton(K.LEFT, isConnected, onVibrate, viewModel)
             Spacer(modifier = Modifier.width(64.dp))
-            GamepadButton("RIGHT", isConnected, onVibrate, viewModel)
+            GamepadButton(K.RIGHT, isConnected, onVibrate, viewModel)
         }
-        GamepadButton("DOWN", isConnected, onVibrate, viewModel)
+        GamepadButton(K.DOWN, isConnected, onVibrate, viewModel)
     }
 }

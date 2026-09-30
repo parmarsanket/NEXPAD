@@ -1,5 +1,8 @@
 package com.sanket.tools.nexpad.model
 
+import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.category.ControllerLabelStyle
+import com.sanket.tools.nexpad.model.NexpadKeys as K
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -8,57 +11,79 @@ data class LayoutProfile(
     val isDefault: Boolean = false,
     val isRgbEnabled: Boolean = true,
     val positions: Map<String, Position> = standardElitePositions(),
-    val description: String = ""
+    val description: String = "",
+    val labelStyle: String = "XBOX"
 ) {
-    fun toHudElements(): List<HudElement> = positions.mapNotNull { (key, pos) ->
+    val controllerLabelStyle: ControllerLabelStyle
+        get() = ControllerLabelStyle.fromId(labelStyle)
+
+    /** Returns positions with all keys normalized to canonical ControlKey identifiers. */
+    fun canonicalPositions(): Map<String, Position> {
+        val normalized = mutableMapOf<String, Position>()
+        positions.forEach { (rawKey, pos) ->
+            val canonicalKey = ControlKey.fromIdentifier(rawKey)?.key ?: rawKey.uppercase()
+            if (!normalized.containsKey(canonicalKey)) {
+                normalized[canonicalKey] = pos
+            }
+        }
+        // Self-heal: If both composite 4-way DPAD and discrete directional buttons exist,
+        // industry standard is mutual exclusivity: retain the integrated 4-way DPAD and drop discrete directional buttons.
+        if (normalized.containsKey(ControlKey.DPAD.key)) {
+            val discreteKeys = ControlKey.DISCRETE_DPAD_KEYS.map { it.key }
+            discreteKeys.forEach { normalized.remove(it) }
+        }
+        return normalized
+    }
+
+    fun toHudElements(): List<HudElement> = canonicalPositions().map { (key, pos) ->
         HudElement.fromPosition(key, pos)
     }
 
     fun withUpdatedElements(elements: List<HudElement>): LayoutProfile = copy(
-        positions = elements.associate { it.control.key to it.toPosition() }
+        positions = elements.associate {
+            val canonical = ControlKey.fromIdentifier(it.controlKey)?.key ?: it.controlKey.uppercase()
+            canonical to it.toPosition()
+        }
     )
 }
 
 @Serializable
 data class Position(
-    val xRatio: Float, 
+    val xRatio: Float,
     val yRatio: Float,
     val scale: Float = 1.0f,
     val opacity: Float = 1.0f,
-    val customComponentId: String? = null
+    val customComponentId: String? = null,
+    val sensitivity: Float? = null
 )
 
 /** Default Layout 1: Standard Elite matching physical Xbox ergonomics (Aspect-Ratio Corrected). */
 fun standardElitePositions(): Map<String, Position> {
     val positions = mutableMapOf(
         // Triggers and Bumpers (Top Corners)
-        "LT" to Position(0.080f, 0.055f, scale = 1.18f),
-        "LB" to Position(0.080f, 0.375f, scale = 0.95f),
-        "RT" to Position(0.920f, 0.055f, scale = 1.18f),
-        "RB" to Position(0.920f, 0.375f, scale = 0.95f),
+        K.LT to Position(0.080f, 0.055f, scale = 1.18f),
+        K.LB to Position(0.080f, 0.375f, scale = 0.95f),
+        K.RT to Position(0.920f, 0.055f, scale = 1.18f),
+        K.RB to Position(0.920f, 0.375f, scale = 0.95f),
 
-        // Left Thumbstick & D-Pad (Cross & Discrete Buttons)
-        "LS" to Position(0.115f, 0.740f, scale = 1.05f),
-        "DPAD" to Position(0.320f, 0.740f, scale = 1.10f),
-        "UP" to Position(0.320f, 0.650f, scale = 0.85f),
-        "DOWN" to Position(0.320f, 0.830f, scale = 0.85f),
-        "LEFT" to Position(0.260f, 0.740f, scale = 0.85f),
-        "RIGHT" to Position(0.380f, 0.740f, scale = 0.85f),
+        // Left Stick & D-Pad (Integrated 4-Way Cross Pad)
+        K.LS   to Position(0.115f, 0.740f, scale = 1.05f),
+        K.DPAD to Position(0.320f, 0.740f, scale = 1.10f),
 
         // Right Stick
-        "RS" to Position(0.895f, 0.740f, scale = 1.05f),
+        K.RS to Position(0.895f, 0.740f, scale = 1.05f),
 
         // Center System Cluster
-        "XBOX" to Position(0.500f, 0.080f, scale = 1.15f),
-        "VIEW" to Position(0.430f, 0.230f, scale = 0.70f),
-        "MENU" to Position(0.500f, 0.230f, scale = 0.70f),
-        "SHARE" to Position(0.570f, 0.230f, scale = 0.70f),
+        K.GUIDE to Position(0.500f, 0.080f, scale = 1.15f),
+        K.BACK  to Position(0.430f, 0.230f, scale = 0.70f),
+        K.START to Position(0.500f, 0.230f, scale = 0.70f),
+        K.SHARE to Position(0.570f, 0.230f, scale = 0.70f),
 
         // Center Macro Cluster
-        "M2" to Position(0.380f, 0.360f, scale = 0.75f),
-        "M4" to Position(0.460f, 0.360f, scale = 0.75f),
-        "M3" to Position(0.540f, 0.360f, scale = 0.75f),
-        "M1" to Position(0.620f, 0.360f, scale = 0.75f)
+        K.M2 to Position(0.380f, 0.360f, scale = 0.75f),
+        K.M4 to Position(0.460f, 0.360f, scale = 0.75f),
+        K.M3 to Position(0.540f, 0.360f, scale = 0.75f),
+        K.M1 to Position(0.620f, 0.360f, scale = 0.75f)
     )
 
     // Face Buttons: Aspect-ratio corrected isotropic diamond cluster
@@ -78,23 +103,41 @@ fun standardElitePositions(): Map<String, Position> {
 /** Backward compatible alias for default positions. */
 fun defaultPositions(): Map<String, Position> = standardElitePositions()
 
+/**
+ * Fallback ergonomic default positions for controls when added to a layout that doesn't define them.
+ * Specifically handles discrete directional buttons (UP, DOWN, LEFT, RIGHT) when replacing DPAD.
+ */
+fun getControlDefaultPosition(canonicalKey: String): Position? {
+    return defaultPositions()[canonicalKey] ?: when (canonicalKey) {
+        K.UP    -> Position(0.320f, 0.650f, scale = 0.85f)
+        K.DOWN  -> Position(0.320f, 0.830f, scale = 0.85f)
+        K.LEFT  -> Position(0.260f, 0.740f, scale = 0.85f)
+        K.RIGHT -> Position(0.380f, 0.740f, scale = 0.85f)
+        K.LSB   -> Position(0.210f, 0.540f, scale = 0.80f)
+        K.RSB   -> Position(0.790f, 0.540f, scale = 0.80f)
+        K.LTP   -> Position(0.180f, 0.680f, scale = 1.0f)
+        K.RTP   -> Position(0.820f, 0.680f, scale = 1.0f)
+        else    -> null
+    }
+}
+
 /** Default Layout 2: FPS Tactical Pro with quick triggers, elevated sticks & macro paddles. */
 fun fpsTacticalPositions(): Map<String, Position> {
     val positions = mutableMapOf(
-        "LT" to Position(0.080f, 0.055f, scale = 1.18f),
-        "LB" to Position(0.080f, 0.375f, scale = 0.95f),
-        "RT" to Position(0.920f, 0.055f, scale = 1.18f),
-        "RB" to Position(0.920f, 0.375f, scale = 0.95f),
-        "LS" to Position(0.120f, 0.680f, scale = 1.10f),
-        "RS" to Position(0.880f, 0.680f, scale = 1.10f),
-        "DPAD" to Position(0.330f, 0.760f, scale = 1.05f),
-        "M3" to Position(0.260f, 0.400f, scale = 0.80f),
-        "M4" to Position(0.340f, 0.400f, scale = 0.80f),
-        "M2" to Position(0.660f, 0.400f, scale = 0.80f),
-        "M1" to Position(0.740f, 0.400f, scale = 0.80f),
-        "XBOX" to Position(0.500f, 0.080f, scale = 1.15f),
-        "VIEW" to Position(0.440f, 0.220f, scale = 0.70f),
-        "MENU" to Position(0.560f, 0.220f, scale = 0.70f)
+        K.LT   to Position(0.080f, 0.055f, scale = 1.18f),
+        K.LB   to Position(0.080f, 0.375f, scale = 0.95f),
+        K.RT   to Position(0.920f, 0.055f, scale = 1.18f),
+        K.RB   to Position(0.920f, 0.375f, scale = 0.95f),
+        K.LS   to Position(0.120f, 0.680f, scale = 1.10f),
+        K.RS   to Position(0.880f, 0.680f, scale = 1.10f),
+        K.DPAD to Position(0.330f, 0.760f, scale = 1.05f),
+        K.M3   to Position(0.260f, 0.400f, scale = 0.80f),
+        K.M4   to Position(0.340f, 0.400f, scale = 0.80f),
+        K.M2   to Position(0.660f, 0.400f, scale = 0.80f),
+        K.M1   to Position(0.740f, 0.400f, scale = 0.80f),
+        K.GUIDE to Position(0.500f, 0.080f, scale = 1.15f),
+        K.BACK  to Position(0.440f, 0.220f, scale = 0.70f),
+        K.START to Position(0.560f, 0.220f, scale = 0.70f)
     )
     positions.putAll(
         LayoutMetrics.createDiamondCluster(
@@ -109,43 +152,43 @@ fun fpsTacticalPositions(): Map<String, Position> {
 
 /** Default Layout 3: MOBA & Action RPG with curved ability arc and skill shortcuts. */
 fun mobaActionPositions(): Map<String, Position> = mapOf(
-    "LT" to Position(0.080f, 0.055f, scale = 1.18f),
-    "LB" to Position(0.080f, 0.375f, scale = 0.95f),
-    "RT" to Position(0.920f, 0.055f, scale = 1.18f),
-    "RB" to Position(0.920f, 0.375f, scale = 0.95f),
-    "LS" to Position(0.120f, 0.720f, scale = 1.15f),
-    "DPAD" to Position(0.320f, 0.720f, scale = 1.05f),
-    "A" to Position(0.730f, 0.800f, scale = 0.90f),
-    "X" to Position(0.620f, 0.740f, scale = 0.82f),
-    "Y" to Position(0.660f, 0.560f, scale = 0.82f),
-    "B" to Position(0.760f, 0.600f, scale = 0.85f),
-    "RS" to Position(0.895f, 0.720f, scale = 1.05f),
-    "M4" to Position(0.360f, 0.360f, scale = 0.75f),
-    "M1" to Position(0.450f, 0.360f, scale = 0.75f),
-    "M2" to Position(0.550f, 0.360f, scale = 0.75f),
-    "M3" to Position(0.640f, 0.360f, scale = 0.75f),
-    "XBOX" to Position(0.500f, 0.080f, scale = 1.15f),
-    "VIEW" to Position(0.430f, 0.220f, scale = 0.70f),
-    "MENU" to Position(0.570f, 0.220f, scale = 0.70f)
+    K.LT   to Position(0.080f, 0.055f, scale = 1.18f),
+    K.LB   to Position(0.080f, 0.375f, scale = 0.95f),
+    K.RT   to Position(0.920f, 0.055f, scale = 1.18f),
+    K.RB   to Position(0.920f, 0.375f, scale = 0.95f),
+    K.LS   to Position(0.120f, 0.720f, scale = 1.15f),
+    K.DPAD to Position(0.320f, 0.720f, scale = 1.05f),
+    K.A    to Position(0.730f, 0.800f, scale = 0.90f),
+    K.X    to Position(0.620f, 0.740f, scale = 0.82f),
+    K.Y    to Position(0.660f, 0.560f, scale = 0.82f),
+    K.B    to Position(0.760f, 0.600f, scale = 0.85f),
+    K.RS   to Position(0.895f, 0.720f, scale = 1.05f),
+    K.M4   to Position(0.360f, 0.360f, scale = 0.75f),
+    K.M1   to Position(0.450f, 0.360f, scale = 0.75f),
+    K.M2   to Position(0.550f, 0.360f, scale = 0.75f),
+    K.M3   to Position(0.640f, 0.360f, scale = 0.75f),
+    K.GUIDE to Position(0.500f, 0.080f, scale = 1.15f),
+    K.BACK  to Position(0.430f, 0.220f, scale = 0.70f),
+    K.START to Position(0.570f, 0.220f, scale = 0.70f)
 )
 
 /** Default Layout 4: Racing & Simulation with wide analog triggers and paddle shifters. */
 fun racingSimPositions(): Map<String, Position> {
     val positions = mutableMapOf(
-        "LT" to Position(0.080f, 0.055f, scale = 1.18f),
-        "LB" to Position(0.080f, 0.375f, scale = 0.95f),
-        "RT" to Position(0.920f, 0.055f, scale = 1.18f),
-        "RB" to Position(0.920f, 0.375f, scale = 0.95f),
-        "LS" to Position(0.120f, 0.740f, scale = 1.15f),
-        "DPAD" to Position(0.320f, 0.740f, scale = 1.05f),
-        "RS" to Position(0.895f, 0.740f, scale = 1.10f),
-        "M1" to Position(0.360f, 0.380f, scale = 0.75f),
-        "M2" to Position(0.450f, 0.380f, scale = 0.75f),
-        "M3" to Position(0.550f, 0.380f, scale = 0.75f),
-        "M4" to Position(0.640f, 0.380f, scale = 0.75f),
-        "XBOX" to Position(0.500f, 0.080f, scale = 1.15f),
-        "VIEW" to Position(0.430f, 0.220f, scale = 0.70f),
-        "MENU" to Position(0.570f, 0.220f, scale = 0.70f)
+        K.LT   to Position(0.080f, 0.055f, scale = 1.18f),
+        K.LB   to Position(0.080f, 0.375f, scale = 0.95f),
+        K.RT   to Position(0.920f, 0.055f, scale = 1.18f),
+        K.RB   to Position(0.920f, 0.375f, scale = 0.95f),
+        K.LS   to Position(0.120f, 0.740f, scale = 1.15f),
+        K.DPAD to Position(0.320f, 0.740f, scale = 1.05f),
+        K.RS   to Position(0.895f, 0.740f, scale = 1.10f),
+        K.M1   to Position(0.360f, 0.380f, scale = 0.75f),
+        K.M2   to Position(0.450f, 0.380f, scale = 0.75f),
+        K.M3   to Position(0.550f, 0.380f, scale = 0.75f),
+        K.M4   to Position(0.640f, 0.380f, scale = 0.75f),
+        K.GUIDE to Position(0.500f, 0.080f, scale = 1.15f),
+        K.BACK  to Position(0.430f, 0.220f, scale = 0.70f),
+        K.START to Position(0.570f, 0.220f, scale = 0.70f)
     )
     positions.putAll(
         LayoutMetrics.createDiamondCluster(
@@ -160,53 +203,58 @@ fun racingSimPositions(): Map<String, Position> {
 
 /** Default Layout 5: Retro Arcade & Fighter with 6-button fightstick grid and 8-way D-Pad. */
 fun retroArcadePositions(): Map<String, Position> = mapOf(
-    "LT" to Position(0.080f, 0.055f, scale = 1.18f),
-    "LB" to Position(0.080f, 0.375f, scale = 0.95f),
-    "DPAD" to Position(0.140f, 0.720f, scale = 1.15f),
-    "LS" to Position(0.340f, 0.720f, scale = 1.05f),
-    "X" to Position(0.580f, 0.550f, scale = 0.82f),
-    "Y" to Position(0.690f, 0.520f, scale = 0.82f),
-    "RB" to Position(0.820f, 0.500f, scale = 0.75f),
-    "A" to Position(0.580f, 0.780f, scale = 0.82f),
-    "B" to Position(0.690f, 0.750f, scale = 0.82f),
-    "RT" to Position(0.820f, 0.820f, scale = 0.75f),
-    "RS" to Position(0.895f, 0.260f, scale = 0.85f),
-    "M1" to Position(0.360f, 0.360f, scale = 0.75f),
-    "M2" to Position(0.460f, 0.360f, scale = 0.75f),
-    "VIEW" to Position(0.430f, 0.180f, scale = 0.75f),
-    "MENU" to Position(0.570f, 0.180f, scale = 0.75f),
-    "XBOX" to Position(0.500f, 0.080f, scale = 1.15f)
+    K.LT   to Position(0.080f, 0.055f, scale = 1.18f),
+    K.LB   to Position(0.080f, 0.375f, scale = 0.95f),
+    K.DPAD to Position(0.140f, 0.720f, scale = 1.15f),
+    K.LS   to Position(0.340f, 0.720f, scale = 1.05f),
+    K.X    to Position(0.580f, 0.550f, scale = 0.82f),
+    K.Y    to Position(0.690f, 0.520f, scale = 0.82f),
+    K.RB   to Position(0.820f, 0.500f, scale = 0.75f),
+    K.A    to Position(0.580f, 0.780f, scale = 0.82f),
+    K.B    to Position(0.690f, 0.750f, scale = 0.82f),
+    K.RT   to Position(0.820f, 0.820f, scale = 0.75f),
+    K.RS   to Position(0.895f, 0.260f, scale = 0.85f),
+    K.M1   to Position(0.360f, 0.360f, scale = 0.75f),
+    K.M2   to Position(0.460f, 0.360f, scale = 0.75f),
+    K.BACK  to Position(0.430f, 0.180f, scale = 0.75f),
+    K.START to Position(0.570f, 0.180f, scale = 0.75f),
+    K.GUIDE to Position(0.500f, 0.080f, scale = 1.15f)
 )
 
-/** Returns the 5 non-deletable default layout profiles. */
+/** Returns the non-deletable default layout profiles. */
 fun getDefaultLayoutProfiles(): List<LayoutProfile> = listOf(
     LayoutProfile(
         name = "Standard Elite",
         isDefault = true,
+        labelStyle = "XBOX",
         positions = standardElitePositions(),
         description = "Precision Xbox layout with dual triggers, bumpers, and center macro cluster."
     ),
     LayoutProfile(
         name = "FPS Tactical Pro",
         isDefault = true,
+        labelStyle = "XBOX",
         positions = fpsTacticalPositions(),
         description = "Instant hair-trigger response, elevated sticks, and quick slide/jump paddles."
     ),
     LayoutProfile(
         name = "MOBA & Action RPG",
         isDefault = true,
+        labelStyle = "XBOX",
         positions = mobaActionPositions(),
         description = "Ergonomic ability attack arc, targeted skillshots, and quick item macros."
     ),
     LayoutProfile(
         name = "Racing & Simulation",
         isDefault = true,
+        labelStyle = "XBOX",
         positions = racingSimPositions(),
-        description = "Large analog throttle & brake triggers, steering thumbstick, and paddle shifters."
+        description = "Large analog throttle & brake triggers, steering stick, and paddle shifters."
     ),
     LayoutProfile(
         name = "Retro Arcade & Fighter",
         isDefault = true,
+        labelStyle = "XBOX",
         positions = retroArcadePositions(),
         description = "Classic 6-button arcade fightstick grid with 8-way directional D-pad."
     )

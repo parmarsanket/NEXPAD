@@ -3,21 +3,28 @@ package com.sanket.tools.nexpad.ui.components.controller
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.graphics.Color
-import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
-
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.runtime.engine.NxprcCanvasRenderer
 import com.sanket.tools.nexpad.runtime.engine.NxpComposeInterpreter
 import com.sanket.tools.nexpad.runtime.model.NexPadControl
 import com.sanket.tools.nexpad.runtime.model.asInputTarget
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
+import com.sanket.tools.nexpad.runtime.registry.NativeComponentRegistry
+import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
 /**
- * Unified renderer for individual controller elements (joysticks, triggers, bumpers, dpad, buttons).
- * Supports both built-in realistic elements and dynamic custom NXP components.
+ * Scalable, industry-standard unified renderer for individual controller elements
+ * (joysticks, triggers, bumpers, dpad, action buttons, system buttons, touchpads).
+ *
+ * Dispatches cleanly across:
+ * 1. Remote Compose (.nxprc) documents
+ * 2. Native Compose elements (Realistic 3D, Flux Cyber, etc. via [NativeComponentRegistry])
+ * 3. Dynamic custom NXP JSON component skins
+ * 4. Safe baseline native fallback
  */
 @Composable
 fun ControllerElementRenderer(
@@ -26,10 +33,13 @@ fun ControllerElementRenderer(
     isRgbEnabled: Boolean,
     viewModel: GamepadViewModel,
     onVibrate: () -> Unit = {},
-    customComponentId: String? = null
+    customComponentId: String? = null,
+    sensitivity: Float? = null,
+    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val isDefaultNative = customComponentId == null || customComponentId.startsWith("builtin.default_")
+    val isNative = NativeComponentRegistry.isNativeBuiltin(customComponentId)
 
     val feedback by viewModel.feedbackFlow.collectAsState(initial = null)
     val rumbleIntensity = remember(feedback) {
@@ -39,18 +49,24 @@ fun ControllerElementRenderer(
         } else 0f
     }
 
+    // 1. Remote Compose (.nxprc) Document
     if (customComponentId != null && customComponentId.startsWith("rc.")) {
         val remoteRegistry = remember { RemoteComponentRegistry.getInstance(context) }
         val loadedDocs by remoteRegistry.loadedComponents.collectAsState()
         val remoteDoc = remember(customComponentId, loadedDocs) { remoteRegistry.getComponent(customComponentId) }
+        val K = com.sanket.tools.nexpad.model.NexpadKeys
         if (remoteDoc != null) {
             val targetControl = when {
-                key.equals("LS", ignoreCase = true) || key.equals("L3", ignoreCase = true) -> NexPadControl.Stick(isLeft = true)
-                key.equals("RS", ignoreCase = true) || key.equals("R3", ignoreCase = true) -> NexPadControl.Stick(isLeft = false)
-                key.equals("LT", ignoreCase = true) || key.equals("RT", ignoreCase = true) -> NexPadControl.Trigger(key.uppercase())
-                key.uppercase() in listOf("UP", "DOWN", "LEFT", "RIGHT") -> NexPadControl.DPad(key.uppercase())
-                remoteDoc.manifest.category.equals("JOYSTICK", ignoreCase = true) ->
-                    NexPadControl.Stick(isLeft = remoteDoc.manifest.defaultControl.uppercase() != "RS" && remoteDoc.manifest.defaultControl.uppercase() != "R3")
+                key.equals(K.LSB, ignoreCase = true) || key.equals(K.RSB, ignoreCase = true) || key.equals("L3", ignoreCase = true) || key.equals("R3", ignoreCase = true) -> NexPadControl.Button(key)
+                key.equals(K.LS, ignoreCase = true) || key.equals(K.LTP, ignoreCase = true) -> NexPadControl.Stick(isLeft = true)
+                key.equals(K.RS, ignoreCase = true) || key.equals(K.RTP, ignoreCase = true) -> NexPadControl.Stick(isLeft = false)
+                key.equals(K.LT, ignoreCase = true) || key.equals(K.RT, ignoreCase = true) -> NexPadControl.Trigger(key.uppercase())
+                key.uppercase() in listOf(K.UP, K.DOWN, K.LEFT, K.RIGHT) -> NexPadControl.DPad(key.uppercase())
+                remoteDoc.manifest.category.equals("JOYSTICK", ignoreCase = true) || remoteDoc.manifest.category.equals("TOUCHPAD", ignoreCase = true) -> {
+                    val defCtrl = remoteDoc.manifest.defaultControl.uppercase()
+                    val isRight = defCtrl == K.RS || defCtrl == "R3" || defCtrl == K.RSB || defCtrl == K.RTP || defCtrl.contains("RIGHT") || remoteDoc.manifest.id.contains("rtp", ignoreCase = true)
+                    NexPadControl.Stick(isLeft = !isRight)
+                }
                 else -> NexPadControl.Button(key)
             }
             NxprcCanvasRenderer(
@@ -58,22 +74,44 @@ fun ControllerElementRenderer(
                 assignedControl = targetControl,
                 isConnected = isConnected,
                 inputTarget = viewModel.asInputTarget(onVibrate),
-                rumbleIntensity = rumbleIntensity
+                rumbleIntensity = rumbleIntensity,
+                labelStyle = labelStyle
             )
             return
         }
     }
 
-    val customDef = remember(customComponentId, isDefaultNative) {
-        if (isDefaultNative) null else ComponentRegistry.getInstance(context).getComponent(customComponentId)
+    // 2. Built-in Native Compose Elements (Realistic 3D, Flux Cyber, etc.)
+    if (isNative) {
+        NativeComponentRegistry.RenderNativeElement(
+            key = key,
+            customComponentId = customComponentId,
+            isConnected = isConnected,
+            isRgbEnabled = isRgbEnabled,
+            viewModel = viewModel,
+            onVibrate = onVibrate,
+            sensitivity = sensitivity,
+            labelStyle = labelStyle,
+            modifier = modifier
+        )
+        return
     }
 
+    // 3. Dynamic Custom NXP JSON Skin
+    val customDef = remember(customComponentId) {
+        if (customComponentId != null) {
+            ComponentRegistry.getInstance(context).getComponent(customComponentId)
+        } else null
+    }
+
+    val K = com.sanket.tools.nexpad.model.NexpadKeys
     if (customDef != null) {
         val targetControl = when {
-            key == "LS" -> NexPadControl.Stick(isLeft = true)
-            key == "RS" -> NexPadControl.Stick(isLeft = false)
-            key == "LT" || key == "RT" -> NexPadControl.Trigger(key)
-            key in listOf("UP", "DOWN", "LEFT", "RIGHT") -> NexPadControl.DPad(key)
+            key == K.LSB || key == K.RSB -> NexPadControl.Button(key)
+            key == K.LS || key == K.LTP -> NexPadControl.Stick(isLeft = true)
+            key == K.RS || key == K.RTP -> NexPadControl.Stick(isLeft = false)
+            key == K.LT || key == K.RT -> NexPadControl.Trigger(key)
+            key in listOf(K.UP, K.DOWN, K.LEFT, K.RIGHT) -> NexPadControl.DPad(key)
             else -> NexPadControl.Button(key)
         }
         NxpComposeInterpreter(
@@ -85,99 +123,16 @@ fun ControllerElementRenderer(
         return
     }
 
-    when {
-        key == "LS" -> RealisticJoystick(
-            isLeft = true,
-            isConnected = isConnected,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
-        )
-        key == "RS" -> RealisticJoystick(
-            isLeft = false,
-            isConnected = isConnected,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
-        )
-        key == "DPAD" -> RealisticDPad(
-            isConnected = isConnected,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled,
-            onVibrate = onVibrate
-        )
-        key in listOf("UP", "DOWN", "LEFT", "RIGHT") -> RealisticDPadButton(
-            direction = key,
-            isConnected = isConnected,
-            onVibrate = onVibrate,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
-        )
-        key == "LT" || key == "RT" -> RealisticTrigger(
-            key = key,
-            isConnected = isConnected,
-            onVibrate = onVibrate,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
-        )
-        key == "LB" || key == "RB" -> RealisticBumper(
-            key = key,
-            isConnected = isConnected,
-            onVibrate = onVibrate,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
-        )
-        key == "A" -> RealisticButton(
-            key = "A",
-            buttonColor = Color(0xFF00C853),
-            isConnected = isConnected,
-            onVibrate = onVibrate,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
-        )
-        key == "B" -> RealisticButton(
-            key = "B",
-            buttonColor = Color(0xFFD50000),
-            isConnected = isConnected,
-            onVibrate = onVibrate,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
-        )
-        key == "X" -> RealisticButton(
-            key = "X",
-            buttonColor = Color(0xFF2962FF),
-            isConnected = isConnected,
-            onVibrate = onVibrate,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
-        )
-        key == "Y" -> RealisticButton(
-            key = "Y",
-            buttonColor = Color(0xFFFFD600),
-            isConnected = isConnected,
-            onVibrate = onVibrate,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
-        )
-        key in listOf("MENU", "VIEW", "XBOX", "SHARE", "SCREENSHOT") -> RealisticSystemButton(
-            key = key,
-            isConnected = isConnected,
-            onVibrate = onVibrate,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
-        )
-        key in listOf("M1", "M2", "M3", "M4", "PROFILE", "TURBO") -> RealisticMacroButton(
-            key = key,
-            isConnected = isConnected,
-            onVibrate = onVibrate,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
-        )
-        else -> RealisticButton(
-            key = key,
-            buttonColor = Color.Gray,
-            isConnected = isConnected,
-            onVibrate = onVibrate,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
-        )
-    }
+    // 4. Safe Baseline Native Fallback
+    NativeComponentRegistry.RenderNativeElement(
+        key = key,
+        customComponentId = null,
+        isConnected = isConnected,
+        isRgbEnabled = isRgbEnabled,
+        viewModel = viewModel,
+        onVibrate = onVibrate,
+        sensitivity = sensitivity,
+        labelStyle = labelStyle,
+        modifier = modifier
+    )
 }

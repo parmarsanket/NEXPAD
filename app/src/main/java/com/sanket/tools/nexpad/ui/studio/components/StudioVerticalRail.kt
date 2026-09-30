@@ -81,8 +81,8 @@ fun StudioVerticalRail(
                                 tint = if (isSelected) NeonPalette.Cyan else Color.LightGray.copy(alpha = 0.7f),
                                 modifier = Modifier.size(22.dp)
                             )
-                            // Count badge in Selection mode
-                            if (mode == ButtonStudioMode.SELECTION && activeCount > 0 && cat.keys.isNotEmpty()) {
+                            // Count badge in Editor mode
+                            if (mode == ButtonStudioMode.EDITOR && activeCount > 0 && cat.keys.isNotEmpty()) {
                                 Surface(
                                     shape = CircleShape,
                                     color = NeonPalette.Cyan,

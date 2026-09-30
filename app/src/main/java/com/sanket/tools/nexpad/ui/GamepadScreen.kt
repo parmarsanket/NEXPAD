@@ -17,6 +17,9 @@ import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import androidx.compose.ui.layout.layout
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import com.sanket.tools.nexpad.ui.components.badge.HeaderStatusPill
 import kotlin.math.roundToInt
 import android.os.Build
 import kotlinx.coroutines.launch
@@ -36,10 +39,25 @@ import kotlin.math.pow
 fun GamepadScreen(
     viewModel: GamepadViewModel, 
     layoutManager: LayoutManager,
+    navigationViewModel: NavigationViewModel? = null,
+    overrideProfileName: String? = null,
     onBack: () -> Unit,
     onVibrate: () -> Unit
 ) {
-    val profile = layoutManager.getActiveProfile()
+    val activeProfileName by layoutManager.activeProfileNameFlow.collectAsState()
+    val profiles by layoutManager.profilesFlow.collectAsState()
+    val sessionProfileName by (navigationViewModel?.sessionProfileName ?: remember { kotlinx.coroutines.flow.MutableStateFlow(null) }).collectAsState()
+
+    val profile = remember(overrideProfileName, sessionProfileName, activeProfileName, profiles) {
+        val targetName = overrideProfileName ?: sessionProfileName
+        if (!targetName.isNullOrBlank()) {
+            profiles.find { it.name.equals(targetName, ignoreCase = true) }
+                ?: layoutManager.getAllProfiles().find { it.name.equals(targetName, ignoreCase = true) }
+                ?: layoutManager.getActiveProfile()
+        } else {
+            layoutManager.getActiveProfile()
+        }
+    }
     val isConnected by viewModel.isConnected.collectAsState()
     
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -102,12 +120,14 @@ fun GamepadScreen(
 
     var isRumbling by remember { mutableStateOf(false) }
     var rumbleResetJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    val hapticHelper = remember(context) { com.sanket.tools.nexpad.utils.HapticFeedbackHelper(context) }
     
-    val safeOnVibrate: () -> Unit = remember { {
-        if (!isRumbling) {
-            onVibrate()
+    val safeOnVibrate: () -> Unit = {
+        val connected = viewModel.isConnected.value
+        if (hapticHelper.canVibrate(connected, isRumbling)) {
+            hapticHelper.performButtonClick()
         }
-    } }
+    }
 
     LaunchedEffect(Unit) {
         val sharedPref = context.getSharedPreferences("nexpad_prefs", android.content.Context.MODE_PRIVATE)
@@ -204,22 +224,22 @@ fun GamepadScreen(
                 lastAppliedBand = band
                 lastUpdateTimeMs = now
                 
-                @Suppress("DEPRECATION")
                 if (band > 0) {
                     isRumbling = true
                     when (motorProfile.tier) {
                         1 -> {
                             // Tier 1: No amplitude control. Binary vibration only.
-                            vibrator.vibrate(longArrayOf(0, 10000), 0)
+                            vibrator.vibrate(
+                                VibrationEffect.createWaveform(longArrayOf(0, 10000), 0)
+                            )
                         }
                         else -> {
                             // Tier 2 & 3: Full amplitude waveform
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                vibrator.vibrate(VibrationEffect.createWaveform(
-                                    longArrayOf(0, 10000), intArrayOf(0, band), 0))
-                            } else {
-                                vibrator.vibrate(longArrayOf(0, 10000), 0)
-                            }
+                            vibrator.vibrate(
+                                VibrationEffect.createWaveform(
+                                    longArrayOf(0, 10000), intArrayOf(0, band), 0
+                                )
+                            )
                         }
                     }
                 } else {
@@ -243,6 +263,14 @@ fun GamepadScreen(
             }
         }
     }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            rumbleResetJob?.cancel()
+            vibrator.cancel()
+            navigationViewModel?.clearGamepadSession()
+        }
+    }
     
     BoxWithConstraints(
         modifier = Modifier
@@ -255,13 +283,22 @@ fun GamepadScreen(
         // Back Button & Connection Status
         Row(
             modifier = Modifier.align(Alignment.TopStart).padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            IconButton(onClick = onBack) {
-                Text("⬅️", fontSize = 24.sp, color = MaterialTheme.colorScheme.onBackground)
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                    contentDescription = "Back",
+                    tint = MaterialTheme.colorScheme.onBackground
+                )
             }
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(if (isConnected) "🟢 Connected" else "🔴 Disconnected", color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.labelMedium)
+            HeaderStatusPill(
+                isConnected = isConnected
+            )
         }
 
         // Render mapped components with center-based placement
@@ -285,7 +322,9 @@ fun GamepadScreen(
                     isRgbEnabled = profile.isRgbEnabled,
                     viewModel = viewModel,
                     onVibrate = safeOnVibrate,
-                    customComponentId = position.customComponentId
+                    customComponentId = position.customComponentId,
+                    sensitivity = position.sensitivity,
+                    labelStyle = profile.controllerLabelStyle
                 )
             }
         }

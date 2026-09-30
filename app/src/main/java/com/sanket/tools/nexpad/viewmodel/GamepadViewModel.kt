@@ -9,6 +9,7 @@ import android.net.Network
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.sanket.tools.nexpad.model.GamepadInput
+import com.sanket.tools.nexpad.category.ControlKey
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -280,32 +281,38 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun applyButtonState(buttonName: String, isPressed: Boolean) {
-        when (buttonName.uppercase()) {
-            "A" -> inputState.btnA = isPressed
-            "B" -> inputState.btnB = isPressed
-            "X" -> inputState.btnX = isPressed
-            "Y" -> inputState.btnY = isPressed
-            "UP" -> inputState.dpadUp = isPressed
-            "DOWN" -> inputState.dpadDown = isPressed
-            "LEFT" -> inputState.dpadLeft = isPressed
-            "RIGHT" -> inputState.dpadRight = isPressed
-            "LB", "L1" -> inputState.btnL1 = isPressed
-            "RB", "R1" -> inputState.btnR1 = isPressed
-            "LT", "L2" -> inputState.triggerL2 = if (isPressed) 1f else 0f
-            "RT", "R2" -> inputState.triggerR2 = if (isPressed) 1f else 0f
-            "L3", "LS" -> inputState.btnL3 = isPressed
-            "R3", "RS" -> inputState.btnR3 = isPressed
-            "MENU", "START" -> inputState.btnStart = isPressed
-            "VIEW", "BACK", "SELECT" -> inputState.btnSelect = isPressed
-            "XBOX", "GUIDE", "HOME" -> inputState.btnGuide = isPressed
-            "SHARE" -> inputState.btnShare = isPressed
-            "SCREENSHOT" -> inputState.btnScreenshot = isPressed
-            "M1" -> inputState.btnM1 = isPressed
-            "M2" -> inputState.btnM2 = isPressed
-            "M3" -> inputState.btnM3 = isPressed
-            "M4" -> inputState.btnM4 = isPressed
-            "PROFILE" -> inputState.btnProfile = isPressed
-            "TURBO" -> inputState.btnTurbo = isPressed
+        // Canonical keys come from NexpadKeys (backed by CategoryManager).
+        // Hardware alias keys (L1/L2/L3, R1/R2/R3, BACK, SELECT, HOME, XBOX, MENU, VIEW)
+        // Dispatches through ControlKey single source of truth; all aliases, synonyms
+        // (L1, R1, L2, R2, L3, R3, MENU, VIEW, XBOX, CAPTURE, etc.) resolve automatically.
+        val ctrl = ControlKey.fromIdentifier(buttonName)
+        when (ctrl) {
+            ControlKey.A       -> inputState.btnA = isPressed
+            ControlKey.B       -> inputState.btnB = isPressed
+            ControlKey.X       -> inputState.btnX = isPressed
+            ControlKey.Y       -> inputState.btnY = isPressed
+            ControlKey.UP      -> inputState.dpadUp = isPressed
+            ControlKey.DOWN    -> inputState.dpadDown = isPressed
+            ControlKey.LEFT    -> inputState.dpadLeft = isPressed
+            ControlKey.RIGHT   -> inputState.dpadRight = isPressed
+            ControlKey.LB      -> inputState.btnL1 = isPressed
+            ControlKey.RB      -> inputState.btnR1 = isPressed
+            ControlKey.LT      -> inputState.triggerL2 = if (isPressed) 1f else 0f
+            ControlKey.RT      -> inputState.triggerR2 = if (isPressed) 1f else 0f
+            ControlKey.LS, ControlKey.LSB -> inputState.btnL3 = isPressed
+            ControlKey.RS, ControlKey.RSB -> inputState.btnR3 = isPressed
+            ControlKey.START   -> inputState.btnStart = isPressed
+            ControlKey.BACK    -> inputState.btnSelect = isPressed
+            ControlKey.GUIDE   -> inputState.btnGuide = isPressed
+            ControlKey.SHARE   -> {
+                inputState.btnShare = isPressed
+                inputState.btnScreenshot = isPressed
+            }
+            ControlKey.M1      -> inputState.btnM1 = isPressed
+            ControlKey.M2      -> inputState.btnM2 = isPressed
+            ControlKey.M3      -> inputState.btnM3 = isPressed
+            ControlKey.M4      -> inputState.btnM4 = isPressed
+            null, ControlKey.DPAD, ControlKey.LTP, ControlKey.RTP -> {}
         }
     }
 

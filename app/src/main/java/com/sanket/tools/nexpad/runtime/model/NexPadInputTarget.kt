@@ -1,5 +1,6 @@
 package com.sanket.tools.nexpad.runtime.model
 
+import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
 /**
@@ -12,6 +13,17 @@ interface NexPadInputTarget {
     fun onStickMove(stick: NexPadControl.Stick, normX: Float, normY: Float)
     fun onTriggerMove(trigger: NexPadControl.Trigger, pressure: Float)
     fun triggerHaptic(type: String = "light")
+}
+
+/**
+ * Zero-allocation no-op target for static previews and offline testing.
+ */
+object NoOpInputTarget : NexPadInputTarget {
+    override fun onButtonPress(control: NexPadControl.Button) {}
+    override fun onButtonRelease(control: NexPadControl.Button) {}
+    override fun onStickMove(stick: NexPadControl.Stick, normX: Float, normY: Float) {}
+    override fun onTriggerMove(trigger: NexPadControl.Trigger, pressure: Float) {}
+    override fun triggerHaptic(type: String) {}
 }
 
 /**
@@ -36,13 +48,14 @@ fun GamepadViewModel.asInputTarget(onVibrate: () -> Unit = {}): NexPadInputTarge
             }
         }
 
+        private var isTriggerActive = false
         override fun onTriggerMove(trigger: NexPadControl.Trigger, pressure: Float) {
-            if (pressure > 0.5f) {
+            val pressed = pressure > 0.5f
+            if (pressed && !isTriggerActive) {
                 onVibrate()
-                updateButton(trigger.key, true)
-            } else {
-                updateButton(trigger.key, false)
             }
+            isTriggerActive = pressed
+            updateButton(trigger.key, pressed)
         }
 
         override fun triggerHaptic(type: String) {
@@ -71,7 +84,7 @@ class SandboxInputTarget(
 
     override fun onStickMove(stick: NexPadControl.Stick, normX: Float, normY: Float) {
         onAxisChange(normX, normY)
-        onStateChange("STICK ${if (stick.isLeft) "LS" else "RS"}: X=%.2f, Y=%.2f".format(normX, normY))
+        onStateChange("STICK ${if (stick.isLeft) NexpadKeys.LS else NexpadKeys.RS}: X=%.2f, Y=%.2f".format(normX, normY))
     }
 
     override fun onTriggerMove(trigger: NexPadControl.Trigger, pressure: Float) {

@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
@@ -15,7 +16,7 @@ fun CyberGrid(
     gridSize: Dp = 28.dp,
     lineColor: Color = NeonPalette.Cyan.copy(alpha = 0.08f)
 ) {
-    Canvas(modifier) {
+    Canvas(modifier.graphicsLayer()) {
         val step = gridSize.toPx()
 
         // Vertical lines

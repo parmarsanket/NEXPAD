@@ -1,0 +1,1168 @@
+package com.sanket.tools.nexpad.ui.studio.components
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.GenericShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.category.CategoryManager
+import com.sanket.tools.nexpad.category.CategoryType
+import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.category.ControllerLabelStyle
+import com.sanket.tools.nexpad.ui.components.controller.PlayStationSymbol
+import com.sanket.tools.nexpad.ui.components.controller.getPlayStationShape
+import com.sanket.tools.nexpad.ui.components.controller.ButtonPerspectiveDirection
+import com.sanket.tools.nexpad.ui.components.controller.BottomHorizonClipShape
+import com.sanket.tools.nexpad.ui.components.controller.TopHorizonClipShape
+import com.sanket.tools.nexpad.ui.components.controller.LeftHorizonClipShape
+import com.sanket.tools.nexpad.ui.components.controller.RightHorizonClipShape
+import androidx.compose.ui.unit.IntOffset
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
+
+private val crossShape = GenericShape { size, _ ->
+    val thirdW = size.width / 3f
+    val thirdH = size.height / 3f
+    val twoThirdW = thirdW * 2f
+    val twoThirdH = thirdH * 2f
+
+    moveTo(thirdW, 0f)
+    lineTo(twoThirdW, 0f)
+    lineTo(twoThirdW, thirdH)
+    lineTo(size.width, thirdH)
+    lineTo(size.width, twoThirdH)
+    lineTo(twoThirdW, twoThirdH)
+    lineTo(twoThirdW, size.height)
+    lineTo(thirdW, size.height)
+    lineTo(thirdW, twoThirdH)
+    lineTo(0f, twoThirdH)
+    lineTo(0f, thirdH)
+    lineTo(thirdW, thirdH)
+    close()
+}
+
+/**
+ * Pixel-perfect static preview for native controller elements.
+ * Exactly mirrors the visuals, gradients, 3D glossy highlights, and shadows
+ * of ui/components/controller/Realistic*.kt without interactive overhead.
+ */
+@Composable
+fun StaticDefaultButtonPreview(
+    controlKey: String,
+    modifier: Modifier = Modifier,
+    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX
+) {
+    val ctrl = ControlKey.fromIdentifier(controlKey)
+    val key = ctrl?.key ?: controlKey.uppercase()
+    val displayLabel = CategoryManager.getLabelForStyle(key, labelStyle)
+
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        when (ctrl) {
+            ControlKey.A -> StaticRealisticButton(key = displayLabel, buttonColor = Color(0xFF3FD25A))
+            ControlKey.B -> StaticRealisticButton(key = displayLabel, buttonColor = Color(0xFFE6474E))
+            ControlKey.X -> StaticRealisticButton(key = displayLabel, buttonColor = Color(0xFF3F8FE0))
+            ControlKey.Y -> StaticRealisticButton(key = displayLabel, buttonColor = Color(0xFFE0A03F))
+
+            ControlKey.LS -> StaticRealisticJoystick(isLeft = true)
+            ControlKey.RS -> StaticRealisticJoystick(isLeft = false)
+            ControlKey.LSB -> StaticRealisticStickButton(isLeft = true, label = displayLabel)
+            ControlKey.RSB -> StaticRealisticStickButton(isLeft = false, label = displayLabel)
+            ControlKey.LTP -> StaticRealisticTouchPad(isLeft = true)
+            ControlKey.RTP -> StaticRealisticTouchPad(isLeft = false)
+
+            ControlKey.DPAD -> StaticRealisticDPad()
+            ControlKey.UP, ControlKey.DOWN, ControlKey.LEFT, ControlKey.RIGHT -> StaticRealisticDPadButton(direction = key)
+
+            ControlKey.LT -> StaticRealisticTrigger(key = displayLabel, isLeft = true)
+            ControlKey.RT -> StaticRealisticTrigger(key = displayLabel, isLeft = false)
+
+            ControlKey.LB -> StaticRealisticBumper(key = displayLabel, isLeft = true)
+            ControlKey.RB -> StaticRealisticBumper(key = displayLabel, isLeft = false)
+
+            ControlKey.GUIDE -> StaticRealisticSystemButton(label = "⨂", textColor = NeonPalette.Cyan)
+            ControlKey.START -> StaticRealisticSystemButton(label = "☰", textColor = Color.White)
+            ControlKey.BACK  -> StaticRealisticSystemButton(label = "⧉", textColor = Color.White)
+            ControlKey.SHARE -> StaticRealisticSystemButton(label = "⇪", textColor = Color.White)
+
+            ControlKey.M1, ControlKey.M2, ControlKey.M3, ControlKey.M4 -> StaticRealisticMacroButton(label = key)
+
+            else -> when (ctrl?.categoryType) {
+                CategoryType.SYSTEM -> StaticRealisticSystemButton(label = key.take(2), textColor = Color.White)
+                CategoryType.MACROS -> StaticRealisticMacroButton(label = key)
+                else -> StaticRealisticButton(key = displayLabel.take(3), buttonColor = Color.Gray)
+            }
+        }
+    }
+}
+
+/**
+ * Exact visual match for ui/components/controller/RealisticButton.kt
+ */
+@Composable
+private fun StaticRealisticButton(
+    key: String,
+    buttonColor: Color,
+    modifier: Modifier = Modifier
+) {
+    val perspectiveDirection = when {
+        key.equals("A", ignoreCase = true) || key.equals("CROSS", ignoreCase = true) || key.equals("DOWN", ignoreCase = true) -> ButtonPerspectiveDirection.BOTTOM
+        key.equals("Y", ignoreCase = true) || key.equals("TRIANGLE", ignoreCase = true) || key.equals("UP", ignoreCase = true) -> ButtonPerspectiveDirection.TOP
+        key.equals("X", ignoreCase = true) || key.equals("SQUARE", ignoreCase = true) || key.equals("LEFT", ignoreCase = true) -> ButtonPerspectiveDirection.LEFT
+        key.equals("B", ignoreCase = true) || key.equals("CIRCLE", ignoreCase = true) || key.equals("RIGHT", ignoreCase = true) -> ButtonPerspectiveDirection.RIGHT
+        else -> ButtonPerspectiveDirection.NONE
+    }
+
+    val horizonClipShape: androidx.compose.ui.graphics.Shape? = when (perspectiveDirection) {
+        ButtonPerspectiveDirection.BOTTOM -> BottomHorizonClipShape
+        ButtonPerspectiveDirection.TOP -> TopHorizonClipShape
+        ButtonPerspectiveDirection.LEFT -> LeftHorizonClipShape
+        ButtonPerspectiveDirection.RIGHT -> RightHorizonClipShape
+        ButtonPerspectiveDirection.NONE -> null
+    }
+
+    val baseDomeGradient = Brush.radialGradient(
+        colors = listOf(
+            Color(0xFF232527),
+            Color(0xFF0C0D0E),
+            Color(0xFF000000)
+        ),
+        center = Offset(0.50f, 0.55f),
+        radius = 200f
+    )
+
+    Box(
+        modifier = modifier
+            .size(80.dp)
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            buttonColor.copy(alpha = 0.55f),
+                            buttonColor.copy(alpha = 0.22f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 0.65f
+                    ),
+                    radius = size.minDimension * 0.65f
+                )
+            }
+            .shadow(
+                elevation = 4.dp,
+                shape = CircleShape,
+                ambientColor = buttonColor,
+                spotColor = buttonColor
+            )
+            .clip(CircleShape)
+            .background(baseDomeGradient),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val r = size.minDimension / 2f
+
+            // 0 0 0 1px rgba(0, 0, 0, 0.5) cap outline
+            drawCircle(
+                color = Color.Black.copy(alpha = 0.50f),
+                radius = r - 0.5.dp.toPx(),
+                style = Stroke(width = 1.dp.toPx())
+            )
+
+            // Inset bottom shadow: inset 0 -6px 9px rgba(0, 0, 0, 0.70)
+            val insetShadowH = h * 0.35f
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
+                    startY = h - insetShadowH,
+                    endY = h
+                ),
+                topLeft = Offset(0f, h - insetShadowH),
+                size = Size(w, insetShadowH)
+            )
+
+            // .cap::after: Directional Optical Recess Ellipse
+            when (perspectiveDirection) {
+                ButtonPerspectiveDirection.BOTTOM -> {
+                    val recessW = w * 0.80f
+                    val recessH = h * 0.26f
+                    val recessLeft = (w - recessW) / 2f
+                    val recessBottom = h - (h * 0.04f)
+                    val recessTop = recessBottom - recessH
+
+                    drawOval(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.07f),
+                                Color.White.copy(alpha = 0.018f),
+                                Color(0xFF080A0B).copy(alpha = 0.18f),
+                                Color.Black.copy(alpha = 0.52f),
+                                Color.Black.copy(alpha = 0.86f)
+                            ),
+                            center = Offset(w * 0.5f, recessTop + recessH * 0.05f),
+                            radius = recessW * 0.5f
+                        ),
+                        topLeft = Offset(recessLeft, recessTop),
+                        size = Size(recessW, recessH)
+                    )
+                }
+                ButtonPerspectiveDirection.TOP -> {
+                    val recessW = w * 0.80f
+                    val recessH = h * 0.26f
+                    val recessLeft = (w - recessW) / 2f
+                    val recessTop = h * 0.04f
+
+                    drawOval(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.07f),
+                                Color.White.copy(alpha = 0.018f),
+                                Color(0xFF080A0B).copy(alpha = 0.18f),
+                                Color.Black.copy(alpha = 0.52f),
+                                Color.Black.copy(alpha = 0.86f)
+                            ),
+                            center = Offset(w * 0.5f, recessTop + recessH * 0.95f),
+                            radius = recessW * 0.5f
+                        ),
+                        topLeft = Offset(recessLeft, recessTop),
+                        size = Size(recessW, recessH)
+                    )
+                }
+                ButtonPerspectiveDirection.LEFT -> {
+                    val recessW = w * 0.26f
+                    val recessH = h * 0.80f
+                    val recessLeft = w * 0.04f
+                    val recessTop = (h - recessH) / 2f
+
+                    drawOval(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.07f),
+                                Color.White.copy(alpha = 0.018f),
+                                Color(0xFF080A0B).copy(alpha = 0.18f),
+                                Color.Black.copy(alpha = 0.52f),
+                                Color.Black.copy(alpha = 0.86f)
+                            ),
+                            center = Offset(recessLeft + recessW * 0.95f, h * 0.5f),
+                            radius = recessH * 0.5f
+                        ),
+                        topLeft = Offset(recessLeft, recessTop),
+                        size = Size(recessW, recessH)
+                    )
+                }
+                ButtonPerspectiveDirection.RIGHT -> {
+                    val recessW = w * 0.26f
+                    val recessH = h * 0.80f
+                    val recessLeft = w - recessW - (w * 0.04f)
+                    val recessTop = (h - recessH) / 2f
+
+                    drawOval(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.07f),
+                                Color.White.copy(alpha = 0.018f),
+                                Color(0xFF080A0B).copy(alpha = 0.18f),
+                                Color.Black.copy(alpha = 0.52f),
+                                Color.Black.copy(alpha = 0.86f)
+                            ),
+                            center = Offset(recessLeft + recessW * 0.05f, h * 0.5f),
+                            radius = recessH * 0.5f
+                        ),
+                        topLeft = Offset(recessLeft, recessTop),
+                        size = Size(recessW, recessH)
+                    )
+                }
+                ButtonPerspectiveDirection.NONE -> {
+                    drawCircle(
+                        color = Color.Black.copy(alpha = 0.35f),
+                        radius = r - 2.dp.toPx(),
+                        style = Stroke(width = 3.dp.toPx())
+                    )
+                }
+            }
+
+            // .ring: Inner Glowing Neon Color Ring
+            val ringRadius = r - 3.dp.toPx()
+            // Outer bloom
+            drawCircle(
+                color = buttonColor.copy(alpha = 0.25f),
+                radius = ringRadius,
+                style = Stroke(width = 4.dp.toPx())
+            )
+            // Core crisp ring
+            drawCircle(
+                color = buttonColor.copy(alpha = 0.70f),
+                radius = ringRadius,
+                style = Stroke(width = 2.dp.toPx())
+            )
+
+            // Layer #6: Socket Bevel Rim — buttonColor outside neon ring
+            drawCircle(
+                color = buttonColor.copy(alpha = 0.12f),
+                radius = ringRadius + 1.5.dp.toPx(),
+                style = Stroke(width = 2.dp.toPx())
+            )
+
+            // .lens: Acrylic Glass Lens Specular Reflections
+            val lensInset = 1.dp.toPx()
+            drawArc(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.14f),
+                        Color.White.copy(alpha = 0.05f),
+                        Color.Transparent
+                    ),
+                    startY = 0f,
+                    endY = h * 0.40f
+                ),
+                startAngle = 180f,
+                sweepAngle = 180f,
+                useCenter = false,
+                topLeft = Offset(lensInset, lensInset),
+                size = Size(w - lensInset * 2f, h - lensInset * 2f),
+                style = Stroke(width = 1.dp.toPx())
+            )
+
+            // Bottom-right specular sheen
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.06f),
+                        Color.Transparent
+                    ),
+                    center = Offset(w * 0.70f, h * 0.78f),
+                    radius = w * 0.25f
+                ),
+                center = Offset(w * 0.70f, h * 0.78f),
+                radius = w * 0.25f
+            )
+        }
+
+        // .glyph: Magnified Optical Glyph with Directional Shift & Horizon Clipping
+        val psShape = getPlayStationShape(key)
+        val glyphOffset = when (perspectiveDirection) {
+            ButtonPerspectiveDirection.BOTTOM -> IntOffset(0, 7)
+            ButtonPerspectiveDirection.TOP    -> IntOffset(0, -7)
+            ButtonPerspectiveDirection.LEFT   -> IntOffset(-7, 0)
+            ButtonPerspectiveDirection.RIGHT  -> IntOffset(7, 0)
+            ButtonPerspectiveDirection.NONE   -> IntOffset(0, 0)
+        }
+
+        val glyphModifier = Modifier
+            .offset { glyphOffset }
+            .then(if (horizonClipShape != null) Modifier.clip(horizonClipShape) else Modifier)
+
+        if (psShape != null) {
+            PlayStationSymbol(
+                shape = psShape,
+                color = buttonColor,
+                size = 40.dp,
+                modifier = glyphModifier
+            )
+        } else {
+            Text(
+                text = key,
+                color = buttonColor,
+                fontSize = 46.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = glyphModifier
+            )
+        }
+    }
+}
+
+/**
+ * Exact visual match for ui/components/controller/RealisticJoystick.kt
+ */
+
+@Composable
+private fun StaticRealisticJoystick(
+    isLeft: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val baseGradient = Brush.radialGradient(
+        colors = listOf(Color(0xFF1F1F1F), Color(0xFF080808)),
+        center = Offset(0.5f, 0.5f),
+        radius = 250f
+    )
+
+    val thumbGradient = Brush.radialGradient(
+        colors = listOf(Color(0xFF3D3D3D), Color(0xFF1A1A1A)),
+        center = Offset(0.3f, 0.3f),
+        radius = 150f
+    )
+
+    val shadow = Modifier.shadow(12.dp, CircleShape, ambientColor = NeonPalette.Cyan.copy(alpha = 0.5f), spotColor = NeonPalette.Cyan)
+
+    Box(
+        modifier = modifier
+            .size(140.dp)
+            .then(shadow)
+            .clip(CircleShape)
+            .background(baseGradient),
+        contentAlignment = Alignment.Center
+    ) {
+        // Base plate canvas
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawCircle(
+                color = Color(0xFF333333),
+                radius = size.minDimension / 2f - 2f,
+                style = Stroke(width = 4f)
+            )
+        }
+
+        // Thumbstick cap
+        Box(
+            modifier = Modifier
+                .size(70.dp)
+                .shadow(10.dp, CircleShape)
+                .clip(CircleShape)
+                .background(thumbGradient),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize().padding(10.dp)) {
+                drawCircle(
+                    color = Color(0xFF111111),
+                    radius = size.minDimension / 2f,
+                    style = Stroke(width = 3f)
+                )
+            }
+            Text(
+                text = if (isLeft) com.sanket.tools.nexpad.model.NexpadKeys.LS
+                       else com.sanket.tools.nexpad.model.NexpadKeys.RS,
+                color = Color.LightGray.copy(alpha = 0.7f),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+/**
+ * Exact visual match for ui/components/controller/FluxJoystick.kt
+ */
+@Preview
+@Composable
+internal fun StaticFluxJoystick(
+    isLeft: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val glowColor = if (isLeft) Color(0xFF2FD4B6) else Color(0xFFFF3185)
+
+    val socketGradient = Brush.radialGradient(
+        colors = listOf(Color(0xFF030304), Color(0xFF090A0B), Color(0xFF191B1E)),
+        center = Offset(0.5f, 0.5f),
+        radius = 280f
+    )
+
+    val capDomeGradient = Brush.radialGradient(
+        colors = listOf(Color(0xFF3D4145), Color(0xFF202327), Color(0xFF111316), Color(0xFF050506)),
+        center = Offset(0.50f, 0.36f),
+        radius = 220f
+    )
+
+    val dishGradient = Brush.radialGradient(
+        colors = listOf(Color(0xFF020203), Color(0xFF0B0C0D), Color(0xFF161719)),
+        center = Offset(0.50f, 0.58f),
+        radius = 100f
+    )
+
+    Box(
+        modifier = modifier
+            .size(150.dp)
+            .shadow(12.dp, CircleShape, ambientColor = glowColor.copy(alpha = 0.4f), spotColor = glowColor)
+            .clip(CircleShape)
+            .background(socketGradient)
+            .border(1.dp, Color.Black.copy(alpha = 0.75f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val r = size.minDimension / 2f
+            val center = Offset(w / 2f, h / 2f)
+
+            // Deep top inset shadow
+            drawRect(
+                brush = Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.96f), Color.Transparent), 0f, h * 0.38f),
+                topLeft = Offset.Zero,
+                size = Size(w, h * 0.38f)
+            )
+
+            // 12 Graduation Ticks
+            val tickOuterR = r - 12.dp.toPx()
+            val tickInnerR = tickOuterR - 6.dp.toPx()
+            val tickColor = Color.White.copy(alpha = 0.20f)
+            for (i in 0 until 12) {
+                val tickAngle = (i * 30.0 - 90.0) * (Math.PI / 180.0)
+                val cosA = Math.cos(tickAngle).toFloat()
+                val sinA = Math.sin(tickAngle).toFloat()
+                drawLine(
+                    color = tickColor,
+                    start = Offset(center.x + cosA * tickInnerR, center.y + sinA * tickInnerR),
+                    end = Offset(center.x + cosA * tickOuterR, center.y + sinA * tickOuterR),
+                    strokeWidth = 1.8.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+            }
+
+            // Outer Neon Ring
+            val outerRingRadius = r - 3.dp.toPx()
+            drawCircle(glowColor.copy(alpha = 0.22f), radius = outerRingRadius, style = Stroke(width = 6.dp.toPx()))
+            drawCircle(glowColor.copy(alpha = 0.48f), radius = outerRingRadius, style = Stroke(width = 2.dp.toPx()))
+
+            // Baseline drop shadow behind cap
+            val capR = 48.dp.toPx()
+            drawCircle(
+                brush = Brush.radialGradient(listOf(Color.Black.copy(alpha = 0.82f), Color.Transparent), center = Offset(center.x, center.y + 8.dp.toPx()), radius = capR + 10.dp.toPx()),
+                center = Offset(center.x, center.y + 8.dp.toPx()),
+                radius = capR + 10.dp.toPx()
+            )
+        }
+
+        // Cap
+        Box(
+            modifier = Modifier
+                .size(96.dp)
+                .clip(CircleShape)
+                .background(capDomeGradient)
+                .border(1.dp, Color.Black.copy(alpha = 0.68f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val capW = size.width
+                val capH = size.height
+                val capR = size.minDimension / 2f
+
+                // Inset top specular arc
+                drawArc(Color.White.copy(alpha = 0.12f), 180f, 180f, false, Offset(1.5.dp.toPx(), 1.5.dp.toPx()), Size(capW - 3.dp.toPx(), capH - 3.dp.toPx()), style = Stroke(1.5.dp.toPx()))
+
+                // Inset bottom shadow
+                drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.84f)), capH * 0.65f, capH), Offset(0f, capH * 0.65f), Size(capW, capH * 0.35f))
+
+                // Knurled grip dashed ring
+                drawCircle(Color.White.copy(alpha = 0.075f), radius = capR - 5.dp.toPx(), style = Stroke(width = 4.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.5f, 5f), 0f)))
+
+                // Cap neon ring
+                val capRingRadius = capR - 13.dp.toPx()
+                drawCircle(glowColor.copy(alpha = 0.35f), radius = capRingRadius, style = Stroke(width = 4.dp.toPx()))
+                drawCircle(glowColor.copy(alpha = 0.80f), radius = capRingRadius, style = Stroke(width = 2.dp.toPx()))
+
+                // Specular lens reflection
+                drawOval(
+                    brush = Brush.radialGradient(listOf(Color.White.copy(alpha = 0.22f), Color.Transparent), Offset(capW * 0.50f, capH * 0.20f), capW * 0.30f),
+                    topLeft = Offset(capW * 0.25f, capH * 0.06f),
+                    size = Size(capW * 0.50f, capH * 0.28f)
+                )
+            }
+
+            // Center Dish
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(CircleShape)
+                    .background(dishGradient)
+                    .border(1.dp, Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.95f), Color.White.copy(alpha = 0.055f))), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (isLeft) "L" else "R",
+                    color = glowColor,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Exact visual match for ui/components/controller/FluxStickButton (in FluxJoystick.kt)
+ */
+@Preview
+@Composable
+internal fun StaticFluxStickButton(
+    isLeft: Boolean,
+    modifier: Modifier = Modifier,
+    label: String? = null
+) {
+    val key = label ?: if (isLeft) "LSB" else "RSB"
+    val glowColor = if (isLeft) Color(0xFF2FD4B6) else Color(0xFFFF3185)
+
+    val capDomeGradient = Brush.radialGradient(
+        colors = listOf(
+            Color(0xFF3D4145),
+            Color(0xFF202327),
+            Color(0xFF111316),
+            Color(0xFF050506)
+        ),
+        center = Offset(0.50f, 0.36f),
+        radius = 180f
+    )
+
+    val dishGradient = Brush.radialGradient(
+        colors = listOf(
+            Color(0xFF020203),
+            Color(0xFF0B0C0D),
+            Color(0xFF161719)
+        ),
+        center = Offset(0.50f, 0.58f),
+        radius = 80f
+    )
+
+    Box(
+        modifier = modifier
+            .size(70.dp)
+            .shadow(
+                elevation = 8.dp,
+                shape = CircleShape,
+                ambientColor = glowColor.copy(alpha = 0.5f),
+                spotColor = glowColor
+            )
+            .clip(CircleShape)
+            .background(capDomeGradient)
+            .border(
+                width = 1.dp,
+                color = Color.Black.copy(alpha = 0.75f),
+                shape = CircleShape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val r = size.minDimension / 2f
+
+            // Knurled grip dashed ring
+            drawCircle(
+                color = Color.White.copy(alpha = 0.08f),
+                radius = r - 4.dp.toPx(),
+                style = Stroke(
+                    width = 3.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(3f, 4f), 0f)
+                )
+            )
+
+            // Neon ring bloom
+            val ringRadius = r - 10.dp.toPx()
+            drawCircle(
+                color = glowColor.copy(alpha = 0.25f),
+                radius = ringRadius,
+                style = Stroke(width = 4.dp.toPx())
+            )
+            drawCircle(
+                color = glowColor.copy(alpha = 0.70f),
+                radius = ringRadius,
+                style = Stroke(width = 2.dp.toPx())
+            )
+        }
+
+        // Center Dish with Glyph
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .clip(CircleShape)
+                .background(dishGradient)
+                .border(
+                    width = 1.dp,
+                    color = Color.Black.copy(alpha = 0.85f),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = key,
+                color = glowColor,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+/**
+ * Exact visual match for ui/components/controller/RealisticStickButton (in RealisticJoystick.kt)
+ */
+@Composable
+private fun StaticRealisticStickButton(
+    isLeft: Boolean,
+    modifier: Modifier = Modifier,
+    label: String? = null
+) {
+    val key = label ?: if (isLeft) "LSB" else "RSB"
+    val accentColor = if (isLeft) Color.Cyan else Color(0xFFFF007F)
+
+    val baseGradient = Brush.radialGradient(
+        colors = listOf(Color(0xFF333333), Color(0xFF141414)),
+        center = Offset(0.35f, 0.35f),
+        radius = 160f
+    )
+
+    val dishGradient = Brush.radialGradient(
+        colors = listOf(Color(0xFF252525), Color(0xFF121212)),
+        center = Offset(0.5f, 0.5f),
+        radius = 90f
+    )
+
+    val shadow = Modifier.shadow(
+        elevation = 10.dp,
+        shape = CircleShape,
+        ambientColor = accentColor.copy(alpha = 0.5f),
+        spotColor = accentColor
+    )
+
+    Box(
+        modifier = modifier
+            .size(70.dp)
+            .then(shadow)
+            .clip(CircleShape)
+            .background(baseGradient),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val minDim = size.minDimension
+            // Outer bevel rim
+            drawCircle(
+                color = Color.White.copy(alpha = 0.35f),
+                radius = minDim / 2f - 2f,
+                style = Stroke(width = 3f)
+            )
+
+            // Dashed knurled grip ring
+            drawCircle(
+                color = Color.Black.copy(alpha = 0.6f),
+                radius = minDim / 2f - 6f,
+                style = Stroke(
+                    width = 3.5f,
+                    pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(5f, 5f), 0f)
+                )
+            )
+
+            // Inner concave dish ring
+            drawCircle(
+                color = accentColor.copy(alpha = 0.35f),
+                radius = minDim / 2f - 12f,
+                style = Stroke(width = 2f)
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(dishGradient),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = key,
+                color = accentColor,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 0.5.sp
+            )
+        }
+    }
+}
+
+/**
+ * Exact visual match for ui/components/controller/RealisticTouchPad.kt
+ */
+@Composable
+private fun StaticRealisticTouchPad(
+    isLeft: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val accentColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
+    val shape = RoundedCornerShape(26.dp)
+    val innerShape = RoundedCornerShape(18.dp)
+
+    val surfaceGradient = Brush.radialGradient(
+        colors = listOf(Color(0xFF23252B), Color(0xFF131418), Color(0xFF0B0C0E)),
+        center = Offset(0.4f, 0.4f),
+        radius = 280f
+    )
+
+    Box(
+        modifier = modifier
+            .size(180.dp)
+            .shadow(12.dp, shape, ambientColor = Color.Black, spotColor = Color.Black)
+            .clip(shape)
+            .background(surfaceGradient)
+            .border(BorderStroke(2.dp, Color(0xFF353C4A)), shape)
+            .padding(14.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        // Flat stationary trackpad surface
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(innerShape)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(Color.White.copy(alpha = 0.03f), Color.Transparent),
+                        radius = 200f
+                    )
+                )
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)), innerShape)
+        )
+
+        Text(
+            text = if (isLeft) "TOUCH MOVE • LTP" else "TOUCH LOOK • RTP",
+            fontSize = 10.sp,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Bold,
+            color = accentColor.copy(alpha = 0.65f),
+            letterSpacing = 1.2.sp,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 4.dp)
+        )
+
+        Text(
+            text = "2.0X BALLISTICS",
+            fontSize = 9.sp,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Normal,
+            color = Color.White.copy(alpha = 0.35f),
+            letterSpacing = 0.8.sp,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 4.dp)
+        )
+    }
+}
+
+/**
+ * Exact visual match for ui/components/controller/RealisticDPad.kt
+ */
+@Composable
+private fun StaticRealisticDPad(
+    modifier: Modifier = Modifier
+) {
+    val gradient = Brush.linearGradient(
+        colors = listOf(Color(0xFF2C2C2C), Color(0xFF141414)),
+        start = Offset(0f, 0f),
+        end = Offset(200f, 200f)
+    )
+    val shadow = Modifier.shadow(12.dp, crossShape, ambientColor = Color(0xFF4ADE80), spotColor = Color(0xFF00F0FF))
+
+    Box(
+        modifier = modifier
+            .size(140.dp)
+            .then(shadow)
+            .clip(crossShape)
+            .background(gradient),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val armW = w / 3f
+            val armH = h / 3f
+
+            // Cross indentations / bevel grooves
+            drawLine(
+                color = Color.Black.copy(alpha = 0.5f),
+                start = Offset(w / 2f, 0f),
+                end = Offset(w / 2f, h),
+                strokeWidth = 3f
+            )
+            drawLine(
+                color = Color.Black.copy(alpha = 0.5f),
+                start = Offset(0f, h / 2f),
+                end = Offset(w, h / 2f),
+                strokeWidth = 3f
+            )
+
+            // Directional Triangle Arrows
+            val arrowColor = Color.White.copy(alpha = 0.70f)
+            val arrowSize = 6.dp.toPx()
+
+            // UP Arrow
+            val upPath = Path().apply {
+                moveTo(w / 2f, armH * 0.45f - arrowSize)
+                lineTo(w / 2f + arrowSize, armH * 0.45f + arrowSize)
+                lineTo(w / 2f - arrowSize, armH * 0.45f + arrowSize)
+                close()
+            }
+            drawPath(path = upPath, color = arrowColor)
+
+            // DOWN Arrow
+            val downPath = Path().apply {
+                moveTo(w / 2f, h - armH * 0.45f + arrowSize)
+                lineTo(w / 2f + arrowSize, h - armH * 0.45f - arrowSize)
+                lineTo(w / 2f - arrowSize, h - armH * 0.45f - arrowSize)
+                close()
+            }
+            drawPath(path = downPath, color = arrowColor)
+
+            // LEFT Arrow
+            val leftPath = Path().apply {
+                moveTo(armW * 0.45f - arrowSize, h / 2f)
+                lineTo(armW * 0.45f + arrowSize, h / 2f - arrowSize)
+                lineTo(armW * 0.45f + arrowSize, h / 2f + arrowSize)
+                close()
+            }
+            drawPath(path = leftPath, color = arrowColor)
+
+            // RIGHT Arrow
+            val rightPath = Path().apply {
+                moveTo(w - armW * 0.45f + arrowSize, h / 2f)
+                lineTo(w - armW * 0.45f - arrowSize, h / 2f - arrowSize)
+                lineTo(w - armW * 0.45f - arrowSize, h / 2f + arrowSize)
+                close()
+            }
+            drawPath(path = rightPath, color = arrowColor)
+
+            // Center concave disc
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color(0xFF1F1F1F), Color(0xFF0D0D0D)),
+                    center = Offset(w / 2f, h / 2f),
+                    radius = 50f
+                ),
+                radius = armW * 0.45f,
+                center = Offset(w / 2f, h / 2f)
+            )
+            drawCircle(
+                color = Color.Black.copy(alpha = 0.6f),
+                radius = armW * 0.45f,
+                center = Offset(w / 2f, h / 2f),
+                style = Stroke(width = 2f)
+            )
+        }
+    }
+}
+
+/**
+ * Exact visual match for ui/components/controller/RealisticDPadButton (in RealisticDPad.kt)
+ */
+@Composable
+private fun StaticRealisticDPadButton(
+    direction: String,
+    modifier: Modifier = Modifier
+) {
+    val K = com.sanket.tools.nexpad.model.NexpadKeys
+    val dirSymbol = when (direction.uppercase()) {
+        K.UP    -> "▲"
+        K.DOWN  -> "▼"
+        K.LEFT  -> "◀"
+        K.RIGHT -> "▶"
+        else    -> direction
+    }
+
+    val themeColor = Color(0xFF00F0FF)
+    val shape = RoundedCornerShape(16.dp)
+
+    Box(
+        modifier = modifier
+            .size(72.dp)
+            .shadow(6.dp, shape, ambientColor = themeColor, spotColor = themeColor)
+            .clip(shape)
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(Color(0xFF262626), Color(0xFF141414))
+                )
+            )
+            .border(2.dp, themeColor.copy(alpha = 0.85f), shape),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = dirSymbol,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Black,
+                color = themeColor
+            )
+            Text(
+                text = direction.uppercase(),
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.LightGray.copy(alpha = 0.6f)
+            )
+        }
+    }
+}
+
+/**
+ * Exact visual match for ui/components/controller/RealisticTrigger.kt
+ */
+@Composable
+private fun StaticRealisticTrigger(
+    key: String,
+    isLeft: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val triggerShape = if (isLeft) {
+        RoundedCornerShape(topStart = 16.dp, topEnd = 8.dp, bottomStart = 50.dp, bottomEnd = 24.dp)
+    } else {
+        RoundedCornerShape(topStart = 8.dp, topEnd = 16.dp, bottomStart = 24.dp, bottomEnd = 50.dp)
+    }
+
+    val gradient = Brush.verticalGradient(
+        colors = listOf(Color(0xFF262626), Color(0xFF0A0A0A)),
+        startY = 0f,
+        endY = 200f
+    )
+
+    val spot = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF0055)
+    val ambient = if (isLeft) Color(0xFF0052CC) else Color(0xFFCC0044)
+
+    Box(
+        modifier = modifier
+            .size(100.dp, 160.dp)
+            .shadow(12.dp, triggerShape, spotColor = spot, ambientColor = ambient)
+            .clip(triggerShape)
+            .background(gradient),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawRect(
+                color = Color.Black.copy(alpha = 0.5f),
+                size = Size(size.width, size.height / 2),
+                topLeft = Offset(0f, size.height / 2)
+            )
+        }
+        val labelColor = if (isLeft) Color(0xFF00E5FF).copy(alpha = 0.85f) else Color(0xFFFF0055).copy(alpha = 0.85f)
+        Text(
+            text = key,
+            color = labelColor,
+            fontWeight = FontWeight.Bold,
+            fontSize = 24.sp,
+            modifier = Modifier.padding(bottom = 20.dp)
+        )
+    }
+}
+
+/**
+ * Exact visual match for ui/components/controller/RealisticBumper.kt
+ */
+@Composable
+private fun StaticRealisticBumper(
+    key: String,
+    isLeft: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val bumperShape = if (isLeft) {
+        RoundedCornerShape(topStart = 40.dp, topEnd = 14.dp, bottomStart = 14.dp, bottomEnd = 8.dp)
+    } else {
+        RoundedCornerShape(topStart = 14.dp, topEnd = 40.dp, bottomStart = 8.dp, bottomEnd = 14.dp)
+    }
+
+    val gradient = Brush.verticalGradient(
+        colors = listOf(Color(0xFF424242), Color(0xFF1A1A1A)),
+        startY = 0f,
+        endY = 100f
+    )
+
+    val spot = if (isLeft) Color(0xFF7C3AED) else Color(0xFF00E5FF)
+    val ambient = if (isLeft) Color(0xFFA78BFA) else Color(0xFF10B981)
+
+    Box(
+        modifier = modifier
+            .size(160.dp, 60.dp)
+            .shadow(8.dp, bumperShape, spotColor = spot, ambientColor = ambient)
+            .clip(bumperShape)
+            .background(gradient),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize().padding(4.dp)) {
+            val startX = if (isLeft) 24f else 10f
+            val endX = if (isLeft) size.width - 10f else size.width - 24f
+            drawLine(
+                color = Color.White.copy(alpha = 0.25f),
+                start = Offset(startX, 10f),
+                end = Offset(endX, 10f),
+                strokeWidth = 2f
+            )
+        }
+        val labelColor = if (isLeft) Color(0xFFA78BFA) else Color(0xFF00E5FF)
+        Text(
+            text = key,
+            color = labelColor,
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp
+        )
+    }
+}
+
+/**
+ * Exact visual match for ui/components/controller/RealisticSystemButton.kt
+ */
+@Composable
+private fun StaticRealisticSystemButton(
+    label: String,
+    textColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .size(60.dp)
+            .shadow(6.dp, CircleShape, ambientColor = Color.White, spotColor = Color.White)
+            .clip(CircleShape)
+            .background(Color(0xFF2B2B2B)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            color = textColor,
+            fontWeight = FontWeight.Bold,
+            fontSize = 20.sp
+        )
+    }
+}
+
+/**
+ * Exact visual match for ui/components/controller/RealisticMacroButton.kt
+ */
+@Composable
+private fun StaticRealisticMacroButton(
+    label: String,
+    modifier: Modifier = Modifier
+) {
+    val gradient = Brush.linearGradient(
+        colors = listOf(Color(0xFF333333), Color(0xFF111111))
+    )
+
+    Box(
+        modifier = modifier
+            .size(80.dp, 40.dp)
+            .shadow(6.dp, RoundedCornerShape(16.dp), spotColor = Color.Yellow)
+            .clip(RoundedCornerShape(16.dp))
+            .background(gradient),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp
+        )
+    }
+}

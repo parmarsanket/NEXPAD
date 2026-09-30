@@ -1,6 +1,8 @@
 package com.sanket.tools.nexpad.runtime.registry
 
 import com.sanket.tools.nexpad.runtime.model.*
+import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.nxprc.NxprcCategory
 
 object DefaultComponents {
 
@@ -10,8 +12,8 @@ object DefaultComponents {
             name = "Sci-Fi Hex Attack",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
-            defaultControl = "A",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.A.key,
             description = "Cyan holographic hexagonal attack button with spring bounce feedback."
         ),
         geometry = NxpGeometry(
@@ -51,8 +53,8 @@ object DefaultComponents {
             name = "Cyber Octa Burst",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
-            defaultControl = "B",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.B.key,
             description = "Neon crimson octagonal defense/burst button."
         ),
         geometry = NxpGeometry(
@@ -92,8 +94,8 @@ object DefaultComponents {
             name = "Sci-Fi Hex Y",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
-            defaultControl = "Y",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.Y.key,
             description = "Canary yellow holographic hexagonal action button."
         ),
         geometry = NxpGeometry(type = "Polygon", sides = 6, cornerRadius = 10f),
@@ -129,8 +131,8 @@ object DefaultComponents {
             name = "Sci-Fi Hex X",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
-            defaultControl = "X",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.X.key,
             description = "Cobalt blue holographic hexagonal action button."
         ),
         geometry = NxpGeometry(type = "Polygon", sides = 6, cornerRadius = 10f),
@@ -166,8 +168,8 @@ object DefaultComponents {
             name = "Sci-Fi Hex B",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
-            defaultControl = "B",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.B.key,
             description = "Crimson red holographic hexagonal action button."
         ),
         geometry = NxpGeometry(type = "Polygon", sides = 6, cornerRadius = 10f),
@@ -203,8 +205,8 @@ object DefaultComponents {
             name = "Cyber Octa Y",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
-            defaultControl = "Y",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.Y.key,
             description = "Neon amber octagonal heavy action button."
         ),
         geometry = NxpGeometry(type = "Polygon", sides = 8, cornerRadius = 8f),
@@ -237,8 +239,8 @@ object DefaultComponents {
             name = "Cyber Octa X",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
-            defaultControl = "X",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.X.key,
             description = "Neon sapphire octagonal action button."
         ),
         geometry = NxpGeometry(type = "Polygon", sides = 8, cornerRadius = 8f),
@@ -271,8 +273,8 @@ object DefaultComponents {
             name = "Cyber Octa A",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
-            defaultControl = "A",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.A.key,
             description = "Neon turquoise octagonal primary action button."
         ),
         geometry = NxpGeometry(type = "Polygon", sides = 8, cornerRadius = 8f),
@@ -305,8 +307,8 @@ object DefaultComponents {
             name = "Neon Matrix Analog Stick",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "JOYSTICK",
-            defaultControl = "LS",
+            category = NxprcCategory.JOYSTICK.id,
+            defaultControl = ControlKey.LS.key,
             description = "Floating dual-ring cyber analog stick with dynamic deadzone indicators."
         ),
         geometry = NxpGeometry(
@@ -334,8 +336,8 @@ object DefaultComponents {
             name = "Neon Diamond Reload",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
-            defaultControl = "X",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.X.key,
             description = "Cyan holographic diamond quick action button."
         ),
         geometry = NxpGeometry(
@@ -373,8 +375,8 @@ object DefaultComponents {
             name = "Plasma Triangle Heavy",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
-            defaultControl = "Y",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.Y.key,
             description = "Amber plasma power button with explosive kinetic pop."
         ),
         geometry = NxpGeometry(
@@ -411,8 +413,8 @@ object DefaultComponents {
             name = "Tactical Bumper LB",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUMPER",
-            defaultControl = "LB",
+            category = NxprcCategory.BUMPER.id,
+            defaultControl = ControlKey.LB.key,
             description = "Sleek aerodynamic left shoulder bumper with neon edge illumination."
         ),
         geometry = NxpGeometry(
@@ -447,8 +449,8 @@ object DefaultComponents {
             name = "Tactical Bumper RB",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUMPER",
-            defaultControl = "RB",
+            category = NxprcCategory.BUMPER.id,
+            defaultControl = ControlKey.RB.key,
             description = "Sleek aerodynamic right shoulder bumper with cyan edge illumination."
         ),
         geometry = NxpGeometry(
@@ -477,14 +479,182 @@ object DefaultComponents {
         size = NxpSize(widthDp = 104, heightDp = 50)
     )
 
+    val NEON_CYAN_BUMPER_LB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.neon_cyan_bumper_lb",
+            name = "Neon Cyan Bumper LB",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.BUMPER.id,
+            defaultControl = ControlKey.LB.key,
+            description = "High-tech cyan glowing shoulder bumper with precision microswitch tactile response."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 14f),
+        visual = NxpVisual(
+            fillColor = "#061A2B",
+            opacity = 0.92f,
+            borderColor = "#00F0FF",
+            borderWidth = 2.5f,
+            glowColor = "#00F0FF",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(scale = 0.92f, fillColor = "#00F0FF", borderColor = "#FFFFFF", glowRadius = 20f),
+        label = NxpLabel(text = "LB", color = "#00F0FF", pressedColor = "#000000", fontSize = 18f),
+        size = NxpSize(widthDp = 104, heightDp = 50)
+    )
+
+    val NEON_CYAN_BUMPER_RB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.neon_cyan_bumper_rb",
+            name = "Neon Cyan Bumper RB",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.BUMPER.id,
+            defaultControl = ControlKey.RB.key,
+            description = "High-tech cyan glowing shoulder bumper with precision microswitch tactile response."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 14f),
+        visual = NxpVisual(
+            fillColor = "#061A2B",
+            opacity = 0.92f,
+            borderColor = "#00F0FF",
+            borderWidth = 2.5f,
+            glowColor = "#00F0FF",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(scale = 0.92f, fillColor = "#00F0FF", borderColor = "#FFFFFF", glowRadius = 20f),
+        label = NxpLabel(text = "RB", color = "#00F0FF", pressedColor = "#000000", fontSize = 18f),
+        size = NxpSize(widthDp = 104, heightDp = 50)
+    )
+
+    val STEALTH_CARBON_LB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.stealth_carbon_lb",
+            name = "Stealth Carbon LB",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.BUMPER.id,
+            defaultControl = ControlKey.LB.key,
+            description = "Matte carbon weave bumper with subtle sky blue chamfered accent lines."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
+        visual = NxpVisual(
+            fillColor = "#1E293B",
+            opacity = 0.94f,
+            borderColor = "#38BDF8",
+            borderWidth = 2f,
+            glowColor = "#38BDF8",
+            glowRadius = 8f
+        ),
+        pressed = NxpPressedState(scale = 0.93f, fillColor = "#38BDF8", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "LB", color = "#E2E8F0", pressedColor = "#0F172A", fontSize = 17f),
+        size = NxpSize(widthDp = 104, heightDp = 50)
+    )
+
+    val STEALTH_CARBON_RB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.stealth_carbon_rb",
+            name = "Stealth Carbon RB",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.BUMPER.id,
+            defaultControl = ControlKey.RB.key,
+            description = "Matte carbon weave bumper with subtle sky blue chamfered accent lines."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
+        visual = NxpVisual(
+            fillColor = "#1E293B",
+            opacity = 0.94f,
+            borderColor = "#38BDF8",
+            borderWidth = 2f,
+            glowColor = "#38BDF8",
+            glowRadius = 8f
+        ),
+        pressed = NxpPressedState(scale = 0.93f, fillColor = "#38BDF8", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "RB", color = "#E2E8F0", pressedColor = "#0F172A", fontSize = 17f),
+        size = NxpSize(widthDp = 104, heightDp = 50)
+    )
+
+    val CRIMSON_MECHA_LB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.crimson_mecha_lb",
+            name = "Crimson Mecha LB",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.BUMPER.id,
+            defaultControl = ControlKey.LB.key,
+            description = "Aggressive crimson mecha-style bumper with high-intensity warning edge."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 14f),
+        visual = NxpVisual(
+            fillColor = "#1F0A12",
+            opacity = 0.92f,
+            borderColor = "#F43F5E",
+            borderWidth = 2.5f,
+            glowColor = "#F43F5E",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(scale = 0.92f, fillColor = "#F43F5E", borderColor = "#FFFFFF", glowRadius = 20f),
+        label = NxpLabel(text = "LB", color = "#FDA4AF", pressedColor = "#1F0A12", fontSize = 18f),
+        size = NxpSize(widthDp = 104, heightDp = 50)
+    )
+
+    val CRIMSON_MECHA_RB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.crimson_mecha_rb",
+            name = "Crimson Mecha RB",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.BUMPER.id,
+            defaultControl = ControlKey.RB.key,
+            description = "Aggressive crimson mecha-style bumper with high-intensity warning edge."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 14f),
+        visual = NxpVisual(
+            fillColor = "#1F0A12",
+            opacity = 0.92f,
+            borderColor = "#F43F5E",
+            borderWidth = 2.5f,
+            glowColor = "#F43F5E",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(scale = 0.92f, fillColor = "#F43F5E", borderColor = "#FFFFFF", glowRadius = 20f),
+        label = NxpLabel(text = "RB", color = "#FDA4AF", pressedColor = "#1F0A12", fontSize = 18f),
+        size = NxpSize(widthDp = 104, heightDp = 50)
+    )
+
+    val NEON_PULSE_B = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.neon_pulse_b",
+            name = "Neon Pulse B",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.B.key,
+            description = "Futuristic neon crimson circle action button."
+        ),
+        geometry = NxpGeometry(type = "Circle", cornerRadius = 38f),
+        visual = NxpVisual(
+            fillColor = "#1A050B",
+            opacity = 0.92f,
+            borderColor = "#FF1744",
+            borderWidth = 2.5f,
+            glowColor = "#FF1744",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(scale = 0.88f, fillColor = "#FF1744", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "B", color = "#FF1744", pressedColor = "#FFFFFF", fontSize = 24f),
+        size = NxpSize(widthDp = 76, heightDp = 76)
+    )
+
     val PULSE_TRIGGER_LT = NxpComponentDef(
         manifest = NxpManifest(
             id = "builtin.pulse_trigger_lt",
             name = "Impulse Trigger LT",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "TRIGGER",
-            defaultControl = "LT",
+            category = NxprcCategory.TRIGGER.id,
+            defaultControl = ControlKey.LT.key,
             description = "High-travel analog trigger with deep haptic feedback."
         ),
         geometry = NxpGeometry(
@@ -522,8 +692,8 @@ object DefaultComponents {
             name = "Impulse Trigger RT",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "TRIGGER",
-            defaultControl = "RT",
+            category = NxprcCategory.TRIGGER.id,
+            defaultControl = ControlKey.RT.key,
             description = "Hair-trigger accelerator with instant microswitch response."
         ),
         geometry = NxpGeometry(
@@ -561,8 +731,8 @@ object DefaultComponents {
             name = "Cyber Vortex RS Stick",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "JOYSTICK",
-            defaultControl = "RS",
+            category = NxprcCategory.JOYSTICK.id,
+            defaultControl = ControlKey.RS.key,
             description = "High-precision right thumbstick with reticle crosshair indicator."
         ),
         geometry = NxpGeometry(
@@ -592,8 +762,8 @@ object DefaultComponents {
             name = "Holo Cross D-Pad",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "DPAD",
-            defaultControl = "DPAD",
+            category = NxprcCategory.DPAD.id,
+            defaultControl = ControlKey.DPAD.key,
             description = "Holographic 4-way precision directional pad."
         ),
         geometry = NxpGeometry(
@@ -627,8 +797,8 @@ object DefaultComponents {
             name = "Cyber D-Pad Up",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "DPAD",
-            defaultControl = "UP",
+            category = NxprcCategory.DPAD.id,
+            defaultControl = ControlKey.UP.key,
             description = "Neon turquoise directional UP cap button."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
@@ -651,8 +821,8 @@ object DefaultComponents {
             name = "Cyber D-Pad Down",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "DPAD",
-            defaultControl = "DOWN",
+            category = NxprcCategory.DPAD.id,
+            defaultControl = ControlKey.DOWN.key,
             description = "Neon turquoise directional DOWN cap button."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
@@ -675,8 +845,8 @@ object DefaultComponents {
             name = "Cyber D-Pad Left",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "DPAD",
-            defaultControl = "LEFT",
+            category = NxprcCategory.DPAD.id,
+            defaultControl = ControlKey.LEFT.key,
             description = "Neon turquoise directional LEFT cap button."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
@@ -699,8 +869,8 @@ object DefaultComponents {
             name = "Cyber D-Pad Right",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "DPAD",
-            defaultControl = "RIGHT",
+            category = NxprcCategory.DPAD.id,
+            defaultControl = ControlKey.RIGHT.key,
             description = "Neon turquoise directional RIGHT cap button."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
@@ -723,8 +893,8 @@ object DefaultComponents {
             name = "Nexus Core Home Guide",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "HOME",
-            defaultControl = "XBOX",
+            category = NxprcCategory.SYSTEM.id,
+            defaultControl = ControlKey.GUIDE.key,
             description = "Floating orbital nexus guide button with breathing power core."
         ),
         geometry = NxpGeometry(
@@ -744,7 +914,7 @@ object DefaultComponents {
             borderColor = "#FFFFFF"
         ),
         label = NxpLabel(
-            text = "X",
+            text = "⨂",
             color = "#FFFFFF",
             pressedColor = "#064E3B",
             fontSize = 24f
@@ -758,8 +928,8 @@ object DefaultComponents {
             name = "Tactical Menu Pill",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "SYSTEM",
-            defaultControl = "MENU",
+            category = NxprcCategory.SYSTEM.id,
+            defaultControl = ControlKey.START.key,
             description = "Minimalist stealth system menu button."
         ),
         geometry = NxpGeometry(
@@ -791,8 +961,8 @@ object DefaultComponents {
             name = "Ergonomic Macro Paddle M1",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "MACRO",
-            defaultControl = "M1",
+            category = NxprcCategory.MACRO.id,
+            defaultControl = ControlKey.M1.key,
             description = "Low-latency custom macro paddle with instant actuator click."
         ),
         geometry = NxpGeometry(
@@ -832,8 +1002,8 @@ object DefaultComponents {
             name = "Default Button A (Green)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
-            defaultControl = "A",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.A.key,
             description = "Standard tactile action button with emerald green illumination."
         ),
         geometry = NxpGeometry(type = "Circle"),
@@ -866,8 +1036,8 @@ object DefaultComponents {
             name = "Default Button B (Red)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
-            defaultControl = "B",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.B.key,
             description = "Standard tactile action button with crimson red illumination."
         ),
         geometry = NxpGeometry(type = "Circle"),
@@ -900,8 +1070,8 @@ object DefaultComponents {
             name = "Default Button X (Blue)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
-            defaultControl = "X",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.X.key,
             description = "Standard tactile action button with cobalt blue illumination."
         ),
         geometry = NxpGeometry(type = "Circle"),
@@ -934,8 +1104,8 @@ object DefaultComponents {
             name = "Default Button Y (Yellow)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUTTON",
-            defaultControl = "Y",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.Y.key,
             description = "Standard tactile action button with canary yellow illumination."
         ),
         geometry = NxpGeometry(type = "Circle"),
@@ -968,8 +1138,8 @@ object DefaultComponents {
             name = "Default Left Stick (LS)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "JOYSTICK",
-            defaultControl = "LS",
+            category = NxprcCategory.JOYSTICK.id,
+            defaultControl = ControlKey.LS.key,
             description = "Dual-ring analog movement stick with textured concave grip and L3 click."
         ),
         geometry = NxpGeometry(type = "Circle"),
@@ -992,8 +1162,8 @@ object DefaultComponents {
             name = "Default Right Stick (RS)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "JOYSTICK",
-            defaultControl = "RS",
+            category = NxprcCategory.JOYSTICK.id,
+            defaultControl = ControlKey.RS.key,
             description = "High-precision aiming analog thumbstick with responsive centering and R3 click."
         ),
         geometry = NxpGeometry(type = "Circle"),
@@ -1010,14 +1180,206 @@ object DefaultComponents {
         size = NxpSize(widthDp = 150, heightDp = 150)
     )
 
+    val DEFAULT_STICK_LSB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_lsb",
+            name = "Default Left Stick Button (LSB)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.LSB.key,
+            description = "Standalone left thumbstick click button (L3 / LSB) for sprint or special actions."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#151515",
+            opacity = 0.92f,
+            borderColor = "#00E5FF",
+            borderWidth = 2f,
+            glowColor = "#00E5FF",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.90f, fillColor = "#00E5FF", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "LSB", color = "#00E5FF", pressedColor = "#000000", fontSize = 14f),
+        size = NxpSize(widthDp = 70, heightDp = 70)
+    )
+
+    val DEFAULT_STICK_RSB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_rsb",
+            name = "Default Right Stick Button (RSB)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.RSB.key,
+            description = "Standalone right thumbstick click button (R3 / RSB) for melee, crouch, or zoom actions."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#151515",
+            opacity = 0.92f,
+            borderColor = "#FF007F",
+            borderWidth = 2f,
+            glowColor = "#FF007F",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.90f, fillColor = "#FF007F", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "RSB", color = "#FF007F", pressedColor = "#000000", fontSize = 14f),
+        size = NxpSize(widthDp = 70, heightDp = 70)
+    )
+
+    val FLUX_STICK_LS = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.flux_ls",
+            name = "Flux Cyber Left Stick (LS)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.JOYSTICK.id,
+            defaultControl = ControlKey.LS.key,
+            description = "Console-grade cyber analog joystick with dynamic deflection gate arc and 12-tick dial."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#090A0B",
+            opacity = 0.95f,
+            borderColor = "#2FD4B6",
+            borderWidth = 2f,
+            glowColor = "#2FD4B6",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(fillColor = "#2FD4B6"),
+        interaction = NxpInteraction(type = "Joystick", deadzone = 0.05f),
+        size = NxpSize(widthDp = 150, heightDp = 150)
+    )
+
+    val FLUX_STICK_RS = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.flux_rs",
+            name = "Flux Cyber Right Stick (RS)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.JOYSTICK.id,
+            defaultControl = ControlKey.RS.key,
+            description = "Console-grade cyber analog joystick with neon magenta deflection gate arc and 12-tick dial."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#090A0B",
+            opacity = 0.95f,
+            borderColor = "#FF3185",
+            borderWidth = 2f,
+            glowColor = "#FF3185",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(fillColor = "#FF3185"),
+        interaction = NxpInteraction(type = "Joystick", deadzone = 0.05f),
+        size = NxpSize(widthDp = 150, heightDp = 150)
+    )
+
+    val FLUX_STICK_LSB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.flux_lsb",
+            name = "Flux Cyber Left Stick Button (LSB)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.LSB.key,
+            description = "Tactile Flux thumbstick click button (L3 / LSB) with knurled grip and cyan neon glow."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#111316",
+            opacity = 0.95f,
+            borderColor = "#2FD4B6",
+            borderWidth = 2f,
+            glowColor = "#2FD4B6",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.89f, fillColor = "#2FD4B6", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "LSB", color = "#2FD4B6", pressedColor = "#000000", fontSize = 14f),
+        size = NxpSize(widthDp = 70, heightDp = 70)
+    )
+
+    val FLUX_STICK_RSB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.flux_rsb",
+            name = "Flux Cyber Right Stick Button (RSB)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.RSB.key,
+            description = "Tactile Flux thumbstick click button (R3 / RSB) with knurled grip and hot-pink neon glow."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#111316",
+            opacity = 0.95f,
+            borderColor = "#FF3185",
+            borderWidth = 2f,
+            glowColor = "#FF3185",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.89f, fillColor = "#FF3185", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "RSB", color = "#FF3185", pressedColor = "#000000", fontSize = 14f),
+        size = NxpSize(widthDp = 70, heightDp = 70)
+    )
+
+    val DEFAULT_STICK_LTP = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_ltp",
+            name = "Default Left Touchpad (LTP)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.JOYSTICK.id,
+            defaultControl = ControlKey.LTP.key,
+            description = "Console-grade dynamic floating-center movement touchpad for mobile twin-stick gaming."
+        ),
+        geometry = NxpGeometry(type = "RoundedRectangle", cornerRadius = 26f),
+        visual = NxpVisual(
+            fillColor = "#131418",
+            opacity = 0.92f,
+            borderColor = "#00E5FF",
+            borderWidth = 2f,
+            glowColor = "#00E5FF",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(scale = 0.98f, fillColor = "#181A20", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "LTP", color = "#00E5FF", pressedColor = "#FFFFFF", fontSize = 16f),
+        size = NxpSize(widthDp = 180, heightDp = 180)
+    )
+
+    val DEFAULT_STICK_RTP = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.default_rtp",
+            name = "Default Right Touchpad (RTP)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.JOYSTICK.id,
+            defaultControl = ControlKey.RTP.key,
+            description = "Console-grade swipe-to-look camera trackpad with instant stop and momentum decay."
+        ),
+        geometry = NxpGeometry(type = "RoundedRectangle", cornerRadius = 26f),
+        visual = NxpVisual(
+            fillColor = "#131418",
+            opacity = 0.92f,
+            borderColor = "#FF007F",
+            borderWidth = 2f,
+            glowColor = "#FF007F",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(scale = 0.98f, fillColor = "#181A20", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "RTP", color = "#FF007F", pressedColor = "#FFFFFF", fontSize = 16f),
+        size = NxpSize(widthDp = 180, heightDp = 180)
+    )
+
     val DEFAULT_DPAD = NxpComponentDef(
         manifest = NxpManifest(
             id = "builtin.default_dpad",
             name = "Default D-Pad (Directional Cross)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "DPAD",
-            defaultControl = "DPAD",
+            category = NxprcCategory.DPAD.id,
+            defaultControl = ControlKey.DPAD.key,
             description = "Standard 4-way mechanical directional cross pad."
         ),
         geometry = NxpGeometry(type = "Polygon", sides = 8, cornerRadius = 8f),
@@ -1040,8 +1402,8 @@ object DefaultComponents {
             name = "Default D-Pad Up (▲)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "DPAD",
-            defaultControl = "UP",
+            category = NxprcCategory.DPAD.id,
+            defaultControl = ControlKey.UP.key,
             description = "Standard tactile directional UP button."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
@@ -1064,8 +1426,8 @@ object DefaultComponents {
             name = "Default D-Pad Down (▼)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "DPAD",
-            defaultControl = "DOWN",
+            category = NxprcCategory.DPAD.id,
+            defaultControl = ControlKey.DOWN.key,
             description = "Standard tactile directional DOWN button."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
@@ -1088,8 +1450,8 @@ object DefaultComponents {
             name = "Default D-Pad Left (◀)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "DPAD",
-            defaultControl = "LEFT",
+            category = NxprcCategory.DPAD.id,
+            defaultControl = ControlKey.LEFT.key,
             description = "Standard tactile directional LEFT button."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
@@ -1112,8 +1474,8 @@ object DefaultComponents {
             name = "Default D-Pad Right (▶)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "DPAD",
-            defaultControl = "RIGHT",
+            category = NxprcCategory.DPAD.id,
+            defaultControl = ControlKey.RIGHT.key,
             description = "Standard tactile directional RIGHT button."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 12f),
@@ -1136,8 +1498,8 @@ object DefaultComponents {
             name = "Default Left Trigger (LT)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "TRIGGER",
-            defaultControl = "LT",
+            category = NxprcCategory.TRIGGER.id,
+            defaultControl = ControlKey.LT.key,
             description = "Contoured analog shoulder trigger with full travel resistance."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 24f),
@@ -1161,8 +1523,8 @@ object DefaultComponents {
             name = "Default Right Trigger (RT)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "TRIGGER",
-            defaultControl = "RT",
+            category = NxprcCategory.TRIGGER.id,
+            defaultControl = ControlKey.RT.key,
             description = "Contoured analog shoulder trigger with quick accelerator response."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 24f),
@@ -1186,8 +1548,8 @@ object DefaultComponents {
             name = "Default Left Bumper (LB)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUMPER",
-            defaultControl = "LB",
+            category = NxprcCategory.BUMPER.id,
+            defaultControl = ControlKey.LB.key,
             description = "Aerodynamic shoulder bumper with crisp mechanical microswitch click."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 16f),
@@ -1210,8 +1572,8 @@ object DefaultComponents {
             name = "Default Right Bumper (RB)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "BUMPER",
-            defaultControl = "RB",
+            category = NxprcCategory.BUMPER.id,
+            defaultControl = ControlKey.RB.key,
             description = "Aerodynamic shoulder bumper with crisp mechanical microswitch click."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 16f),
@@ -1231,35 +1593,35 @@ object DefaultComponents {
     val DEFAULT_HOME_XBOX = NxpComponentDef(
         manifest = NxpManifest(
             id = "builtin.default_xbox",
-            name = "Default Xbox Guide (Home)",
+            name = "Default Nexus Guide",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "HOME",
-            defaultControl = "XBOX",
+            category = NxprcCategory.SYSTEM.id,
+            defaultControl = ControlKey.GUIDE.key,
             description = "Iconic centered Xbox guide button with luminous white badge."
         ),
         geometry = NxpGeometry(type = "Circle"),
         visual = NxpVisual(
             fillColor = "#181818",
             opacity = 0.95f,
-            borderColor = "#FFFFFF",
+            borderColor = "#00F0FF",
             borderWidth = 2f,
-            glowColor = "#FFFFFF",
+            glowColor = "#00F0FF",
             glowRadius = 12f
         ),
-        pressed = NxpPressedState(scale = 0.88f, fillColor = "#FFFFFF", borderColor = "#FFFFFF"),
-        label = NxpLabel(text = "X", color = "#FFFFFF", pressedColor = "#000000", fontSize = 24f),
+        pressed = NxpPressedState(scale = 0.88f, fillColor = "#00F0FF", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "⨂", color = "#00F0FF", pressedColor = "#000000", fontSize = 24f),
         size = NxpSize(widthDp = 60, heightDp = 60)
     )
 
     val DEFAULT_SYSTEM_VIEW = NxpComponentDef(
         manifest = NxpManifest(
             id = "builtin.default_view",
-            name = "Default View Button (V)",
+            name = "Default View Button",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "SYSTEM",
-            defaultControl = "VIEW",
+            category = NxprcCategory.SYSTEM.id,
+            defaultControl = ControlKey.BACK.key,
             description = "Xbox View / Back system navigation button."
         ),
         geometry = NxpGeometry(type = "Circle"),
@@ -1270,18 +1632,18 @@ object DefaultComponents {
             borderWidth = 1.5f
         ),
         pressed = NxpPressedState(scale = 0.88f, fillColor = "#94A3B8"),
-        label = NxpLabel(text = "V", color = "#FFFFFF", pressedColor = "#000000", fontSize = 18f),
+        label = NxpLabel(text = "⧉", color = "#FFFFFF", pressedColor = "#000000", fontSize = 18f),
         size = NxpSize(widthDp = 60, heightDp = 60)
     )
 
     val DEFAULT_SYSTEM_MENU = NxpComponentDef(
         manifest = NxpManifest(
             id = "builtin.default_menu",
-            name = "Default Menu Button (M)",
+            name = "Default Menu Button",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "SYSTEM",
-            defaultControl = "MENU",
+            category = NxprcCategory.SYSTEM.id,
+            defaultControl = ControlKey.START.key,
             description = "Xbox Menu / Pause system navigation button."
         ),
         geometry = NxpGeometry(type = "Circle"),
@@ -1292,18 +1654,18 @@ object DefaultComponents {
             borderWidth = 1.5f
         ),
         pressed = NxpPressedState(scale = 0.88f, fillColor = "#94A3B8"),
-        label = NxpLabel(text = "M", color = "#FFFFFF", pressedColor = "#000000", fontSize = 18f),
+        label = NxpLabel(text = "☰", color = "#FFFFFF", pressedColor = "#000000", fontSize = 18f),
         size = NxpSize(widthDp = 60, heightDp = 60)
     )
 
     val DEFAULT_SYSTEM_SHARE = NxpComponentDef(
         manifest = NxpManifest(
             id = "builtin.default_share",
-            name = "Default Share Button (S)",
+            name = "Default Share Button",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "SYSTEM",
-            defaultControl = "SHARE",
+            category = NxprcCategory.SYSTEM.id,
+            defaultControl = ControlKey.SHARE.key,
             description = "Xbox Share / Screenshot capture system button."
         ),
         geometry = NxpGeometry(type = "Circle"),
@@ -1314,7 +1676,7 @@ object DefaultComponents {
             borderWidth = 1.5f
         ),
         pressed = NxpPressedState(scale = 0.88f, fillColor = "#94A3B8"),
-        label = NxpLabel(text = "S", color = "#FFFFFF", pressedColor = "#000000", fontSize = 18f),
+        label = NxpLabel(text = "⇪", color = "#FFFFFF", pressedColor = "#000000", fontSize = 18f),
         size = NxpSize(widthDp = 60, heightDp = 60)
     )
 
@@ -1324,8 +1686,8 @@ object DefaultComponents {
             name = "Default Macro Paddle M1",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "MACRO",
-            defaultControl = "M1",
+            category = NxprcCategory.MACRO.id,
+            defaultControl = ControlKey.M1.key,
             description = "Standard ergonomic programmable macro paddle M1."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 16f),
@@ -1348,8 +1710,8 @@ object DefaultComponents {
             name = "Default Macro Paddle M2",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "MACRO",
-            defaultControl = "M2",
+            category = NxprcCategory.MACRO.id,
+            defaultControl = ControlKey.M2.key,
             description = "Standard ergonomic programmable macro paddle M2."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 16f),
@@ -1372,8 +1734,8 @@ object DefaultComponents {
             name = "Default Macro Paddle M3",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "MACRO",
-            defaultControl = "M3",
+            category = NxprcCategory.MACRO.id,
+            defaultControl = ControlKey.M3.key,
             description = "Standard ergonomic programmable macro paddle M3."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 16f),
@@ -1396,8 +1758,8 @@ object DefaultComponents {
             name = "Default Macro Paddle M4",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = "MACRO",
-            defaultControl = "M4",
+            category = NxprcCategory.MACRO.id,
+            defaultControl = ControlKey.M4.key,
             description = "Standard ergonomic programmable macro paddle M4."
         ),
         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 16f),
@@ -1426,6 +1788,10 @@ object DefaultComponents {
         DEFAULT_BUTTON_Y,
         DEFAULT_STICK_LS,
         DEFAULT_STICK_RS,
+        DEFAULT_STICK_LSB,
+        DEFAULT_STICK_RSB,
+        DEFAULT_STICK_LTP,
+        DEFAULT_STICK_RTP,
         DEFAULT_DPAD,
         DEFAULT_DPAD_UP,
         DEFAULT_DPAD_DOWN,
@@ -1444,6 +1810,12 @@ object DefaultComponents {
         DEFAULT_MACRO_M3,
         DEFAULT_MACRO_M4,
 
+        // Flux Cyber Suite
+        FLUX_STICK_LS,
+        FLUX_STICK_RS,
+        FLUX_STICK_LSB,
+        FLUX_STICK_RSB,
+
         // Custom Cyber / Sci-Fi Variant Skins
         SCIFI_HEX_ATTACK,
         SCIFI_HEX_Y,
@@ -1455,8 +1827,15 @@ object DefaultComponents {
         CYBER_OCTA_A,
         NEON_DIAMOND_X,
         PLASMA_TRIANGLE_Y,
+        NEON_PULSE_B,
         CYBER_BUMPER_LB,
         CYBER_BUMPER_RB,
+        NEON_CYAN_BUMPER_LB,
+        NEON_CYAN_BUMPER_RB,
+        STEALTH_CARBON_LB,
+        STEALTH_CARBON_RB,
+        CRIMSON_MECHA_LB,
+        CRIMSON_MECHA_RB,
         PULSE_TRIGGER_LT,
         PULSE_TRIGGER_RT,
         NEON_MATRIX_JOYSTICK,

@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.DashboardCustomize
 import androidx.compose.material.icons.rounded.Hub
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Settings
@@ -33,7 +32,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
+import com.sanket.tools.nexpad.ui.AppNavigator
 import com.sanket.tools.nexpad.ui.components.badge.HeaderStatusPill
 import com.sanket.tools.nexpad.ui.components.button.CommandButton
 import com.sanket.tools.nexpad.ui.components.effects.CyberGrid
@@ -44,10 +43,16 @@ import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.lazy.LazyColumn
+import com.sanket.tools.nexpad.ui.layout.adaptiveLayoutSpec
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    navController: NavController,
+    navController: AppNavigator,
     layoutManager: LayoutManager,
     viewModel: GamepadViewModel
 ) {
@@ -61,7 +66,7 @@ fun HomeScreen(
     val isAdbAvailable by viewModel.isAdbAvailable.collectAsState()
     val adbServerName by viewModel.adbServerName.collectAsState()
     val profiles by layoutManager.profilesFlow.collectAsState()
-    val activeProfile = layoutManager.getActiveProfile()
+    val activeProfileName by layoutManager.activeProfileNameFlow.collectAsState()
 
     LaunchedEffect(isConnected) {
         if (!isConnected) {
@@ -105,7 +110,13 @@ fun HomeScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
-        Box {
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            val layout = adaptiveLayoutSpec(maxWidth, maxHeight)
+
             CyberGrid(
                 modifier = Modifier.matchParentSize()
             )
@@ -114,112 +125,197 @@ fun HomeScreen(
                 modifier = Modifier.matchParentSize()
             )
 
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .verticalScroll(scrollState)
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
-            ) {
-                HeaderRow(isConnected = isConnected)
+            if (layout.useTwoPaneLayout) {
+                // ─────────────────────────────────────────────────────────────
+                // LANDSCAPE MODE (Two-Pane)
+                // Left Pane: Sticky "Ready to Play" Hero Station
+                // Right Pane: Independently Scrollable LazyColumn for Telemetry & Controls
+                // ─────────────────────────────────────────────────────────────
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = layout.horizontalPadding, vertical = layout.verticalPadding),
+                    horizontalArrangement = Arrangement.spacedBy(layout.paneSpacing)
+                ) {
+                    // Sticky Left Station
+                    Column(
+                        modifier = Modifier
+                            .weight(1.05f)
+                            .fillMaxHeight(),
+                        verticalArrangement = Arrangement.spacedBy(layout.contentSpacing)
+                    ) {
+                        HeaderRow(isConnected = isConnected)
 
-                VShapedPanel(
-                    profiles = profiles,
-                    activeProfileName = activeProfile.name,
-                    onProfileSelected = { selected ->
-                        if (selected.name != activeProfile.name) {
-                            layoutManager.setActiveProfile(selected.name)
+                        VShapedPanel(
+                            profiles = profiles,
+                            activeProfileName = activeProfileName,
+                            onProfileSelected = { selected ->
+                                if (!selected.name.equals(activeProfileName, ignoreCase = true)) {
+                                    layoutManager.setActiveProfile(selected.name)
+                                }
+                            },
+                            onPlayClick = { navController.navigate(Route.Gamepad()) },
+                            isCompact = layout.isShortScreen,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                        )
+                    }
+
+                    // Right Scrollable Pane
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(1.2f)
+                            .fillMaxHeight(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        contentPadding = PaddingValues(bottom = 16.dp)
+                    ) {
+                        item {
+                            Text(
+                                text = "Online Device",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                         }
-                    },
-                    onPlayClick = { navController.navigate("gamepad") }
-                )
 
-                Text(
-                    text = "Online Device",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                        item {
+                            DeviceHeroCard(
+                                isConnected = isConnected,
+                                servers = discoveredServers,
+                                stats = connectionStats,
+                                isAoaAttached = isAoaAttached && isUsbCableConnected,
+                                isAdbAvailable = isAdbAvailable,
+                                adbServerName = adbServerName,
+                                onConnectServer = { server ->
+                                    Log.d(
+                                        "NEXPAD",
+                                        "⏱️ [BENCHMARK] User CLICKED Connect (${if (server.isUsbTethering) "USB Tethering" else "Wi-Fi"}) button for ${server.name} (${server.ipAddress}:${server.port})"
+                                    )
+                                    viewModel.connect(server.ipAddress, server.port, server.name)
+                                },
+                                onConnectAoa = { viewModel.switchToAoaConnection() },
+                                onConnectAdb = { viewModel.switchToAdbConnection() },
+                                onDisconnectClick = { viewModel.disconnect() },
+                                onOpenConnectionHub = { navController.navigate(Route.Connections) }
+                            )
+                        }
 
-                DeviceHeroCard(
-                    isConnected = isConnected,
-                    servers = discoveredServers,
-                    stats = connectionStats,
-                    isAoaAttached = isAoaAttached && isUsbCableConnected,
-                    isAdbAvailable = isAdbAvailable,
-                    adbServerName = adbServerName,
-                    onConnectServer = { server ->
-                        Log.d(
-                            "NEXPAD",
-                            "⏱️ [BENCHMARK] User CLICKED Connect (${if (server.isUsbTethering) "USB Tethering" else "Wi-Fi"}) button for ${server.name} (${server.ipAddress}:${server.port})"
-                        )
-                        viewModel.connect(server.ipAddress, server.port, server.name)
-                    },
-                    onConnectAoa = { viewModel.switchToAoaConnection() },
-                    onConnectAdb = { viewModel.switchToAdbConnection() },
-                    onDisconnectClick = { viewModel.disconnect() },
-                    onOpenConnectionHub = { navController.navigate("connections") }
-                )
+                        item {
+                            Text(
+                                text = "Command Center",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
 
-                Text(
-                    text = "Command Center",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        CommandButton(
-                            label = "Virtual Controller",
-                            icon = Icons.Rounded.SportsEsports,
-                            iconColor = MaterialTheme.colorScheme.primary,
-                            onClick = { navController.navigate("virtual_controller") },
-                            modifier = Modifier.weight(1f)
-                        )
-                        CommandButton(
-                            label = "Connections",
-                            icon = Icons.Rounded.Hub,
-                            iconColor = NeonPalette.Cyan,
-                            onClick = { navController.navigate("connections") },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        CommandButton(
-                            label = "Button Studio",
-                            icon = Icons.Rounded.Palette,
-                            iconColor = NeonPalette.Purple,
-                            onClick = { navController.navigate("button_studio") },
-                            modifier = Modifier.weight(1f)
-                        )
-                        CommandButton(
-                            label = "HUD Editor",
-                            icon = Icons.Rounded.DashboardCustomize,
-                            iconColor = MaterialTheme.colorScheme.secondary,
-                            onClick = { navController.navigate("editor") },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        CommandButton(
-                            label = "Settings",
-                            icon = Icons.Rounded.Settings,
-                            iconColor = MaterialTheme.colorScheme.primaryContainer,
-                            onClick = { navController.navigate("settings") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        item {
+                            CommandCenterButtons(navController = navController)
+                        }
                     }
                 }
+            } else {
+                // ─────────────────────────────────────────────────────────────
+                // PORTRAIT MODE (Single Column)
+                // ─────────────────────────────────────────────────────────────
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollState)
+                        .padding(horizontal = layout.horizontalPadding, vertical = layout.verticalPadding),
+                    verticalArrangement = Arrangement.spacedBy(layout.contentSpacing)
+                ) {
+                    HeaderRow(isConnected = isConnected)
+
+                    VShapedPanel(
+                        profiles = profiles,
+                        activeProfileName = activeProfileName,
+                        onProfileSelected = { selected ->
+                            if (!selected.name.equals(activeProfileName, ignoreCase = true)) {
+                                layoutManager.setActiveProfile(selected.name)
+                            }
+                        },
+                        onPlayClick = { navController.navigate(Route.Gamepad()) }
+                    )
+
+                    Text(
+                        text = "Online Device",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    DeviceHeroCard(
+                        isConnected = isConnected,
+                        servers = discoveredServers,
+                        stats = connectionStats,
+                        isAoaAttached = isAoaAttached && isUsbCableConnected,
+                        isAdbAvailable = isAdbAvailable,
+                        adbServerName = adbServerName,
+                        onConnectServer = { server ->
+                            Log.d(
+                                "NEXPAD",
+                                "⏱️ [BENCHMARK] User CLICKED Connect (${if (server.isUsbTethering) "USB Tethering" else "Wi-Fi"}) button for ${server.name} (${server.ipAddress}:${server.port})"
+                            )
+                            viewModel.connect(server.ipAddress, server.port, server.name)
+                        },
+                        onConnectAoa = { viewModel.switchToAoaConnection() },
+                        onConnectAdb = { viewModel.switchToAdbConnection() },
+                        onDisconnectClick = { viewModel.disconnect() },
+                        onOpenConnectionHub = { navController.navigate(Route.Connections) }
+                    )
+
+                    Text(
+                        text = "Command Center",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    CommandCenterButtons(navController = navController)
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun CommandCenterButtons(navController: AppNavigator) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            CommandButton(
+                label = "Virtual Controller",
+                icon = Icons.Rounded.SportsEsports,
+                iconColor = MaterialTheme.colorScheme.primary,
+                onClick = { navController.navigate(Route.VirtualController) },
+                modifier = Modifier.weight(1f)
+            )
+            CommandButton(
+                label = "Connections",
+                icon = Icons.Rounded.Hub,
+                iconColor = NeonPalette.Cyan,
+                onClick = { navController.navigate(Route.Connections) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            CommandButton(
+                label = "Button Studio",
+                icon = Icons.Rounded.Palette,
+                iconColor = NeonPalette.Purple,
+                onClick = { navController.navigate(Route.ButtonStudio(mode = "viewer")) },
+                modifier = Modifier.weight(1f)
+            )
+            CommandButton(
+                label = "Settings",
+                icon = Icons.Rounded.Settings,
+                iconColor = MaterialTheme.colorScheme.primaryContainer,
+                onClick = { navController.navigate(Route.Settings) },
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }

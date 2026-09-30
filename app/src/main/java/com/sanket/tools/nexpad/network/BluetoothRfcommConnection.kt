@@ -1,6 +1,5 @@
 package com.sanket.tools.nexpad.network
 
-import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
@@ -90,7 +89,7 @@ class BluetoothRfcommConnection(private val context: Context) : IGamepadConnecti
     override var onNetworkPerformanceUpdated: ((latencyMs: Long, jitterMs: Float, packetLoss: Float) -> Unit)? = null
     override var onServerNameResolved: ((String) -> Unit)? = null
 
-    @SuppressLint("MissingPermission")
+    @androidx.annotation.RequiresPermission(android.Manifest.permission.BLUETOOTH_CONNECT)
     override suspend fun connect(address: String, port: Int) {
         withContext(Dispatchers.IO) {
             disconnect()
