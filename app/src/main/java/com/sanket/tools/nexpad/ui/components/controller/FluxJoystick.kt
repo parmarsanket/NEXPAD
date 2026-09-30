@@ -481,19 +481,6 @@ fun FluxJoystick(
                 )
             }
 
-            // Outer Neon Ring (.lx-ring): inset 3px, 2px border + glow
-            val outerRingRadius = r - 3.dp.toPx()
-            drawCircle(
-                color = glowColor.copy(alpha = 0.22f),
-                radius = outerRingRadius,
-                style = Stroke(width = 6.dp.toPx())
-            )
-            drawCircle(
-                color = glowColor.copy(alpha = 0.48f),
-                radius = outerRingRadius,
-                style = Stroke(width = 2.dp.toPx())
-            )
-
             // Dynamic Opposite-Casting 3D Drop Shadow behind moving cap (.lx-cap box-shadow):
             // calc(var(--dx) * -0.32) calc(8px + var(--dy) * -0.32) 12px rgba(0,0,0,0.82)
             val capR = 48.dp.toPx()
@@ -570,13 +557,21 @@ fun FluxJoystick(
 
                 // Cap Neon Ring (.lx-cap-ring): inset 13px, blooms brighter on touch
                 val capRingRadius = capR - 13.dp.toPx()
+                // Outer glow bloom
                 drawCircle(
                     color = glowColor.copy(alpha = capBloomAlpha * 0.35f),
                     radius = capRingRadius,
-                    style = Stroke(width = if (isDragging || isPressed) 6.dp.toPx() else 4.dp.toPx())
+                    style = Stroke(width = if (isDragging || isPressed) 7.dp.toPx() else 4.dp.toPx())
                 )
+                // Inner inset glow bloom
                 drawCircle(
-                    color = glowColor.copy(alpha = capBloomAlpha * 0.80f),
+                    color = glowColor.copy(alpha = capBloomAlpha * 0.20f),
+                    radius = capRingRadius - 2.dp.toPx(),
+                    style = Stroke(width = if (isDragging || isPressed) 5.dp.toPx() else 3.dp.toPx())
+                )
+                // Core crisp ring
+                drawCircle(
+                    color = glowColor.copy(alpha = capBloomAlpha * 0.85f),
                     radius = capRingRadius,
                     style = Stroke(width = 2.dp.toPx())
                 )
@@ -658,33 +653,69 @@ fun FluxJoystick(
                     )
                 }
 
-                // Neon Glyph (.lx-g): "L" / "R" with dual-layer neon bloom
+                // Neon Glyph (.lx-g): "L" / "R" with dual-layer neon bloom matching font-size: 40px
                 Text(
                     text = glyphLabel,
                     color = glowColor.copy(alpha = 0.35f),
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.Medium,
                     modifier = Modifier.offset(0.dp, (-0.5).dp)
                 )
                 Text(
                     text = glyphLabel,
+                    color = glowColor.copy(alpha = 0.65f),
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.offset(0.dp, (0.5).dp)
+                )
+                Text(
+                    text = glyphLabel,
                     color = glowColor,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         }
 
-        // Outer Glass Lens Rim (.lx-lens): Top-lit specular chamfer
+        // Top Overlay Canvas: Outer Neon Ring (.lx-ring, z-index: 10) & Glass Lens (.lx-lens, z-index: 20)
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
+            val r = size.minDimension / 2f
 
-            // Top-lit 1px chamfer rim
+            // Outer Neon Ring (.lx-ring, z-index: 10): inset 3px, 2px border + outer/inner glow
+            val outerRingRadius = r - 3.dp.toPx()
+            drawCircle(
+                color = glowColor.copy(alpha = 0.22f),
+                radius = outerRingRadius,
+                style = Stroke(width = 6.dp.toPx())
+            )
+            drawCircle(
+                color = glowColor.copy(alpha = 0.18f),
+                radius = outerRingRadius - 2.dp.toPx(),
+                style = Stroke(width = 3.dp.toPx())
+            )
+            drawCircle(
+                color = glowColor.copy(alpha = 0.48f),
+                radius = outerRingRadius,
+                style = Stroke(width = 2.dp.toPx())
+            )
+
+            // Outer Glass Lens (.lx-lens, z-index: 20): Top-lit specular chamfer
             drawArc(
                 color = Color.White.copy(alpha = 0.11f),
                 startAngle = 180f,
                 sweepAngle = 180f,
+                useCenter = false,
+                topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
+                size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
+                style = Stroke(width = 1.dp.toPx())
+            )
+            // Left subtle reflection
+            drawArc(
+                color = Color.White.copy(alpha = 0.055f),
+                startAngle = 90f,
+                sweepAngle = 90f,
                 useCenter = false,
                 topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
                 size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
@@ -699,6 +730,16 @@ fun FluxJoystick(
                 topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
                 size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
                 style = Stroke(width = 1.dp.toPx())
+            )
+            // Lower-right glass specular sheen: at 70% 78%
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.055f), Color.Transparent),
+                    center = Offset(w * 0.70f, h * 0.78f),
+                    radius = w * 0.20f
+                ),
+                center = Offset(w * 0.70f, h * 0.78f),
+                radius = w * 0.20f
             )
         }
     }

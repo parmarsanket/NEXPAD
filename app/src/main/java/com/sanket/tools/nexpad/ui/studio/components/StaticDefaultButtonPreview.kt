@@ -531,11 +531,6 @@ internal fun StaticFluxJoystick(
                 )
             }
 
-            // Outer Neon Ring
-            val outerRingRadius = r - 3.dp.toPx()
-            drawCircle(glowColor.copy(alpha = 0.22f), radius = outerRingRadius, style = Stroke(width = 6.dp.toPx()))
-            drawCircle(glowColor.copy(alpha = 0.48f), radius = outerRingRadius, style = Stroke(width = 2.dp.toPx()))
-
             // Baseline drop shadow behind cap
             val capR = 48.dp.toPx()
             drawCircle(
@@ -590,13 +585,43 @@ internal fun StaticFluxJoystick(
                     .border(1.dp, Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.95f), Color.White.copy(alpha = 0.055f))), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
+                // Neon Glyph (.lx-g): "L" / "R" with dual-layer neon bloom matching font-size: 40px
+                Text(
+                    text = if (isLeft) "L" else "R",
+                    color = glowColor.copy(alpha = 0.35f),
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.offset(0.dp, (-0.5).dp)
+                )
                 Text(
                     text = if (isLeft) "L" else "R",
                     color = glowColor,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
+        }
+
+        // Top Overlay Canvas: Outer Neon Ring (.lx-ring, z-index: 10) & Glass Lens (.lx-lens, z-index: 20)
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val r = size.minDimension / 2f
+
+            // Outer Neon Ring (.lx-ring, z-index: 10)
+            val outerRingRadius = r - 3.dp.toPx()
+            drawCircle(glowColor.copy(alpha = 0.22f), radius = outerRingRadius, style = Stroke(width = 6.dp.toPx()))
+            drawCircle(glowColor.copy(alpha = 0.18f), radius = outerRingRadius - 2.dp.toPx(), style = Stroke(width = 3.dp.toPx()))
+            drawCircle(glowColor.copy(alpha = 0.48f), radius = outerRingRadius, style = Stroke(width = 2.dp.toPx()))
+
+            // Outer Glass Lens (.lx-lens, z-index: 20): Top chamfer & specular sheen
+            drawArc(Color.White.copy(alpha = 0.11f), 180f, 180f, false, Offset(1.dp.toPx(), 1.dp.toPx()), Size(w - 2.dp.toPx(), h - 2.dp.toPx()), style = Stroke(1.dp.toPx()))
+            drawArc(Color.Black.copy(alpha = 0.30f), 0f, 180f, false, Offset(1.dp.toPx(), 1.dp.toPx()), Size(w - 2.dp.toPx(), h - 2.dp.toPx()), style = Stroke(1.dp.toPx()))
+            drawCircle(
+                brush = Brush.radialGradient(listOf(Color.White.copy(alpha = 0.055f), Color.Transparent), Offset(w * 0.70f, h * 0.78f), w * 0.20f),
+                center = Offset(w * 0.70f, h * 0.78f),
+                radius = w * 0.20f
+            )
         }
     }
 }
