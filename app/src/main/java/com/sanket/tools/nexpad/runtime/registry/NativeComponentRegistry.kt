@@ -259,6 +259,52 @@ object CompassRightJoystickVariant : BaseNativeVariant("builtin.compass_rs", Con
     }
 }
 
+object GyroLeftJoystickVariant : BaseNativeVariant("builtin.gyro_ls", ControlKey.LS, "Gyro Gimbal", 105) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        GyroJoystick(
+            isLeft = true,
+            isConnected = context.isConnected,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticGyroJoystick(
+            isLeft = true,
+            modifier = context.modifier
+        )
+    }
+}
+
+object GyroRightJoystickVariant : BaseNativeVariant("builtin.gyro_rs", ControlKey.RS, "Gyro Gimbal", 205) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        GyroJoystick(
+            isLeft = false,
+            isConnected = context.isConnected,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticGyroJoystick(
+            isLeft = false,
+            modifier = context.modifier
+        )
+    }
+}
+
 // =========================================================================
 // STICK BUTTON VARIANTS (LSB / RSB or L3 / R3)
 // =========================================================================
@@ -467,6 +513,58 @@ object CompassRightStickButtonVariant : BaseNativeVariant("builtin.compass_rsb",
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticCompassStickButton(
+            isLeft = false,
+            modifier = context.modifier
+        )
+    }
+}
+
+object GyroLeftStickButtonVariant : BaseNativeVariant("builtin.gyro_lsb", ControlKey.LSB, "Gyro Gimbal", 305) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        GyroStickButton(
+            isLeft = true,
+            key = K.LSB,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticGyroStickButton(
+            isLeft = true,
+            modifier = context.modifier
+        )
+    }
+}
+
+object GyroRightStickButtonVariant : BaseNativeVariant("builtin.gyro_rsb", ControlKey.RSB, "Gyro Gimbal", 405) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        GyroStickButton(
+            isLeft = false,
+            key = K.RSB,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticGyroStickButton(
             isLeft = false,
             modifier = context.modifier
         )
@@ -841,6 +939,12 @@ object DefaultNativeFamily {
         register(CompassRightJoystickVariant)
         register(CompassLeftStickButtonVariant)
         register(CompassRightStickButtonVariant)
+
+        // --- 5. Gyro Gimbal Variants (3D Tilting Concentric Gimbal Rings & Center Puck) ---
+        register(GyroLeftJoystickVariant)
+        register(GyroRightJoystickVariant)
+        register(GyroLeftStickButtonVariant)
+        register(GyroRightStickButtonVariant)
     }
 
     /**

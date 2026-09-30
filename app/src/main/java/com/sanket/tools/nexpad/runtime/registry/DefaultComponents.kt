@@ -1516,6 +1516,102 @@ object DefaultComponents {
         size = NxpSize(widthDp = 70, heightDp = 70)
     )
 
+    val GYRO_STICK_LS = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.gyro_ls",
+            name = "Gyro Gimbal Left Stick (LS)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.JOYSTICK.id,
+            defaultControl = ControlKey.LS.key,
+            description = "3D dual-gimbal analog joystick with counter-tilting suspension rings around a compact center puck."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#030304",
+            opacity = 0.95f,
+            borderColor = "#3FD2FF",
+            borderWidth = 2f,
+            glowColor = "#3FD2FF",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(fillColor = "#3FD2FF"),
+        interaction = NxpInteraction(type = "Joystick", deadzone = 0.05f),
+        size = NxpSize(widthDp = 150, heightDp = 150)
+    )
+
+    val GYRO_STICK_RS = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.gyro_rs",
+            name = "Gyro Gimbal Right Stick (RS)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.JOYSTICK.id,
+            defaultControl = ControlKey.RS.key,
+            description = "3D dual-gimbal analog joystick with counter-tilting suspension rings in electric magenta."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#030304",
+            opacity = 0.95f,
+            borderColor = "#FF3F85",
+            borderWidth = 2f,
+            glowColor = "#FF3F85",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(fillColor = "#FF3F85"),
+        interaction = NxpInteraction(type = "Joystick", deadzone = 0.05f),
+        size = NxpSize(widthDp = 150, heightDp = 150)
+    )
+
+    val GYRO_STICK_LSB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.gyro_lsb",
+            name = "Gyro Gimbal Left Stick Button (LSB)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.LSB.key,
+            description = "Tactile Gyro thumbstick click button (L3 / LSB) with concentric gimbal rings and electric cyan glow."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#34373B",
+            opacity = 0.95f,
+            borderColor = "#3FD2FF",
+            borderWidth = 2f,
+            glowColor = "#3FD2FF",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.89f, fillColor = "#3FD2FF", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "LSB", color = "#3FD2FF", pressedColor = "#000000", fontSize = 12f),
+        size = NxpSize(widthDp = 70, heightDp = 70)
+    )
+
+    val GYRO_STICK_RSB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.gyro_rsb",
+            name = "Gyro Gimbal Right Stick Button (RSB)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.RSB.key,
+            description = "Tactile Gyro thumbstick click button (R3 / RSB) with concentric gimbal rings and electric magenta glow."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#34373B",
+            opacity = 0.95f,
+            borderColor = "#FF3F85",
+            borderWidth = 2f,
+            glowColor = "#FF3F85",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.89f, fillColor = "#FF3F85", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "RSB", color = "#FF3F85", pressedColor = "#000000", fontSize = 12f),
+        size = NxpSize(widthDp = 70, heightDp = 70)
+    )
+
     val DEFAULT_STICK_LTP = NxpComponentDef(
         manifest = NxpManifest(
             id = "builtin.default_ltp",
@@ -2019,6 +2115,12 @@ object DefaultComponents {
         COMPASS_STICK_RS,
         COMPASS_STICK_LSB,
         COMPASS_STICK_RSB,
+
+        // Gyro Gimbal Suite
+        GYRO_STICK_LS,
+        GYRO_STICK_RS,
+        GYRO_STICK_LSB,
+        GYRO_STICK_RSB,
 
         // Custom Cyber / Sci-Fi Variant Skins
         SCIFI_HEX_ATTACK,

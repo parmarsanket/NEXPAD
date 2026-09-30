@@ -1371,6 +1371,259 @@ internal fun StaticCompassStickButton(
     }
 }
 
+/**
+ * Exact visual match for ui/components/controller/GyroJoystick.kt
+ */
+@Preview
+@Composable
+internal fun StaticGyroJoystick(
+    isLeft: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val glowColor = if (isLeft) Color(0xFF3FD2FF) else Color(0xFFFF3F85)
+
+    val socketGradient = Brush.radialGradient(
+        colors = listOf(Color(0xFF030304), Color(0xFF0A0B0C), Color(0xFF1A1C1E)),
+        center = Offset(0.5f, 0.5f),
+        radius = 280f
+    )
+
+    val puckDomeGradient = Brush.radialGradient(
+        colors = listOf(Color(0xFF34373B), Color(0xFF17181B), Color(0xFF050506)),
+        center = Offset(0.50f, 0.38f),
+        radius = 120f
+    )
+
+    Box(
+        modifier = modifier
+            .size(150.dp)
+            .shadow(12.dp, CircleShape, ambientColor = glowColor.copy(alpha = 0.4f), spotColor = glowColor)
+            .clip(CircleShape)
+            .background(socketGradient)
+            .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val center = Offset(w / 2f, h / 2f)
+
+            // Deep top inset shadow
+            drawRect(
+                brush = Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.95f), Color.Transparent), 0f, h * 0.38f),
+                topLeft = Offset.Zero,
+                size = Size(w, h * 0.38f)
+            )
+
+            // Puck baseline shadow
+            val puckR = 28.dp.toPx()
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color.Black.copy(alpha = 0.80f), Color.Transparent),
+                    center = Offset(center.x, center.y + 8.dp.toPx()),
+                    radius = puckR + 12.dp.toPx()
+                ),
+                center = Offset(center.x, center.y + 8.dp.toPx()),
+                radius = puckR + 12.dp.toPx()
+            )
+        }
+
+        // OUTER GIMBAL RING (.gim.o): 120dp
+        Box(modifier = Modifier.size(120.dp)) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val r = size.minDimension / 2f - 2.dp.toPx()
+                drawCircle(glowColor.copy(alpha = 0.25f), radius = r, style = Stroke(width = 6.dp.toPx()))
+                drawCircle(glowColor.copy(alpha = 0.55f), radius = r, style = Stroke(width = 2.dp.toPx()))
+            }
+        }
+
+        // INNER GIMBAL RING (.gim.i): 92dp
+        Box(modifier = Modifier.size(92.dp)) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val r = size.minDimension / 2f - 2.dp.toPx()
+                drawCircle(glowColor.copy(alpha = 0.25f), radius = r, style = Stroke(width = 6.dp.toPx()))
+                drawCircle(glowColor.copy(alpha = 0.55f), radius = r, style = Stroke(width = 2.dp.toPx()))
+            }
+        }
+
+        // COMPACT CENTER PUCK (.cap-puck .cap-gyro): 56dp
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .shadow(8.dp, CircleShape, ambientColor = glowColor.copy(alpha = 0.4f), spotColor = glowColor)
+                .clip(CircleShape)
+                .background(puckDomeGradient)
+                .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val puckW = size.width
+                val puckH = size.height
+                val puckR = size.minDimension / 2f
+                val puckCenter = Offset(puckW / 2f, puckH / 2f)
+
+                // Top specular rim
+                drawArc(
+                    color = Color.White.copy(alpha = 0.10f),
+                    startAngle = 180f,
+                    sweepAngle = 180f,
+                    useCenter = false,
+                    topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
+                    size = Size(puckW - 3.dp.toPx(), puckH - 3.dp.toPx()),
+                    style = Stroke(width = 1.5.dp.toPx())
+                )
+
+                // Inset bottom shadow
+                drawRect(
+                    brush = Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.80f)), puckH * 0.65f, puckH),
+                    topLeft = Offset(0f, puckH * 0.65f),
+                    size = Size(puckW, puckH * 0.35f)
+                )
+
+                // Puck Neon Ring (.puck-ring): inset 4px
+                val ringRadius = puckR - 4.dp.toPx()
+                drawCircle(glowColor.copy(alpha = 0.25f), radius = ringRadius, style = Stroke(width = 4.dp.toPx()))
+                drawCircle(glowColor.copy(alpha = 0.70f), radius = ringRadius, style = Stroke(width = 2.dp.toPx()))
+
+                // Central Luminous Core Dot (.puck-dot): 9dp
+                val dotRadius = 4.5.dp.toPx()
+                drawCircle(
+                    brush = Brush.radialGradient(listOf(glowColor, glowColor.copy(alpha = 0.30f), Color.Transparent), puckCenter, dotRadius + 5.dp.toPx()),
+                    center = puckCenter,
+                    radius = dotRadius + 5.dp.toPx()
+                )
+                drawCircle(glowColor, dotRadius, puckCenter)
+
+                // Dynamic Cap Specular Lens (.puck-lens)
+                drawOval(
+                    brush = Brush.radialGradient(listOf(Color.White.copy(alpha = 0.22f), Color.Transparent), Offset(puckW * 0.50f, puckH * 0.20f), puckW * 0.30f),
+                    topLeft = Offset(puckW * 0.29f, puckH * 0.08f),
+                    size = Size(puckW * 0.42f, puckH * 0.24f)
+                )
+            }
+        }
+
+        // Top Glass Lens Overlay (.lx-lens)
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val r = size.minDimension / 2f
+
+            // Outer Neon Ring (.lx-ring): inset 3px
+            val outerRingRadius = r - 3.dp.toPx()
+            drawCircle(glowColor.copy(alpha = 0.22f), radius = outerRingRadius, style = Stroke(6.dp.toPx()))
+            drawCircle(glowColor.copy(alpha = 0.18f), radius = outerRingRadius - 2.dp.toPx(), style = Stroke(3.dp.toPx()))
+            drawCircle(glowColor.copy(alpha = 0.45f), radius = outerRingRadius, style = Stroke(2.dp.toPx()))
+
+            // Outer Glass Lens (.lx-lens)
+            drawArc(Color.White.copy(alpha = 0.12f), 180f, 180f, false, Offset(1.dp.toPx(), 1.dp.toPx()), Size(w - 2.dp.toPx(), h - 2.dp.toPx()), style = Stroke(1.dp.toPx()))
+            drawArc(Color.White.copy(alpha = 0.06f), 90f, 90f, false, Offset(1.dp.toPx(), 1.dp.toPx()), Size(w - 2.dp.toPx(), h - 2.dp.toPx()), style = Stroke(1.dp.toPx()))
+            drawArc(Color.Black.copy(alpha = 0.30f), 0f, 180f, false, Offset(1.dp.toPx(), 1.dp.toPx()), Size(w - 2.dp.toPx(), h - 2.dp.toPx()), style = Stroke(1.dp.toPx()))
+            drawCircle(
+                brush = Brush.radialGradient(listOf(Color.White.copy(alpha = 0.06f), Color.Transparent), Offset(w * 0.70f, h * 0.78f), w * 0.20f),
+                center = Offset(w * 0.70f, h * 0.78f),
+                radius = w * 0.20f
+            )
+        }
+    }
+}
+
+/**
+ * Exact visual match for ui/components/controller/GyroStickButton (in GyroJoystick.kt)
+ */
+@Preview
+@Composable
+internal fun StaticGyroStickButton(
+    isLeft: Boolean,
+    modifier: Modifier = Modifier,
+    label: String? = null
+) {
+    val key = label ?: if (isLeft) "LSB" else "RSB"
+    val glowColor = if (isLeft) Color(0xFF3FD2FF) else Color(0xFFFF3F85)
+
+    val puckDomeGradient = Brush.radialGradient(
+        colors = listOf(Color(0xFF34373B), Color(0xFF17181B), Color(0xFF050506)),
+        center = Offset(0.50f, 0.38f),
+        radius = 140f
+    )
+
+    Box(
+        modifier = modifier
+            .size(70.dp)
+            .shadow(8.dp, CircleShape, ambientColor = glowColor.copy(alpha = 0.5f), spotColor = glowColor)
+            .clip(CircleShape)
+            .background(puckDomeGradient)
+            .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val r = size.minDimension / 2f
+            val center = Offset(w / 2f, h / 2f)
+
+            // Top specular arc
+            drawArc(
+                color = Color.White.copy(alpha = 0.14f),
+                startAngle = 180f,
+                sweepAngle = 180f,
+                useCenter = false,
+                topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
+                size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
+                style = Stroke(width = 1.5.dp.toPx())
+            )
+
+            // Bottom inset shadow
+            val botShadowH = h * 0.38f
+            drawRect(
+                brush = Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.80f)), h - botShadowH, h),
+                topLeft = Offset(0f, h - botShadowH),
+                size = Size(w, botShadowH)
+            )
+
+            // Outer Concentric Gimbal Ring
+            val outerGimbalR = r - 5.dp.toPx()
+            drawCircle(glowColor.copy(alpha = 0.20f), radius = outerGimbalR, style = Stroke(width = 4.dp.toPx()))
+            drawCircle(glowColor.copy(alpha = 0.65f), radius = outerGimbalR, style = Stroke(width = 1.8.dp.toPx()))
+
+            // Inner Concentric Gimbal Ring
+            val innerGimbalR = r - 13.dp.toPx()
+            drawCircle(glowColor.copy(alpha = 0.18f), radius = innerGimbalR, style = Stroke(width = 3.dp.toPx()))
+            drawCircle(glowColor.copy(alpha = 0.50f), radius = innerGimbalR, style = Stroke(width = 1.5.dp.toPx()))
+
+            // Specular lens highlight
+            drawOval(
+                brush = Brush.radialGradient(listOf(Color.White.copy(alpha = 0.25f), Color.Transparent), Offset(w * 0.36f, h * 0.24f), w * 0.28f),
+                topLeft = Offset(w * 0.16f, h * 0.10f),
+                size = Size(w * 0.40f, h * 0.28f)
+            )
+        }
+
+        // Center Puck with Label
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(Color(0xFF030304), Color(0xFF121314)),
+                        center = Offset(0.50f, 0.60f),
+                        radius = 60f
+                    )
+                )
+                .border(1.dp, glowColor.copy(alpha = 0.60f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = key,
+                color = glowColor,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
 
 
 /**

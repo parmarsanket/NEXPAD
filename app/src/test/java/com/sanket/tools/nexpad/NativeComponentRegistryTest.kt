@@ -123,20 +123,50 @@ class NativeComponentRegistryTest {
     }
 
     @Test
+    fun testGyroGimbalVariantsRegistered() {
+        val gyroLs = DefaultNativeFamily.getVariant("builtin.gyro_ls")
+        assertNotNull("Gyro LS must be registered in DefaultNativeFamily", gyroLs)
+        assertEquals(ControlKey.LS, gyroLs!!.controlKey)
+        assertEquals(105, gyroLs.seedCode)
+        assertFalse(gyroLs.isBaselineDefault)
+        assertEquals("Gyro Gimbal", gyroLs.variantName)
+
+        val gyroRs = DefaultNativeFamily.getVariant("builtin.gyro_rs")
+        assertNotNull("Gyro RS must be registered in DefaultNativeFamily", gyroRs)
+        assertEquals(ControlKey.RS, gyroRs!!.controlKey)
+        assertEquals(205, gyroRs.seedCode)
+        assertFalse(gyroRs.isBaselineDefault)
+
+        val gyroLsb = DefaultNativeFamily.getVariant("builtin.gyro_lsb")
+        assertNotNull("Gyro LSB must be registered in DefaultNativeFamily", gyroLsb)
+        assertEquals(ControlKey.LSB, gyroLsb!!.controlKey)
+        assertEquals(305, gyroLsb.seedCode)
+        assertFalse(gyroLsb.isBaselineDefault)
+
+        val gyroRsb = DefaultNativeFamily.getVariant("builtin.gyro_rsb")
+        assertNotNull("Gyro RSB must be registered in DefaultNativeFamily", gyroRsb)
+        assertEquals(ControlKey.RSB, gyroRsb!!.controlKey)
+        assertEquals(405, gyroRsb.seedCode)
+        assertFalse(gyroRsb.isBaselineDefault)
+    }
+
+    @Test
     fun testMultipleVariantsPerControlKey() {
         val lsVariants = DefaultNativeFamily.getVariantsFor(ControlKey.LS)
-        assertTrue("LS must have at least 4 variants (Realistic, Flux, Orb, Compass)", lsVariants.size >= 4)
+        assertTrue("LS must have at least 5 variants (Realistic, Flux, Orb, Compass, Gyro)", lsVariants.size >= 5)
         assertTrue(lsVariants.any { it.id == "builtin.default_ls" && it.seedCode == 101 })
         assertTrue(lsVariants.any { it.id == "builtin.flux_ls" && it.seedCode == 102 })
         assertTrue(lsVariants.any { it.id == "builtin.orb_ls" && it.seedCode == 103 })
         assertTrue(lsVariants.any { it.id == "builtin.compass_ls" && it.seedCode == 104 })
+        assertTrue(lsVariants.any { it.id == "builtin.gyro_ls" && it.seedCode == 105 })
 
         val rsVariants = DefaultNativeFamily.getVariantsFor(ControlKey.RS)
-        assertTrue("RS must have at least 4 variants", rsVariants.size >= 4)
+        assertTrue("RS must have at least 5 variants", rsVariants.size >= 5)
         assertTrue(rsVariants.any { it.id == "builtin.default_rs" && it.seedCode == 201 })
         assertTrue(rsVariants.any { it.id == "builtin.flux_rs" && it.seedCode == 202 })
         assertTrue(rsVariants.any { it.id == "builtin.orb_rs" && it.seedCode == 203 })
         assertTrue(rsVariants.any { it.id == "builtin.compass_rs" && it.seedCode == 204 })
+        assertTrue(rsVariants.any { it.id == "builtin.gyro_rs" && it.seedCode == 205 })
     }
 
     @Test
@@ -164,6 +194,11 @@ class NativeComponentRegistryTest {
         val compassLs = NativeComponentRegistry.resolveVariant("LS", "builtin.compass_ls")
         assertNotNull(compassLs)
         assertEquals(104, compassLs!!.seedCode)
+
+        // Gyro custom ID -> Gyro variant (seedCode 105)
+        val gyroLs = NativeComponentRegistry.resolveVariant("LS", "builtin.gyro_ls")
+        assertNotNull(gyroLs)
+        assertEquals(105, gyroLs!!.seedCode)
 
         // Non-existent custom ID -> falls back gracefully to baseline default
         val fallbackLs = NativeComponentRegistry.resolveVariant("LS", "non_existent_custom_id")
