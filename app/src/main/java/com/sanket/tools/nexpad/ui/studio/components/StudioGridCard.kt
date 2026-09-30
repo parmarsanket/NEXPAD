@@ -32,6 +32,7 @@ import com.sanket.tools.nexpad.runtime.model.NexPadControl
 import com.sanket.tools.nexpad.runtime.model.NoOpInputTarget
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
+import com.sanket.tools.nexpad.runtime.registry.NativeComponentRegistry
 import com.sanket.tools.nexpad.model.NexpadKeys as K
 import com.sanket.tools.nexpad.ui.studio.model.ButtonStudioMode
 import com.sanket.tools.nexpad.ui.studio.model.ButtonStudioType
@@ -127,7 +128,8 @@ fun StudioGridCard(
             val targetDim = (if (availableDim > 0f) availableDim else 92f) * scale
 
             // Centralized intrinsic dimension from protocol CategoryManager
-            val intrinsicMaxDim = if (type == ButtonStudioType.DEFAULT) {
+            val isNative = NativeComponentRegistry.isNativeBuiltin(def.manifest.id)
+            val intrinsicMaxDim = if (isNative) {
                 CategoryManager.resolveIntrinsicMaxDim(controlKey)
             } else {
                 CategoryManager.resolveIntrinsicMaxDim(controlKey, def.size.widthDp, def.size.heightDp)
@@ -142,8 +144,12 @@ fun StudioGridCard(
                 },
                 contentAlignment = Alignment.Center
             ) {
-                if (type == ButtonStudioType.DEFAULT) {
-                    StaticDefaultButtonPreview(controlKey = controlKey, labelStyle = labelStyle)
+                if (isNative) {
+                    NativeComponentRegistry.RenderStaticPreview(
+                        id = def.manifest.id,
+                        controlKey = controlKey,
+                        labelStyle = labelStyle
+                    )
                 } else if (type == ButtonStudioType.REMOTE_COMPOSE) {
                     val remoteRegistry = remember { RemoteComponentRegistry.getInstance(context) }
                     val doc = remember(def.manifest.id) { remoteRegistry.getComponent(def.manifest.id) }

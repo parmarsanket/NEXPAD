@@ -32,6 +32,7 @@ import com.sanket.tools.nexpad.runtime.model.NexPadControl
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
 import com.sanket.tools.nexpad.runtime.model.SandboxInputTarget
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
+import com.sanket.tools.nexpad.runtime.registry.NativeComponentRegistry
 import com.sanket.tools.nexpad.ui.components.controller.ControllerElementRenderer
 import com.sanket.tools.nexpad.ui.studio.model.resolveButtonSourceType
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
@@ -172,7 +173,7 @@ fun SandboxPreviewModal(
                             androidx.lifecycle.ViewModelProvider(activity)[GamepadViewModel::class.java]
                         }
                     } ?: viewModel<GamepadViewModel>(context as androidx.lifecycle.ViewModelStoreOwner)
-                    val isDefaultNative = componentDef.manifest.id.startsWith("builtin.default_")
+                    val isNative = NativeComponentRegistry.isNativeBuiltin(componentDef.manifest.id)
                     val isRemote = componentDef.manifest.id.startsWith("rc.")
                     val remoteDoc = remember(componentDef.manifest.id) {
                         if (isRemote) RemoteComponentRegistry.getInstance(context).getComponent(componentDef.manifest.id) else null
@@ -185,7 +186,7 @@ fun SandboxPreviewModal(
                     val targetDim = (if (availableDim > 0f) availableDim else 220f) * scale
 
                     // Centralized intrinsic dimension from protocol CategoryManager
-                    val intrinsicMaxDim = if (isDefaultNative) {
+                    val intrinsicMaxDim = if (isNative) {
                         CategoryManager.resolveIntrinsicMaxDim(controlKey)
                     } else {
                         CategoryManager.resolveIntrinsicMaxDim(controlKey, componentDef.size.widthDp, componentDef.size.heightDp)
@@ -224,7 +225,7 @@ fun SandboxPreviewModal(
                         },
                         contentAlignment = Alignment.Center
                     ) {
-                        if (isDefaultNative) {
+                        if (isNative) {
                             ControllerElementRenderer(
                                 key = controlKey,
                                 isConnected = true,
@@ -235,7 +236,7 @@ fun SandboxPreviewModal(
                                     eventCount++
                                     hapticHelper.performButtonClick()
                                 },
-                                customComponentId = null,
+                                customComponentId = componentDef.manifest.id,
                                 labelStyle = labelStyle
                             )
                         } else if (remoteDoc != null) {

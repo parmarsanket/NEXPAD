@@ -26,6 +26,7 @@ import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.model.HudElement
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
+import com.sanket.tools.nexpad.runtime.registry.NativeComponentRegistry
 import com.sanket.tools.nexpad.ui.components.controller.ControllerElementRenderer
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
@@ -89,7 +90,7 @@ fun HudCanvas(
                     )
 
                     // Broken asset warning badge when custom component is missing
-                    val isCustomSkin = element.skinId != null && !element.skinId.startsWith("builtin.default_")
+                    val isCustomSkin = element.skinId != null && !NativeComponentRegistry.isNativeBuiltin(element.skinId)
                     val isMissingSkin = remember(element.skinId, installedComponents, remoteDocs) {
                         if (!isCustomSkin) false
                         else {

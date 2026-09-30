@@ -2,6 +2,7 @@ package com.sanket.tools.nexpad.ui.studio.model
 
 import androidx.compose.ui.graphics.Color
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
+import com.sanket.tools.nexpad.runtime.registry.NativeComponentRegistry
 
 /**
  * Operating mode for Button Studio:
@@ -45,7 +46,7 @@ fun resolveButtonSourceType(id: String?): ButtonStudioType {
     if (id == null) return ButtonStudioType.DEFAULT
     return when {
         id.startsWith("rc.") -> ButtonStudioType.REMOTE_COMPOSE
-        id.startsWith("builtin.default_") -> ButtonStudioType.DEFAULT
+        NativeComponentRegistry.isNativeBuiltin(id) -> ButtonStudioType.DEFAULT
         id.startsWith("builtin.") -> ButtonStudioType.SVG
         else -> ButtonStudioType.PLUGIN
     }

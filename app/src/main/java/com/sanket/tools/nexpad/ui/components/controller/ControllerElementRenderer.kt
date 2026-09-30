@@ -3,25 +3,28 @@ package com.sanket.tools.nexpad.ui.components.controller
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.graphics.Color
-import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
-
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.runtime.engine.NxprcCanvasRenderer
 import com.sanket.tools.nexpad.runtime.engine.NxpComposeInterpreter
 import com.sanket.tools.nexpad.runtime.model.NexPadControl
 import com.sanket.tools.nexpad.runtime.model.asInputTarget
-import com.sanket.tools.nexpad.category.CategoryManager
-import com.sanket.tools.nexpad.category.CategoryType
-import com.sanket.tools.nexpad.category.ControlKey
-import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
+import com.sanket.tools.nexpad.runtime.registry.NativeComponentRegistry
+import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
 /**
- * Unified renderer for individual controller elements (joysticks, triggers, bumpers, dpad, buttons).
- * Supports both built-in realistic elements and dynamic custom NXP components.
+ * Scalable, industry-standard unified renderer for individual controller elements
+ * (joysticks, triggers, bumpers, dpad, action buttons, system buttons, touchpads).
+ *
+ * Dispatches cleanly across:
+ * 1. Remote Compose (.nxprc) documents
+ * 2. Native Compose elements (Realistic 3D, Flux Cyber, etc. via [NativeComponentRegistry])
+ * 3. Dynamic custom NXP JSON component skins
+ * 4. Safe baseline native fallback
  */
 @Composable
 fun ControllerElementRenderer(
@@ -32,10 +35,11 @@ fun ControllerElementRenderer(
     onVibrate: () -> Unit = {},
     customComponentId: String? = null,
     sensitivity: Float? = null,
-    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX
+    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val isDefaultNative = customComponentId == null || customComponentId.startsWith("builtin.default_")
+    val isNative = NativeComponentRegistry.isNativeBuiltin(customComponentId)
 
     val feedback by viewModel.feedbackFlow.collectAsState(initial = null)
     val rumbleIntensity = remember(feedback) {
@@ -45,6 +49,7 @@ fun ControllerElementRenderer(
         } else 0f
     }
 
+    // 1. Remote Compose (.nxprc) Document
     if (customComponentId != null && customComponentId.startsWith("rc.")) {
         val remoteRegistry = remember { RemoteComponentRegistry.getInstance(context) }
         val loadedDocs by remoteRegistry.loadedComponents.collectAsState()
@@ -76,8 +81,27 @@ fun ControllerElementRenderer(
         }
     }
 
-    val customDef = remember(customComponentId, isDefaultNative) {
-        if (isDefaultNative) null else ComponentRegistry.getInstance(context).getComponent(customComponentId)
+    // 2. Built-in Native Compose Elements (Realistic 3D, Flux Cyber, etc.)
+    if (isNative) {
+        NativeComponentRegistry.RenderNativeElement(
+            key = key,
+            customComponentId = customComponentId,
+            isConnected = isConnected,
+            isRgbEnabled = isRgbEnabled,
+            viewModel = viewModel,
+            onVibrate = onVibrate,
+            sensitivity = sensitivity,
+            labelStyle = labelStyle,
+            modifier = modifier
+        )
+        return
+    }
+
+    // 3. Dynamic Custom NXP JSON Skin
+    val customDef = remember(customComponentId) {
+        if (customComponentId != null) {
+            ComponentRegistry.getInstance(context).getComponent(customComponentId)
+        } else null
     }
 
     val K = com.sanket.tools.nexpad.model.NexpadKeys
@@ -99,174 +123,16 @@ fun ControllerElementRenderer(
         return
     }
 
-    val ctrl = ControlKey.fromIdentifier(key)
-    val displayLabel = CategoryManager.getLabelForStyle(key, labelStyle)
-    when (ctrl) {
-        ControlKey.LS -> RealisticJoystick(
-            isLeft = true,
-            isConnected = isConnected,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
-        )
-        ControlKey.RS -> RealisticJoystick(
-            isLeft = false,
-            isConnected = isConnected,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
-        )
-        ControlKey.LTP -> RealisticTouchPad(
-            isLeft = true,
-            isConnected = isConnected,
-            viewModel = viewModel,
-            onVibrate = onVibrate,
-            isRgbEnabled = isRgbEnabled,
-            sensitivity = sensitivity
-        )
-        ControlKey.RTP -> RealisticTouchPad(
-            isLeft = false,
-            isConnected = isConnected,
-            viewModel = viewModel,
-            onVibrate = onVibrate,
-            isRgbEnabled = isRgbEnabled,
-            sensitivity = sensitivity
-        )
-        ControlKey.LSB -> RealisticStickButton(
-            isLeft = true,
-            key = K.LSB,
-            isConnected = isConnected,
-            onVibrate = onVibrate,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled,
-            displayLabel = displayLabel
-        )
-        ControlKey.RSB -> RealisticStickButton(
-            isLeft = false,
-            key = K.RSB,
-            isConnected = isConnected,
-            onVibrate = onVibrate,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled,
-            displayLabel = displayLabel
-        )
-        ControlKey.DPAD -> RealisticDPad(
-            isConnected = isConnected,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled,
-            onVibrate = onVibrate
-        )
-        ControlKey.UP, ControlKey.DOWN, ControlKey.LEFT, ControlKey.RIGHT -> RealisticDPadButton(
-            direction = key,
-            isConnected = isConnected,
-            onVibrate = onVibrate,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
-        )
-        ControlKey.LT -> RealisticTrigger(
-            key = K.LT,
-            isConnected = isConnected,
-            onVibrate = onVibrate,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled,
-            displayLabel = displayLabel
-        )
-        ControlKey.RT -> RealisticTrigger(
-            key = K.RT,
-            isConnected = isConnected,
-            onVibrate = onVibrate,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled,
-            displayLabel = displayLabel
-        )
-        ControlKey.LB -> RealisticBumper(
-            key = K.LB,
-            isConnected = isConnected,
-            onVibrate = onVibrate,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled,
-            displayLabel = displayLabel
-        )
-        ControlKey.RB -> RealisticBumper(
-            key = K.RB,
-            isConnected = isConnected,
-            onVibrate = onVibrate,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled,
-            displayLabel = displayLabel
-        )
-        ControlKey.A -> RealisticButton(
-            key = K.A,
-            buttonColor = Color(0xFF3FD25A),
-            isConnected = isConnected,
-            onVibrate = onVibrate,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled,
-            displayLabel = displayLabel
-        )
-        ControlKey.B -> RealisticButton(
-            key = K.B,
-            buttonColor = Color(0xFFE6474E),
-            isConnected = isConnected,
-            onVibrate = onVibrate,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled,
-            displayLabel = displayLabel
-        )
-        ControlKey.X -> RealisticButton(
-            key = K.X,
-            buttonColor = Color(0xFF3F8FE0),
-            isConnected = isConnected,
-            onVibrate = onVibrate,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled,
-            displayLabel = displayLabel
-        )
-        ControlKey.Y -> RealisticButton(
-            key = K.Y,
-            buttonColor = Color(0xFFE0A03F),
-            isConnected = isConnected,
-            onVibrate = onVibrate,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled,
-            displayLabel = displayLabel
-        )
-        ControlKey.GUIDE, ControlKey.START, ControlKey.BACK, ControlKey.SHARE -> RealisticSystemButton(
-            key = key,
-            isConnected = isConnected,
-            onVibrate = onVibrate,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
-        )
-        ControlKey.M1, ControlKey.M2, ControlKey.M3, ControlKey.M4 -> RealisticMacroButton(
-            key = key,
-            isConnected = isConnected,
-            onVibrate = onVibrate,
-            viewModel = viewModel,
-            isRgbEnabled = isRgbEnabled
-        )
-        else -> when (ctrl?.categoryType) {
-            CategoryType.SYSTEM -> RealisticSystemButton(
-                key = key,
-                isConnected = isConnected,
-                onVibrate = onVibrate,
-                viewModel = viewModel,
-                isRgbEnabled = isRgbEnabled
-            )
-            CategoryType.MACROS -> RealisticMacroButton(
-                key = key,
-                isConnected = isConnected,
-                onVibrate = onVibrate,
-                viewModel = viewModel,
-                isRgbEnabled = isRgbEnabled
-            )
-            else -> RealisticButton(
-                key = key,
-                buttonColor = Color.Gray,
-                isConnected = isConnected,
-                onVibrate = onVibrate,
-                viewModel = viewModel,
-                isRgbEnabled = isRgbEnabled,
-                displayLabel = displayLabel
-            )
-        }
-    }
+    // 4. Safe Baseline Native Fallback
+    NativeComponentRegistry.RenderNativeElement(
+        key = key,
+        customComponentId = null,
+        isConnected = isConnected,
+        isRgbEnabled = isRgbEnabled,
+        viewModel = viewModel,
+        onVibrate = onVibrate,
+        sensitivity = sensitivity,
+        labelStyle = labelStyle,
+        modifier = modifier
+    )
 }

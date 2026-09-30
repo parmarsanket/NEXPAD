@@ -1228,6 +1228,102 @@ object DefaultComponents {
         size = NxpSize(widthDp = 70, heightDp = 70)
     )
 
+    val FLUX_STICK_LS = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.flux_ls",
+            name = "Flux Cyber Left Stick (LS)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.JOYSTICK.id,
+            defaultControl = ControlKey.LS.key,
+            description = "Console-grade cyber analog joystick with dynamic deflection gate arc and 12-tick dial."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#090A0B",
+            opacity = 0.95f,
+            borderColor = "#2FD4B6",
+            borderWidth = 2f,
+            glowColor = "#2FD4B6",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(fillColor = "#2FD4B6"),
+        interaction = NxpInteraction(type = "Joystick", deadzone = 0.05f),
+        size = NxpSize(widthDp = 150, heightDp = 150)
+    )
+
+    val FLUX_STICK_RS = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.flux_rs",
+            name = "Flux Cyber Right Stick (RS)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.JOYSTICK.id,
+            defaultControl = ControlKey.RS.key,
+            description = "Console-grade cyber analog joystick with neon magenta deflection gate arc and 12-tick dial."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#090A0B",
+            opacity = 0.95f,
+            borderColor = "#FF3185",
+            borderWidth = 2f,
+            glowColor = "#FF3185",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(fillColor = "#FF3185"),
+        interaction = NxpInteraction(type = "Joystick", deadzone = 0.05f),
+        size = NxpSize(widthDp = 150, heightDp = 150)
+    )
+
+    val FLUX_STICK_LSB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.flux_lsb",
+            name = "Flux Cyber Left Stick Button (LSB)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.LSB.key,
+            description = "Tactile Flux thumbstick click button (L3 / LSB) with knurled grip and cyan neon glow."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#111316",
+            opacity = 0.95f,
+            borderColor = "#2FD4B6",
+            borderWidth = 2f,
+            glowColor = "#2FD4B6",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.89f, fillColor = "#2FD4B6", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "LSB", color = "#2FD4B6", pressedColor = "#000000", fontSize = 14f),
+        size = NxpSize(widthDp = 70, heightDp = 70)
+    )
+
+    val FLUX_STICK_RSB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.flux_rsb",
+            name = "Flux Cyber Right Stick Button (RSB)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.RSB.key,
+            description = "Tactile Flux thumbstick click button (R3 / RSB) with knurled grip and hot-pink neon glow."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#111316",
+            opacity = 0.95f,
+            borderColor = "#FF3185",
+            borderWidth = 2f,
+            glowColor = "#FF3185",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.89f, fillColor = "#FF3185", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "RSB", color = "#FF3185", pressedColor = "#000000", fontSize = 14f),
+        size = NxpSize(widthDp = 70, heightDp = 70)
+    )
+
     val DEFAULT_STICK_LTP = NxpComponentDef(
         manifest = NxpManifest(
             id = "builtin.default_ltp",
@@ -1713,6 +1809,12 @@ object DefaultComponents {
         DEFAULT_MACRO_M2,
         DEFAULT_MACRO_M3,
         DEFAULT_MACRO_M4,
+
+        // Flux Cyber Suite
+        FLUX_STICK_LS,
+        FLUX_STICK_RS,
+        FLUX_STICK_LSB,
+        FLUX_STICK_RSB,
 
         // Custom Cyber / Sci-Fi Variant Skins
         SCIFI_HEX_ATTACK,
