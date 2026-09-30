@@ -44,6 +44,7 @@ import com.sanket.tools.nexpad.ui.components.controller.RightHorizonClipShape
 import androidx.compose.ui.unit.IntOffset
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import kotlin.math.cos
+import kotlin.math.hypot
 import kotlin.math.sin
 
 private val crossShape = GenericShape { size, _ ->
@@ -1590,6 +1591,323 @@ internal fun StaticGyroStickButton(
             val innerGimbalR = r - 13.dp.toPx()
             drawCircle(glowColor.copy(alpha = 0.18f), radius = innerGimbalR, style = Stroke(width = 3.dp.toPx()))
             drawCircle(glowColor.copy(alpha = 0.50f), radius = innerGimbalR, style = Stroke(width = 1.5.dp.toPx()))
+
+            // Specular lens highlight
+            drawOval(
+                brush = Brush.radialGradient(listOf(Color.White.copy(alpha = 0.25f), Color.Transparent), Offset(w * 0.36f, h * 0.24f), w * 0.28f),
+                topLeft = Offset(w * 0.16f, h * 0.10f),
+                size = Size(w * 0.40f, h * 0.28f)
+            )
+        }
+
+        // Center Puck with Label
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(Color(0xFF030304), Color(0xFF121314)),
+                        center = Offset(0.50f, 0.60f),
+                        radius = 60f
+                    )
+                )
+                .border(1.dp, glowColor.copy(alpha = 0.60f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = key,
+                color = glowColor,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+/**
+ * Exact visual match for ui/components/controller/SpotlightJoystick.kt
+ */
+@Preview
+@Composable
+internal fun StaticSpotlightJoystick(
+    isLeft: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val glowColor = if (isLeft) Color(0xFFFFD23F) else Color(0xFFFF3F85)
+
+    val socketGradient = Brush.radialGradient(
+        colors = listOf(Color(0xFF030304), Color(0xFF0A0B0C), Color(0xFF1A1C1E)),
+        center = Offset(0.5f, 0.5f),
+        radius = 280f
+    )
+
+    val puckDomeGradient = Brush.radialGradient(
+        colors = listOf(Color(0xFF34373B), Color(0xFF17181B), Color(0xFF050506)),
+        center = Offset(0.50f, 0.38f),
+        radius = 160f
+    )
+
+    Box(
+        modifier = modifier
+            .size(150.dp)
+            .shadow(12.dp, CircleShape, ambientColor = glowColor.copy(alpha = 0.4f), spotColor = glowColor)
+            .clip(CircleShape)
+            .background(socketGradient)
+            .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val r = size.minDimension / 2f
+            val center = Offset(w / 2f, h / 2f)
+
+            // Deep top inset shadow
+            drawRect(
+                brush = Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.95f), Color.Transparent), 0f, h * 0.38f),
+                topLeft = Offset.Zero,
+                size = Size(w, h * 0.38f)
+            )
+
+            // 1. Moving Light Pool (.lamp-pool): 62dp centered
+            val poolRadius = 62.dp.toPx()
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(glowColor.copy(alpha = 0.35f), glowColor.copy(alpha = 0.15f), Color.Transparent),
+                    center = center,
+                    radius = poolRadius
+                ),
+                center = center,
+                radius = poolRadius
+            )
+
+            // 2. Hidden Floor Dot Matrix (.lamp-floor): 14dp grid within 56dp spotlight circle
+            val dotSpacingPx = 14.dp.toPx()
+            val maskRadiusPx = 56.dp.toPx()
+            val maxSocketDistPx = r - 5.dp.toPx()
+            val minGrid = (-maskRadiusPx / dotSpacingPx).toInt() - 1
+            val maxGrid = (maskRadiusPx / dotSpacingPx).toInt() + 1
+
+            for (gx in minGrid..maxGrid) {
+                for (gy in minGrid..maxGrid) {
+                    val dotX = center.x + gx * dotSpacingPx
+                    val dotY = center.y + gy * dotSpacingPx
+                    val distFromSocket = hypot(dotX - center.x, dotY - center.y)
+                    if (distFromSocket > maxSocketDistPx) continue
+
+                    val dist = hypot(dotX - center.x, dotY - center.y)
+                    if (dist < maskRadiusPx) {
+                        val factor = (1f - dist / maskRadiusPx).coerceIn(0f, 1f)
+                        drawCircle(
+                            color = glowColor.copy(alpha = factor * 0.90f),
+                            radius = 1.3.dp.toPx(),
+                            center = Offset(dotX, dotY)
+                        )
+                        if (factor > 0.35f) {
+                            drawCircle(
+                                color = glowColor.copy(alpha = factor * 0.40f),
+                                radius = 2.4.dp.toPx(),
+                                center = Offset(dotX, dotY)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Puck baseline drop shadow
+            val puckR = 38.dp.toPx()
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color.Black.copy(alpha = 0.80f), Color.Transparent),
+                    center = Offset(center.x, center.y + 8.dp.toPx()),
+                    radius = puckR + 12.dp.toPx()
+                ),
+                center = Offset(center.x, center.y + 8.dp.toPx()),
+                radius = puckR + 12.dp.toPx()
+            )
+        }
+
+        // 76dp CENTER PUCK CAP (.cap-puck)
+        Box(
+            modifier = Modifier
+                .size(76.dp)
+                .shadow(10.dp, CircleShape, ambientColor = glowColor.copy(alpha = 0.4f), spotColor = glowColor)
+                .clip(CircleShape)
+                .background(puckDomeGradient)
+                .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val puckW = size.width
+                val puckH = size.height
+                val puckR = size.minDimension / 2f
+                val puckCenter = Offset(puckW / 2f, puckH / 2f)
+
+                // Top specular rim
+                drawArc(
+                    color = Color.White.copy(alpha = 0.10f),
+                    startAngle = 180f,
+                    sweepAngle = 180f,
+                    useCenter = false,
+                    topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
+                    size = Size(puckW - 3.dp.toPx(), puckH - 3.dp.toPx()),
+                    style = Stroke(width = 1.5.dp.toPx())
+                )
+
+                // Inset bottom shadow
+                val botShadowH = puckH * 0.35f
+                drawRect(
+                    brush = Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.80f)), puckH - botShadowH, puckH),
+                    topLeft = Offset(0f, puckH - botShadowH),
+                    size = Size(puckW, botShadowH)
+                )
+
+                // Puck Neon Containment Ring (.puck-ring): inset 5px
+                val ringRadius = puckR - 5.dp.toPx()
+                drawCircle(glowColor.copy(alpha = 0.35f), radius = ringRadius, style = Stroke(width = 4.dp.toPx()))
+                drawCircle(glowColor.copy(alpha = 0.85f), radius = ringRadius, style = Stroke(width = 2.dp.toPx()))
+
+                // Central Luminous Core Dot (.puck-dot): 12dp
+                val dotRadius = 6.dp.toPx()
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(glowColor, glowColor.copy(alpha = 0.40f), Color.Transparent),
+                        center = puckCenter,
+                        radius = dotRadius + 9.dp.toPx()
+                    ),
+                    center = puckCenter,
+                    radius = dotRadius + 9.dp.toPx()
+                )
+                drawCircle(color = glowColor, center = puckCenter, radius = dotRadius)
+
+                // Static Specular Lens (.puck-lens)
+                val specCenterX = puckW * 0.50f
+                val specCenterY = puckH * 0.20f
+                drawOval(
+                    brush = Brush.radialGradient(listOf(Color.White.copy(alpha = 0.22f), Color.Transparent), Offset(specCenterX, specCenterY), puckW * 0.30f),
+                    topLeft = Offset(specCenterX - puckW * 0.21f, specCenterY - puckH * 0.12f),
+                    size = Size(puckW * 0.42f, puckH * 0.24f)
+                )
+            }
+        }
+
+        // Top Glass Lens Overlay (.lx-lens & .lx-ring)
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val r = size.minDimension / 2f
+
+            // Outer Neon Ring (.lx-ring): inset 3px
+            val outerRingRadius = r - 3.dp.toPx()
+            drawCircle(glowColor.copy(alpha = 0.22f), radius = outerRingRadius, style = Stroke(width = 6.dp.toPx()))
+            drawCircle(glowColor.copy(alpha = 0.18f), radius = outerRingRadius - 2.dp.toPx(), style = Stroke(width = 3.dp.toPx()))
+            drawCircle(glowColor.copy(alpha = 0.45f), radius = outerRingRadius, style = Stroke(width = 2.dp.toPx()))
+
+            // Outer Glass Lens (.lx-lens)
+            drawArc(Color.White.copy(alpha = 0.12f), 180f, 180f, false, Offset(1.dp.toPx(), 1.dp.toPx()), Size(w - 2.dp.toPx(), h - 2.dp.toPx()), style = Stroke(1.dp.toPx()))
+            drawArc(Color.White.copy(alpha = 0.06f), 90f, 90f, false, Offset(1.dp.toPx(), 1.dp.toPx()), Size(w - 2.dp.toPx(), h - 2.dp.toPx()), style = Stroke(1.dp.toPx()))
+            drawArc(Color.Black.copy(alpha = 0.30f), 0f, 180f, false, Offset(1.dp.toPx(), 1.dp.toPx()), Size(w - 2.dp.toPx(), h - 2.dp.toPx()), style = Stroke(1.dp.toPx()))
+            drawCircle(
+                brush = Brush.radialGradient(listOf(Color.White.copy(alpha = 0.06f), Color.Transparent), Offset(w * 0.70f, h * 0.78f), w * 0.20f),
+                center = Offset(w * 0.70f, h * 0.78f),
+                radius = w * 0.20f
+            )
+        }
+    }
+}
+
+/**
+ * Exact visual match for ui/components/controller/SpotlightStickButton (in SpotlightJoystick.kt)
+ */
+@Preview
+@Composable
+internal fun StaticSpotlightStickButton(
+    isLeft: Boolean,
+    modifier: Modifier = Modifier,
+    label: String? = null
+) {
+    val key = label ?: if (isLeft) "LSB" else "RSB"
+    val glowColor = if (isLeft) Color(0xFFFFD23F) else Color(0xFFFF3F85)
+
+    val puckDomeGradient = Brush.radialGradient(
+        colors = listOf(Color(0xFF34373B), Color(0xFF17181B), Color(0xFF050506)),
+        center = Offset(0.50f, 0.38f),
+        radius = 140f
+    )
+
+    Box(
+        modifier = modifier
+            .size(70.dp)
+            .shadow(8.dp, CircleShape, ambientColor = glowColor.copy(alpha = 0.5f), spotColor = glowColor)
+            .clip(CircleShape)
+            .background(puckDomeGradient)
+            .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val r = size.minDimension / 2f
+            val center = Offset(w / 2f, h / 2f)
+
+            // Top specular arc
+            drawArc(
+                color = Color.White.copy(alpha = 0.14f),
+                startAngle = 180f,
+                sweepAngle = 180f,
+                useCenter = false,
+                topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
+                size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
+                style = Stroke(width = 1.5.dp.toPx())
+            )
+
+            // Bottom inset shadow
+            val botShadowH = h * 0.38f
+            drawRect(
+                brush = Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.80f)), h - botShadowH, h),
+                topLeft = Offset(0f, h - botShadowH),
+                size = Size(w, botShadowH)
+            )
+
+            // Centered Spotlight Light Pool: 32dp
+            val poolRadius = 32.dp.toPx()
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(glowColor.copy(alpha = 0.30f), glowColor.copy(alpha = 0.12f), Color.Transparent),
+                    center = center,
+                    radius = poolRadius
+                ),
+                center = center,
+                radius = poolRadius
+            )
+
+            // Floor Matrix Dots
+            val dotSpacingPx = 10.dp.toPx()
+            val maskRadiusPx = 28.dp.toPx()
+            val minGrid = (-maskRadiusPx / dotSpacingPx).toInt() - 1
+            val maxGrid = (maskRadiusPx / dotSpacingPx).toInt() + 1
+
+            for (gx in minGrid..maxGrid) {
+                for (gy in minGrid..maxGrid) {
+                    val dotX = center.x + gx * dotSpacingPx
+                    val dotY = center.y + gy * dotSpacingPx
+                    val dist = hypot(dotX - center.x, dotY - center.y)
+                    if (dist < maskRadiusPx) {
+                        val factor = (1f - dist / maskRadiusPx).coerceIn(0f, 1f)
+                        drawCircle(
+                            color = glowColor.copy(alpha = factor * 0.80f),
+                            radius = 1.1.dp.toPx(),
+                            center = Offset(dotX, dotY)
+                        )
+                    }
+                }
+            }
+
+            // Outer Neon Containment Ring
+            val outerRingR = r - 5.dp.toPx()
+            drawCircle(glowColor.copy(alpha = 0.20f), radius = outerRingR, style = Stroke(width = 4.dp.toPx()))
+            drawCircle(glowColor.copy(alpha = 0.70f), radius = outerRingR, style = Stroke(width = 1.8.dp.toPx()))
 
             // Specular lens highlight
             drawOval(

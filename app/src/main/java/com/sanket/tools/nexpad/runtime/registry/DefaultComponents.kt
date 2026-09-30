@@ -1612,6 +1612,102 @@ object DefaultComponents {
         size = NxpSize(widthDp = 70, heightDp = 70)
     )
 
+    val SPOTLIGHT_STICK_LS = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.spotlight_ls",
+            name = "Spotlight Left Stick (LS)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.JOYSTICK.id,
+            defaultControl = ControlKey.LS.key,
+            description = "Analog joystick with dynamic light pool revealing hidden floor dots under the moving center puck."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#030304",
+            opacity = 0.95f,
+            borderColor = "#FFD23F",
+            borderWidth = 2f,
+            glowColor = "#FFD23F",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(fillColor = "#FFD23F"),
+        interaction = NxpInteraction(type = "Joystick", deadzone = 0.05f),
+        size = NxpSize(widthDp = 150, heightDp = 150)
+    )
+
+    val SPOTLIGHT_STICK_RS = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.spotlight_rs",
+            name = "Spotlight Right Stick (RS)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.JOYSTICK.id,
+            defaultControl = ControlKey.RS.key,
+            description = "Analog joystick with dynamic light pool revealing hidden floor dots under the moving center puck in electric magenta."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#030304",
+            opacity = 0.95f,
+            borderColor = "#FF3F85",
+            borderWidth = 2f,
+            glowColor = "#FF3F85",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(fillColor = "#FF3F85"),
+        interaction = NxpInteraction(type = "Joystick", deadzone = 0.05f),
+        size = NxpSize(widthDp = 150, heightDp = 150)
+    )
+
+    val SPOTLIGHT_STICK_LSB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.spotlight_lsb",
+            name = "Spotlight Left Stick Button (LSB)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.LSB.key,
+            description = "Tactile Spotlight thumbstick click button (L3 / LSB) with floor light pool and warm gold glow."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#34373B",
+            opacity = 0.95f,
+            borderColor = "#FFD23F",
+            borderWidth = 2f,
+            glowColor = "#FFD23F",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.89f, fillColor = "#FFD23F", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "LSB", color = "#FFD23F", pressedColor = "#000000", fontSize = 12f),
+        size = NxpSize(widthDp = 70, heightDp = 70)
+    )
+
+    val SPOTLIGHT_STICK_RSB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.spotlight_rsb",
+            name = "Spotlight Right Stick Button (RSB)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.RSB.key,
+            description = "Tactile Spotlight thumbstick click button (R3 / RSB) with floor light pool and electric magenta glow."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#34373B",
+            opacity = 0.95f,
+            borderColor = "#FF3F85",
+            borderWidth = 2f,
+            glowColor = "#FF3F85",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.89f, fillColor = "#FF3F85", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "RSB", color = "#FF3F85", pressedColor = "#000000", fontSize = 12f),
+        size = NxpSize(widthDp = 70, heightDp = 70)
+    )
+
     val DEFAULT_STICK_LTP = NxpComponentDef(
         manifest = NxpManifest(
             id = "builtin.default_ltp",
@@ -2121,6 +2217,12 @@ object DefaultComponents {
         GYRO_STICK_RS,
         GYRO_STICK_LSB,
         GYRO_STICK_RSB,
+
+        // Spotlight Suite
+        SPOTLIGHT_STICK_LS,
+        SPOTLIGHT_STICK_RS,
+        SPOTLIGHT_STICK_LSB,
+        SPOTLIGHT_STICK_RSB,
 
         // Custom Cyber / Sci-Fi Variant Skins
         SCIFI_HEX_ATTACK,

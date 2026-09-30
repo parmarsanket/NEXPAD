@@ -151,22 +151,52 @@ class NativeComponentRegistryTest {
     }
 
     @Test
+    fun testSpotlightVariantsRegistered() {
+        val spotLs = DefaultNativeFamily.getVariant("builtin.spotlight_ls")
+        assertNotNull("Spotlight LS must be registered in DefaultNativeFamily", spotLs)
+        assertEquals(ControlKey.LS, spotLs!!.controlKey)
+        assertEquals(106, spotLs.seedCode)
+        assertFalse(spotLs.isBaselineDefault)
+        assertEquals("Spotlight", spotLs.variantName)
+
+        val spotRs = DefaultNativeFamily.getVariant("builtin.spotlight_rs")
+        assertNotNull("Spotlight RS must be registered in DefaultNativeFamily", spotRs)
+        assertEquals(ControlKey.RS, spotRs!!.controlKey)
+        assertEquals(206, spotRs.seedCode)
+        assertFalse(spotRs.isBaselineDefault)
+
+        val spotLsb = DefaultNativeFamily.getVariant("builtin.spotlight_lsb")
+        assertNotNull("Spotlight LSB must be registered in DefaultNativeFamily", spotLsb)
+        assertEquals(ControlKey.LSB, spotLsb!!.controlKey)
+        assertEquals(306, spotLsb.seedCode)
+        assertFalse(spotLsb.isBaselineDefault)
+
+        val spotRsb = DefaultNativeFamily.getVariant("builtin.spotlight_rsb")
+        assertNotNull("Spotlight RSB must be registered in DefaultNativeFamily", spotRsb)
+        assertEquals(ControlKey.RSB, spotRsb!!.controlKey)
+        assertEquals(406, spotRsb.seedCode)
+        assertFalse(spotRsb.isBaselineDefault)
+    }
+
+    @Test
     fun testMultipleVariantsPerControlKey() {
         val lsVariants = DefaultNativeFamily.getVariantsFor(ControlKey.LS)
-        assertTrue("LS must have at least 5 variants (Realistic, Flux, Orb, Compass, Gyro)", lsVariants.size >= 5)
+        assertTrue("LS must have at least 6 variants (Realistic, Flux, Orb, Compass, Gyro, Spotlight)", lsVariants.size >= 6)
         assertTrue(lsVariants.any { it.id == "builtin.default_ls" && it.seedCode == 101 })
         assertTrue(lsVariants.any { it.id == "builtin.flux_ls" && it.seedCode == 102 })
         assertTrue(lsVariants.any { it.id == "builtin.orb_ls" && it.seedCode == 103 })
         assertTrue(lsVariants.any { it.id == "builtin.compass_ls" && it.seedCode == 104 })
         assertTrue(lsVariants.any { it.id == "builtin.gyro_ls" && it.seedCode == 105 })
+        assertTrue(lsVariants.any { it.id == "builtin.spotlight_ls" && it.seedCode == 106 })
 
         val rsVariants = DefaultNativeFamily.getVariantsFor(ControlKey.RS)
-        assertTrue("RS must have at least 5 variants", rsVariants.size >= 5)
+        assertTrue("RS must have at least 6 variants", rsVariants.size >= 6)
         assertTrue(rsVariants.any { it.id == "builtin.default_rs" && it.seedCode == 201 })
         assertTrue(rsVariants.any { it.id == "builtin.flux_rs" && it.seedCode == 202 })
         assertTrue(rsVariants.any { it.id == "builtin.orb_rs" && it.seedCode == 203 })
         assertTrue(rsVariants.any { it.id == "builtin.compass_rs" && it.seedCode == 204 })
         assertTrue(rsVariants.any { it.id == "builtin.gyro_rs" && it.seedCode == 205 })
+        assertTrue(rsVariants.any { it.id == "builtin.spotlight_rs" && it.seedCode == 206 })
     }
 
     @Test
@@ -199,6 +229,11 @@ class NativeComponentRegistryTest {
         val gyroLs = NativeComponentRegistry.resolveVariant("LS", "builtin.gyro_ls")
         assertNotNull(gyroLs)
         assertEquals(105, gyroLs!!.seedCode)
+
+        // Spotlight custom ID -> Spotlight variant (seedCode 106)
+        val spotLs = NativeComponentRegistry.resolveVariant("LS", "builtin.spotlight_ls")
+        assertNotNull(spotLs)
+        assertEquals(106, spotLs!!.seedCode)
 
         // Non-existent custom ID -> falls back gracefully to baseline default
         val fallbackLs = NativeComponentRegistry.resolveVariant("LS", "non_existent_custom_id")

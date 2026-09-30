@@ -305,6 +305,52 @@ object GyroRightJoystickVariant : BaseNativeVariant("builtin.gyro_rs", ControlKe
     }
 }
 
+object SpotlightLeftJoystickVariant : BaseNativeVariant("builtin.spotlight_ls", ControlKey.LS, "Spotlight", 106) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        SpotlightJoystick(
+            isLeft = true,
+            isConnected = context.isConnected,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticSpotlightJoystick(
+            isLeft = true,
+            modifier = context.modifier
+        )
+    }
+}
+
+object SpotlightRightJoystickVariant : BaseNativeVariant("builtin.spotlight_rs", ControlKey.RS, "Spotlight", 206) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        SpotlightJoystick(
+            isLeft = false,
+            isConnected = context.isConnected,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticSpotlightJoystick(
+            isLeft = false,
+            modifier = context.modifier
+        )
+    }
+}
+
 // =========================================================================
 // STICK BUTTON VARIANTS (LSB / RSB or L3 / R3)
 // =========================================================================
@@ -565,6 +611,58 @@ object GyroRightStickButtonVariant : BaseNativeVariant("builtin.gyro_rsb", Contr
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticGyroStickButton(
+            isLeft = false,
+            modifier = context.modifier
+        )
+    }
+}
+
+object SpotlightLeftStickButtonVariant : BaseNativeVariant("builtin.spotlight_lsb", ControlKey.LSB, "Spotlight", 306) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        SpotlightStickButton(
+            isLeft = true,
+            key = K.LSB,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticSpotlightStickButton(
+            isLeft = true,
+            modifier = context.modifier
+        )
+    }
+}
+
+object SpotlightRightStickButtonVariant : BaseNativeVariant("builtin.spotlight_rsb", ControlKey.RSB, "Spotlight", 406) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        SpotlightStickButton(
+            isLeft = false,
+            key = K.RSB,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticSpotlightStickButton(
             isLeft = false,
             modifier = context.modifier
         )
@@ -945,6 +1043,12 @@ object DefaultNativeFamily {
         register(GyroRightJoystickVariant)
         register(GyroLeftStickButtonVariant)
         register(GyroRightStickButtonVariant)
+
+        // --- 6. Spotlight Variants (Moving Light Pool & Hidden Floor Matrix Dots) ---
+        register(SpotlightLeftJoystickVariant)
+        register(SpotlightRightJoystickVariant)
+        register(SpotlightLeftStickButtonVariant)
+        register(SpotlightRightStickButtonVariant)
     }
 
     /**
