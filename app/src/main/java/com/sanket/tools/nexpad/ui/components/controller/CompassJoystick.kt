@@ -186,8 +186,7 @@ fun CompassJoystick(
                 ambientColor = if (isRgbEnabled) glowColor.copy(alpha = 0.4f) else Color.Black,
                 spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
-            .clip(CircleShape)
-            .background(socketGradient)
+            .background(socketGradient, shape = CircleShape)
             .border(
                 width = 1.dp,
                 color = Color.Black.copy(alpha = 0.60f),
@@ -419,7 +418,7 @@ fun CompassJoystick(
         }
 
         // Stationary Socket Background Canvas: Inset Depth, 8 Compass Pips, and Directional Gate Arc
-        Canvas(modifier = Modifier.fillMaxSize()) {
+        Canvas(modifier = Modifier.fillMaxSize().clip(CircleShape)) {
             val w = size.width
             val h = size.height
             val r = size.minDimension / 2f
@@ -586,11 +585,10 @@ fun CompassJoystick(
                 // Points in deflection direction with opacity proportional to deflection magnitude
                 if (curMagnitude > 0.04f) {
                     rotate(degrees = curAngleDeg, pivot = capCenter) {
-                        // Arrow pointer at top edge (pointing North relative to rotation)
-                        // border-left: 7px solid transparent, border-right: 7px solid transparent, border-bottom: 11px solid var(--glow)
-                        val arrowTopY = 5.dp.toPx()
-                        val arrowBottomY = arrowTopY + 11.dp.toPx()
-                        val arrowHalfWidth = 7.dp.toPx()
+                        // Slender optical compass pointer
+                        val arrowTopY = 6.dp.toPx()
+                        val arrowBottomY = arrowTopY + 7.dp.toPx()
+                        val arrowHalfWidth = 4.5.dp.toPx()
 
                         val arrowPath = Path().apply {
                             moveTo(capCenter.x, arrowTopY)
@@ -599,33 +597,33 @@ fun CompassJoystick(
                             close()
                         }
 
-                        // Glow drop shadow behind arrow
+                        // Glow halo behind arrow
                         drawPath(
                             path = arrowPath,
-                            color = glowColor.copy(alpha = curMagnitude * 0.45f),
-                            style = Stroke(width = 3.dp.toPx())
+                            color = glowColor.copy(alpha = curMagnitude * 0.25f),
+                            style = Stroke(width = 2.5.dp.toPx())
                         )
-                        // Solid core arrow
+                        // Crisp core arrow
                         drawPath(
                             path = arrowPath,
-                            color = glowColor.copy(alpha = curMagnitude)
+                            color = glowColor.copy(alpha = curMagnitude * 0.95f)
                         )
                     }
                 }
 
                 // Cap Neon Ring (.lx-cap-ring): inset 19px
                 val capRingRadius = capR - 19.dp.toPx()
-                // Outer glow bloom
+                // Soft halo
                 drawCircle(
-                    color = glowColor.copy(alpha = capRingAlpha * 0.35f),
+                    color = glowColor.copy(alpha = capRingAlpha * 0.16f),
                     radius = capRingRadius,
-                    style = Stroke(width = 5.dp.toPx())
+                    style = Stroke(width = 3.dp.toPx())
                 )
                 // Crisp core ring
                 drawCircle(
-                    color = glowColor.copy(alpha = capRingAlpha),
+                    color = glowColor.copy(alpha = capRingAlpha * 0.85f),
                     radius = capRingRadius,
-                    style = Stroke(width = 2.dp.toPx())
+                    style = Stroke(width = 1.2.dp.toPx())
                 )
 
                 // Dynamic Cap Specular Lens (.lx-cap-lens): shifts opposite to deflection
@@ -695,39 +693,34 @@ fun CompassJoystick(
                     )
                 }
 
-                // Center Glyph (.lx-g): "L" / "R" with medium weight
+                // Center Glyph (.lx-g): "L" / "R" elegant optical typography inside 38dp dish
                 Text(
                     text = if (isLeft) "L" else "R",
                     color = glowColor,
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.offset(0.dp, (-0.5).dp)
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 1.sp
                 )
             }
         }
 
-        // Top Glass Lens Overlay (.lx-lens)
+        // Top Glass Lens Overlay (.lx-lens & delicate .lx-ring)
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
             val r = size.minDimension / 2f
 
-            // Outer Neon Ring (.lx-ring): inset 3px, 2px border, opacity 0.45
+            // Outer Neon Rim (.lx-ring): single delicate glowing rim at inset 3px (opacity 0.45)
             val outerRingRadius = r - 3.dp.toPx()
             drawCircle(
-                color = glowColor.copy(alpha = 0.22f),
+                color = glowColor.copy(alpha = 0.10f),
                 radius = outerRingRadius,
-                style = Stroke(width = 6.dp.toPx())
+                style = Stroke(width = 3.5.dp.toPx())
             )
             drawCircle(
-                color = glowColor.copy(alpha = 0.18f),
-                radius = outerRingRadius - 2.dp.toPx(),
-                style = Stroke(width = 3.dp.toPx())
-            )
-            drawCircle(
-                color = glowColor.copy(alpha = 0.45f),
+                color = glowColor.copy(alpha = 0.38f),
                 radius = outerRingRadius,
-                style = Stroke(width = 2.dp.toPx())
+                style = Stroke(width = 1.2.dp.toPx())
             )
 
             // Outer Glass Lens (.lx-lens): Top chamfer, left reflection, bottom shadow

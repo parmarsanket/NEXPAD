@@ -1876,6 +1876,145 @@ object DefaultComponents {
         size = NxpSize(widthDp = 72, heightDp = 72)
     )
 
+    val LENS_DPAD = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.lens_dpad",
+            name = "Lens D-Pad Cross",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.DPAD.id,
+            defaultControl = ControlKey.DPAD.key,
+            description = "Precision contoured D-Pad cross with 3D rocker tilt kinematics, inset containment ring, active directional fills, and optical glass lens."
+        ),
+        geometry = NxpGeometry(type = "Cross"),
+        visual = NxpVisual(
+            fillColor = "#26282B",
+            opacity = 0.95f,
+            borderColor = "#D8DEE9",
+            borderWidth = 2f,
+            glowColor = "#D8DEE9",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(fillColor = "#D8DEE9"),
+        size = NxpSize(widthDp = 160, heightDp = 160)
+    )
+
+    val FOUR_LENSES_DPAD = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.four_lenses_dpad",
+            name = "Four Lenses D-Pad",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.DPAD.id,
+            defaultControl = ControlKey.DPAD.key,
+            description = "Four discrete acrylic optical lens keys orbiting a central hub with 3D rocker tilt kinematics, directional chevrons, and ambient halo."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#232527",
+            opacity = 0.95f,
+            borderColor = "#D8DEE9",
+            borderWidth = 2f,
+            glowColor = "#D8DEE9",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.95f, fillColor = "#D8DEE9"),
+        size = NxpSize(widthDp = 164, heightDp = 164)
+    )
+
+    val DISC_DPAD = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.disc_dpad",
+            name = "Lens Disc D-Pad",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.DPAD.id,
+            defaultControl = ControlKey.DPAD.key,
+            description = "Concentric grooved circular disc D-Pad with 3D rocker tilt kinematics, directional gate sweep, and central sliding puck."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#232527",
+            opacity = 0.95f,
+            borderColor = "#E055B8",
+            borderWidth = 2f,
+            glowColor = "#E055B8",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.95f, fillColor = "#E055B8"),
+        size = NxpSize(widthDp = 160, heightDp = 160)
+    )
+
+    val CAPSULES_DPAD = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.capsules_dpad",
+            name = "Lens Capsules D-Pad",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.DPAD.id,
+            defaultControl = ControlKey.DPAD.key,
+            description = "Four discrete rounded pill capsule keys orbiting a central hub with 3D rocker tilt kinematics and directional chevrons."
+        ),
+        geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 23f),
+        visual = NxpVisual(
+            fillColor = "#232527",
+            opacity = 0.95f,
+            borderColor = "#B58CFF",
+            borderWidth = 2f,
+            glowColor = "#B58CFF",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.95f, fillColor = "#B58CFF"),
+        size = NxpSize(widthDp = 170, heightDp = 170)
+    )
+
+    val METABALLS_DPAD = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.metaballs_dpad",
+            name = "Lens Metaballs D-Pad",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.DPAD.id,
+            defaultControl = ControlKey.DPAD.key,
+            description = "Organic fluid metaballs D-Pad with 3D rocker tilt kinematics, tactile satellite caps, and spring retraction."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#232527",
+            opacity = 0.95f,
+            borderColor = "#3FD2C4",
+            borderWidth = 2f,
+            glowColor = "#3FD2C4",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.95f, fillColor = "#3FD2C4"),
+        size = NxpSize(widthDp = 172, heightDp = 172)
+    )
+
+    val RAILS_DPAD = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.rails_dpad",
+            name = "Lens Rails D-Pad",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.DPAD.id,
+            defaultControl = ControlKey.DPAD.key,
+            description = "Orthogonal recessed rails D-Pad with 3D rocker tilt kinematics, sliding tactile puck, and animated light beams."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#232527",
+            opacity = 0.95f,
+            borderColor = "#FFB13F",
+            borderWidth = 2f,
+            glowColor = "#FFB13F",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.95f, fillColor = "#FFB13F"),
+        size = NxpSize(widthDp = 160, heightDp = 160)
+    )
+
+
     val DEFAULT_TRIGGER_LT = NxpComponentDef(
         manifest = NxpManifest(
             id = "builtin.default_lt",
@@ -2223,6 +2362,14 @@ object DefaultComponents {
         SPOTLIGHT_STICK_RS,
         SPOTLIGHT_STICK_LSB,
         SPOTLIGHT_STICK_RSB,
+
+        // Lens D-Pad Variants
+        LENS_DPAD,
+        FOUR_LENSES_DPAD,
+        DISC_DPAD,
+        CAPSULES_DPAD,
+        METABALLS_DPAD,
+        RAILS_DPAD,
 
         // Custom Cyber / Sci-Fi Variant Skins
         SCIFI_HEX_ATTACK,

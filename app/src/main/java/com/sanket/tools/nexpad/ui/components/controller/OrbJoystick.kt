@@ -196,8 +196,7 @@ fun OrbJoystick(
                 ambientColor = if (isRgbEnabled) glowColor.copy(alpha = 0.4f) else Color.Black,
                 spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
-            .clip(CircleShape)
-            .background(socketGradient)
+            .background(socketGradient, shape = CircleShape)
             .border(
                 width = 1.dp,
                 color = Color.Black.copy(alpha = 0.60f),
@@ -419,7 +418,7 @@ fun OrbJoystick(
         val curAngleDeg = (atan2(curOffsetX, -curOffsetY) * 180f / Math.PI.toFloat() + 360f) % 360f
 
         // Stationary Socket Background Canvas: Inset Depth, 12 Ticks, and Directional Gate Arc
-        Canvas(modifier = Modifier.fillMaxSize()) {
+        Canvas(modifier = Modifier.fillMaxSize().clip(CircleShape)) {
             val w = size.width
             val h = size.height
             val r = size.minDimension / 2f
@@ -449,50 +448,28 @@ fun OrbJoystick(
                 size = Size(w, botRimH)
             )
 
-            // 12 Graduation Ticks (.lx-ticks): spaced every 30° at radius r - 12dp to r - 18dp
-            val tickOuterR = r - 12.dp.toPx()
-            val tickInnerR = tickOuterR - 6.dp.toPx()
-            val tickColor = Color.White.copy(alpha = 0.22f)
-            for (i in 0 until 12) {
-                val tickAngle = (i * 30.0 - 90.0) * (Math.PI / 180.0)
-                val cosA = Math.cos(tickAngle).toFloat()
-                val sinA = Math.sin(tickAngle).toFloat()
-                drawLine(
-                    color = tickColor,
-                    start = Offset(center.x + cosA * tickInnerR, center.y + sinA * tickInnerR),
-                    end = Offset(center.x + cosA * tickOuterR, center.y + sinA * tickOuterR),
-                    strokeWidth = 1.8.dp.toPx(),
-                    cap = StrokeCap.Round
-                )
-            }
-
-            // Directional Deflection Gate Arc (.lx-gate): 8px swept beam along travel vector
+            // Directional Deflection Gate Arc (.lx-gate): 8px swept conic beam along travel vector
             if (curMagnitude > 0.04f) {
                 val gateRadius = r - 3.dp.toPx() - 4.dp.toPx()
-                val sweepAngle = 84f
-                val startAngle = curAngleDeg - 90f - 42f
                 val gateAlpha = (curMagnitude * 0.85f).coerceIn(0f, 0.85f)
 
-                // Wide diffuse beam
-                drawArc(
-                    color = glowColor.copy(alpha = gateAlpha * 0.45f),
-                    startAngle = startAngle,
-                    sweepAngle = sweepAngle,
-                    useCenter = false,
-                    topLeft = Offset(center.x - gateRadius, center.y - gateRadius),
-                    size = Size(gateRadius * 2f, gateRadius * 2f),
-                    style = Stroke(width = 10.dp.toPx(), cap = StrokeCap.Round)
-                )
-                // Core beam
-                drawArc(
-                    color = glowColor.copy(alpha = gateAlpha),
-                    startAngle = startAngle + 12f,
-                    sweepAngle = sweepAngle - 24f,
-                    useCenter = false,
-                    topLeft = Offset(center.x - gateRadius, center.y - gateRadius),
-                    size = Size(gateRadius * 2f, gateRadius * 2f),
-                    style = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round)
-                )
+                // Soft angular gradient taper replicating CSS conic-gradient(from ang - 42deg)
+                for (step in -40..40 step 4) {
+                    val distRatio = kotlin.math.abs(step) / 40f
+                    val falloff = kotlin.math.cos(distRatio * Math.PI / 2.0).toFloat()
+                    val arcAlpha = gateAlpha * falloff
+                    if (arcAlpha > 0.01f) {
+                        drawArc(
+                            color = glowColor.copy(alpha = arcAlpha),
+                            startAngle = curAngleDeg - 90f + step - 2f,
+                            sweepAngle = 4f,
+                            useCenter = false,
+                            topLeft = Offset(center.x - gateRadius, center.y - gateRadius),
+                            size = Size(gateRadius * 2f, gateRadius * 2f),
+                            style = Stroke(width = 7.dp.toPx())
+                        )
+                    }
+                }
             }
 
             // Baseline dynamic drop shadow behind moving cap
@@ -624,23 +601,17 @@ fun OrbJoystick(
 
                 // Inner Containment Ring (.orb-ring): inset 5px, 2px border, opacity 0.5
                 val orbRingRadius = capR - 5.dp.toPx()
-                // Outer bloom
+                // Soft halo
                 drawCircle(
-                    color = glowColor.copy(alpha = 0.25f),
+                    color = glowColor.copy(alpha = 0.16f),
                     radius = orbRingRadius,
-                    style = Stroke(width = 6.dp.toPx())
+                    style = Stroke(width = 3.dp.toPx())
                 )
-                // Inset bloom
+                // Crisp core ring
                 drawCircle(
-                    color = glowColor.copy(alpha = 0.25f),
-                    radius = orbRingRadius - 2.dp.toPx(),
-                    style = Stroke(width = 4.dp.toPx())
-                )
-                // Core ring
-                drawCircle(
-                    color = glowColor.copy(alpha = 0.50f),
+                    color = glowColor.copy(alpha = 0.70f),
                     radius = orbRingRadius,
-                    style = Stroke(width = 2.dp.toPx())
+                    style = Stroke(width = 1.2.dp.toPx())
                 )
 
                 // Dual Spherical Lens Highlights (.orb-spec):
@@ -690,22 +661,17 @@ fun OrbJoystick(
             val h = size.height
             val r = size.minDimension / 2f
 
-            // Outer Neon Ring (.lx-ring): inset 3px, 2px border, opacity 0.45
+            // Outer Neon Rim (.lx-ring): single delicate glowing rim at inset 3px (opacity 0.45)
             val outerRingRadius = r - 3.dp.toPx()
             drawCircle(
-                color = glowColor.copy(alpha = 0.22f),
+                color = glowColor.copy(alpha = 0.10f),
                 radius = outerRingRadius,
-                style = Stroke(width = 6.dp.toPx())
+                style = Stroke(width = 3.5.dp.toPx())
             )
             drawCircle(
-                color = glowColor.copy(alpha = 0.18f),
-                radius = outerRingRadius - 2.dp.toPx(),
-                style = Stroke(width = 3.dp.toPx())
-            )
-            drawCircle(
-                color = glowColor.copy(alpha = 0.45f),
+                color = glowColor.copy(alpha = 0.38f),
                 radius = outerRingRadius,
-                style = Stroke(width = 2.dp.toPx())
+                style = Stroke(width = 1.2.dp.toPx())
             )
 
             // Outer Glass Lens (.lx-lens): Top-lit 1px chamfer rim

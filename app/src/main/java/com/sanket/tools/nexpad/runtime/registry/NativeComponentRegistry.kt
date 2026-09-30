@@ -866,6 +866,138 @@ class RealisticDPadButtonVariant(controlKey: ControlKey, seedCode: Int) :
     }
 }
 
+object LensDPadVariant : BaseNativeVariant("builtin.lens_dpad", ControlKey.DPAD, "Lens Cross", 4101) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        LensDPad(
+            isConnected = context.isConnected,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            onVibrate = context.onVibrate,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticLensDPad(
+            modifier = context.modifier
+        )
+    }
+}
+
+object FourLensesDPadVariant : BaseNativeVariant("builtin.four_lenses_dpad", ControlKey.DPAD, "Four Lenses", 4102) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        FourLensesDPad(
+            isConnected = context.isConnected,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            onVibrate = context.onVibrate,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticFourLensesDPad(
+            modifier = context.modifier
+        )
+    }
+}
+
+object DiscDPadVariant : BaseNativeVariant("builtin.disc_dpad", ControlKey.DPAD, "Lens Disc", 4103) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        DiscDPad(
+            isConnected = context.isConnected,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            onVibrate = context.onVibrate,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticDiscDPad(
+            modifier = context.modifier
+        )
+    }
+}
+
+object CapsulesDPadVariant : BaseNativeVariant("builtin.capsules_dpad", ControlKey.DPAD, "Lens Capsules", 4104) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        CapsulesDPad(
+            isConnected = context.isConnected,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            onVibrate = context.onVibrate,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticCapsulesDPad(
+            modifier = context.modifier
+        )
+    }
+}
+
+object MetaballsDPadVariant : BaseNativeVariant("builtin.metaballs_dpad", ControlKey.DPAD, "Lens Metaballs", 4105) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        MetaballsDPad(
+            isConnected = context.isConnected,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            onVibrate = context.onVibrate,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticMetaballsDPad(
+            modifier = context.modifier
+        )
+    }
+}
+
+object RailsDPadVariant : BaseNativeVariant("builtin.rails_dpad", ControlKey.DPAD, "Lens Rails", 4106) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        RailsDPad(
+            isConnected = context.isConnected,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            onVibrate = context.onVibrate,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticRailsDPad(
+            modifier = context.modifier
+        )
+    }
+}
+
 object RealisticLeftTouchPadVariant : BaseNativeVariant("builtin.default_ltp", ControlKey.LTP, "Realistic 3D", 6001) {
     override val isBaselineDefault: Boolean = true
 
@@ -1049,6 +1181,24 @@ object DefaultNativeFamily {
         register(SpotlightRightJoystickVariant)
         register(SpotlightLeftStickButtonVariant)
         register(SpotlightRightStickButtonVariant)
+
+        // --- 7. Lens D-Pad Variant (Full Contoured Cross with 3D Rocker Tilt & Chevrons) ---
+        register(LensDPadVariant)
+
+        // --- 8. Four Lenses D-Pad Variant (Four Lenses Cluster with 3D Rocker Tilt & Hub) ---
+        register(FourLensesDPadVariant)
+
+        // --- 9. Disc D-Pad Variant (Concentric Grooves, Rocker Tilt, Sliding Puck & Gate) ---
+        register(DiscDPadVariant)
+
+        // --- 10. Capsules D-Pad Variant (Four Rounded Pill Capsules with Rocker Tilt & Hub) ---
+        register(CapsulesDPadVariant)
+
+        // --- 11. Metaballs D-Pad Variant (Organic Fluid Metaballs with Spring Retraction & Caps) ---
+        register(MetaballsDPadVariant)
+
+        // --- 12. Rails D-Pad Variant (Orthogonal Rails, Sliding Puck & Light Beams) ---
+        register(RailsDPadVariant)
     }
 
     /**
@@ -1103,7 +1253,11 @@ object NativeComponentRegistry {
      */
     fun isNativeBuiltin(id: String?): Boolean {
         if (id.isNullOrBlank()) return true
-        if (id.startsWith("builtin.default_") || id.startsWith("builtin.flux_") || id.startsWith("builtin.orb_")) return true
+        if (id.startsWith("builtin.default_") || id.startsWith("builtin.flux_") || id.startsWith("builtin.orb_") ||
+            id.startsWith("builtin.compass_") || id.startsWith("builtin.gyro_") || id.startsWith("builtin.spotlight_") ||
+            id.startsWith("builtin.lens_") || id.startsWith("builtin.four_lenses_") || id.startsWith("builtin.disc_") ||
+            id.startsWith("builtin.capsules_") || id.startsWith("builtin.metaballs_") || id.startsWith("builtin.rails_")
+        ) return true
         return DefaultNativeFamily.getVariant(id) != null
     }
 

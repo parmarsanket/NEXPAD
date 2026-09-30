@@ -168,8 +168,7 @@ fun SpotlightJoystick(
                 ambientColor = if (isRgbEnabled) glowColor.copy(alpha = 0.4f) else Color.Black,
                 spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
-            .clip(CircleShape)
-            .background(socketGradient)
+            .background(socketGradient, shape = CircleShape)
             .border(
                 width = 1.dp,
                 color = Color.Black.copy(alpha = 0.60f),
@@ -394,7 +393,7 @@ fun SpotlightJoystick(
         val curNormY = (curOffsetY / maxTravelPx).coerceIn(-1f, 1f)
 
         // Stationary Socket Background Canvas: Inset Depth, Spotlight Pool, and Floor Dots Matrix
-        Canvas(modifier = Modifier.fillMaxSize()) {
+        Canvas(modifier = Modifier.fillMaxSize().clip(CircleShape)) {
             val w = size.width
             val h = size.height
             val r = size.minDimension / 2f
@@ -576,31 +575,33 @@ fun SpotlightJoystick(
 
                 // Puck Neon Containment Ring (.puck-ring): inset 5px
                 val ringRadius = puckR - 5.dp.toPx()
+                // Soft halo
                 drawCircle(
-                    color = glowColor.copy(alpha = puckRingAlpha * 0.35f),
+                    color = glowColor.copy(alpha = puckRingAlpha * 0.16f),
                     radius = ringRadius,
-                    style = Stroke(width = 4.dp.toPx())
+                    style = Stroke(width = 3.dp.toPx())
                 )
+                // Crisp core ring
                 drawCircle(
-                    color = glowColor.copy(alpha = puckRingAlpha),
+                    color = glowColor.copy(alpha = puckRingAlpha * 0.85f),
                     radius = ringRadius,
-                    style = Stroke(width = 2.dp.toPx())
+                    style = Stroke(width = 1.2.dp.toPx())
                 )
 
-                // Central Luminous Core Dot (.puck-dot): 12dp diameter with neon bloom
-                val dotRadius = 6.dp.toPx()
+                // Central Luminous Core Dot (.puck-dot): 9dp diameter with smooth radial bloom
+                val dotRadius = 4.5.dp.toPx()
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            glowColor,
-                            glowColor.copy(alpha = 0.40f),
+                            glowColor.copy(alpha = 0.85f),
+                            glowColor.copy(alpha = 0.35f),
                             Color.Transparent
                         ),
                         center = puckCenter,
-                        radius = dotRadius + 9.dp.toPx()
+                        radius = dotRadius + 6.dp.toPx()
                     ),
                     center = puckCenter,
-                    radius = dotRadius + 9.dp.toPx()
+                    radius = dotRadius + 6.dp.toPx()
                 )
                 drawCircle(
                     color = glowColor,
@@ -623,28 +624,23 @@ fun SpotlightJoystick(
             }
         }
 
-        // Top Glass Lens Overlay (.lx-lens & .lx-ring)
+        // Top Glass Lens Overlay (.lx-lens & delicate .lx-ring)
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
             val r = size.minDimension / 2f
 
-            // Outer Neon Ring (.lx-ring): inset 3px, opacity 0.45
+            // Outer Neon Rim (.lx-ring): single delicate glowing rim at inset 3px (opacity 0.45)
             val outerRingRadius = r - 3.dp.toPx()
             drawCircle(
-                color = glowColor.copy(alpha = 0.22f),
+                color = glowColor.copy(alpha = 0.10f),
                 radius = outerRingRadius,
-                style = Stroke(width = 6.dp.toPx())
+                style = Stroke(width = 3.5.dp.toPx())
             )
             drawCircle(
-                color = glowColor.copy(alpha = 0.18f),
-                radius = outerRingRadius - 2.dp.toPx(),
-                style = Stroke(width = 3.dp.toPx())
-            )
-            drawCircle(
-                color = glowColor.copy(alpha = 0.45f),
+                color = glowColor.copy(alpha = 0.38f),
                 radius = outerRingRadius,
-                style = Stroke(width = 2.dp.toPx())
+                style = Stroke(width = 1.2.dp.toPx())
             )
 
             // Outer Glass Lens (.lx-lens)

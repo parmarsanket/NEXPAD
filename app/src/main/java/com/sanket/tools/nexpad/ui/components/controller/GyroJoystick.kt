@@ -173,8 +173,7 @@ fun GyroJoystick(
                 ambientColor = if (isRgbEnabled) glowColor.copy(alpha = 0.4f) else Color.Black,
                 spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
-            .clip(CircleShape)
-            .background(socketGradient)
+            .background(socketGradient, shape = CircleShape)
             .border(
                 width = 1.dp,
                 color = Color.Black.copy(alpha = 0.60f),
@@ -436,7 +435,7 @@ fun GyroJoystick(
         )
 
         // Stationary Socket Background Canvas: Inset Depth and Directional Gate Arc
-        Canvas(modifier = Modifier.fillMaxSize()) {
+        Canvas(modifier = Modifier.fillMaxSize().clip(CircleShape)) {
             val w = size.width
             val h = size.height
             val r = size.minDimension / 2f
@@ -513,24 +512,30 @@ fun GyroJoystick(
                 .graphicsLayer {
                     rotationX = outerRotX
                     rotationY = outerRotY
-                    cameraDistance = 12f * density
+                    cameraDistance = 8f * density
                 }
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val r = size.minDimension / 2f
                 val ringRadius = r - 2.dp.toPx()
 
-                // Outer and inner glow bloom (box-shadow: 0 0 8px var(--glow), inset 0 0 8px var(--glow))
+                // Soft atmospheric haze (zero hard edges)
                 drawCircle(
-                    color = glowColor.copy(alpha = gimbalAlpha * 0.35f),
+                    color = glowColor.copy(alpha = gimbalAlpha * 0.06f),
                     radius = ringRadius,
                     style = Stroke(width = 6.dp.toPx())
                 )
-                // Crisp core ring
+                // Diffuse glow halo
                 drawCircle(
-                    color = glowColor.copy(alpha = gimbalAlpha),
+                    color = glowColor.copy(alpha = gimbalAlpha * 0.20f),
                     radius = ringRadius,
-                    style = Stroke(width = 2.dp.toPx())
+                    style = Stroke(width = 3.dp.toPx())
+                )
+                // Crisp core laser filament
+                drawCircle(
+                    color = glowColor.copy(alpha = gimbalAlpha * 0.90f),
+                    radius = ringRadius,
+                    style = Stroke(width = 1.2.dp.toPx())
                 )
             }
         }
@@ -542,24 +547,30 @@ fun GyroJoystick(
                 .graphicsLayer {
                     rotationX = innerRotX
                     rotationY = innerRotY
-                    cameraDistance = 12f * density
+                    cameraDistance = 8f * density
                 }
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val r = size.minDimension / 2f
                 val ringRadius = r - 2.dp.toPx()
 
-                // Outer and inner glow bloom
+                // Soft atmospheric haze
                 drawCircle(
-                    color = glowColor.copy(alpha = gimbalAlpha * 0.35f),
+                    color = glowColor.copy(alpha = gimbalAlpha * 0.06f),
                     radius = ringRadius,
                     style = Stroke(width = 6.dp.toPx())
                 )
-                // Crisp core ring
+                // Diffuse glow halo
                 drawCircle(
-                    color = glowColor.copy(alpha = gimbalAlpha),
+                    color = glowColor.copy(alpha = gimbalAlpha * 0.20f),
                     radius = ringRadius,
-                    style = Stroke(width = 2.dp.toPx())
+                    style = Stroke(width = 3.dp.toPx())
+                )
+                // Crisp core laser filament
+                drawCircle(
+                    color = glowColor.copy(alpha = gimbalAlpha * 0.90f),
+                    radius = ringRadius,
+                    style = Stroke(width = 1.2.dp.toPx())
                 )
             }
         }
@@ -592,13 +603,13 @@ fun GyroJoystick(
 
                 // Top specular rim: inset 0 2px 2px rgba(255,255,255,0.10)
                 drawArc(
-                    color = Color.White.copy(alpha = 0.10f),
+                    color = Color.White.copy(alpha = 0.12f),
                     startAngle = 180f,
                     sweepAngle = 180f,
                     useCenter = false,
-                    topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
-                    size = Size(puckW - 3.dp.toPx(), puckH - 3.dp.toPx()),
-                    style = Stroke(width = 1.5.dp.toPx())
+                    topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
+                    size = Size(puckW - 2.dp.toPx(), puckH - 2.dp.toPx()),
+                    style = Stroke(width = 1.dp.toPx())
                 )
 
                 // Inset bottom shadow: inset 0 -6px 9px rgba(0,0,0,0.80)
@@ -615,31 +626,33 @@ fun GyroJoystick(
 
                 // Puck Neon Ring (.puck-ring): inset 4px
                 val puckRingRadius = puckR - 4.dp.toPx()
+                // Soft glow halo
                 drawCircle(
-                    color = glowColor.copy(alpha = if (isDragging) 0.50f else 0.25f),
+                    color = glowColor.copy(alpha = if (isDragging) 0.25f else 0.14f),
                     radius = puckRingRadius,
-                    style = Stroke(width = 4.dp.toPx())
+                    style = Stroke(width = 3.dp.toPx())
                 )
+                // Crisp core filament
                 drawCircle(
-                    color = glowColor.copy(alpha = if (isDragging) 1.0f else 0.70f),
+                    color = glowColor.copy(alpha = if (isDragging) 0.95f else 0.65f),
                     radius = puckRingRadius,
-                    style = Stroke(width = 2.dp.toPx())
+                    style = Stroke(width = 1.2.dp.toPx())
                 )
 
-                // Central Luminous Core Dot (.puck-dot): 9dp diameter with glow bloom
+                // Central Luminous Core Dot (.puck-dot): 9dp diameter with smooth radial bloom
                 val dotRadius = 4.5.dp.toPx()
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            glowColor,
-                            glowColor.copy(alpha = 0.30f),
+                            glowColor.copy(alpha = 0.85f),
+                            glowColor.copy(alpha = 0.35f),
                             Color.Transparent
                         ),
                         center = puckCenter,
-                        radius = dotRadius + 5.dp.toPx()
+                        radius = dotRadius + 6.dp.toPx()
                     ),
                     center = puckCenter,
-                    radius = dotRadius + 5.dp.toPx()
+                    radius = dotRadius + 6.dp.toPx()
                 )
                 drawCircle(
                     color = glowColor,
@@ -662,28 +675,25 @@ fun GyroJoystick(
             }
         }
 
-        // Top Glass Lens Overlay (.lx-lens)
+        // Top Glass Lens Overlay (.lx-lens & delicate .lx-ring)
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
             val r = size.minDimension / 2f
 
-            // Outer Neon Ring (.lx-ring): inset 3px, 2px border, opacity 0.45
+            // Outer Neon Rim (.lx-ring): single delicate glowing rim at inset 3px (opacity 0.45)
             val outerRingRadius = r - 3.dp.toPx()
+            // Soft halo
             drawCircle(
-                color = glowColor.copy(alpha = 0.22f),
+                color = glowColor.copy(alpha = 0.10f),
                 radius = outerRingRadius,
-                style = Stroke(width = 6.dp.toPx())
+                style = Stroke(width = 3.5.dp.toPx())
             )
+            // Core line
             drawCircle(
-                color = glowColor.copy(alpha = 0.18f),
-                radius = outerRingRadius - 2.dp.toPx(),
-                style = Stroke(width = 3.dp.toPx())
-            )
-            drawCircle(
-                color = glowColor.copy(alpha = 0.45f),
+                color = glowColor.copy(alpha = 0.38f),
                 radius = outerRingRadius,
-                style = Stroke(width = 2.dp.toPx())
+                style = Stroke(width = 1.2.dp.toPx())
             )
 
             // Outer Glass Lens (.lx-lens): Top chamfer, left reflection, bottom shadow

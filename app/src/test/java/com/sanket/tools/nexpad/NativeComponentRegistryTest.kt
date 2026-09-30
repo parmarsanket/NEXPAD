@@ -179,6 +179,51 @@ class NativeComponentRegistryTest {
     }
 
     @Test
+    fun testLensDPadVariantsRegistered() {
+        val lensDpad = DefaultNativeFamily.getVariant("builtin.lens_dpad")
+        assertNotNull("Lens D-Pad must be registered in DefaultNativeFamily", lensDpad)
+        assertEquals(ControlKey.DPAD, lensDpad!!.controlKey)
+        assertEquals(4101, lensDpad.seedCode)
+        assertFalse(lensDpad.isBaselineDefault)
+        assertEquals("Lens Cross", lensDpad.variantName)
+
+        val fourLensesDpad = DefaultNativeFamily.getVariant("builtin.four_lenses_dpad")
+        assertNotNull("Four Lenses D-Pad must be registered in DefaultNativeFamily", fourLensesDpad)
+        assertEquals(ControlKey.DPAD, fourLensesDpad!!.controlKey)
+        assertEquals(4102, fourLensesDpad.seedCode)
+        assertFalse(fourLensesDpad.isBaselineDefault)
+        assertEquals("Four Lenses", fourLensesDpad.variantName)
+
+        val discDpad = DefaultNativeFamily.getVariant("builtin.disc_dpad")
+        assertNotNull("Disc D-Pad must be registered in DefaultNativeFamily", discDpad)
+        assertEquals(ControlKey.DPAD, discDpad!!.controlKey)
+        assertEquals(4103, discDpad.seedCode)
+        assertFalse(discDpad.isBaselineDefault)
+        assertEquals("Lens Disc", discDpad.variantName)
+
+        val capsulesDpad = DefaultNativeFamily.getVariant("builtin.capsules_dpad")
+        assertNotNull("Capsules D-Pad must be registered in DefaultNativeFamily", capsulesDpad)
+        assertEquals(ControlKey.DPAD, capsulesDpad!!.controlKey)
+        assertEquals(4104, capsulesDpad.seedCode)
+        assertFalse(capsulesDpad.isBaselineDefault)
+        assertEquals("Lens Capsules", capsulesDpad.variantName)
+
+        val metaballsDpad = DefaultNativeFamily.getVariant("builtin.metaballs_dpad")
+        assertNotNull("Metaballs D-Pad must be registered in DefaultNativeFamily", metaballsDpad)
+        assertEquals(ControlKey.DPAD, metaballsDpad!!.controlKey)
+        assertEquals(4105, metaballsDpad.seedCode)
+        assertFalse(metaballsDpad.isBaselineDefault)
+        assertEquals("Lens Metaballs", metaballsDpad.variantName)
+
+        val railsDpad = DefaultNativeFamily.getVariant("builtin.rails_dpad")
+        assertNotNull("Rails D-Pad must be registered in DefaultNativeFamily", railsDpad)
+        assertEquals(ControlKey.DPAD, railsDpad!!.controlKey)
+        assertEquals(4106, railsDpad.seedCode)
+        assertFalse(railsDpad.isBaselineDefault)
+        assertEquals("Lens Rails", railsDpad.variantName)
+    }
+
+    @Test
     fun testMultipleVariantsPerControlKey() {
         val lsVariants = DefaultNativeFamily.getVariantsFor(ControlKey.LS)
         assertTrue("LS must have at least 6 variants (Realistic, Flux, Orb, Compass, Gyro, Spotlight)", lsVariants.size >= 6)
@@ -197,6 +242,16 @@ class NativeComponentRegistryTest {
         assertTrue(rsVariants.any { it.id == "builtin.compass_rs" && it.seedCode == 204 })
         assertTrue(rsVariants.any { it.id == "builtin.gyro_rs" && it.seedCode == 205 })
         assertTrue(rsVariants.any { it.id == "builtin.spotlight_rs" && it.seedCode == 206 })
+
+        val dpadVariants = DefaultNativeFamily.getVariantsFor(ControlKey.DPAD)
+        assertTrue("DPAD must have at least 7 variants (Realistic, Lens Cross, Four Lenses, Lens Disc, Lens Capsules, Lens Metaballs, Lens Rails)", dpadVariants.size >= 7)
+        assertTrue(dpadVariants.any { it.id == "builtin.default_dpad" && it.seedCode == 4001 })
+        assertTrue(dpadVariants.any { it.id == "builtin.lens_dpad" && it.seedCode == 4101 })
+        assertTrue(dpadVariants.any { it.id == "builtin.four_lenses_dpad" && it.seedCode == 4102 })
+        assertTrue(dpadVariants.any { it.id == "builtin.disc_dpad" && it.seedCode == 4103 })
+        assertTrue(dpadVariants.any { it.id == "builtin.capsules_dpad" && it.seedCode == 4104 })
+        assertTrue(dpadVariants.any { it.id == "builtin.metaballs_dpad" && it.seedCode == 4105 })
+        assertTrue(dpadVariants.any { it.id == "builtin.rails_dpad" && it.seedCode == 4106 })
     }
 
     @Test
@@ -235,6 +290,36 @@ class NativeComponentRegistryTest {
         assertNotNull(spotLs)
         assertEquals(106, spotLs!!.seedCode)
 
+        // Lens D-Pad custom ID -> Lens variant (seedCode 4101)
+        val lensDpad = NativeComponentRegistry.resolveVariant("DPAD", "builtin.lens_dpad")
+        assertNotNull(lensDpad)
+        assertEquals(4101, lensDpad!!.seedCode)
+
+        // Four Lenses D-Pad custom ID -> Four Lenses variant (seedCode 4102)
+        val fourLensesDpad = NativeComponentRegistry.resolveVariant("DPAD", "builtin.four_lenses_dpad")
+        assertNotNull(fourLensesDpad)
+        assertEquals(4102, fourLensesDpad!!.seedCode)
+
+        // Disc D-Pad custom ID -> Disc variant (seedCode 4103)
+        val discDpad = NativeComponentRegistry.resolveVariant("DPAD", "builtin.disc_dpad")
+        assertNotNull(discDpad)
+        assertEquals(4103, discDpad!!.seedCode)
+
+        // Capsules D-Pad custom ID -> Capsules variant (seedCode 4104)
+        val capsulesDpad = NativeComponentRegistry.resolveVariant("DPAD", "builtin.capsules_dpad")
+        assertNotNull(capsulesDpad)
+        assertEquals(4104, capsulesDpad!!.seedCode)
+
+        // Metaballs D-Pad custom ID -> Metaballs variant (seedCode 4105)
+        val metaballsDpad = NativeComponentRegistry.resolveVariant("DPAD", "builtin.metaballs_dpad")
+        assertNotNull(metaballsDpad)
+        assertEquals(4105, metaballsDpad!!.seedCode)
+
+        // Rails D-Pad custom ID -> Rails variant (seedCode 4106)
+        val railsDpad = NativeComponentRegistry.resolveVariant("DPAD", "builtin.rails_dpad")
+        assertNotNull(railsDpad)
+        assertEquals(4106, railsDpad!!.seedCode)
+
         // Non-existent custom ID -> falls back gracefully to baseline default
         val fallbackLs = NativeComponentRegistry.resolveVariant("LS", "non_existent_custom_id")
         assertNotNull(fallbackLs)
@@ -251,6 +336,12 @@ class NativeComponentRegistryTest {
         assertTrue(NativeComponentRegistry.isNativeBuiltin("builtin.flux_rsb"))
         assertTrue(NativeComponentRegistry.isNativeBuiltin("builtin.orb_ls"))
         assertTrue(NativeComponentRegistry.isNativeBuiltin("builtin.orb_rsb"))
+        assertTrue(NativeComponentRegistry.isNativeBuiltin("builtin.lens_dpad"))
+        assertTrue(NativeComponentRegistry.isNativeBuiltin("builtin.four_lenses_dpad"))
+        assertTrue(NativeComponentRegistry.isNativeBuiltin("builtin.disc_dpad"))
+        assertTrue(NativeComponentRegistry.isNativeBuiltin("builtin.capsules_dpad"))
+        assertTrue(NativeComponentRegistry.isNativeBuiltin("builtin.metaballs_dpad"))
+        assertTrue(NativeComponentRegistry.isNativeBuiltin("builtin.rails_dpad"))
 
         assertFalse(NativeComponentRegistry.isNativeBuiltin("rc.action_a"))
         assertFalse(NativeComponentRegistry.isNativeBuiltin("custom_imported_skin_123"))
@@ -268,6 +359,12 @@ class NativeComponentRegistryTest {
         assertEquals(ButtonStudioType.DEFAULT, resolveButtonSourceType("builtin.orb_rs"))
         assertEquals(ButtonStudioType.DEFAULT, resolveButtonSourceType("builtin.orb_lsb"))
         assertEquals(ButtonStudioType.DEFAULT, resolveButtonSourceType("builtin.orb_rsb"))
+        assertEquals(ButtonStudioType.DEFAULT, resolveButtonSourceType("builtin.lens_dpad"))
+        assertEquals(ButtonStudioType.DEFAULT, resolveButtonSourceType("builtin.four_lenses_dpad"))
+        assertEquals(ButtonStudioType.DEFAULT, resolveButtonSourceType("builtin.disc_dpad"))
+        assertEquals(ButtonStudioType.DEFAULT, resolveButtonSourceType("builtin.capsules_dpad"))
+        assertEquals(ButtonStudioType.DEFAULT, resolveButtonSourceType("builtin.metaballs_dpad"))
+        assertEquals(ButtonStudioType.DEFAULT, resolveButtonSourceType("builtin.rails_dpad"))
 
         assertEquals(ButtonStudioType.REMOTE_COMPOSE, resolveButtonSourceType("rc.action_a"))
         assertEquals(ButtonStudioType.PLUGIN, resolveButtonSourceType("user_custom_a"))
