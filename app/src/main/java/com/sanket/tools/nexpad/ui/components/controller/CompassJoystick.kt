@@ -2,8 +2,6 @@ package com.sanket.tools.nexpad.ui.components.controller
 
 import android.content.Context
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -22,8 +20,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.BlurredEdgeTreatment
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
@@ -31,8 +27,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -54,21 +51,19 @@ import kotlin.math.sin
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
- * Console-grade Orb analog joystick natively translated from the optical reference:
+ * Console-grade Compass analog joystick natively translated from optical reference:
  * - 150dp socket housing with #030304 -> #0a0b0c -> #1a1c1e gradient
- * - 12 graduation dial ticks (30° intervals)
- * - Dynamic deflection gate beam sweeping in real time along travel vector
- * - 2px perimeter neon ring (.lx-ring)
- * - 100dp spherical glass cap (.cap-orb) with dynamic opposite-casting 3D drop shadow
- * - Floating glowing liquid core (.orb-core) with super-smooth sub-pixel GPU translation
- *   and ultra-soft Gaussian blur effect matching CSS filter: blur(4px)
- * - Inner containment neon ring (.orb-ring) with inner/outer glow bloom
- * - Dual spherical glass specular lens highlights (.orb-spec) with inverse light catching
- * - Damped return spring kinematics with zero-latency drag tracking
- * - Tap vs drag disambiguation (stationary tap triggers L3/R3 click)
+ * - Eight directional pips (45° intervals) around the socket perimeter that illuminate
+ *   in high brightness with glow bloom along the nearest travel direction
+ * - 92dp spherical cap (.cap-compass) with opposite-casting dynamic 3D drop shadow
+ * - Rotating direction indicator triangle (.ind) sweeping in real time along travel vector
+ * - Cap neon containment ring (.lx-cap-ring) with drag bloom
+ * - Deep center dish (.lx-dish) with dark vignette and bold "L"/"R" glyph
+ * - Dynamic specular lens reflection (.lx-cap-lens) that shifts with travel
+ * - Zero-latency pointer tracking with damped spring return kinematics
  */
 @Composable
-fun OrbJoystick(
+fun CompassJoystick(
     isLeft: Boolean,
     isConnected: Boolean,
     viewModel: GamepadViewModel,
@@ -78,12 +73,11 @@ fun OrbJoystick(
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current.density
 
-    // Travel bounds matching reference: MAX = 24px in a 150px housing with 100px cap
+    // Travel bounds matching reference: MAX = 24px in a 150px housing with 92px cap
     val maxTravelPx = with(LocalDensity.current) { 24.dp.toPx() }
     val tapThresholdPx = with(LocalDensity.current) { 4.dp.toPx() }
-    val maxCoreLagPx = with(LocalDensity.current) { 13.dp.toPx() }
 
-    // Instant finger tracking during drag + damped spring overshoot on release
+    // Finger tracking during drag + damped spring overshoot on release
     val animOffsetX = remember { Animatable(0f) }
     val animOffsetY = remember { Animatable(0f) }
 
@@ -104,12 +98,12 @@ fun OrbJoystick(
         }
     }
 
-    // Default Orb glow: Teal #2FD4B6 (Left) or Hot Pink #FF3185 (Right)
+    // Default Compass glow: Ice Blue #5AA8FF (Left) or Coral Pink #FF5A88 (Right)
     val glowColor = remember(isRgbEnabled, isLeft) {
         if (isRgbEnabled) {
-            if (isLeft) Color(0xFF2FD4B6) else Color(0xFFFF3185)
+            if (isLeft) Color(0xFF5AA8FF) else Color(0xFFFF5A88)
         } else {
-            if (isLeft) Color(0xFF2FD4B6) else Color(0xFFFF3185)
+            if (isLeft) Color(0xFF5AA8FF) else Color(0xFFFF5A88)
         }
     }
 
@@ -117,21 +111,21 @@ fun OrbJoystick(
     val capScaleAnim by animateFloatAsState(
         targetValue = if (isPressed) 0.97f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
-        label = "orb_cap_scale"
+        label = "compass_cap_scale"
     )
 
-    // Dynamic core glow intensity: 0.70 idle, 1.00 when dragging/active (CSS: opacity 0.7 -> 1.0, 0.15s ease)
-    val coreBloomAlpha by animateFloatAsState(
+    // Dynamic ring bloom intensity: 0.70 idle, 1.00 when dragging/active
+    val capRingAlpha by animateFloatAsState(
         targetValue = if (isDragging || isPressed) 1.0f else 0.70f,
-        animationSpec = tween(durationMillis = 150, easing = LinearEasing),
-        label = "orb_core_bloom"
+        animationSpec = tween(durationMillis = 150),
+        label = "compass_ring_bloom"
     )
 
     // Ambient glow bloom behind housing
     val ambientBloomAlpha by animateFloatAsState(
         targetValue = if (isDragging || isPressed) 0.55f else 0.28f,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
-        label = "orb_ambient_bloom"
+        label = "compass_ambient_bloom"
     )
 
     // Socket base radial gradient: #030304 -> #0a0b0c -> #1a1c1e
@@ -147,36 +141,32 @@ fun OrbJoystick(
         )
     }
 
-    // Orb glass cavity radial gradient: #15171a -> #060607
-    val orbCavityGradient = remember {
+    // Cap radial gradient: circle at 50% 38%, #34373b 0%, #17181b 55%, #050506 100%
+    val capDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF15171A),
-                Color(0xFF060607)
+                Color(0xFF34373B),
+                Color(0xFF17181B),
+                Color(0xFF050506)
             ),
-            center = Offset(0.50f, 0.50f),
-            radius = 220f
+            center = Offset(0.50f, 0.38f),
+            radius = 200f
+        )
+    }
+
+    // Center dish radial gradient: circle at 50% 60%, #030304 -> #121314
+    val dishGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF030304),
+                Color(0xFF121314)
+            ),
+            center = Offset(0.50f, 0.60f),
+            radius = 70f
         )
     }
 
     val stickKey = remember(isLeft) { if (isLeft) "LSB" else "RSB" }
-
-    // Floating liquid core inertial lag offset (-dxn * 13px, -dyn * 13px)
-    // CSS specification: transition: transform 0.14s ease-out, opacity 0.15s ease;
-    // CubicBezierEasing(0f, 0f, 0.2f, 1f) precisely mirrors CSS ease-out
-    val curNormX = (animOffsetX.value / maxTravelPx).coerceIn(-1f, 1f)
-    val curNormY = (animOffsetY.value / maxTravelPx).coerceIn(-1f, 1f)
-
-    val coreLagOffsetX by animateFloatAsState(
-        targetValue = -curNormX * maxCoreLagPx,
-        animationSpec = tween(durationMillis = 140, easing = CubicBezierEasing(0.0f, 0.0f, 0.2f, 1.0f)),
-        label = "orb_core_lag_x"
-    )
-    val coreLagOffsetY by animateFloatAsState(
-        targetValue = -curNormY * maxCoreLagPx,
-        animationSpec = tween(durationMillis = 140, easing = CubicBezierEasing(0.0f, 0.0f, 0.2f, 1.0f)),
-        label = "orb_core_lag_y"
-    )
 
     Box(
         modifier = modifier
@@ -211,12 +201,12 @@ fun OrbJoystick(
                     val deadzoneRadiusPx = 6.dp.toPx()
 
                     val startTime = System.currentTimeMillis()
+                    var maxDragDistance = 0f
                     var previousTouchX = down.position.x
                     var previousTouchY = down.position.y
                     var previousTimeMs = startTime
                     var currentStickX = 0f
                     var currentStickY = 0f
-                    var maxDragDistance = 0f
                     val velocityBuffer = VelocityRingBuffer(8)
 
                     isDragging = true
@@ -287,6 +277,7 @@ fun OrbJoystick(
 
                                 velocityBuffer.push(distDp, dtSec)
                                 val smoothedSpeed = velocityBuffer.averageSpeed()
+
                                 val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, cameraSensitivity)
 
                                 if (stickMagnitude > 0f) {
@@ -417,8 +408,17 @@ fun OrbJoystick(
         val curDist = hypot(curOffsetX, curOffsetY)
         val curMagnitude = min(1f, curDist / maxTravelPx)
         val curAngleDeg = (atan2(curOffsetX, -curOffsetY) * 180f / Math.PI.toFloat() + 360f) % 360f
+        val curNormX = (curOffsetX / maxTravelPx).coerceIn(-1f, 1f)
+        val curNormY = (curOffsetY / maxTravelPx).coerceIn(-1f, 1f)
 
-        // Stationary Socket Background Canvas: Inset Depth, 12 Ticks, and Directional Gate Arc
+        // Which compass pip is illuminated (index 0..7 matching 0° North to 315° North-West)
+        val activePipIndex = if (curMagnitude > 0.40f) {
+            (Math.round(curAngleDeg / 45.0).toInt() % 8)
+        } else {
+            -1
+        }
+
+        // Stationary Socket Background Canvas: Inset Depth, 8 Compass Pips, and Directional Gate Arc
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
@@ -437,75 +437,93 @@ fun OrbJoystick(
                 size = Size(w, topShadowH)
             )
 
-            // Bottom specular rim: inset 0 -3px 5px rgba(255,255,255,0.025)
-            val botRimH = h * 0.20f
+            // Bottom subtle reflection: inset 0 -3px 5px rgba(255,255,255,0.025)
             drawRect(
                 brush = Brush.verticalGradient(
                     colors = listOf(Color.Transparent, Color.White.copy(alpha = 0.025f)),
-                    startY = h - botRimH,
+                    startY = h - 6.dp.toPx(),
                     endY = h
                 ),
-                topLeft = Offset(0f, h - botRimH),
-                size = Size(w, botRimH)
+                topLeft = Offset(0f, h - 6.dp.toPx()),
+                size = Size(w, 6.dp.toPx())
             )
 
-            // 12 Graduation Ticks (.lx-ticks): spaced every 30° at radius r - 12dp to r - 18dp
-            val tickOuterR = r - 12.dp.toPx()
-            val tickInnerR = tickOuterR - 6.dp.toPx()
-            val tickColor = Color.White.copy(alpha = 0.22f)
-            for (i in 0 until 12) {
-                val tickAngle = (i * 30.0 - 90.0) * (Math.PI / 180.0)
-                val cosA = Math.cos(tickAngle).toFloat()
-                val sinA = Math.sin(tickAngle).toFloat()
-                drawLine(
-                    color = tickColor,
-                    start = Offset(center.x + cosA * tickInnerR, center.y + sinA * tickInnerR),
-                    end = Offset(center.x + cosA * tickOuterR, center.y + sinA * tickOuterR),
-                    strokeWidth = 1.8.dp.toPx(),
-                    cap = StrokeCap.Round
+            // Eight Directional Compass Pips (.pips i)
+            // Distance from center = 62px (scaled to current density)
+            val pipDist = 62.dp.toPx()
+            val pipRadius = 3.dp.toPx()
+
+            for (i in 0 until 8) {
+                // Angle: i = 0 is North (-90° from positive X axis), i = 2 is East (0°), etc.
+                val angleRad = Math.toRadians((i * 45.0) - 90.0)
+                val pipCenter = Offset(
+                    center.x + (pipDist * cos(angleRad)).toFloat(),
+                    center.y + (pipDist * sin(angleRad)).toFloat()
                 )
+
+                if (i == activePipIndex) {
+                    // Active pip: 100% opacity + glowing radial bloom (box-shadow: 0 0 8px 2px var(--glow))
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                glowColor.copy(alpha = 0.60f),
+                                glowColor.copy(alpha = 0.20f),
+                                Color.Transparent
+                            ),
+                            center = pipCenter,
+                            radius = pipRadius + 6.dp.toPx()
+                        ),
+                        center = pipCenter,
+                        radius = pipRadius + 6.dp.toPx()
+                    )
+                    drawCircle(
+                        color = glowColor,
+                        radius = pipRadius,
+                        center = pipCenter
+                    )
+                } else {
+                    // Idle pip: 22% opacity
+                    drawCircle(
+                        color = glowColor.copy(alpha = 0.22f),
+                        radius = pipRadius,
+                        center = pipCenter
+                    )
+                }
             }
 
-            // Directional Deflection Gate Arc (.lx-gate): 8px swept beam along travel vector
-            if (curMagnitude > 0.04f) {
-                val gateRadius = r - 3.dp.toPx() - 4.dp.toPx()
-                val sweepAngle = 84f
-                val startAngle = curAngleDeg - 90f - 42f
-                val gateAlpha = (curMagnitude * 0.85f).coerceIn(0f, 0.85f)
+            // Directional Gate Arc (.lx-gate): sweeps along travel angle
+            if (curMagnitude > 0.05f) {
+                val gateSweep = 84f
+                val gateStart = (curAngleDeg - 90f - gateSweep / 2f)
+                val gateRadius = r - 5.dp.toPx()
 
-                // Wide diffuse beam
                 drawArc(
-                    color = glowColor.copy(alpha = gateAlpha * 0.45f),
-                    startAngle = startAngle,
-                    sweepAngle = sweepAngle,
+                    brush = Brush.sweepGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            glowColor.copy(alpha = curMagnitude * 0.70f),
+                            Color.Transparent
+                        ),
+                        center = center
+                    ),
+                    startAngle = gateStart,
+                    sweepAngle = gateSweep,
                     useCenter = false,
                     topLeft = Offset(center.x - gateRadius, center.y - gateRadius),
                     size = Size(gateRadius * 2f, gateRadius * 2f),
-                    style = Stroke(width = 10.dp.toPx(), cap = StrokeCap.Round)
-                )
-                // Core beam
-                drawArc(
-                    color = glowColor.copy(alpha = gateAlpha),
-                    startAngle = startAngle + 12f,
-                    sweepAngle = sweepAngle - 24f,
-                    useCenter = false,
-                    topLeft = Offset(center.x - gateRadius, center.y - gateRadius),
-                    size = Size(gateRadius * 2f, gateRadius * 2f),
-                    style = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round)
+                    style = Stroke(width = 4.dp.toPx())
                 )
             }
 
-            // Baseline dynamic drop shadow behind moving cap
-            val capR = 50.dp.toPx()
+            // Dynamic Opposite-Casting Drop Shadow behind Cap (.cap-compass box-shadow):
+            // calc(dx * -0.3) calc(8px + dy * -0.3) 12px rgba(0,0,0,0.8)
             val shadowOffsetX = curOffsetX * -0.30f
-            val shadowOffsetY = 9.dp.toPx() + curOffsetY * -0.30f
+            val shadowOffsetY = 8.dp.toPx() + curOffsetY * -0.30f
+            val capR = 46.dp.toPx()
+
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.80f),
-                        Color.Black.copy(alpha = 0.40f),
-                        Color.Transparent
-                    ),
+                    colors = listOf(Color.Black.copy(alpha = 0.80f), Color.Transparent),
                     center = Offset(center.x + shadowOffsetX, center.y + shadowOffsetY),
                     radius = capR + 12.dp.toPx()
                 ),
@@ -514,30 +532,34 @@ fun OrbJoystick(
             )
         }
 
-        // Moving Glass Spherical Cap (.cap-orb): 100dp circle with floating liquid core
+        // Spherical Compass Moving Cap (.cap-compass): 92dp diameter
         Box(
             modifier = Modifier
                 .offset { IntOffset(curOffsetX.roundToInt(), curOffsetY.roundToInt()) }
-                .size(100.dp)
                 .graphicsLayer {
                     scaleX = capScaleAnim
                     scaleY = capScaleAnim
                 }
+                .size(92.dp)
+                .shadow(
+                    elevation = 10.dp,
+                    shape = CircleShape,
+                    spotColor = if (isRgbEnabled) glowColor else Color.Black,
+                    ambientColor = if (isRgbEnabled) glowColor.copy(alpha = 0.4f) else Color.Black
+                )
                 .clip(CircleShape)
-                .background(orbCavityGradient)
-                .border(
-                    width = 1.dp,
-                    color = Color.White.copy(alpha = 0.06f),
-                    shape = CircleShape
-                ),
+                .background(capDomeGradient)
+                .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            // Cap Internal Well & Shadows
+            // Cap Surface Artwork: Inset Shadows, Rotating Pointer, Cap Neon Ring, Lens Sheen
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val capW = size.width
                 val capH = size.height
+                val capR = size.minDimension / 2f
+                val capCenter = Offset(capW / 2f, capH / 2f)
 
-                // Top specular rim: inset 0 3px 3px rgba(255,255,255,0.10)
+                // Top specular rim: inset 0 2px 2px rgba(255,255,255,0.10)
                 drawArc(
                     color = Color.White.copy(alpha = 0.10f),
                     startAngle = 180f,
@@ -545,146 +567,146 @@ fun OrbJoystick(
                     useCenter = false,
                     topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
                     size = Size(capW - 3.dp.toPx(), capH - 3.dp.toPx()),
-                    style = Stroke(width = 2.dp.toPx())
+                    style = Stroke(width = 1.5.dp.toPx())
                 )
 
-                // Inset bottom shadow: inset 0 -8px 14px rgba(0,0,0,0.85)
-                val botShadowH = capH * 0.40f
+                // Inset bottom shadow: inset 0 -7px 11px rgba(0,0,0,0.80)
+                val botShadowH = capH * 0.38f
                 drawRect(
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)),
+                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.80f)),
                         startY = capH - botShadowH,
                         endY = capH
                     ),
                     topLeft = Offset(0f, capH - botShadowH),
                     size = Size(capW, botShadowH)
                 )
-            }
 
-            // Glowing Liquid Core (.orb-core): 60dp with hardware-accelerated sub-pixel translation
-            // and multi-pass continuous Gaussian blur matching filter: blur(4px)
-            Box(
-                modifier = Modifier
-                    .size(60.dp)
-                    .graphicsLayer {
-                        translationX = coreLagOffsetX
-                        translationY = coreLagOffsetY
+                // Rotating Direction Pointer Indicator (.ind + .ind::before)
+                // Points in deflection direction with opacity proportional to deflection magnitude
+                if (curMagnitude > 0.04f) {
+                    rotate(degrees = curAngleDeg, pivot = capCenter) {
+                        // Arrow pointer at top edge (pointing North relative to rotation)
+                        // border-left: 7px solid transparent, border-right: 7px solid transparent, border-bottom: 11px solid var(--glow)
+                        val arrowTopY = 5.dp.toPx()
+                        val arrowBottomY = arrowTopY + 11.dp.toPx()
+                        val arrowHalfWidth = 7.dp.toPx()
+
+                        val arrowPath = Path().apply {
+                            moveTo(capCenter.x, arrowTopY)
+                            lineTo(capCenter.x - arrowHalfWidth, arrowBottomY)
+                            lineTo(capCenter.x + arrowHalfWidth, arrowBottomY)
+                            close()
+                        }
+
+                        // Glow drop shadow behind arrow
+                        drawPath(
+                            path = arrowPath,
+                            color = glowColor.copy(alpha = curMagnitude * 0.45f),
+                            style = Stroke(width = 3.dp.toPx())
+                        )
+                        // Solid core arrow
+                        drawPath(
+                            path = arrowPath,
+                            color = glowColor.copy(alpha = curMagnitude)
+                        )
                     }
-                    .blur(radius = 5.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-                    .clip(CircleShape)
-            ) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val coreR = size.minDimension / 2f
-                    val coreCenter = Offset(size.width / 2f, size.height / 2f)
-
-                    // Multi-stop Gaussian diffuse radial gradient replicating filter: blur(4px)
-                    // background: radial-gradient(circle, var(--glow) 0%, transparent 68%) + blur(4px)
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            colorStops = arrayOf(
-                                0.00f to glowColor.copy(alpha = coreBloomAlpha * 0.95f),
-                                0.16f to glowColor.copy(alpha = coreBloomAlpha * 0.85f),
-                                0.32f to glowColor.copy(alpha = coreBloomAlpha * 0.68f),
-                                0.48f to glowColor.copy(alpha = coreBloomAlpha * 0.48f),
-                                0.62f to glowColor.copy(alpha = coreBloomAlpha * 0.28f),
-                                0.74f to glowColor.copy(alpha = coreBloomAlpha * 0.14f),
-                                0.88f to glowColor.copy(alpha = coreBloomAlpha * 0.04f),
-                                1.00f to Color.Transparent
-                            ),
-                            center = coreCenter,
-                            radius = coreR
-                        ),
-                        center = coreCenter,
-                        radius = coreR
-                    )
-
-                    // Secondary ambient glow diffusion expanding softly past the core perimeter
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            colorStops = arrayOf(
-                                0.00f to glowColor.copy(alpha = coreBloomAlpha * 0.50f),
-                                0.40f to glowColor.copy(alpha = coreBloomAlpha * 0.28f),
-                                0.70f to glowColor.copy(alpha = coreBloomAlpha * 0.10f),
-                                1.00f to Color.Transparent
-                            ),
-                            center = coreCenter,
-                            radius = coreR * 1.25f
-                        ),
-                        center = coreCenter,
-                        radius = coreR * 1.25f
-                    )
                 }
-            }
 
-            // Inner Orb Containment Ring (.orb-ring) & Specular Reflections (.orb-spec)
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val capW = size.width
-                val capH = size.height
-                val capR = size.minDimension / 2f
-
-                // Inner Containment Ring (.orb-ring): inset 5px, 2px border, opacity 0.5
-                val orbRingRadius = capR - 5.dp.toPx()
-                // Outer bloom
+                // Cap Neon Ring (.lx-cap-ring): inset 19px
+                val capRingRadius = capR - 19.dp.toPx()
+                // Outer glow bloom
                 drawCircle(
-                    color = glowColor.copy(alpha = 0.25f),
-                    radius = orbRingRadius,
-                    style = Stroke(width = 6.dp.toPx())
+                    color = glowColor.copy(alpha = capRingAlpha * 0.35f),
+                    radius = capRingRadius,
+                    style = Stroke(width = 5.dp.toPx())
                 )
-                // Inset bloom
+                // Crisp core ring
                 drawCircle(
-                    color = glowColor.copy(alpha = 0.25f),
-                    radius = orbRingRadius - 2.dp.toPx(),
-                    style = Stroke(width = 4.dp.toPx())
-                )
-                // Core ring
-                drawCircle(
-                    color = glowColor.copy(alpha = 0.50f),
-                    radius = orbRingRadius,
+                    color = glowColor.copy(alpha = capRingAlpha),
+                    radius = capRingRadius,
                     style = Stroke(width = 2.dp.toPx())
                 )
 
-                // Dual Spherical Lens Highlights (.orb-spec):
-                // 1) Primary top-left light catch moving inversely:
-                // ellipse 34% 20% at (34% - dxn * 14%, 22% - dyn * 14%)
-                val normX = (curOffsetX / maxTravelPx).coerceIn(-1f, 1f)
-                val normY = (curOffsetY / maxTravelPx).coerceIn(-1f, 1f)
-                val spec1CenterX = capW * (0.34f - normX * 0.14f)
-                val spec1CenterY = capH * (0.22f - normY * 0.14f)
-
+                // Dynamic Cap Specular Lens (.lx-cap-lens): shifts opposite to deflection
+                // ellipse 42% 24% at calc(50% - dxn * 16%) calc(20% - dyn * 16%)
+                val specCenterX = capW * (0.50f - curNormX * 0.16f)
+                val specCenterY = capH * (0.20f - curNormY * 0.16f)
                 drawOval(
                     brush = Brush.radialGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.38f),
-                            Color.White.copy(alpha = 0.15f),
-                            Color.Transparent
-                        ),
-                        center = Offset(spec1CenterX, spec1CenterY),
-                        radius = capW * 0.28f
+                        colors = listOf(Color.White.copy(alpha = 0.20f), Color.Transparent),
+                        center = Offset(specCenterX, specCenterY),
+                        radius = capW * 0.32f
                     ),
-                    topLeft = Offset(spec1CenterX - capW * 0.22f, spec1CenterY - capH * 0.14f),
-                    size = Size(capW * 0.44f, capH * 0.28f)
+                    topLeft = Offset(specCenterX - capW * 0.21f, specCenterY - capH * 0.12f),
+                    size = Size(capW * 0.42f, capH * 0.24f)
                 )
 
-                // 2) Secondary bottom rim specular bounce:
-                // ellipse 40% 14% at 55% 94%
-                val spec2CenterX = capW * 0.55f
-                val spec2CenterY = capH * 0.94f
-                drawOval(
+                // Bottom-right secondary bounce sheen: circle at 70% 82%
+                drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.10f),
-                            Color.Transparent
-                        ),
-                        center = Offset(spec2CenterX, spec2CenterY),
-                        radius = capW * 0.25f
+                        colors = listOf(Color.White.copy(alpha = 0.05f), Color.Transparent),
+                        center = Offset(capW * 0.70f, capH * 0.82f),
+                        radius = capW * 0.20f
                     ),
-                    topLeft = Offset(spec2CenterX - capW * 0.24f, spec2CenterY - capH * 0.10f),
-                    size = Size(capW * 0.48f, capH * 0.20f)
+                    center = Offset(capW * 0.70f, capH * 0.82f),
+                    radius = capW * 0.20f
+                )
+            }
+
+            // Center Dish (.lx-dish): 38dp diameter with dark vignette and glyph
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(dishGradient)
+                    .border(1.dp, Color.White.copy(alpha = 0.06f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                // Dish inner shadow and dark vignette
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val dishW = size.width
+                    val dishH = size.height
+
+                    // Inset top shadow: inset 0 3px 6px rgba(0,0,0,0.9)
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(Color.Black.copy(alpha = 0.90f), Color.Transparent),
+                            startY = 0f,
+                            endY = dishH * 0.50f
+                        ),
+                        topLeft = Offset.Zero,
+                        size = Size(dishW, dishH * 0.50f)
+                    )
+
+                    // Vignette circle: transparent 38% -> rgba(0,0,0,0.85) 100%
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colorStops = arrayOf(
+                                0.00f to Color.Transparent,
+                                0.38f to Color.Transparent,
+                                1.00f to Color.Black.copy(alpha = 0.85f)
+                            ),
+                            center = Offset(dishW / 2f, dishH / 2f),
+                            radius = dishW / 2f
+                        ),
+                        center = Offset(dishW / 2f, dishH / 2f),
+                        radius = dishW / 2f
+                    )
+                }
+
+                // Center Glyph (.lx-g): "L" / "R" with medium weight
+                Text(
+                    text = if (isLeft) "L" else "R",
+                    color = glowColor,
+                    fontSize = 30.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.offset(0.dp, (-0.5).dp)
                 )
             }
         }
 
-        // Top Overlay Canvas: Outer Neon Ring (.lx-ring, z-index: 6) & Glass Lens (.lx-lens, z-index: 8)
+        // Top Glass Lens Overlay (.lx-lens)
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
@@ -708,7 +730,7 @@ fun OrbJoystick(
                 style = Stroke(width = 2.dp.toPx())
             )
 
-            // Outer Glass Lens (.lx-lens): Top-lit 1px chamfer rim
+            // Outer Glass Lens (.lx-lens): Top chamfer, left reflection, bottom shadow
             drawArc(
                 color = Color.White.copy(alpha = 0.12f),
                 startAngle = 180f,
@@ -718,7 +740,6 @@ fun OrbJoystick(
                 size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
                 style = Stroke(width = 1.dp.toPx())
             )
-            // Left subtle reflection
             drawArc(
                 color = Color.White.copy(alpha = 0.06f),
                 startAngle = 90f,
@@ -728,7 +749,6 @@ fun OrbJoystick(
                 size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
                 style = Stroke(width = 1.dp.toPx())
             )
-            // Bottom shadow chamfer
             drawArc(
                 color = Color.Black.copy(alpha = 0.30f),
                 startAngle = 0f,
@@ -738,7 +758,6 @@ fun OrbJoystick(
                 size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
                 style = Stroke(width = 1.dp.toPx())
             )
-            // Lower-right glass specular sheen: at 70% 78%
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
@@ -753,16 +772,15 @@ fun OrbJoystick(
 }
 
 /**
- * Dedicated standalone Orb Thumbstick Click Button (LSB / RSB or L3 / R3).
- * Shares the identical Orb glass spherical design language:
- * - Spherical dark glass cavity (#15171a -> #060607)
- * - Centered floating glowing liquid core with radial gradient blur
- * - Inner containment neon ring with bloom
- * - Inverse specular lens reflection
- * - Damped spring depression on tap (scales to 0.92, offsets 2dp, triggers haptics and game input)
+ * Dedicated standalone Compass Thumbstick Click Button (LSB / RSB or L3 / R3).
+ * Shares the identical Compass spherical aesthetic:
+ * - 8 directional compass pips
+ * - Radial dish with neon glyph
+ * - Neon cap ring with bloom
+ * - Damped spring depression on tap (scales to 0.90, offsets 2dp, triggers haptics and game input)
  */
 @Composable
-fun OrbStickButton(
+fun CompassStickButton(
     isLeft: Boolean,
     key: String = if (isLeft) "LSB" else "RSB",
     isConnected: Boolean,
@@ -775,19 +793,21 @@ fun OrbStickButton(
     var isPressed by remember { mutableStateOf(false) }
 
     val scaleAnim by animateFloatAsState(
-        targetValue = if (isPressed) 0.92f else 1.0f,
+        targetValue = if (isPressed) 0.90f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
-        label = "orb_stick_btn_scale"
+        label = "compass_btn_scale"
     )
-    val pressOffsetYAnim by animateFloatAsState(
-        targetValue = if (isPressed) 2.0f else 0f,
+
+    val pressOffsetY by animateFloatAsState(
+        targetValue = if (isPressed) 2.5f else 0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
-        label = "orb_stick_btn_offset"
+        label = "compass_btn_offset"
     )
-    val coreBloomAlpha by animateFloatAsState(
+
+    val ringBloomAlpha by animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.70f,
-        animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
-        label = "orb_stick_btn_bloom"
+        animationSpec = tween(durationMillis = 120),
+        label = "compass_btn_ring_bloom"
     )
 
     val currentOnVibrate by rememberUpdatedState(onVibrate)
@@ -795,41 +815,43 @@ fun OrbStickButton(
 
     val glowColor = remember(isRgbEnabled, isLeft) {
         if (isRgbEnabled) {
-            if (isLeft) Color(0xFF2FD4B6) else Color(0xFFFF3185)
+            if (isLeft) Color(0xFF5AA8FF) else Color(0xFFFF5A88)
         } else {
-            if (isLeft) Color(0xFF2FD4B6) else Color(0xFFFF3185)
+            if (isLeft) Color(0xFF5AA8FF) else Color(0xFFFF5A88)
         }
     }
 
-    val orbCavityGradient = remember {
+    val capDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF15171A),
-                Color(0xFF060607)
+                Color(0xFF34373B),
+                Color(0xFF17181B),
+                Color(0xFF050506)
             ),
-            center = Offset(0.50f, 0.50f),
-            radius = 180f
+            center = Offset(0.50f, 0.38f),
+            radius = 160f
         )
     }
 
-    val labelText = displayLabel ?: (if (isLeft) "LSB" else "RSB")
+    val dishGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF030304),
+                Color(0xFF121314)
+            ),
+            center = Offset(0.50f, 0.60f),
+            radius = 60f
+        )
+    }
 
     Box(
         modifier = modifier
             .size(70.dp)
-            .drawBehind {
-                if (isRgbEnabled) {
-                    drawCircle(
-                        color = glowColor.copy(alpha = coreBloomAlpha * 0.45f),
-                        radius = size.minDimension / 2f + 6.dp.toPx()
-                    )
-                }
-            }
             .graphicsLayer {
                 scaleX = scaleAnim
                 scaleY = scaleAnim
             }
-            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
+            .offset { IntOffset(0, pressOffsetY.dp.roundToPx()) }
             .shadow(
                 elevation = if (isPressed) 2.dp else 8.dp,
                 shape = CircleShape,
@@ -837,12 +859,8 @@ fun OrbStickButton(
                 ambientColor = if (isRgbEnabled) glowColor.copy(alpha = 0.5f) else Color.Black
             )
             .clip(CircleShape)
-            .background(orbCavityGradient)
-            .border(
-                width = 1.dp,
-                color = Color.White.copy(alpha = 0.08f),
-                shape = CircleShape
-            )
+            .background(capDomeGradient)
+            .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape)
             .pointerInput(key) {
                 detectTapGestures(
                     onPress = {
@@ -857,7 +875,7 @@ fun OrbStickButton(
             },
         contentAlignment = Alignment.Center
     ) {
-        // Internal Well Shadows, Liquid Core with deep Gaussian blur, and Specular Reflections
+        // Internal Well, 8 Pips, Ring, and Lens Highlight
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
@@ -866,7 +884,7 @@ fun OrbStickButton(
 
             // Top specular arc
             drawArc(
-                color = Color.White.copy(alpha = if (isPressed) 0.08f else 0.16f),
+                color = Color.White.copy(alpha = 0.14f),
                 startAngle = 180f,
                 sweepAngle = 180f,
                 useCenter = false,
@@ -876,10 +894,10 @@ fun OrbStickButton(
             )
 
             // Bottom inset shadow
-            val botShadowH = h * 0.40f
+            val botShadowH = h * 0.38f
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (isPressed) 0.90f else 0.80f)),
+                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.80f)),
                     startY = h - botShadowH,
                     endY = h
                 ),
@@ -887,47 +905,31 @@ fun OrbStickButton(
                 size = Size(w, botShadowH)
             )
 
-            // Liquid Core multi-pass diffuse blur
-            val coreR = r * 0.65f
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colorStops = arrayOf(
-                        0.00f to glowColor.copy(alpha = coreBloomAlpha * 0.95f),
-                        0.20f to glowColor.copy(alpha = coreBloomAlpha * 0.80f),
-                        0.40f to glowColor.copy(alpha = coreBloomAlpha * 0.58f),
-                        0.60f to glowColor.copy(alpha = coreBloomAlpha * 0.32f),
-                        0.78f to glowColor.copy(alpha = coreBloomAlpha * 0.12f),
-                        1.00f to Color.Transparent
-                    ),
-                    center = center,
-                    radius = coreR
-                ),
-                center = center,
-                radius = coreR
-            )
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colorStops = arrayOf(
-                        0.00f to glowColor.copy(alpha = coreBloomAlpha * 0.45f),
-                        0.50f to glowColor.copy(alpha = coreBloomAlpha * 0.20f),
-                        1.00f to Color.Transparent
-                    ),
-                    center = center,
-                    radius = coreR * 1.25f
-                ),
-                center = center,
-                radius = coreR * 1.25f
-            )
+            // 8 Compass Pips around button perimeter
+            val pipDist = r - 6.dp.toPx()
+            val pipRadius = 1.8.dp.toPx()
+            for (i in 0 until 8) {
+                val angleRad = Math.toRadians((i * 45.0) - 90.0)
+                val pipCenter = Offset(
+                    center.x + (pipDist * cos(angleRad)).toFloat(),
+                    center.y + (pipDist * sin(angleRad)).toFloat()
+                )
+                drawCircle(
+                    color = glowColor.copy(alpha = if (isPressed) 0.65f else 0.30f),
+                    radius = pipRadius,
+                    center = pipCenter
+                )
+            }
 
-            // Inner Containment Ring
-            val ringRadius = r - 4.dp.toPx()
+            // Cap Neon Ring: inset 12px
+            val ringRadius = r - 12.dp.toPx()
             drawCircle(
-                color = glowColor.copy(alpha = if (isPressed) 0.50f else 0.25f),
+                color = glowColor.copy(alpha = ringBloomAlpha * 0.35f),
                 radius = ringRadius,
                 style = Stroke(width = 4.dp.toPx())
             )
             drawCircle(
-                color = glowColor.copy(alpha = if (isPressed) 0.90f else 0.60f),
+                color = glowColor.copy(alpha = ringBloomAlpha),
                 radius = ringRadius,
                 style = Stroke(width = 1.8.dp.toPx())
             )
@@ -935,7 +937,7 @@ fun OrbStickButton(
             // Specular lens highlight
             drawOval(
                 brush = Brush.radialGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.35f), Color.Transparent),
+                    colors = listOf(Color.White.copy(alpha = 0.25f), Color.Transparent),
                     center = Offset(w * 0.36f, h * 0.24f),
                     radius = w * 0.28f
                 ),
@@ -944,12 +946,21 @@ fun OrbStickButton(
             )
         }
 
-        // Center Label
-        Text(
-            text = labelText,
-            color = if (isPressed) Color.White else glowColor,
-            fontWeight = FontWeight.Bold,
-            fontSize = 13.sp
-        )
+        // Center Dish with Glyph
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(dishGradient)
+                .border(1.dp, Color.White.copy(alpha = 0.06f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = displayLabel ?: key,
+                color = glowColor,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }

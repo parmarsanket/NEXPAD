@@ -1420,6 +1420,101 @@ object DefaultComponents {
         size = NxpSize(widthDp = 70, heightDp = 70)
     )
 
+    val COMPASS_STICK_LS = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.compass_ls",
+            name = "Compass Left Stick (LS)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.JOYSTICK.id,
+            defaultControl = ControlKey.LS.key,
+            description = "Compass analog joystick with eight illuminated directional pips and rotating direction pointer indicator."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#030304",
+            opacity = 0.95f,
+            borderColor = "#5AA8FF",
+            borderWidth = 2f,
+            glowColor = "#5AA8FF",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(fillColor = "#5AA8FF"),
+        interaction = NxpInteraction(type = "Joystick", deadzone = 0.05f),
+        size = NxpSize(widthDp = 150, heightDp = 150)
+    )
+
+    val COMPASS_STICK_RS = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.compass_rs",
+            name = "Compass Right Stick (RS)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.JOYSTICK.id,
+            defaultControl = ControlKey.RS.key,
+            description = "Compass analog joystick with eight illuminated directional pips and rotating direction pointer indicator in coral pink."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#030304",
+            opacity = 0.95f,
+            borderColor = "#FF5A88",
+            borderWidth = 2f,
+            glowColor = "#FF5A88",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(fillColor = "#FF5A88"),
+        interaction = NxpInteraction(type = "Joystick", deadzone = 0.05f),
+        size = NxpSize(widthDp = 150, heightDp = 150)
+    )
+
+    val COMPASS_STICK_LSB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.compass_lsb",
+            name = "Compass Left Stick Button (LSB)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.LSB.key,
+            description = "Tactile Compass thumbstick click button (L3 / LSB) with perimeter compass pips and ice-blue neon glow."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#34373B",
+            opacity = 0.95f,
+            borderColor = "#5AA8FF",
+            borderWidth = 2f,
+            glowColor = "#5AA8FF",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.89f, fillColor = "#5AA8FF", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "LSB", color = "#5AA8FF", pressedColor = "#000000", fontSize = 12f),
+        size = NxpSize(widthDp = 70, heightDp = 70)
+    )
+
+    val COMPASS_STICK_RSB = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.compass_rsb",
+            name = "Compass Right Stick Button (RSB)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.RSB.key,
+            description = "Tactile Compass thumbstick click button (R3 / RSB) with perimeter compass pips and coral-pink neon glow."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#34373B",
+            opacity = 0.95f,
+            borderColor = "#FF5A88",
+            borderWidth = 2f,
+            glowColor = "#FF5A88",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(scale = 0.89f, fillColor = "#FF5A88", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "RSB", color = "#FF5A88", pressedColor = "#000000", fontSize = 12f),
+        size = NxpSize(widthDp = 70, heightDp = 70)
+    )
 
     val DEFAULT_STICK_LTP = NxpComponentDef(
         manifest = NxpManifest(
@@ -1918,6 +2013,12 @@ object DefaultComponents {
         ORB_STICK_RS,
         ORB_STICK_LSB,
         ORB_STICK_RSB,
+
+        // Compass Nav Suite
+        COMPASS_STICK_LS,
+        COMPASS_STICK_RS,
+        COMPASS_STICK_LSB,
+        COMPASS_STICK_RSB,
 
         // Custom Cyber / Sci-Fi Variant Skins
         SCIFI_HEX_ATTACK,

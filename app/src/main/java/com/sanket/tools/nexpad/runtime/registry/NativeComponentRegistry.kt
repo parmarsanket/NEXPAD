@@ -213,6 +213,52 @@ object OrbRightJoystickVariant : BaseNativeVariant("builtin.orb_rs", ControlKey.
     }
 }
 
+object CompassLeftJoystickVariant : BaseNativeVariant("builtin.compass_ls", ControlKey.LS, "Compass Nav", 104) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        CompassJoystick(
+            isLeft = true,
+            isConnected = context.isConnected,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticCompassJoystick(
+            isLeft = true,
+            modifier = context.modifier
+        )
+    }
+}
+
+object CompassRightJoystickVariant : BaseNativeVariant("builtin.compass_rs", ControlKey.RS, "Compass Nav", 204) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        CompassJoystick(
+            isLeft = false,
+            isConnected = context.isConnected,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticCompassJoystick(
+            isLeft = false,
+            modifier = context.modifier
+        )
+    }
+}
+
 // =========================================================================
 // STICK BUTTON VARIANTS (LSB / RSB or L3 / R3)
 // =========================================================================
@@ -369,6 +415,58 @@ object OrbRightStickButtonVariant : BaseNativeVariant("builtin.orb_rsb", Control
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticOrbStickButton(
+            isLeft = false,
+            modifier = context.modifier
+        )
+    }
+}
+
+object CompassLeftStickButtonVariant : BaseNativeVariant("builtin.compass_lsb", ControlKey.LSB, "Compass Nav", 304) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        CompassStickButton(
+            isLeft = true,
+            key = K.LSB,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticCompassStickButton(
+            isLeft = true,
+            modifier = context.modifier
+        )
+    }
+}
+
+object CompassRightStickButtonVariant : BaseNativeVariant("builtin.compass_rsb", ControlKey.RSB, "Compass Nav", 404) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        CompassStickButton(
+            isLeft = false,
+            key = K.RSB,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticCompassStickButton(
             isLeft = false,
             modifier = context.modifier
         )
@@ -737,6 +835,12 @@ object DefaultNativeFamily {
         register(OrbRightJoystickVariant)
         register(OrbLeftStickButtonVariant)
         register(OrbRightStickButtonVariant)
+
+        // --- 4. Compass Nav Variants (Directional Pips & Pointer Analog Sticks & Stick Click Buttons) ---
+        register(CompassLeftJoystickVariant)
+        register(CompassRightJoystickVariant)
+        register(CompassLeftStickButtonVariant)
+        register(CompassRightStickButtonVariant)
     }
 
     /**

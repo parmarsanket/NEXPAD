@@ -95,18 +95,48 @@ class NativeComponentRegistryTest {
     }
 
     @Test
+    fun testCompassNavVariantsRegistered() {
+        val compassLs = DefaultNativeFamily.getVariant("builtin.compass_ls")
+        assertNotNull("Compass LS must be registered in DefaultNativeFamily", compassLs)
+        assertEquals(ControlKey.LS, compassLs!!.controlKey)
+        assertEquals(104, compassLs.seedCode)
+        assertFalse(compassLs.isBaselineDefault)
+        assertEquals("Compass Nav", compassLs.variantName)
+
+        val compassRs = DefaultNativeFamily.getVariant("builtin.compass_rs")
+        assertNotNull("Compass RS must be registered in DefaultNativeFamily", compassRs)
+        assertEquals(ControlKey.RS, compassRs!!.controlKey)
+        assertEquals(204, compassRs.seedCode)
+        assertFalse(compassRs.isBaselineDefault)
+
+        val compassLsb = DefaultNativeFamily.getVariant("builtin.compass_lsb")
+        assertNotNull("Compass LSB must be registered in DefaultNativeFamily", compassLsb)
+        assertEquals(ControlKey.LSB, compassLsb!!.controlKey)
+        assertEquals(304, compassLsb.seedCode)
+        assertFalse(compassLsb.isBaselineDefault)
+
+        val compassRsb = DefaultNativeFamily.getVariant("builtin.compass_rsb")
+        assertNotNull("Compass RSB must be registered in DefaultNativeFamily", compassRsb)
+        assertEquals(ControlKey.RSB, compassRsb!!.controlKey)
+        assertEquals(404, compassRsb.seedCode)
+        assertFalse(compassRsb.isBaselineDefault)
+    }
+
+    @Test
     fun testMultipleVariantsPerControlKey() {
         val lsVariants = DefaultNativeFamily.getVariantsFor(ControlKey.LS)
-        assertTrue("LS must have at least 3 variants (Realistic, Flux, Orb)", lsVariants.size >= 3)
+        assertTrue("LS must have at least 4 variants (Realistic, Flux, Orb, Compass)", lsVariants.size >= 4)
         assertTrue(lsVariants.any { it.id == "builtin.default_ls" && it.seedCode == 101 })
         assertTrue(lsVariants.any { it.id == "builtin.flux_ls" && it.seedCode == 102 })
         assertTrue(lsVariants.any { it.id == "builtin.orb_ls" && it.seedCode == 103 })
+        assertTrue(lsVariants.any { it.id == "builtin.compass_ls" && it.seedCode == 104 })
 
         val rsVariants = DefaultNativeFamily.getVariantsFor(ControlKey.RS)
-        assertTrue("RS must have at least 3 variants", rsVariants.size >= 3)
+        assertTrue("RS must have at least 4 variants", rsVariants.size >= 4)
         assertTrue(rsVariants.any { it.id == "builtin.default_rs" && it.seedCode == 201 })
         assertTrue(rsVariants.any { it.id == "builtin.flux_rs" && it.seedCode == 202 })
         assertTrue(rsVariants.any { it.id == "builtin.orb_rs" && it.seedCode == 203 })
+        assertTrue(rsVariants.any { it.id == "builtin.compass_rs" && it.seedCode == 204 })
     }
 
     @Test
@@ -129,6 +159,11 @@ class NativeComponentRegistryTest {
         val orbLs = NativeComponentRegistry.resolveVariant("LS", "builtin.orb_ls")
         assertNotNull(orbLs)
         assertEquals(103, orbLs!!.seedCode)
+
+        // Compass custom ID -> Compass variant (seedCode 104)
+        val compassLs = NativeComponentRegistry.resolveVariant("LS", "builtin.compass_ls")
+        assertNotNull(compassLs)
+        assertEquals(104, compassLs!!.seedCode)
 
         // Non-existent custom ID -> falls back gracefully to baseline default
         val fallbackLs = NativeComponentRegistry.resolveVariant("LS", "non_existent_custom_id")

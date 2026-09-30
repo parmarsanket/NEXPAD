@@ -12,6 +12,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
@@ -41,6 +43,8 @@ import com.sanket.tools.nexpad.ui.components.controller.LeftHorizonClipShape
 import com.sanket.tools.nexpad.ui.components.controller.RightHorizonClipShape
 import androidx.compose.ui.unit.IntOffset
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
+import kotlin.math.cos
+import kotlin.math.sin
 
 private val crossShape = GenericShape { size, _ ->
     val thirdW = size.width / 3f
@@ -835,31 +839,52 @@ internal fun StaticOrbJoystick(
                 )
             }
 
-            // Glowing Liquid Core (.orb-core): 60dp
+            // Glowing Liquid Core (.orb-core): 60dp with continuous Gaussian blur
             Box(
                 modifier = Modifier
                     .size(60.dp)
+                    .blur(radius = 5.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
                     .clip(CircleShape)
             ) {
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val coreR = size.minDimension / 2f
                     val coreCenter = Offset(size.width / 2f, size.height / 2f)
 
-                    // Diffuse glow layers
+                    // Multi-stop Gaussian diffuse radial gradient replicating filter: blur(4px)
+                    // background: radial-gradient(circle, var(--glow) 0%, transparent 68%) + blur(4px)
                     drawCircle(
-                        brush = Brush.radialGradient(listOf(glowColor.copy(alpha = 0.35f), Color.Transparent), coreCenter, coreR),
+                        brush = Brush.radialGradient(
+                            colorStops = arrayOf(
+                                0.00f to glowColor.copy(alpha = 0.95f),
+                                0.16f to glowColor.copy(alpha = 0.85f),
+                                0.32f to glowColor.copy(alpha = 0.68f),
+                                0.48f to glowColor.copy(alpha = 0.48f),
+                                0.62f to glowColor.copy(alpha = 0.28f),
+                                0.74f to glowColor.copy(alpha = 0.14f),
+                                0.88f to glowColor.copy(alpha = 0.04f),
+                                1.00f to Color.Transparent
+                            ),
+                            center = coreCenter,
+                            radius = coreR
+                        ),
                         center = coreCenter,
                         radius = coreR
                     )
+
+                    // Secondary ambient glow diffusion expanding softly past the core perimeter
                     drawCircle(
-                        brush = Brush.radialGradient(listOf(glowColor.copy(alpha = 0.65f), Color.Transparent), coreCenter, coreR * 0.75f),
+                        brush = Brush.radialGradient(
+                            colorStops = arrayOf(
+                                0.00f to glowColor.copy(alpha = 0.50f),
+                                0.40f to glowColor.copy(alpha = 0.28f),
+                                0.70f to glowColor.copy(alpha = 0.10f),
+                                1.00f to Color.Transparent
+                            ),
+                            center = coreCenter,
+                            radius = coreR * 1.25f
+                        ),
                         center = coreCenter,
-                        radius = coreR * 0.75f
-                    )
-                    drawCircle(
-                        brush = Brush.radialGradient(listOf(Color.White.copy(alpha = 0.85f), glowColor.copy(alpha = 0.95f), Color.Transparent), coreCenter, coreR * 0.45f),
-                        center = coreCenter,
-                        radius = coreR * 0.45f
+                        radius = coreR * 1.25f
                     )
                 }
             }
@@ -978,16 +1003,36 @@ internal fun StaticOrbStickButton(
                 size = Size(w, botShadowH)
             )
 
-            // Liquid Core diffuse glow
+            // Liquid Core multi-pass diffuse blur
             val coreR = r * 0.65f
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(glowColor.copy(alpha = 0.85f), glowColor.copy(alpha = 0.30f), Color.Transparent),
+                    colorStops = arrayOf(
+                        0.00f to glowColor.copy(alpha = 0.95f),
+                        0.20f to glowColor.copy(alpha = 0.80f),
+                        0.40f to glowColor.copy(alpha = 0.58f),
+                        0.60f to glowColor.copy(alpha = 0.32f),
+                        0.78f to glowColor.copy(alpha = 0.12f),
+                        1.00f to Color.Transparent
+                    ),
                     center = center,
                     radius = coreR
                 ),
                 center = center,
                 radius = coreR
+            )
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colorStops = arrayOf(
+                        0.00f to glowColor.copy(alpha = 0.45f),
+                        0.50f to glowColor.copy(alpha = 0.20f),
+                        1.00f to Color.Transparent
+                    ),
+                    center = center,
+                    radius = coreR * 1.25f
+                ),
+                center = center,
+                radius = coreR * 1.25f
             )
 
             // Inner Containment Ring
@@ -1012,6 +1057,320 @@ internal fun StaticOrbStickButton(
         )
     }
 }
+
+/**
+ * Exact visual match for ui/components/controller/CompassJoystick.kt
+ */
+@Preview
+@Composable
+internal fun StaticCompassJoystick(
+    isLeft: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val glowColor = if (isLeft) Color(0xFF5AA8FF) else Color(0xFFFF5A88)
+
+    val socketGradient = Brush.radialGradient(
+        colors = listOf(Color(0xFF030304), Color(0xFF0A0B0C), Color(0xFF1A1C1E)),
+        center = Offset(0.5f, 0.5f),
+        radius = 280f
+    )
+
+    val capDomeGradient = Brush.radialGradient(
+        colors = listOf(Color(0xFF34373B), Color(0xFF17181B), Color(0xFF050506)),
+        center = Offset(0.50f, 0.38f),
+        radius = 200f
+    )
+
+    val dishGradient = Brush.radialGradient(
+        colors = listOf(Color(0xFF030304), Color(0xFF121314)),
+        center = Offset(0.50f, 0.60f),
+        radius = 70f
+    )
+
+    Box(
+        modifier = modifier
+            .size(150.dp)
+            .shadow(12.dp, CircleShape, ambientColor = glowColor.copy(alpha = 0.4f), spotColor = glowColor)
+            .clip(CircleShape)
+            .background(socketGradient)
+            .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val center = Offset(w / 2f, h / 2f)
+
+            // Deep top inset shadow
+            drawRect(
+                brush = Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.95f), Color.Transparent), 0f, h * 0.38f),
+                topLeft = Offset.Zero,
+                size = Size(w, h * 0.38f)
+            )
+
+            // Eight Directional Compass Pips (.pips i)
+            val pipDist = 62.dp.toPx()
+            val pipRadius = 3.dp.toPx()
+            for (i in 0 until 8) {
+                val angleRad = Math.toRadians((i * 45.0) - 90.0)
+                val pipCenter = Offset(
+                    center.x + (pipDist * cos(angleRad)).toFloat(),
+                    center.y + (pipDist * sin(angleRad)).toFloat()
+                )
+                drawCircle(
+                    color = glowColor.copy(alpha = 0.22f),
+                    radius = pipRadius,
+                    center = pipCenter
+                )
+            }
+
+            // Cap baseline shadow
+            val capR = 46.dp.toPx()
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color.Black.copy(alpha = 0.80f), Color.Transparent),
+                    center = Offset(center.x, center.y + 8.dp.toPx()),
+                    radius = capR + 12.dp.toPx()
+                ),
+                center = Offset(center.x, center.y + 8.dp.toPx()),
+                radius = capR + 12.dp.toPx()
+            )
+        }
+
+        // Spherical Moving Cap (.cap-compass): 92dp
+        Box(
+            modifier = Modifier
+                .size(92.dp)
+                .shadow(10.dp, CircleShape, ambientColor = glowColor.copy(alpha = 0.4f), spotColor = glowColor)
+                .clip(CircleShape)
+                .background(capDomeGradient)
+                .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val capW = size.width
+                val capH = size.height
+                val capR = size.minDimension / 2f
+
+                // Inset top specular arc
+                drawArc(
+                    color = Color.White.copy(alpha = 0.10f),
+                    startAngle = 180f,
+                    sweepAngle = 180f,
+                    useCenter = false,
+                    topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
+                    size = Size(capW - 3.dp.toPx(), capH - 3.dp.toPx()),
+                    style = Stroke(width = 1.5.dp.toPx())
+                )
+
+                // Inset bottom shadow
+                drawRect(
+                    brush = Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.80f)), capH * 0.62f, capH),
+                    topLeft = Offset(0f, capH * 0.62f),
+                    size = Size(capW, capH * 0.38f)
+                )
+
+                // Cap Neon Ring (.lx-cap-ring): inset 19px
+                val capRingRadius = capR - 19.dp.toPx()
+                drawCircle(glowColor.copy(alpha = 0.25f), radius = capRingRadius, style = Stroke(5.dp.toPx()))
+                drawCircle(glowColor.copy(alpha = 0.70f), radius = capRingRadius, style = Stroke(2.dp.toPx()))
+
+                // Dynamic Cap Specular Lens (.lx-cap-lens)
+                val specCenterX = capW * 0.50f
+                val specCenterY = capH * 0.20f
+                drawOval(
+                    brush = Brush.radialGradient(listOf(Color.White.copy(alpha = 0.20f), Color.Transparent), Offset(specCenterX, specCenterY), capW * 0.32f),
+                    topLeft = Offset(specCenterX - capW * 0.21f, specCenterY - capH * 0.12f),
+                    size = Size(capW * 0.42f, capH * 0.24f)
+                )
+
+                // Bottom-right secondary sheen
+                drawCircle(
+                    brush = Brush.radialGradient(listOf(Color.White.copy(alpha = 0.05f), Color.Transparent), Offset(capW * 0.70f, capH * 0.82f), capW * 0.20f),
+                    center = Offset(capW * 0.70f, capH * 0.82f),
+                    radius = capW * 0.20f
+                )
+            }
+
+            // Center Dish (.lx-dish): 38dp
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(dishGradient)
+                    .border(1.dp, Color.White.copy(alpha = 0.06f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val dishW = size.width
+                    val dishH = size.height
+
+                    // Inset top shadow
+                    drawRect(
+                        brush = Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.90f), Color.Transparent), 0f, dishH * 0.50f),
+                        topLeft = Offset.Zero,
+                        size = Size(dishW, dishH * 0.50f)
+                    )
+
+                    // Vignette circle
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colorStops = arrayOf(
+                                0.00f to Color.Transparent,
+                                0.38f to Color.Transparent,
+                                1.00f to Color.Black.copy(alpha = 0.85f)
+                            ),
+                            center = Offset(dishW / 2f, dishH / 2f),
+                            radius = dishW / 2f
+                        ),
+                        center = Offset(dishW / 2f, dishH / 2f),
+                        radius = dishW / 2f
+                    )
+                }
+
+                // Center Glyph (.lx-g)
+                Text(
+                    text = if (isLeft) "L" else "R",
+                    color = glowColor,
+                    fontSize = 30.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.offset(0.dp, (-0.5).dp)
+                )
+            }
+        }
+
+        // Top Overlay Canvas: Outer Neon Ring & Glass Lens
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val r = size.minDimension / 2f
+
+            // Outer Neon Ring (.lx-ring): inset 3px
+            val outerRingRadius = r - 3.dp.toPx()
+            drawCircle(glowColor.copy(alpha = 0.22f), radius = outerRingRadius, style = Stroke(6.dp.toPx()))
+            drawCircle(glowColor.copy(alpha = 0.18f), radius = outerRingRadius - 2.dp.toPx(), style = Stroke(3.dp.toPx()))
+            drawCircle(glowColor.copy(alpha = 0.45f), radius = outerRingRadius, style = Stroke(2.dp.toPx()))
+
+            // Outer Glass Lens (.lx-lens)
+            drawArc(Color.White.copy(alpha = 0.12f), 180f, 180f, false, Offset(1.dp.toPx(), 1.dp.toPx()), Size(w - 2.dp.toPx(), h - 2.dp.toPx()), style = Stroke(1.dp.toPx()))
+            drawArc(Color.White.copy(alpha = 0.06f), 90f, 90f, false, Offset(1.dp.toPx(), 1.dp.toPx()), Size(w - 2.dp.toPx(), h - 2.dp.toPx()), style = Stroke(1.dp.toPx()))
+            drawArc(Color.Black.copy(alpha = 0.30f), 0f, 180f, false, Offset(1.dp.toPx(), 1.dp.toPx()), Size(w - 2.dp.toPx(), h - 2.dp.toPx()), style = Stroke(1.dp.toPx()))
+            drawCircle(
+                brush = Brush.radialGradient(listOf(Color.White.copy(alpha = 0.06f), Color.Transparent), Offset(w * 0.70f, h * 0.78f), w * 0.20f),
+                center = Offset(w * 0.70f, h * 0.78f),
+                radius = w * 0.20f
+            )
+        }
+    }
+}
+
+/**
+ * Exact visual match for ui/components/controller/CompassStickButton (in CompassJoystick.kt)
+ */
+@Preview
+@Composable
+internal fun StaticCompassStickButton(
+    isLeft: Boolean,
+    modifier: Modifier = Modifier,
+    label: String? = null
+) {
+    val key = label ?: if (isLeft) "LSB" else "RSB"
+    val glowColor = if (isLeft) Color(0xFF5AA8FF) else Color(0xFFFF5A88)
+
+    val capDomeGradient = Brush.radialGradient(
+        colors = listOf(Color(0xFF34373B), Color(0xFF17181B), Color(0xFF050506)),
+        center = Offset(0.50f, 0.38f),
+        radius = 160f
+    )
+
+    val dishGradient = Brush.radialGradient(
+        colors = listOf(Color(0xFF030304), Color(0xFF121314)),
+        center = Offset(0.50f, 0.60f),
+        radius = 60f
+    )
+
+    Box(
+        modifier = modifier
+            .size(70.dp)
+            .shadow(8.dp, CircleShape, ambientColor = glowColor.copy(alpha = 0.5f), spotColor = glowColor)
+            .clip(CircleShape)
+            .background(capDomeGradient)
+            .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val r = size.minDimension / 2f
+            val center = Offset(w / 2f, h / 2f)
+
+            // Top specular arc
+            drawArc(
+                color = Color.White.copy(alpha = 0.14f),
+                startAngle = 180f,
+                sweepAngle = 180f,
+                useCenter = false,
+                topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
+                size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
+                style = Stroke(width = 1.5.dp.toPx())
+            )
+
+            // Bottom inset shadow
+            val botShadowH = h * 0.38f
+            drawRect(
+                brush = Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.80f)), h - botShadowH, h),
+                topLeft = Offset(0f, h - botShadowH),
+                size = Size(w, botShadowH)
+            )
+
+            // 8 Compass Pips around perimeter
+            val pipDist = r - 6.dp.toPx()
+            val pipRadius = 1.8.dp.toPx()
+            for (i in 0 until 8) {
+                val angleRad = Math.toRadians((i * 45.0) - 90.0)
+                val pipCenter = Offset(
+                    center.x + (pipDist * cos(angleRad)).toFloat(),
+                    center.y + (pipDist * sin(angleRad)).toFloat()
+                )
+                drawCircle(
+                    color = glowColor.copy(alpha = 0.30f),
+                    radius = pipRadius,
+                    center = pipCenter
+                )
+            }
+
+            // Cap Neon Ring: inset 12px
+            val ringRadius = r - 12.dp.toPx()
+            drawCircle(glowColor.copy(alpha = 0.25f), radius = ringRadius, style = Stroke(width = 4.dp.toPx()))
+            drawCircle(glowColor.copy(alpha = 0.70f), radius = ringRadius, style = Stroke(width = 1.8.dp.toPx()))
+
+            // Specular lens highlight
+            drawOval(
+                brush = Brush.radialGradient(listOf(Color.White.copy(alpha = 0.25f), Color.Transparent), Offset(w * 0.36f, h * 0.24f), w * 0.28f),
+                topLeft = Offset(w * 0.16f, h * 0.10f),
+                size = Size(w * 0.40f, h * 0.28f)
+            )
+        }
+
+        // Center Dish with Glyph
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(dishGradient)
+                .border(1.dp, Color.White.copy(alpha = 0.06f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = key,
+                color = glowColor,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
 
 
 /**
