@@ -26,6 +26,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -45,6 +47,8 @@ import com.sanket.tools.nexpad.ui.components.controller.RightHorizonClipShape
 import androidx.compose.ui.unit.IntOffset
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.withTransform
 import kotlin.math.cos
@@ -168,25 +172,11 @@ private fun StaticRealisticButton(
     Box(
         modifier = modifier
             .size(80.dp)
-            .drawBehind {
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            buttonColor.copy(alpha = 0.55f),
-                            buttonColor.copy(alpha = 0.22f),
-                            Color.Transparent
-                        ),
-                        center = center,
-                        radius = size.minDimension * 0.65f
-                    ),
-                    radius = size.minDimension * 0.65f
-                )
-            }
             .shadow(
                 elevation = 4.dp,
                 shape = CircleShape,
-                ambientColor = buttonColor,
-                spotColor = buttonColor
+                ambientColor = Color.Black.copy(alpha = 0.40f),
+                spotColor = Color.Black.copy(alpha = 0.55f)
             )
             .clip(CircleShape)
             .background(baseDomeGradient),
@@ -3758,44 +3748,165 @@ private fun StaticRealisticTrigger(
     isLeft: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val triggerShape = if (isLeft) {
-        RoundedCornerShape(topStart = 16.dp, topEnd = 8.dp, bottomStart = 50.dp, bottomEnd = 24.dp)
-    } else {
-        RoundedCornerShape(topStart = 8.dp, topEnd = 16.dp, bottomStart = 24.dp, bottomEnd = 50.dp)
-    }
+    val triggerShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 46.dp, bottomEnd = 46.dp)
+    val windowShape = RoundedCornerShape(15.dp)
 
-    val gradient = Brush.verticalGradient(
-        colors = listOf(Color(0xFF262626), Color(0xFF0A0A0A)),
-        startY = 0f,
-        endY = 200f
+    val neonColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFE055B8)
+
+    val baseDomeGradient = Brush.radialGradient(
+        colors = listOf(
+            Color(0xFF232527),
+            Color(0xFF0C0D0E),
+            Color(0xFF000000)
+        ),
+        center = Offset(0.50f, 0.45f),
+        radius = 210f
     )
 
-    val spot = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF0055)
-    val ambient = if (isLeft) Color(0xFF0052CC) else Color(0xFFCC0044)
+    val windowGradient = Brush.radialGradient(
+        colors = listOf(
+            Color(0xFF050506),
+            Color(0xFF121314)
+        ),
+        center = Offset(0.50f, 0.60f),
+        radius = 105f
+    )
 
     Box(
         modifier = modifier
-            .size(100.dp, 160.dp)
-            .shadow(12.dp, triggerShape, spotColor = spot, ambientColor = ambient)
+            .size(100.dp, 92.dp)
+            .shadow(
+                elevation = 7.dp,
+                shape = triggerShape,
+                spotColor = neonColor,
+                ambientColor = Color.Black
+            )
             .clip(triggerShape)
-            .background(gradient),
-        contentAlignment = Alignment.BottomCenter
+            .background(baseDomeGradient)
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Black.copy(alpha = 0.50f),
+                        Color.Black.copy(alpha = 0.80f)
+                    )
+                ),
+                shape = triggerShape
+            ),
+        contentAlignment = Alignment.TopCenter
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+
+            // Inset bottom shadow along bottom hull
+            val insetH = h * 0.32f
             drawRect(
-                color = Color.Black.copy(alpha = 0.5f),
-                size = Size(size.width, size.height / 2),
-                topLeft = Offset(0f, size.height / 2)
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
+                    startY = h - insetH,
+                    endY = h
+                ),
+                topLeft = Offset(0f, h - insetH),
+                size = Size(w, insetH)
+            )
+
+            // Neon ring
+            val ringInset = 2.5.dp.toPx()
+            val ringTopR = 13.5.dp.toPx()
+            val ringBotR = 43.5.dp.toPx()
+            val ringPath = androidx.compose.ui.graphics.Path().apply {
+                addRoundRect(
+                    androidx.compose.ui.geometry.RoundRect(
+                        left = ringInset,
+                        top = ringInset,
+                        right = w - ringInset,
+                        bottom = h - ringInset,
+                        topLeftCornerRadius = CornerRadius(ringTopR, ringTopR),
+                        topRightCornerRadius = CornerRadius(ringTopR, ringTopR),
+                        bottomLeftCornerRadius = CornerRadius(ringBotR, ringBotR),
+                        bottomRightCornerRadius = CornerRadius(ringBotR, ringBotR)
+                    )
+                )
+            }
+            drawPath(
+                path = ringPath,
+                color = neonColor.copy(alpha = 0.28f),
+                style = Stroke(width = 3.5.dp.toPx())
+            )
+            drawPath(
+                path = ringPath,
+                color = neonColor.copy(alpha = 0.70f),
+                style = Stroke(width = 1.5.dp.toPx())
+            )
+
+            // Top specular line highlight
+            drawLine(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        Color.Transparent,
+                        Color.White.copy(alpha = 0.22f),
+                        Color.Transparent
+                    )
+                ),
+                start = Offset(w * 0.15f, 2.dp.toPx()),
+                end = Offset(w * 0.85f, 2.dp.toPx()),
+                strokeWidth = 1.5.dp.toPx()
+            )
+
+            // Specular sheen circle
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                    center = Offset(w * 0.68f, h * 0.75f),
+                    radius = w * 0.24f
+                ),
+                center = Offset(w * 0.68f, h * 0.75f),
+                radius = w * 0.24f
             )
         }
-        val labelColor = if (isLeft) Color(0xFF00E5FF).copy(alpha = 0.85f) else Color(0xFFFF0055).copy(alpha = 0.85f)
-        Text(
-            text = key,
-            color = labelColor,
-            fontWeight = FontWeight.Bold,
-            fontSize = 24.sp,
-            modifier = Modifier.padding(bottom = 20.dp)
-        )
+
+        // Recessed optical window
+        Box(
+            modifier = Modifier
+                .offset(y = 12.dp)
+                .size(68.dp, 30.dp)
+                .shadow(elevation = 3.dp, shape = windowShape, spotColor = Color.Black)
+                .clip(windowShape)
+                .background(windowGradient)
+                .border(width = 1.dp, color = Color.White.copy(alpha = 0.06f), shape = windowShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val winW = size.width
+                val winH = size.height
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent),
+                        startY = 0f,
+                        endY = winH * 0.45f
+                    ),
+                    topLeft = Offset(0f, 0f),
+                    size = Size(winW, winH * 0.45f)
+                )
+                drawOval(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f)),
+                        center = Offset(winW / 2f, winH / 2f),
+                        radius = winW / 2f
+                    ),
+                    topLeft = Offset(0f, 0f),
+                    size = Size(winW, winH)
+                )
+            }
+            Text(
+                text = key,
+                color = neonColor,
+                fontWeight = FontWeight.Medium,
+                fontSize = 18.sp,
+                letterSpacing = 1.5.sp
+            )
+        }
     }
 }
 
@@ -3809,45 +3920,231 @@ private fun StaticRealisticBumper(
     modifier: Modifier = Modifier
 ) {
     val bumperShape = if (isLeft) {
-        RoundedCornerShape(topStart = 40.dp, topEnd = 14.dp, bottomStart = 14.dp, bottomEnd = 8.dp)
+        RoundedCornerShape(
+            topStart = 10.dp,
+            topEnd = 26.dp,
+            bottomEnd = 26.dp,
+            bottomStart = 10.dp
+        )
     } else {
-        RoundedCornerShape(topStart = 14.dp, topEnd = 40.dp, bottomStart = 8.dp, bottomEnd = 14.dp)
+        RoundedCornerShape(
+            topStart = 26.dp,
+            topEnd = 10.dp,
+            bottomEnd = 10.dp,
+            bottomStart = 26.dp
+        )
     }
 
-    val gradient = Brush.verticalGradient(
-        colors = listOf(Color(0xFF424242), Color(0xFF1A1A1A)),
-        startY = 0f,
-        endY = 100f
-    )
+    val neonColor = Color(0xFFA97CF0)
 
-    val spot = if (isLeft) Color(0xFF7C3AED) else Color(0xFF00E5FF)
-    val ambient = if (isLeft) Color(0xFFA78BFA) else Color(0xFF10B981)
+    val baseDomeGradient = Brush.radialGradient(
+        colors = listOf(
+            Color(0xFF232527),
+            Color(0xFF0C0D0E),
+            Color(0xFF000000)
+        ),
+        center = Offset(0.50f, 0.55f),
+        radius = 280f
+    )
 
     Box(
         modifier = modifier
-            .size(160.dp, 60.dp)
-            .shadow(8.dp, bumperShape, spotColor = spot, ambientColor = ambient)
-            .clip(bumperShape)
-            .background(gradient),
+            .size(154.dp, 48.dp)
+            .drawBehind {
+                val pad = 5.dp.toPx()
+                val bloomPath = Path().apply {
+                    addRoundRect(
+                        RoundRect(
+                            rect = Rect(-pad, -pad, size.width + pad, size.height + pad),
+                            topLeft = CornerRadius(if (isLeft) 14.dp.toPx() else 30.dp.toPx()),
+                            topRight = CornerRadius(if (isLeft) 30.dp.toPx() else 14.dp.toPx()),
+                            bottomRight = CornerRadius(if (isLeft) 30.dp.toPx() else 14.dp.toPx()),
+                            bottomLeft = CornerRadius(if (isLeft) 14.dp.toPx() else 30.dp.toPx())
+                        )
+                    )
+                }
+                drawPath(bloomPath, neonColor.copy(alpha = 0.18f))
+            }
+            .shadow(
+                elevation = 4.dp,
+                shape = bumperShape,
+                spotColor = Color.Black.copy(alpha = 0.55f),
+                ambientColor = Color.Black.copy(alpha = 0.40f)
+            )
+            .border(
+                width = 1.dp,
+                color = Color.Black.copy(alpha = 0.50f),
+                shape = bumperShape
+            ),
         contentAlignment = Alignment.Center
     ) {
-        Canvas(modifier = Modifier.fillMaxSize().padding(4.dp)) {
-            val startX = if (isLeft) 24f else 10f
-            val endX = if (isLeft) size.width - 10f else size.width - 24f
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(bumperShape)
+                .background(baseDomeGradient),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val w = size.width
+                val h = size.height
+
+                // Top edge highlight
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.White.copy(alpha = 0.07f), Color.Transparent),
+                        startY = 0f,
+                        endY = h * 0.42f
+                    ),
+                    size = Size(w, h * 0.42f)
+                )
+
+                // Bottom undercut shadow
+                val undercutH = h * 0.40f
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
+                        startY = h - undercutH,
+                        endY = h
+                    ),
+                    topLeft = Offset(0f, h - undercutH),
+                    size = Size(w, undercutH)
+                )
+            }
+
+            // Magnifier Window — 78dp × 30dp
+            val windowShape = RoundedCornerShape(15.dp)
+            Box(
+                modifier = Modifier
+                    .size(78.dp, 30.dp)
+                    .clip(windowShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val winW = size.width
+                    val winH = size.height
+
+                    drawRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(Color(0xFF050506), Color(0xFF121314)),
+                            center = Offset(winW * 0.50f, winH * 0.60f),
+                            radius = winW * 0.60f
+                        ),
+                        size = Size(winW, winH)
+                    )
+
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(Color.Black.copy(alpha = 0.90f), Color.Transparent),
+                            startY = 0f,
+                            endY = 8.dp.toPx()
+                        ),
+                        size = Size(winW, 8.dp.toPx())
+                    )
+
+                    drawRect(
+                        brush = Brush.radialGradient(
+                            0.0f to Color.Transparent,
+                            0.32f to Color.Transparent,
+                            1.0f to Color.Black.copy(alpha = 0.82f),
+                            center = Offset(winW / 2f, winH / 2f),
+                            radius = winW / 2f
+                        ),
+                        size = Size(winW, winH)
+                    )
+
+                    drawLine(
+                        color = Color.White.copy(alpha = 0.05f),
+                        start = Offset(3.dp.toPx(), winH - 0.5f),
+                        end = Offset(winW - 3.dp.toPx(), winH - 0.5f),
+                        strokeWidth = 1.dp.toPx()
+                    )
+                }
+
+                Text(
+                    text = key,
+                    color = neonColor,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 20.sp,
+                    letterSpacing = 1.5.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
+        }
+
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+
+            val ringInset = 2.5.dp.toPx()
+            val ringPath = Path().apply {
+                addRoundRect(
+                    RoundRect(
+                        rect = Rect(ringInset, ringInset, w - ringInset, h - ringInset),
+                        topLeft = CornerRadius(if (isLeft) 7.5.dp.toPx() else 23.5.dp.toPx()),
+                        topRight = CornerRadius(if (isLeft) 23.5.dp.toPx() else 7.5.dp.toPx()),
+                        bottomRight = CornerRadius(if (isLeft) 23.5.dp.toPx() else 7.5.dp.toPx()),
+                        bottomLeft = CornerRadius(if (isLeft) 7.5.dp.toPx() else 23.5.dp.toPx())
+                    )
+                )
+            }
+
+            drawPath(
+                path = ringPath,
+                color = neonColor.copy(alpha = 0.25f),
+                style = Stroke(width = 5.dp.toPx())
+            )
+            drawPath(
+                path = ringPath,
+                color = neonColor.copy(alpha = 0.18f),
+                style = Stroke(width = 3.dp.toPx())
+            )
+            drawPath(
+                path = ringPath,
+                color = neonColor.copy(alpha = 0.70f),
+                style = Stroke(width = 2.dp.toPx())
+            )
+
+            // Specular sheen circle
+            drawCircle(
+                brush = Brush.radialGradient(
+                    0.0f to Color.White.copy(alpha = 0.06f),
+                    0.40f to Color.Transparent,
+                    1.0f to Color.Transparent,
+                    center = Offset(w * 0.70f, h * 0.78f),
+                    radius = w * 0.30f
+                ),
+                center = Offset(w * 0.70f, h * 0.78f),
+                radius = w * 0.30f
+            )
+
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.10f), Color.Transparent),
+                    startY = 0f,
+                    endY = 3.5.dp.toPx()
+                ),
+                size = Size(w, 3.5.dp.toPx())
+            )
+
+            val rtl = if (isLeft) 10.dp.toPx() else 26.dp.toPx()
+            val rtr = if (isLeft) 26.dp.toPx() else 10.dp.toPx()
+            val rbl = if (isLeft) 10.dp.toPx() else 26.dp.toPx()
+            val rbr = if (isLeft) 26.dp.toPx() else 10.dp.toPx()
+
             drawLine(
-                color = Color.White.copy(alpha = 0.25f),
-                start = Offset(startX, 10f),
-                end = Offset(endX, 10f),
-                strokeWidth = 2f
+                color = Color.White.copy(alpha = 0.12f),
+                start = Offset(rtl, 0.5f),
+                end = Offset(w - rtr, 0.5f),
+                strokeWidth = 1.dp.toPx()
+            )
+            drawLine(
+                color = Color.Black.copy(alpha = 0.30f),
+                start = Offset(rbl, h - 0.5f),
+                end = Offset(w - rbr, h - 0.5f),
+                strokeWidth = 1.dp.toPx()
             )
         }
-        val labelColor = if (isLeft) Color(0xFFA78BFA) else Color(0xFF00E5FF)
-        Text(
-            text = key,
-            color = labelColor,
-            fontWeight = FontWeight.Bold,
-            fontSize = 18.sp
-        )
     }
 }
 
@@ -3905,3 +4202,3193 @@ private fun StaticRealisticMacroButton(
         )
     }
 }
+
+/**
+ * Exact visual match for ui/components/controller/ArcBumper.kt
+ */
+@Composable
+internal fun StaticArcBumper(
+    key: String = "LB",
+    modifier: Modifier = Modifier
+) {
+    val neonColor = Color(0xFFA97CF0)
+
+    Box(
+        modifier = modifier
+            .size(154.dp, 56.dp)
+            .drawBehind {
+                val w = size.width
+                val h = size.height
+                val s = kotlin.math.min(w / 230f, h / 84f)
+                val ox = (w - 230f * s) / 2f
+                val oy = (h - 84f * s) / 2f
+
+                val arcPath = Path().apply {
+                    moveTo(ox + 24f * s, oy + 62f * s)
+                    quadraticTo(ox + 115f * s, oy - 10f * s, ox + 206f * s, oy + 62f * s)
+                }
+
+                drawPath(
+                    path = arcPath,
+                    color = neonColor.copy(alpha = 0.16f),
+                    style = Stroke(width = 68f * s, cap = StrokeCap.Round, join = StrokeJoin.Round)
+                )
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val s = kotlin.math.min(w / 230f, h / 84f)
+            val ox = (w - 230f * s) / 2f
+            val oy = (h - 84f * s) / 2f
+
+            val arcPath = Path().apply {
+                moveTo(ox + 24f * s, oy + 62f * s)
+                quadraticTo(ox + 115f * s, oy - 10f * s, ox + 206f * s, oy + 62f * s)
+            }
+
+            val specPath = Path().apply {
+                moveTo(ox + 40f * s, oy + (56f - 9f) * s)
+                quadraticTo(ox + 115f * s, oy + (-6f - 9f) * s, ox + 190f * s, oy + (56f - 9f) * s)
+            }
+
+            // Layer a0: Drop shadow base
+            drawPath(
+                path = arcPath,
+                color = Color.Black.copy(alpha = 0.60f),
+                style = Stroke(width = 56f * s, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            )
+
+            // Layer a1: Emissive neon halo
+            drawPath(
+                path = arcPath,
+                color = neonColor.copy(alpha = 0.20f),
+                style = Stroke(width = 64f * s, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            )
+            drawPath(
+                path = arcPath,
+                color = neonColor.copy(alpha = 0.40f),
+                style = Stroke(width = 56f * s, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            )
+            drawPath(
+                path = arcPath,
+                color = neonColor.copy(alpha = 0.70f),
+                style = Stroke(width = 50f * s, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            )
+
+            // Layer a2: Tubular body gradient
+            val topY = oy + 6f * s
+            val botY = oy + 80f * s
+            val bodyGradient = Brush.verticalGradient(
+                colors = listOf(Color(0xFF282A2E), Color(0xFF08090A)),
+                startY = topY,
+                endY = botY
+            )
+            drawPath(
+                path = arcPath,
+                brush = bodyGradient,
+                style = Stroke(width = 46f * s, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            )
+
+            // Layer a3: Specular crescent highlight
+            drawPath(
+                path = specPath,
+                color = Color.White.copy(alpha = 0.12f),
+                style = Stroke(width = 6f * s, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            )
+        }
+
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = key,
+                color = neonColor,
+                fontWeight = FontWeight.Bold,
+                fontSize = 19.sp,
+                letterSpacing = 2.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.offset(y = (-10.5).dp)
+            )
+        }
+    }
+}
+
+/**
+ * Static preview for Bumper B — LED Bar (LB / RB).
+ * Exact visual match for ui/components/controller/LedBumper.kt in idle state.
+ */
+@Composable
+internal fun StaticLedBumper(
+    key: String = "LB",
+    modifier: Modifier = Modifier
+) {
+    val isLeft = remember(key) {
+        val upper = key.uppercase()
+        upper == com.sanket.tools.nexpad.model.NexpadKeys.LB || upper == "L1" || upper == "LEFT"
+    }
+    val neonColor = Color(0xFFA97CF0)
+
+    val bumperShape = remember(isLeft) {
+        if (isLeft) {
+            androidx.compose.foundation.shape.RoundedCornerShape(
+                topStart = 12.dp, topEnd = 27.dp, bottomEnd = 27.dp, bottomStart = 12.dp
+            )
+        } else {
+            androidx.compose.foundation.shape.RoundedCornerShape(
+                topStart = 27.dp, topEnd = 12.dp, bottomEnd = 12.dp, bottomStart = 27.dp
+            )
+        }
+    }
+
+    val baseDomeGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF232527),
+                Color(0xFF0C0D0E),
+                Color(0xFF000000)
+            ),
+            center = Offset(0.50f, 0.55f),
+            radius = 260f
+        )
+    }
+
+    val windowGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF050506),
+                Color(0xFF121314)
+            ),
+            center = Offset(0.50f, 0.60f),
+            radius = 70f
+        )
+    }
+
+    Box(
+        modifier = modifier
+            .size(154.dp, 54.dp)
+            .drawBehind {
+                val pad = 6.dp.toPx()
+                val rOuter = 27.dp.toPx() + pad
+                val rInner = 12.dp.toPx() + pad
+                val bloomPath = Path().apply {
+                    addRoundRect(
+                        RoundRect(
+                            rect = Rect(-pad, -pad, size.width + pad, size.height + pad),
+                            topLeft = CornerRadius(if (isLeft) rInner else rOuter),
+                            topRight = CornerRadius(if (isLeft) rOuter else rInner),
+                            bottomRight = CornerRadius(if (isLeft) rOuter else rInner),
+                            bottomLeft = CornerRadius(if (isLeft) rInner else rOuter)
+                        )
+                    )
+                }
+                drawPath(
+                    path = bloomPath,
+                    color = neonColor.copy(alpha = 0.18f)
+                )
+            }
+            .shadow(
+                elevation = 7.dp,
+                shape = bumperShape,
+                spotColor = neonColor,
+                ambientColor = neonColor.copy(alpha = 0.5f)
+            )
+            .clip(bumperShape)
+            .background(baseDomeGradient)
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Black.copy(alpha = 0.50f),
+                        Color.Black.copy(alpha = 0.80f)
+                    )
+                ),
+                shape = bumperShape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+
+            // Inset bottom shadow
+            val insetH = h * 0.40f
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
+                    startY = h - insetH,
+                    endY = h
+                ),
+                topLeft = Offset(0f, h - insetH),
+                size = Size(w, insetH)
+            )
+
+            // Neon color ring — inset 2.5dp with exact asymmetric per-corner radii
+            val ringInset = 2.5.dp.toPx()
+            val ringROuter = 27.dp.toPx() - ringInset
+            val ringRInner = 12.dp.toPx() - ringInset
+            val ringPath = Path().apply {
+                addRoundRect(
+                    RoundRect(
+                        rect = Rect(ringInset, ringInset, w - ringInset, h - ringInset),
+                        topLeft = CornerRadius(if (isLeft) ringRInner else ringROuter),
+                        topRight = CornerRadius(if (isLeft) ringROuter else ringRInner),
+                        bottomRight = CornerRadius(if (isLeft) ringROuter else ringRInner),
+                        bottomLeft = CornerRadius(if (isLeft) ringRInner else ringROuter)
+                    )
+                )
+            }
+
+            // Outer bloom pass
+            drawPath(
+                path = ringPath,
+                color = neonColor.copy(alpha = 0.28f * 0.70f),
+                style = Stroke(width = 3.5.dp.toPx())
+            )
+
+            // Core crisp stroke
+            drawPath(
+                path = ringPath,
+                color = neonColor.copy(alpha = 0.70f),
+                style = Stroke(width = 1.8.dp.toPx())
+            )
+
+            // Glass lens highlight
+            val sheenH = h * 0.42f
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.14f),
+                        Color.White.copy(alpha = 0.04f),
+                        Color.Transparent
+                    ),
+                    startY = 0f,
+                    endY = sheenH
+                ),
+                topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
+                size = Size(w - 2.dp.toPx(), sheenH)
+            )
+
+            val specStartX = if (isLeft) w * 0.10f else w * 0.18f
+            val specEndX = if (isLeft) w * 0.82f else w * 0.90f
+            drawLine(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.45f),
+                        Color.White.copy(alpha = 0.16f)
+                    ),
+                    startX = specStartX,
+                    endX = specEndX
+                ),
+                start = Offset(specStartX, 4f),
+                end = Offset(specEndX, 4f),
+                strokeWidth = 1.5f
+            )
+        }
+
+        androidx.compose.foundation.layout.Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+        ) {
+            if (isLeft) {
+                StaticRecessedWindow(key = key, neonColor = neonColor, windowGradient = windowGradient)
+                Box(modifier = Modifier.size(8.dp, 1.dp))
+                StaticLedBarGroup(neonColor = neonColor)
+            } else {
+                StaticLedBarGroup(neonColor = neonColor)
+                Box(modifier = Modifier.size(8.dp, 1.dp))
+                StaticRecessedWindow(key = key, neonColor = neonColor, windowGradient = windowGradient)
+            }
+        }
+    }
+}
+
+@Composable
+private fun StaticRecessedWindow(
+    key: String,
+    neonColor: Color,
+    windowGradient: Brush
+) {
+    Box(
+        modifier = Modifier
+            .size(48.dp, 28.dp)
+            .shadow(
+                elevation = 2.dp,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                ambientColor = Color.Black,
+                spotColor = Color.Black
+            )
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+            .background(windowGradient)
+            .border(
+                width = 1.dp,
+                color = Color.White.copy(alpha = 0.06f),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val winW = size.width
+            val winH = size.height
+
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.Black.copy(alpha = 0.92f), Color.Transparent),
+                    startY = 0f,
+                    endY = 7.dp.toPx()
+                ),
+                size = Size(winW, 7.dp.toPx())
+            )
+
+            drawRect(
+                brush = Brush.radialGradient(
+                    0.0f to Color.Transparent,
+                    0.32f to Color.Transparent,
+                    1.0f to Color.Black.copy(alpha = 0.85f),
+                    center = Offset(winW / 2f, winH / 2f),
+                    radius = winW * 0.55f
+                )
+            )
+
+            drawLine(
+                color = Color.White.copy(alpha = 0.06f),
+                start = Offset(4.dp.toPx(), winH - 0.5f),
+                end = Offset(winW - 4.dp.toPx(), winH - 0.5f),
+                strokeWidth = 1.dp.toPx()
+            )
+        }
+
+        Text(
+            text = key,
+            color = neonColor,
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            letterSpacing = 1.5.sp,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun StaticLedBarGroup(neonColor: Color) {
+    androidx.compose.foundation.layout.Row(
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.5.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        repeat(6) {
+            Box(
+                modifier = Modifier
+                    .size(9.dp, 22.dp)
+                    .drawBehind {
+                        drawRoundRect(
+                            color = neonColor.copy(alpha = 0.22f),
+                            topLeft = Offset(-2.dp.toPx(), -2.dp.toPx()),
+                            size = Size(size.width + 4.dp.toPx(), size.height + 4.dp.toPx()),
+                            cornerRadius = CornerRadius(4.5.dp.toPx(), 4.5.dp.toPx())
+                        )
+                    }
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(3.5.dp))
+                    .background(neonColor.copy(alpha = 0.22f))
+            )
+        }
+    }
+}
+
+/**
+ * Static preview for Bumper C — Peek (LB / RB).
+ * Exact visual match for ui/components/controller/PeekBumper.kt in idle state.
+ */
+@Composable
+internal fun StaticPeekBumper(
+    key: String = "LB",
+    modifier: Modifier = Modifier
+) {
+    val neonColor = Color(0xFFA97CF0)
+    val bumperShape = remember { androidx.compose.foundation.shape.RoundedCornerShape(27.dp) }
+
+    val baseDomeGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF232527),
+                Color(0xFF0C0D0E),
+                Color(0xFF000000)
+            ),
+            center = Offset(0.50f, 0.55f),
+            radius = 260f
+        )
+    }
+
+    val windowGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF050506),
+                Color(0xFF121314)
+            ),
+            center = Offset(0.50f, 0.60f),
+            radius = 90f
+        )
+    }
+
+    Box(
+        modifier = modifier
+            .size(154.dp, 54.dp)
+            .drawBehind {
+                val pad = 6.dp.toPx()
+                drawRoundRect(
+                    color = neonColor.copy(alpha = 0.18f),
+                    topLeft = Offset(-pad, -pad),
+                    size = Size(size.width + pad * 2, size.height + pad * 2),
+                    cornerRadius = CornerRadius(27.dp.toPx() + pad, 27.dp.toPx() + pad)
+                )
+            }
+            .shadow(
+                elevation = 7.dp,
+                shape = bumperShape,
+                spotColor = neonColor,
+                ambientColor = neonColor.copy(alpha = 0.5f)
+            )
+            .clip(bumperShape)
+            .background(baseDomeGradient)
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Black.copy(alpha = 0.50f),
+                        Color.Black.copy(alpha = 0.80f)
+                    )
+                ),
+                shape = bumperShape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+
+            // Inset bottom shadow
+            val insetH = h * 0.40f
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
+                    startY = h - insetH,
+                    endY = h
+                ),
+                topLeft = Offset(0f, h - insetH),
+                size = Size(w, insetH)
+            )
+
+            // Neon color ring — inset 2.5dp with pill corner radius
+            val ringInset = 2.5.dp.toPx()
+            val ringRadius = 27.dp.toPx() - ringInset
+
+            // Outer bloom pass
+            drawRoundRect(
+                color = neonColor.copy(alpha = 0.28f * 0.70f),
+                topLeft = Offset(ringInset, ringInset),
+                size = Size(w - ringInset * 2, h - ringInset * 2),
+                cornerRadius = CornerRadius(ringRadius, ringRadius),
+                style = Stroke(width = 3.5.dp.toPx())
+            )
+
+            // Core crisp stroke
+            drawRoundRect(
+                color = neonColor.copy(alpha = 0.70f),
+                topLeft = Offset(ringInset, ringInset),
+                size = Size(w - ringInset * 2, h - ringInset * 2),
+                cornerRadius = CornerRadius(ringRadius, ringRadius),
+                style = Stroke(width = 1.8.dp.toPx())
+            )
+
+            // Glass lens highlight
+            val sheenH = h * 0.42f
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.14f),
+                        Color.White.copy(alpha = 0.04f),
+                        Color.Transparent
+                    ),
+                    startY = 0f,
+                    endY = sheenH
+                ),
+                topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
+                size = Size(w - 2.dp.toPx(), sheenH)
+            )
+
+            val specStartX = w * 0.15f
+            val specEndX = w * 0.85f
+            drawLine(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.45f),
+                        Color.White.copy(alpha = 0.16f)
+                    ),
+                    startX = specStartX,
+                    endX = specEndX
+                ),
+                start = Offset(specStartX, 4f),
+                end = Offset(specEndX, 4f),
+                strokeWidth = 1.5f
+            )
+        }
+
+        // Oversized Recessed Magnifier Window (.lx-window)
+        val windowShape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)
+        Box(
+            modifier = Modifier
+                .size(124.dp, 36.dp)
+                .shadow(
+                    elevation = 2.dp,
+                    shape = windowShape,
+                    ambientColor = Color.Black,
+                    spotColor = Color.Black
+                )
+                .clip(windowShape)
+                .background(windowGradient)
+                .border(
+                    width = 1.dp,
+                    color = Color.White.copy(alpha = 0.06f),
+                    shape = windowShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val winW = size.width
+                val winH = size.height
+
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.Black.copy(alpha = 0.92f), Color.Transparent),
+                        startY = 0f,
+                        endY = 8.dp.toPx()
+                    ),
+                    size = Size(winW, 8.dp.toPx())
+                )
+
+                drawRect(
+                    brush = Brush.radialGradient(
+                        0.0f to Color.Transparent,
+                        0.28f to Color.Transparent,
+                        1.0f to Color.Black.copy(alpha = 0.88f),
+                        center = Offset(winW / 2f, winH / 2f),
+                        radius = winW * 0.55f
+                    )
+                )
+
+                drawLine(
+                    color = Color.White.copy(alpha = 0.06f),
+                    start = Offset(6.dp.toPx(), winH - 0.5f),
+                    end = Offset(winW - 6.dp.toPx(), winH - 0.5f),
+                    strokeWidth = 1.dp.toPx()
+                )
+            }
+
+            Text(
+                text = key,
+                color = neonColor,
+                fontWeight = FontWeight.Bold,
+                fontSize = 22.sp,
+                letterSpacing = 3.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+    }
+}
+
+/**
+ * Static preview for Bumper D — Ribbed (LB / RB).
+ * Exact visual match for ui/components/controller/RibbedBumper.kt in idle state.
+ */
+@Composable
+internal fun StaticRibbedBumper(
+    key: String = "LB",
+    modifier: Modifier = Modifier
+) {
+    val isLeft = remember(key) {
+        val upper = key.uppercase()
+        upper == "LB" || upper == "L1" || upper == "LEFT"
+    }
+
+    val neonColor = if (isLeft) Color(0xFF3FD2FF) else Color(0xFFFF007F)
+    val bumperShape = remember(isLeft) {
+        if (isLeft) {
+            androidx.compose.foundation.shape.RoundedCornerShape(topStart = 12.dp, topEnd = 27.dp, bottomEnd = 27.dp, bottomStart = 12.dp)
+        } else {
+            androidx.compose.foundation.shape.RoundedCornerShape(topStart = 27.dp, topEnd = 12.dp, bottomEnd = 12.dp, bottomStart = 27.dp)
+        }
+    }
+
+    val baseDomeGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF232527),
+                Color(0xFF0C0D0E),
+                Color(0xFF000000)
+            ),
+            center = Offset(0.50f, 0.55f),
+            radius = 260f
+        )
+    }
+
+    val windowGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF050506),
+                Color(0xFF121314)
+            ),
+            center = Offset(0.50f, 0.60f),
+            radius = 120f
+        )
+    }
+
+    Box(
+        modifier = modifier
+            .size(154.dp, 54.dp)
+            .drawBehind {
+                val haloOffset = 5.dp.toPx()
+                val rOuter = 27.dp.toPx() + haloOffset
+                val rInner = 12.dp.toPx() + haloOffset
+                val haloPath = androidx.compose.ui.graphics.Path().apply {
+                    addRoundRect(
+                        androidx.compose.ui.geometry.RoundRect(
+                            rect = androidx.compose.ui.geometry.Rect(-haloOffset, -haloOffset, size.width + haloOffset, size.height + haloOffset),
+                            topLeft = CornerRadius(if (isLeft) rInner else rOuter),
+                            topRight = CornerRadius(if (isLeft) rOuter else rInner),
+                            bottomRight = CornerRadius(if (isLeft) rOuter else rInner),
+                            bottomLeft = CornerRadius(if (isLeft) rInner else rOuter)
+                        )
+                    )
+                }
+                drawPath(path = haloPath, color = neonColor.copy(alpha = 0.18f))
+            }
+            .shadow(
+                elevation = 7.dp,
+                shape = bumperShape,
+                ambientColor = Color.Black.copy(alpha = 0.55f),
+                spotColor = Color.Black
+            )
+            .clip(bumperShape)
+            .background(baseDomeGradient)
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Black.copy(alpha = 0.50f),
+                        Color.Black.copy(alpha = 0.80f)
+                    )
+                ),
+                shape = bumperShape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+
+            val insetH = h * 0.40f
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
+                    startY = h - insetH,
+                    endY = h
+                ),
+                topLeft = Offset(0f, h - insetH),
+                size = Size(w, insetH)
+            )
+
+            // Tactile Ribbed knurling
+            val ribSpacing = 8.dp.toPx()
+            val ribWidth = 2.dp.toPx()
+            var curX = 6.dp.toPx()
+            while (curX < w - 6.dp.toPx()) {
+                drawLine(
+                    color = Color.White.copy(alpha = 0.055f),
+                    start = Offset(curX, 0f),
+                    end = Offset(curX, h),
+                    strokeWidth = ribWidth
+                )
+                curX += ribSpacing
+            }
+
+            // Neon color ring
+            val ringInset = 2.5.dp.toPx()
+            val ringROuter = 27.dp.toPx() - ringInset
+            val ringRInner = 12.dp.toPx() - ringInset
+            val ringPath = androidx.compose.ui.graphics.Path().apply {
+                addRoundRect(
+                    androidx.compose.ui.geometry.RoundRect(
+                        rect = androidx.compose.ui.geometry.Rect(ringInset, ringInset, w - ringInset, h - ringInset),
+                        topLeft = CornerRadius(if (isLeft) ringRInner else ringROuter),
+                        topRight = CornerRadius(if (isLeft) ringROuter else ringRInner),
+                        bottomRight = CornerRadius(if (isLeft) ringROuter else ringRInner),
+                        bottomLeft = CornerRadius(if (isLeft) ringRInner else ringROuter)
+                    )
+                )
+            }
+
+            drawPath(
+                path = ringPath,
+                color = neonColor.copy(alpha = 0.28f * 0.70f),
+                style = Stroke(width = 4.dp.toPx())
+            )
+            drawPath(
+                path = ringPath,
+                color = neonColor.copy(alpha = 0.70f * 0.70f),
+                style = Stroke(width = 1.8.dp.toPx())
+            )
+
+            val sheenH = h * 0.40f
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.14f),
+                        Color.White.copy(alpha = 0.04f),
+                        Color.Transparent
+                    ),
+                    startY = 0f,
+                    endY = sheenH
+                ),
+                topLeft = Offset(ringInset, ringInset),
+                size = Size(w - ringInset * 2f, sheenH)
+            )
+
+            val specStartX = if (isLeft) w * 0.15f else w * 0.12f
+            val specEndX = if (isLeft) w * 0.88f else w * 0.85f
+            drawLine(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.45f),
+                        Color.White.copy(alpha = 0.16f)
+                    ),
+                    startX = specStartX,
+                    endX = specEndX
+                ),
+                start = Offset(specStartX, 4f),
+                end = Offset(specEndX, 4f),
+                strokeWidth = 1.5f
+            )
+
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                    center = Offset(w * 0.70f, h * 0.78f),
+                    radius = w * 0.20f
+                ),
+                center = Offset(w * 0.70f, h * 0.78f),
+                radius = w * 0.20f
+            )
+        }
+
+        // Elevated Recessed Magnifier Window
+        val windowShape = androidx.compose.foundation.shape.RoundedCornerShape(15.dp)
+        Box(
+            modifier = Modifier
+                .offset(y = (-4).dp)
+                .size(74.dp, 30.dp)
+                .shadow(
+                    elevation = 2.dp,
+                    shape = windowShape,
+                    ambientColor = Color.Black,
+                    spotColor = Color.Black
+                )
+                .clip(windowShape)
+                .background(windowGradient)
+                .border(
+                    width = 1.dp,
+                    color = Color.White.copy(alpha = 0.05f),
+                    shape = windowShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val winW = size.width
+                val winH = size.height
+
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.Black.copy(alpha = 0.90f), Color.Transparent),
+                        startY = 0f,
+                        endY = 6.dp.toPx()
+                    ),
+                    size = Size(winW, 6.dp.toPx())
+                )
+
+                drawRect(
+                    brush = Brush.radialGradient(
+                        0.0f to Color.Transparent,
+                        0.32f to Color.Transparent,
+                        1.0f to Color.Black.copy(alpha = 0.82f),
+                        center = Offset(winW / 2f, winH / 2f),
+                        radius = winW * 0.50f
+                    )
+                )
+
+                drawLine(
+                    color = Color.White.copy(alpha = 0.05f),
+                    start = Offset(4.dp.toPx(), winH - 0.5f),
+                    end = Offset(winW - 4.dp.toPx(), winH - 0.5f),
+                    strokeWidth = 1.dp.toPx()
+                )
+            }
+
+            Text(
+                text = key,
+                color = neonColor,
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                letterSpacing = 2.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+
+        // Lower Neon Lightbar Accent Strip
+        val stripShape = androidx.compose.foundation.shape.RoundedCornerShape(2.dp)
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 9.dp)
+                .size(width = 110.dp, height = 4.dp)
+                .clip(stripShape)
+                .background(neonColor.copy(alpha = 0.22f))
+        )
+    }
+}
+
+/**
+ * Static preview for Bumper E — Underglow (LB / RB).
+ * Exact visual match for ui/components/controller/UnderglowBumper.kt in idle state.
+ */
+@Composable
+internal fun StaticUnderglowBumper(
+    key: String = "LB",
+    modifier: Modifier = Modifier
+) {
+    val isLeft = remember(key) {
+        val upper = key.uppercase()
+        upper == "LB" || upper == "L1" || upper == "LEFT"
+    }
+
+    val neonColor = if (isLeft) Color(0xFF5CF29A) else Color(0xFFFF5252)
+    val bumperShape = remember(isLeft) {
+        if (isLeft) {
+            androidx.compose.foundation.shape.RoundedCornerShape(topStart = 12.dp, topEnd = 14.dp, bottomEnd = 27.dp, bottomStart = 20.dp)
+        } else {
+            androidx.compose.foundation.shape.RoundedCornerShape(topStart = 14.dp, topEnd = 12.dp, bottomEnd = 20.dp, bottomStart = 27.dp)
+        }
+    }
+
+    val baseDomeGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF232527),
+                Color(0xFF0C0D0E),
+                Color(0xFF000000)
+            ),
+            center = Offset(0.50f, 0.55f),
+            radius = 260f
+        )
+    }
+
+    Box(
+        modifier = modifier
+            .size(154.dp, 54.dp)
+            .drawBehind {
+                val haloOffset = 6.dp.toPx()
+                val rBottom = 27.dp.toPx() + haloOffset
+                val rTop = 14.dp.toPx() + haloOffset
+                val haloPath = androidx.compose.ui.graphics.Path().apply {
+                    addRoundRect(
+                        androidx.compose.ui.geometry.RoundRect(
+                            rect = androidx.compose.ui.geometry.Rect(-haloOffset, -haloOffset, size.width + haloOffset, size.height + haloOffset),
+                            topLeft = CornerRadius(if (isLeft) 12.dp.toPx() + haloOffset else rTop),
+                            topRight = CornerRadius(if (isLeft) rTop else 12.dp.toPx() + haloOffset),
+                            bottomRight = CornerRadius(if (isLeft) rBottom else 20.dp.toPx() + haloOffset),
+                            bottomLeft = CornerRadius(if (isLeft) 20.dp.toPx() + haloOffset else rBottom)
+                        )
+                    )
+                }
+                drawPath(path = haloPath, color = neonColor.copy(alpha = 0.22f))
+            }
+            .shadow(
+                elevation = 7.dp,
+                shape = bumperShape,
+                ambientColor = Color.Black.copy(alpha = 0.55f),
+                spotColor = Color.Black
+            )
+            .clip(bumperShape)
+            .background(baseDomeGradient)
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Black.copy(alpha = 0.50f),
+                        Color.Black.copy(alpha = 0.80f)
+                    )
+                ),
+                shape = bumperShape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+
+            val insetH = h * 0.40f
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
+                    startY = h - insetH,
+                    endY = h
+                ),
+                topLeft = Offset(0f, h - insetH),
+                size = Size(w, insetH)
+            )
+
+            // Top crescent specular sheen
+            val sheenH = h * 0.42f
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.14f),
+                        Color.White.copy(alpha = 0.04f),
+                        Color.Transparent
+                    ),
+                    startY = 0f,
+                    endY = sheenH
+                ),
+                topLeft = Offset(2.dp.toPx(), 2.dp.toPx()),
+                size = Size(w - 4.dp.toPx(), sheenH)
+            )
+
+            // Top edge specular line
+            val specStartX = if (isLeft) w * 0.15f else w * 0.12f
+            val specEndX = if (isLeft) w * 0.88f else w * 0.85f
+            drawLine(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.45f),
+                        Color.White.copy(alpha = 0.16f)
+                    ),
+                    startX = specStartX,
+                    endX = specEndX
+                ),
+                start = Offset(specStartX, 3.5f),
+                end = Offset(specEndX, 3.5f),
+                strokeWidth = 1.5f
+            )
+
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                    center = Offset(w * 0.70f, h * 0.78f),
+                    radius = w * 0.20f
+                ),
+                center = Offset(w * 0.70f, h * 0.78f),
+                radius = w * 0.20f
+            )
+        }
+
+        // Direct Centered Typography
+        Text(
+            text = key,
+            color = neonColor,
+            fontWeight = FontWeight.Bold,
+            fontSize = 24.sp,
+            letterSpacing = 2.sp,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+
+        // Bottom Neon Underglow Bar
+        Canvas(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxSize()
+        ) {
+            val barInsetX = 12.dp.toPx()
+            val barBottomY = size.height - 3.dp.toPx()
+            val barH = 3.dp.toPx()
+            val barW = size.width - barInsetX * 2f
+
+            drawRoundRect(
+                color = neonColor.copy(alpha = 0.35f * 0.85f),
+                topLeft = Offset(barInsetX - 4.dp.toPx(), barBottomY - 2.dp.toPx()),
+                size = Size(barW + 8.dp.toPx(), barH + 4.dp.toPx()),
+                cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+            )
+
+            drawRoundRect(
+                color = neonColor.copy(alpha = 0.85f),
+                topLeft = Offset(barInsetX, barBottomY),
+                size = Size(barW, barH),
+                cornerRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx())
+            )
+        }
+    }
+}
+
+/**
+ * Static preview for Bumper F — Tube (LB / RB).
+ * Exact visual match for ui/components/controller/TubeBumper.kt in idle state.
+ */
+@Composable
+internal fun StaticTubeBumper(
+    key: String = "LB",
+    modifier: Modifier = Modifier
+) {
+    val isLeft = remember(key) {
+        val upper = key.uppercase()
+        upper == "LB" || upper == "L1" || upper == "LEFT"
+    }
+
+    val neonColor = if (isLeft) Color(0xFF4FA8FF) else Color(0xFFFF4F81)
+    val bumperShape = remember { androidx.compose.foundation.shape.RoundedCornerShape(27.dp) }
+
+    val baseDomeGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF232527),
+                Color(0xFF0C0D0E),
+                Color(0xFF000000)
+            ),
+            center = Offset(0.50f, 0.55f),
+            radius = 260f
+        )
+    }
+
+    val windowGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF050506),
+                Color(0xFF121314)
+            ),
+            center = Offset(0.50f, 0.60f),
+            radius = 120f
+        )
+    }
+
+    Box(
+        modifier = modifier
+            .size(154.dp, 54.dp)
+            .drawBehind {
+                val pad = 5.dp.toPx()
+                drawRoundRect(
+                    color = neonColor.copy(alpha = 0.18f),
+                    topLeft = Offset(-pad, -pad),
+                    size = Size(size.width + pad * 2, size.height + pad * 2),
+                    cornerRadius = CornerRadius(27.dp.toPx() + pad, 27.dp.toPx() + pad)
+                )
+            }
+            .shadow(
+                elevation = 7.dp,
+                shape = bumperShape,
+                ambientColor = Color.Black.copy(alpha = 0.55f),
+                spotColor = Color.Black
+            )
+            .clip(bumperShape)
+            .background(baseDomeGradient)
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Black.copy(alpha = 0.50f),
+                        Color.Black.copy(alpha = 0.80f)
+                    )
+                ),
+                shape = bumperShape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+
+            val insetH = h * 0.40f
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
+                    startY = h - insetH,
+                    endY = h
+                ),
+                topLeft = Offset(0f, h - insetH),
+                size = Size(w, insetH)
+            )
+
+            // Calibration ruler ticks along bottom
+            val tickYStart = h - 9.dp.toPx()
+            val tickYEnd = h - 3.dp.toPx()
+            val tickSpacing = 10.dp.toPx()
+            var curTickX = 16.dp.toPx()
+            while (curTickX < w - 16.dp.toPx()) {
+                drawLine(
+                    color = Color.White.copy(alpha = 0.22f),
+                    start = Offset(curTickX, tickYStart),
+                    end = Offset(curTickX, tickYEnd),
+                    strokeWidth = 1.dp.toPx()
+                )
+                curTickX += tickSpacing
+            }
+
+            // Neon perimeter ring
+            val ringInset = 2.5.dp.toPx()
+            val ringRadius = 27.dp.toPx() - ringInset
+
+            drawRoundRect(
+                color = neonColor.copy(alpha = 0.28f * 0.70f),
+                topLeft = Offset(ringInset, ringInset),
+                size = Size(w - ringInset * 2f, h - ringInset * 2f),
+                cornerRadius = CornerRadius(ringRadius, ringRadius),
+                style = Stroke(width = 4.dp.toPx())
+            )
+            drawRoundRect(
+                color = neonColor.copy(alpha = 0.70f * 0.70f),
+                topLeft = Offset(ringInset, ringInset),
+                size = Size(w - ringInset * 2f, h - ringInset * 2f),
+                cornerRadius = CornerRadius(ringRadius, ringRadius),
+                style = Stroke(width = 1.8.dp.toPx())
+            )
+
+            // Top crescent specular sheen
+            val sheenH = h * 0.40f
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.14f),
+                        Color.White.copy(alpha = 0.04f),
+                        Color.Transparent
+                    ),
+                    startY = 0f,
+                    endY = sheenH
+                ),
+                topLeft = Offset(ringInset, ringInset),
+                size = Size(w - ringInset * 2f, sheenH)
+            )
+
+            val specStartX = w * 0.15f
+            val specEndX = w * 0.85f
+            drawLine(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.45f),
+                        Color.White.copy(alpha = 0.16f)
+                    ),
+                    startX = specStartX,
+                    endX = specEndX
+                ),
+                start = Offset(specStartX, 4f),
+                end = Offset(specEndX, 4f),
+                strokeWidth = 1.5f
+            )
+
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                    center = Offset(w * 0.70f, h * 0.78f),
+                    radius = w * 0.20f
+                ),
+                center = Offset(w * 0.70f, h * 0.78f),
+                radius = w * 0.20f
+            )
+        }
+
+        // Recessed Optical Window
+        val windowShape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+        Box(
+            modifier = Modifier
+                .size(74.dp, 28.dp)
+                .shadow(
+                    elevation = 2.dp,
+                    shape = windowShape,
+                    ambientColor = Color.Black,
+                    spotColor = Color.Black
+                )
+                .clip(windowShape)
+                .background(windowGradient)
+                .border(
+                    width = 1.dp,
+                    color = Color.White.copy(alpha = 0.05f),
+                    shape = windowShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val winW = size.width
+                val winH = size.height
+
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.Black.copy(alpha = 0.90f), Color.Transparent),
+                        startY = 0f,
+                        endY = 6.dp.toPx()
+                    ),
+                    size = Size(winW, 6.dp.toPx())
+                )
+
+                drawRect(
+                    brush = Brush.radialGradient(
+                        0.0f to Color.Transparent,
+                        0.32f to Color.Transparent,
+                        1.0f to Color.Black.copy(alpha = 0.82f),
+                        center = Offset(winW / 2f, winH / 2f),
+                        radius = winW * 0.50f
+                    )
+                )
+
+                drawLine(
+                    color = Color.White.copy(alpha = 0.05f),
+                    start = Offset(4.dp.toPx(), winH - 0.5f),
+                    end = Offset(winW - 4.dp.toPx(), winH - 0.5f),
+                    strokeWidth = 1.dp.toPx()
+                )
+            }
+
+            Text(
+                text = key,
+                color = neonColor,
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                letterSpacing = 2.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+    }
+}
+
+/**
+ * Static preview for Bumper G — Flip (LB / RB).
+ * Exact visual match for ui/components/controller/FlipBumper.kt in resting idle state (Face A).
+ */
+@Composable
+internal fun StaticFlipBumper(
+    key: String = "LB",
+    modifier: Modifier = Modifier
+) {
+    val isLeft = remember(key) {
+        val upper = key.uppercase()
+        upper == "LB" || upper == "L1" || upper == "LEFT"
+    }
+
+    val neonColor = if (isLeft) Color(0xFFFFD23F) else Color(0xFFFF6B6B)
+    val bumperShape = remember { androidx.compose.foundation.shape.RoundedCornerShape(27.dp) }
+
+    val baseDomeGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF232527),
+                Color(0xFF0C0D0E),
+                Color(0xFF000000)
+            ),
+            center = Offset(0.50f, 0.55f),
+            radius = 260f
+        )
+    }
+
+    val windowGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF050506),
+                Color(0xFF121314)
+            ),
+            center = Offset(0.50f, 0.60f),
+            radius = 120f
+        )
+    }
+
+    Box(
+        modifier = modifier
+            .size(154.dp, 54.dp)
+            .drawBehind {
+                val pad = 5.dp.toPx()
+                drawRoundRect(
+                    color = neonColor.copy(alpha = 0.18f),
+                    topLeft = Offset(-pad, -pad),
+                    size = Size(size.width + pad * 2, size.height + pad * 2),
+                    cornerRadius = CornerRadius(27.dp.toPx() + pad, 27.dp.toPx() + pad)
+                )
+            }
+            .shadow(
+                elevation = 7.dp,
+                shape = bumperShape,
+                ambientColor = Color.Black.copy(alpha = 0.55f),
+                spotColor = Color.Black
+            )
+            .clip(bumperShape)
+            .background(baseDomeGradient)
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Black.copy(alpha = 0.50f),
+                        Color.Black.copy(alpha = 0.80f)
+                    )
+                ),
+                shape = bumperShape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+
+            val insetH = h * 0.40f
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
+                    startY = h - insetH,
+                    endY = h
+                ),
+                topLeft = Offset(0f, h - insetH),
+                size = Size(w, insetH)
+            )
+
+            // Top crescent specular sheen
+            val sheenH = h * 0.40f
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.14f),
+                        Color.White.copy(alpha = 0.04f),
+                        Color.Transparent
+                    ),
+                    startY = 0f,
+                    endY = sheenH
+                ),
+                topLeft = Offset(2.dp.toPx(), 2.dp.toPx()),
+                size = Size(w - 4.dp.toPx(), sheenH)
+            )
+
+            // Neon perimeter ring
+            val ringInset = 2.5.dp.toPx()
+            val ringRadius = 27.dp.toPx() - ringInset
+
+            drawRoundRect(
+                color = neonColor.copy(alpha = 0.28f * 0.70f),
+                topLeft = Offset(ringInset, ringInset),
+                size = Size(w - ringInset * 2f, h - ringInset * 2f),
+                cornerRadius = CornerRadius(ringRadius, ringRadius),
+                style = Stroke(width = 4.dp.toPx())
+            )
+            drawRoundRect(
+                color = neonColor.copy(alpha = 0.70f * 0.70f),
+                topLeft = Offset(ringInset, ringInset),
+                size = Size(w - ringInset * 2f, h - ringInset * 2f),
+                cornerRadius = CornerRadius(ringRadius, ringRadius),
+                style = Stroke(width = 1.8.dp.toPx())
+            )
+        }
+
+        // Optical Window (96dp × 32dp)
+        val windowShape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+        Box(
+            modifier = Modifier
+                .size(96.dp, 32.dp)
+                .shadow(
+                    elevation = 2.dp,
+                    shape = windowShape,
+                    ambientColor = Color.Black,
+                    spotColor = Color.Black
+                )
+                .clip(windowShape)
+                .background(windowGradient)
+                .border(
+                    width = 1.dp,
+                    color = Color.White.copy(alpha = 0.05f),
+                    shape = windowShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val winW = size.width
+                val winH = size.height
+
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.Black.copy(alpha = 0.90f), Color.Transparent),
+                        startY = 0f,
+                        endY = 6.dp.toPx()
+                    ),
+                    size = Size(winW, 6.dp.toPx())
+                )
+
+                drawRect(
+                    brush = Brush.radialGradient(
+                        0.0f to Color.Transparent,
+                        0.32f to Color.Transparent,
+                        1.0f to Color.Black.copy(alpha = 0.82f),
+                        center = Offset(winW / 2f, winH / 2f),
+                        radius = winW * 0.50f
+                    )
+                )
+            }
+
+            Text(
+                text = key,
+                color = neonColor,
+                fontWeight = FontWeight.Bold,
+                fontSize = 22.sp,
+                letterSpacing = 2.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+    }
+}
+
+/**
+ * Exact static visual preview for the Dial Trigger (LT / RT).
+ * Renders the circular 92dp x 92dp housing, inactive 270° radial gauge track with idle tip beacon,
+ * recessed optical window, and specular optical lens sheens.
+ */
+@Composable
+internal fun StaticDialTrigger(
+    key: String,
+    modifier: Modifier = Modifier
+) {
+    val isLeft = key.uppercase().startsWith("L")
+    val neonColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFE055B8)
+
+    val triggerShape = CircleShape
+    val windowShape = RoundedCornerShape(13.dp)
+
+    val baseDomeGradient = Brush.radialGradient(
+        colors = listOf(
+            Color(0xFF232527),
+            Color(0xFF0C0D0E),
+            Color(0xFF000000)
+        ),
+        center = Offset(0.50f, 0.45f),
+        radius = 210f
+    )
+
+    val windowGradient = Brush.radialGradient(
+        colors = listOf(
+            Color(0xFF050506),
+            Color(0xFF121314)
+        ),
+        center = Offset(0.50f, 0.60f),
+        radius = 100f
+    )
+
+    Box(
+        modifier = modifier
+            .size(92.dp, 92.dp)
+            .shadow(
+                elevation = 6.dp,
+                shape = triggerShape,
+                spotColor = neonColor,
+                ambientColor = Color.Black
+            )
+            .clip(triggerShape)
+            .background(baseDomeGradient)
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Black.copy(alpha = 0.50f),
+                        Color.Black.copy(alpha = 0.80f)
+                    )
+                ),
+                shape = triggerShape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+
+            // Inset bottom shadow along bottom base
+            val insetH = h * 0.32f
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
+                    startY = h - insetH,
+                    endY = h
+                ),
+                topLeft = Offset(0f, h - insetH),
+                size = Size(w, insetH)
+            )
+
+            // Outer 1px rim outline
+            drawCircle(
+                color = Color.Black.copy(alpha = 0.50f),
+                radius = (w / 2f) - 0.5f,
+                style = Stroke(width = 1.dp.toPx())
+            )
+
+            // Multi-pass emissive neon ring (.lx-ring)
+            val ringInset = 3.dp.toPx()
+            val ringRadius = (w / 2f) - ringInset
+            drawCircle(
+                color = neonColor.copy(alpha = 0.25f),
+                radius = ringRadius,
+                style = Stroke(width = 4.dp.toPx())
+            )
+            drawCircle(
+                color = neonColor.copy(alpha = 0.70f),
+                radius = ringRadius,
+                style = Stroke(width = 2.dp.toPx())
+            )
+
+            // =========================================================================
+            // 270° RADIAL GAUGE TRACK (HTML SVG Dial Gauge Translation)
+            // =========================================================================
+            val gaugeRadius = (w / 2f) - 10.dp.toPx()
+            val gaugeCenter = Offset(w / 2f, h / 2f)
+            val gaugeTopLeft = Offset(gaugeCenter.x - gaugeRadius, gaugeCenter.y - gaugeRadius)
+            val gaugeSize = Size(gaugeRadius * 2f, gaugeRadius * 2f)
+
+            // Inactive track: 270° arc starting at 135° (South-West) sweeping clockwise
+            drawArc(
+                color = Color.White.copy(alpha = 0.12f),
+                startAngle = 135f,
+                sweepAngle = 270f,
+                useCenter = false,
+                topLeft = gaugeTopLeft,
+                size = gaugeSize,
+                style = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round)
+            )
+
+            // Subtle starting needle tip dot / beacon at 135° origin
+            drawArc(
+                color = neonColor,
+                startAngle = 135f,
+                sweepAngle = 2f,
+                useCenter = false,
+                topLeft = gaugeTopLeft,
+                size = gaugeSize,
+                style = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round)
+            )
+
+            // Top crescent specular highlight arc (.lx-lens)
+            val lensInset = 1.dp.toPx()
+            drawArc(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.14f),
+                        Color.White.copy(alpha = 0.05f),
+                        Color.Transparent
+                    ),
+                    startY = 0f,
+                    endY = h * 0.38f
+                ),
+                startAngle = 180f,
+                sweepAngle = 180f,
+                useCenter = false,
+                topLeft = Offset(lensInset, lensInset),
+                size = Size(w - lensInset * 2f, h - lensInset * 2f),
+                style = Stroke(width = 1.dp.toPx())
+            )
+
+            // Bottom-right specular sheen oval
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                    center = Offset(w * 0.70f, h * 0.78f),
+                    radius = w * 0.22f
+                ),
+                center = Offset(w * 0.70f, h * 0.78f),
+                radius = w * 0.22f
+            )
+        }
+
+        // =========================================================================
+        // RECESSED OPTICAL WINDOW (.lx-window)
+        // =========================================================================
+        Box(
+            modifier = Modifier
+                .offset(y = (-2).dp)
+                .size(48.dp, 26.dp)
+                .shadow(
+                    elevation = 2.dp,
+                    shape = windowShape,
+                    ambientColor = Color.Black,
+                    spotColor = Color.Black
+                )
+                .clip(windowShape)
+                .background(windowGradient)
+                .border(
+                    width = 1.dp,
+                    color = Color.White.copy(alpha = 0.06f),
+                    shape = windowShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val winW = size.width
+                val winH = size.height
+
+                // Top lip shadow inside optical cavity
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent),
+                        startY = 0f,
+                        endY = 5.dp.toPx()
+                    ),
+                    size = Size(winW, 5.dp.toPx())
+                )
+
+                // Perimeter shadow vignette (.lx-window::after)
+                drawRect(
+                    brush = Brush.radialGradient(
+                        0.0f to Color.Transparent,
+                        0.32f to Color.Transparent,
+                        1.0f to Color.Black.copy(alpha = 0.82f),
+                        center = Offset(winW / 2f, winH / 2f),
+                        radius = winW * 0.50f
+                    )
+                )
+            }
+
+            // High-contrast bold tactical label (LT / RT)
+            Text(
+                text = key,
+                color = neonColor,
+                fontWeight = FontWeight.Bold,
+                fontSize = 17.sp,
+                letterSpacing = 1.5.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+    }
+}
+
+/**
+ * Exact static visual preview for the Liquid Orb Trigger (LT / RT).
+ * Renders the circular 92dp x 92dp housing, recessed spherical chamber, ambient baseline
+ * liquid level with glowing meniscus crest, elevated optical window, and specular glass reflections.
+ */
+@Composable
+internal fun StaticLiquidOrbTrigger(
+    key: String,
+    modifier: Modifier = Modifier
+) {
+    val isLeft = key.uppercase().startsWith("L")
+    val neonColor = if (isLeft) Color(0xFF3FD2C4) else Color(0xFFFF5376)
+
+    val triggerShape = CircleShape
+    val windowShape = RoundedCornerShape(13.dp)
+
+    val baseDomeGradient = Brush.radialGradient(
+        colors = listOf(
+            Color(0xFF232527),
+            Color(0xFF0C0D0E),
+            Color(0xFF000000)
+        ),
+        center = Offset(0.50f, 0.45f),
+        radius = 210f
+    )
+
+    val windowGradient = Brush.radialGradient(
+        colors = listOf(
+            Color(0xFF050506),
+            Color(0xFF121314)
+        ),
+        center = Offset(0.50f, 0.60f),
+        radius = 100f
+    )
+
+    Box(
+        modifier = modifier
+            .size(92.dp, 92.dp)
+            .shadow(
+                elevation = 6.dp,
+                shape = triggerShape,
+                spotColor = neonColor,
+                ambientColor = Color.Black
+            )
+            .clip(triggerShape)
+            .background(baseDomeGradient)
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Black.copy(alpha = 0.50f),
+                        Color.Black.copy(alpha = 0.80f)
+                    )
+                ),
+                shape = triggerShape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+
+            // Inset bottom shadow along base
+            val insetH = h * 0.32f
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
+                    startY = h - insetH,
+                    endY = h
+                ),
+                topLeft = Offset(0f, h - insetH),
+                size = Size(w, insetH)
+            )
+
+            // Outer 1px rim outline
+            drawCircle(
+                color = Color.Black.copy(alpha = 0.50f),
+                radius = (w / 2f) - 0.5f,
+                style = Stroke(width = 1.dp.toPx())
+            )
+
+            // Multi-pass emissive neon ring (.lx-ring)
+            val ringInset = 3.dp.toPx()
+            val ringRadius = (w / 2f) - ringInset
+            drawCircle(
+                color = neonColor.copy(alpha = 0.25f),
+                radius = ringRadius,
+                style = Stroke(width = 4.dp.toPx())
+            )
+            drawCircle(
+                color = neonColor.copy(alpha = 0.70f),
+                radius = ringRadius,
+                style = Stroke(width = 2.dp.toPx())
+            )
+
+            // Recessed spherical chamber (.liq-wrap)
+            val chamberInset = 7.dp.toPx()
+            val chamberRadius = (w / 2f) - chamberInset
+            val chamberCenter = Offset(w / 2f, h / 2f)
+
+            val chamberPath = Path().apply {
+                addOval(
+                    androidx.compose.ui.geometry.Rect(
+                        center = chamberCenter,
+                        radius = chamberRadius
+                    )
+                )
+            }
+
+            clipPath(chamberPath) {
+                // Dark internal cavity well
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color(0xFF0D0E12), Color(0xFF040405)),
+                        center = chamberCenter,
+                        radius = chamberRadius
+                    ),
+                    radius = chamberRadius,
+                    center = chamberCenter
+                )
+
+                // Rich liquid fill level (45% fluid height for vivid Button Studio preview)
+                val chamberDiameter = chamberRadius * 2f
+                val liquidHeight = chamberDiameter * 0.45f
+                val liquidTopY = (chamberCenter.y + chamberRadius) - liquidHeight
+                val liquidBottomY = chamberCenter.y + chamberRadius
+
+                // Layer 1: Ambient deep fluid bloom
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            neonColor.copy(alpha = 0.75f),
+                            neonColor.copy(alpha = 0.35f),
+                            Color.Transparent
+                        ),
+                        startY = liquidTopY,
+                        endY = liquidBottomY
+                    ),
+                    topLeft = Offset(chamberCenter.x - chamberRadius, liquidTopY),
+                    size = Size(chamberDiameter, liquidHeight)
+                )
+
+                // Layer 2: Core luminous fluid radiance
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            neonColor.copy(alpha = 0.50f),
+                            Color.Transparent
+                        ),
+                        startY = liquidTopY,
+                        endY = liquidTopY + liquidHeight * 0.60f
+                    ),
+                    topLeft = Offset(chamberCenter.x - chamberRadius, liquidTopY),
+                    size = Size(chamberDiameter, liquidHeight * 0.60f)
+                )
+
+                // Meniscus glowing wave crest
+                val meniscusWidth = chamberDiameter * 1.30f
+                val meniscusHeight = 11.dp.toPx()
+                val meniscusLeft = chamberCenter.x - (meniscusWidth / 2f)
+                val meniscusTop = liquidTopY - (meniscusHeight / 2f)
+
+                drawOval(
+                    color = neonColor.copy(alpha = 0.50f),
+                    topLeft = Offset(meniscusLeft, meniscusTop - 3.dp.toPx()),
+                    size = Size(meniscusWidth, meniscusHeight + 6.dp.toPx())
+                )
+                drawOval(
+                    color = neonColor.copy(alpha = 0.95f),
+                    topLeft = Offset(meniscusLeft, meniscusTop),
+                    size = Size(meniscusWidth, meniscusHeight)
+                )
+
+                // Meniscus specular wave crest glint
+                val glintWidth = meniscusWidth * 0.50f
+                val glintHeight = 3.5.dp.toPx()
+                drawOval(
+                    color = Color.White.copy(alpha = 0.85f),
+                    topLeft = Offset(chamberCenter.x - (glintWidth / 2f), liquidTopY - (glintHeight / 2f)),
+                    size = Size(glintWidth, glintHeight)
+                )
+            }
+
+            // Top crescent specular highlight arc (.lx-lens)
+            val lensInset = 1.dp.toPx()
+            drawArc(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.14f),
+                        Color.White.copy(alpha = 0.05f),
+                        Color.Transparent
+                    ),
+                    startY = 0f,
+                    endY = h * 0.38f
+                ),
+                startAngle = 180f,
+                sweepAngle = 180f,
+                useCenter = false,
+                topLeft = Offset(lensInset, lensInset),
+                size = Size(w - lensInset * 2f, h - lensInset * 2f),
+                style = Stroke(width = 1.dp.toPx())
+            )
+
+            // Bottom-right specular sheen oval
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                    center = Offset(w * 0.70f, h * 0.78f),
+                    radius = w * 0.22f
+                ),
+                center = Offset(w * 0.70f, h * 0.78f),
+                radius = w * 0.22f
+            )
+        }
+
+        // Elevated optical window (.lx-window top: 34%)
+        Box(
+            modifier = Modifier
+                .offset(y = (-13).dp)
+                .size(48.dp, 26.dp)
+                .shadow(
+                    elevation = 2.dp,
+                    shape = windowShape,
+                    ambientColor = Color.Black,
+                    spotColor = Color.Black
+                )
+                .clip(windowShape)
+                .background(windowGradient)
+                .border(
+                    width = 1.dp,
+                    color = Color.White.copy(alpha = 0.06f),
+                    shape = windowShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val winW = size.width
+                val winH = size.height
+
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent),
+                        startY = 0f,
+                        endY = 5.dp.toPx()
+                    ),
+                    size = Size(winW, 5.dp.toPx())
+                )
+
+                drawRect(
+                    brush = Brush.radialGradient(
+                        0.0f to Color.Transparent,
+                        0.32f to Color.Transparent,
+                        1.0f to Color.Black.copy(alpha = 0.82f),
+                        center = Offset(winW / 2f, winH / 2f),
+                        radius = winW * 0.50f
+                    )
+                )
+            }
+
+            Text(
+                text = key,
+                color = neonColor,
+                fontWeight = FontWeight.Bold,
+                fontSize = 17.sp,
+                letterSpacing = 1.5.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+    }
+}
+
+/**
+ * Exact static visual preview for the VU Slabs Trigger (LT / RT).
+ * Renders the 100dp x 92dp mobile trigger contour, 7 audio meter slabs with bottom 4 illuminated
+ * and top overdrive slabs visible in ghost styling, top optical window, and lens reflections.
+ */
+@Composable
+internal fun StaticVuSlabsTrigger(
+    key: String,
+    modifier: Modifier = Modifier
+) {
+    val isLeft = key.uppercase().startsWith("L")
+    val neonColor = if (isLeft) Color(0xFF3FD25A) else Color(0xFFE055B8)
+
+    val orangeOverdrive = Color(0xFFFF8A3D)
+    val redOverdrive = Color(0xFFFF5A4D)
+
+    val triggerShape = RoundedCornerShape(
+        topStart = 22.dp,
+        topEnd = 22.dp,
+        bottomStart = 34.dp,
+        bottomEnd = 34.dp
+    )
+    val windowShape = RoundedCornerShape(12.dp)
+
+    val baseDomeGradient = Brush.radialGradient(
+        colors = listOf(
+            Color(0xFF232527),
+            Color(0xFF0C0D0E),
+            Color(0xFF000000)
+        ),
+        center = Offset(0.50f, 0.45f),
+        radius = 210f
+    )
+
+    val windowGradient = Brush.radialGradient(
+        colors = listOf(
+            Color(0xFF050506),
+            Color(0xFF121314)
+        ),
+        center = Offset(0.50f, 0.60f),
+        radius = 100f
+    )
+
+    Box(
+        modifier = modifier
+            .size(100.dp, 92.dp)
+            .shadow(
+                elevation = 6.dp,
+                shape = triggerShape,
+                spotColor = neonColor,
+                ambientColor = Color.Black
+            )
+            .clip(triggerShape)
+            .background(baseDomeGradient)
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Black.copy(alpha = 0.50f),
+                        Color.Black.copy(alpha = 0.80f)
+                    )
+                ),
+                shape = triggerShape
+            ),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+
+            // Inset bottom shadow along pedal hull
+            val insetH = h * 0.32f
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
+                    startY = h - insetH,
+                    endY = h
+                ),
+                topLeft = Offset(0f, h - insetH),
+                size = Size(w, insetH)
+            )
+
+            // Multi-pass emissive neon ring (.lx-ring) mapped accurately to 22dp/34dp hull
+            val ringInset = 2.5.dp.toPx()
+            val ringTopR = 19.5.dp.toPx()
+            val ringBotR = 31.5.dp.toPx()
+            val ringPath = Path().apply {
+                addRoundRect(
+                    RoundRect(
+                        left = ringInset,
+                        top = ringInset,
+                        right = w - ringInset,
+                        bottom = h - ringInset,
+                        topLeftCornerRadius = CornerRadius(ringTopR, ringTopR),
+                        topRightCornerRadius = CornerRadius(ringTopR, ringTopR),
+                        bottomLeftCornerRadius = CornerRadius(ringBotR, ringBotR),
+                        bottomRightCornerRadius = CornerRadius(ringBotR, ringBotR)
+                    )
+                )
+            }
+
+            // Outer atmospheric bloom stroke
+            drawPath(
+                path = ringPath,
+                color = neonColor.copy(alpha = 0.28f),
+                style = Stroke(width = 3.5.dp.toPx())
+            )
+            // Core crisp filament stroke
+            drawPath(
+                path = ringPath,
+                color = neonColor.copy(alpha = 0.70f),
+                style = Stroke(width = 1.5.dp.toPx())
+            )
+
+            // Seven audio meter slabs (showcase preview: bottom 4 lit at 100%, top 3 ghosted)
+            val slabWidths = floatArrayOf(
+                54.dp.toPx(),
+                58.dp.toPx(),
+                62.dp.toPx(),
+                65.dp.toPx(),
+                68.dp.toPx(),
+                70.dp.toPx(),
+                72.dp.toPx()
+            )
+            val slabHeight = 4.dp.toPx()
+            val slabGap = 2.5.dp.toPx()
+            val slabRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx())
+            val bottomMargin = 10.dp.toPx()
+
+            for (i in 0..6) {
+                val slabColor = when (i) {
+                    5 -> orangeOverdrive
+                    6 -> redOverdrive
+                    else -> neonColor
+                }
+
+                val isLit = i <= 3
+                val slabOpacity = if (isLit) 1.0f else 0.13f
+
+                val slabW = slabWidths[i]
+                val slabLeft = (w - slabW) / 2f
+                val slabTop = (h - bottomMargin - slabHeight) - i * (slabHeight + slabGap)
+
+                if (isLit) {
+                    drawRoundRect(
+                        color = slabColor.copy(alpha = 0.40f),
+                        topLeft = Offset(slabLeft - 2.dp.toPx(), slabTop - 1.5.dp.toPx()),
+                        size = Size(slabW + 4.dp.toPx(), slabHeight + 3.dp.toPx()),
+                        cornerRadius = CornerRadius(3.5.dp.toPx(), 3.5.dp.toPx())
+                    )
+                }
+
+                drawRoundRect(
+                    color = slabColor.copy(alpha = slabOpacity),
+                    topLeft = Offset(slabLeft, slabTop),
+                    size = Size(slabW, slabHeight),
+                    cornerRadius = slabRadius
+                )
+            }
+
+            // Top crescent specular highlight arc (.lx-lens)
+            val lensInset = 1.dp.toPx()
+            drawArc(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.14f),
+                        Color.White.copy(alpha = 0.05f),
+                        Color.Transparent
+                    ),
+                    startY = 0f,
+                    endY = h * 0.38f
+                ),
+                startAngle = 180f,
+                sweepAngle = 180f,
+                useCenter = false,
+                topLeft = Offset(lensInset, lensInset),
+                size = Size(w - lensInset * 2f, h - lensInset * 2f),
+                style = Stroke(width = 1.dp.toPx())
+            )
+
+            // Bottom-right specular sheen oval
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                    center = Offset(w * 0.70f, h * 0.78f),
+                    radius = w * 0.22f
+                ),
+                center = Offset(w * 0.70f, h * 0.78f),
+                radius = w * 0.22f
+            )
+        }
+
+        // Recessed optical window (.lx-window top: 10dp)
+        Box(
+            modifier = Modifier
+                .offset(y = 10.dp)
+                .size(54.dp, 24.dp)
+                .shadow(
+                    elevation = 2.dp,
+                    shape = windowShape,
+                    ambientColor = Color.Black,
+                    spotColor = Color.Black
+                )
+                .clip(windowShape)
+                .background(windowGradient)
+                .border(
+                    width = 1.dp,
+                    color = Color.White.copy(alpha = 0.06f),
+                    shape = windowShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val winW = size.width
+                val winH = size.height
+
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent),
+                        startY = 0f,
+                        endY = 5.dp.toPx()
+                    ),
+                    size = Size(winW, 5.dp.toPx())
+                )
+
+                drawRect(
+                    brush = Brush.radialGradient(
+                        0.0f to Color.Transparent,
+                        0.32f to Color.Transparent,
+                        1.0f to Color.Black.copy(alpha = 0.82f),
+                        center = Offset(winW / 2f, winH / 2f),
+                        radius = winW * 0.50f
+                    )
+                )
+            }
+
+            Text(
+                text = key,
+                color = neonColor,
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp,
+                letterSpacing = 1.5.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+    }
+}
+
+/**
+ * Static preview renderer for the Target Trigger (Trigger E — Target / Concentric Rings).
+ * Showcases the active state with outer 2 target rings ignited and inner ring primed for studio browsing.
+ */
+@Composable
+internal fun StaticTargetTrigger(
+    key: String,
+    modifier: Modifier = Modifier
+) {
+    val isLeft = key.uppercase().startsWith("L")
+    val neonColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF5A7A)
+
+    val triggerShape = CircleShape
+    val windowShape = CircleShape
+
+    val baseDomeGradient = Brush.radialGradient(
+        colors = listOf(
+            Color(0xFF232527),
+            Color(0xFF0C0D0E),
+            Color(0xFF000000)
+        ),
+        center = Offset(0.50f, 0.45f),
+        radius = 210f
+    )
+
+    val windowGradient = Brush.radialGradient(
+        colors = listOf(
+            Color(0xFF050506),
+            Color(0xFF121314)
+        ),
+        center = Offset(0.50f, 0.60f),
+        radius = 70f
+    )
+
+    Box(
+        modifier = modifier
+            .size(92.dp, 92.dp)
+            .shadow(
+                elevation = 6.dp,
+                shape = triggerShape,
+                spotColor = neonColor,
+                ambientColor = Color.Black
+            )
+            .clip(triggerShape)
+            .background(baseDomeGradient)
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Black.copy(alpha = 0.50f),
+                        Color.Black.copy(alpha = 0.80f)
+                    )
+                ),
+                shape = triggerShape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val center = Offset(w / 2f, h / 2f)
+            val outerRadius = size.minDimension / 2f
+
+            // Inset bottom shadow along trigger dome
+            val insetH = h * 0.32f
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
+                    startY = h - insetH,
+                    endY = h
+                ),
+                topLeft = Offset(0f, h - insetH),
+                size = Size(w, insetH)
+            )
+
+            // Outer chassis neon ring (.lx-ring)
+            val ringRadius = outerRadius - 2.5.dp.toPx()
+            drawCircle(
+                color = neonColor.copy(alpha = 0.22f),
+                center = center,
+                radius = ringRadius,
+                style = Stroke(width = 3.5.dp.toPx())
+            )
+            drawCircle(
+                color = neonColor.copy(alpha = 0.70f),
+                center = center,
+                radius = ringRadius,
+                style = Stroke(width = 1.5.dp.toPx())
+            )
+
+            // Three concentric target rings (showcase: outer two rings fully lit at 100%, inner primed at 40%)
+            val targetRadii = floatArrayOf(
+                37.dp.toPx(),
+                28.dp.toPx(),
+                19.dp.toPx()
+            )
+
+            for (i in 0..2) {
+                val ringOpacity = when (i) {
+                    0 -> 1.0f
+                    1 -> 0.85f
+                    else -> 0.25f
+                }
+                val r = targetRadii[i]
+
+                if (ringOpacity > 0.25f) {
+                    drawCircle(
+                        color = neonColor.copy(alpha = 0.40f),
+                        center = center,
+                        radius = r,
+                        style = Stroke(width = 4.dp.toPx())
+                    )
+                }
+
+                drawCircle(
+                    color = neonColor.copy(alpha = ringOpacity),
+                    center = center,
+                    radius = r,
+                    style = Stroke(width = 1.5.dp.toPx())
+                )
+            }
+
+            // Top crescent specular highlight arc (.lx-lens)
+            val lensInset = 1.dp.toPx()
+            drawArc(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.14f),
+                        Color.White.copy(alpha = 0.05f),
+                        Color.Transparent
+                    ),
+                    startY = 0f,
+                    endY = h * 0.38f
+                ),
+                startAngle = 180f,
+                sweepAngle = 180f,
+                useCenter = false,
+                topLeft = Offset(lensInset, lensInset),
+                size = Size(w - lensInset * 2f, h - lensInset * 2f),
+                style = Stroke(width = 1.dp.toPx())
+            )
+
+            // Bottom-right specular sheen oval
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                    center = Offset(w * 0.70f, h * 0.78f),
+                    radius = w * 0.22f
+                ),
+                center = Offset(w * 0.70f, h * 0.78f),
+                radius = w * 0.22f
+            )
+        }
+
+        // Recessed circular optical eye window (32dp x 32dp CircleShape)
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .shadow(
+                    elevation = 2.dp,
+                    shape = windowShape,
+                    ambientColor = Color.Black,
+                    spotColor = Color.Black
+                )
+                .clip(windowShape)
+                .background(windowGradient)
+                .border(
+                    width = 1.dp,
+                    color = Color.White.copy(alpha = 0.06f),
+                    shape = windowShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val winW = size.width
+                val winH = size.height
+
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent),
+                        startY = 0f,
+                        endY = 5.dp.toPx()
+                    ),
+                    size = Size(winW, 5.dp.toPx())
+                )
+
+                drawRect(
+                    brush = Brush.radialGradient(
+                        0.0f to Color.Transparent,
+                        0.38f to Color.Transparent,
+                        1.0f to Color.Black.copy(alpha = 0.85f),
+                        center = Offset(winW / 2f, winH / 2f),
+                        radius = winW * 0.50f
+                    )
+                )
+            }
+
+            Text(
+                text = key,
+                color = neonColor,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                letterSpacing = 0.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+    }
+}
+
+/**
+ * Static preview renderer for the Slider Trigger (Trigger F — Slider).
+ * Showcases the slider partially pulled (50% active state) with illuminated active track,
+ * central glowing puck handle with neon ring and LED dot, and optical window.
+ */
+@Composable
+internal fun StaticSliderTrigger(
+    key: String,
+    modifier: Modifier = Modifier
+) {
+    val isLeft = key.uppercase().startsWith("L")
+    val glowColor = if (isLeft) Color(0xFFFFB13F) else Color(0xFFFF5A7A)
+
+    val widthDp = 42.dp
+    val totalHeightDp = 94.dp
+    val chassisShape = RoundedCornerShape(21.dp)
+    val windowShape = RoundedCornerShape(7.dp)
+
+    val puckDiameterDp = 26.dp
+    val puckRadiusDp = puckDiameterDp / 2f
+    val windowHeightDp = 14.dp
+    val windowWidthDp = 30.dp
+    val edgeMarginDp = 7.dp
+    val windowClearanceDp = 6.dp
+
+    val topRestCenterDp = 9.dp + puckRadiusDp
+    val bottomRestCenterDp = totalHeightDp - edgeMarginDp - windowHeightDp - windowClearanceDp - puckRadiusDp
+    val travelSpanDp = bottomRestCenterDp - topRestCenterDp
+    val previewFill = 0.50f
+
+    val baseDomeGradient = Brush.radialGradient(
+        colors = listOf(
+            Color(0xFF232527),
+            Color(0xFF0C0D0E),
+            Color(0xFF000000)
+        ),
+        center = Offset(0.50f, 0.55f),
+        radius = 200f
+    )
+
+    Box(
+        modifier = modifier
+            .size(widthDp, totalHeightDp)
+            .shadow(5.dp, chassisShape, spotColor = glowColor, ambientColor = Color.Black)
+            .clip(chassisShape)
+            .background(baseDomeGradient)
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Black.copy(alpha = 0.50f),
+                        Color.Black.copy(alpha = 0.85f)
+                    )
+                ),
+                shape = chassisShape
+            )
+    ) {
+        // Track & Glowing active fill
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val centerX = size.width / 2f
+            val topPx = topRestCenterDp.toPx()
+            val spanPx = travelSpanDp.toPx()
+            val trackWidthPx = 5.dp.toPx()
+            val trackRadiusPx = 2.5.dp.toPx()
+
+            // Outer recessed track
+            drawRoundRect(
+                color = Color.White.copy(alpha = 0.08f),
+                topLeft = Offset(centerX - trackWidthPx / 2f, topPx - trackRadiusPx),
+                size = Size(trackWidthPx, spanPx + trackRadiusPx * 2f),
+                cornerRadius = CornerRadius(trackRadiusPx, trackRadiusPx)
+            )
+
+            // Inner dark track depth
+            drawRoundRect(
+                color = Color.Black.copy(alpha = 0.70f),
+                topLeft = Offset(centerX - trackWidthPx / 2f + 1f, topPx - trackRadiusPx + 1f),
+                size = Size(trackWidthPx - 2f, spanPx + trackRadiusPx * 2f - 2f),
+                cornerRadius = CornerRadius(trackRadiusPx - 1f, trackRadiusPx - 1f)
+            )
+
+            // Glowing fill up to 50%
+            val puckCenterY = topPx + previewFill * spanPx
+            val fillHeight = puckCenterY - topPx
+
+            // Halo bloom
+            drawRoundRect(
+                color = glowColor.copy(alpha = 0.45f),
+                topLeft = Offset(centerX - trackWidthPx / 2f - 2.dp.toPx(), topPx),
+                size = Size(trackWidthPx + 4.dp.toPx(), fillHeight),
+                cornerRadius = CornerRadius(trackRadiusPx, trackRadiusPx)
+            )
+            // Core
+            drawRoundRect(
+                color = glowColor,
+                topLeft = Offset(centerX - trackWidthPx / 2f, topPx),
+                size = Size(trackWidthPx, fillHeight),
+                cornerRadius = CornerRadius(trackRadiusPx, trackRadiusPx)
+            )
+        }
+
+        // Sliding puck at 50%
+        val puckCenterDp = topRestCenterDp + travelSpanDp * previewFill
+        Box(
+            modifier = Modifier
+                .size(puckDiameterDp)
+                .offset {
+                    IntOffset(
+                        x = ((widthDp - puckDiameterDp) / 2f).roundToPx(),
+                        y = (puckCenterDp - puckRadiusDp).roundToPx()
+                    )
+                }
+                .shadow(5.dp, CircleShape, spotColor = glowColor, ambientColor = Color.Black)
+                .clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFF34373B),
+                            Color(0xFF17181B),
+                            Color(0xFF050506)
+                        ),
+                        center = Offset(0.50f, 0.38f),
+                        radius = 50f
+                    )
+                )
+                .border(1.dp, Color.Black.copy(alpha = 0.6f), CircleShape)
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val r = size.minDimension / 2f
+                val center = Offset(size.width / 2f, size.height / 2f)
+
+                // Lens arc highlight
+                drawArc(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.White.copy(alpha = 0.22f), Color.Transparent)
+                    ),
+                    startAngle = 180f,
+                    sweepAngle = 180f,
+                    useCenter = false,
+                    topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
+                    size = Size(size.width - 3.dp.toPx(), size.height - 3.dp.toPx()),
+                    style = Stroke(width = 1.dp.toPx())
+                )
+
+                // Puck Neon Ring
+                val ringRadius = r - 2.5.dp.toPx()
+                drawCircle(
+                    color = glowColor.copy(alpha = 0.40f),
+                    radius = ringRadius,
+                    center = center,
+                    style = Stroke(width = 2.2.dp.toPx())
+                )
+                drawCircle(
+                    color = glowColor.copy(alpha = 0.85f),
+                    radius = ringRadius,
+                    center = center,
+                    style = Stroke(width = 1.2.dp.toPx())
+                )
+
+                // Central LED dot
+                val dotRadius = 2.5.dp.toPx()
+                drawCircle(color = glowColor.copy(alpha = 0.50f), radius = dotRadius + 2.dp.toPx(), center = center)
+                drawCircle(color = Color.White.copy(alpha = 0.90f), radius = dotRadius * 0.65f, center = center)
+                drawCircle(color = glowColor, radius = dotRadius, center = center, style = Stroke(width = 0.8.dp.toPx()))
+            }
+        }
+
+        // Optical Window
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .offset(y = -edgeMarginDp)
+                .size(windowWidthDp, windowHeightDp)
+                .clip(windowShape)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(Color(0xFF050506), Color(0xFF121314)),
+                        center = Offset(0.50f, 0.60f),
+                        radius = 50f
+                    )
+                )
+                .border(
+                    width = 1.dp,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.Black.copy(alpha = 0.9f), Color.White.copy(alpha = 0.08f))
+                    ),
+                    shape = windowShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                drawRoundRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.80f)),
+                        center = Offset(size.width / 2f, size.height / 2f),
+                        radius = size.width * 0.55f
+                    ),
+                    size = size,
+                    cornerRadius = CornerRadius(7.dp.toPx(), 7.dp.toPx())
+                )
+            }
+
+            Text(
+                text = key,
+                color = glowColor,
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+
+        // Outer chassis neon ring and lens
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val rPx = 21.dp.toPx()
+
+            // Top specular crescent highlight
+            drawRoundRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.16f),
+                        Color.White.copy(alpha = 0.04f),
+                        Color.Transparent
+                    ),
+                    startY = 0f,
+                    endY = h * 0.28f
+                ),
+                topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
+                size = Size(w - 3.dp.toPx(), h * 0.28f),
+                cornerRadius = CornerRadius(rPx, rPx)
+            )
+
+            // Outer chassis neon ring
+            val ringInset = 2.dp.toPx()
+            val ringCorner = rPx - ringInset
+            drawRoundRect(
+                color = glowColor.copy(alpha = 0.25f),
+                topLeft = Offset(ringInset - 1f, ringInset - 1f),
+                size = Size(w - (ringInset - 1f) * 2f, h - (ringInset - 1f) * 2f),
+                cornerRadius = CornerRadius(ringCorner, ringCorner),
+                style = Stroke(width = 2.5.dp.toPx())
+            )
+            drawRoundRect(
+                color = glowColor.copy(alpha = 0.70f),
+                topLeft = Offset(ringInset, ringInset),
+                size = Size(w - ringInset * 2f, h - ringInset * 2f),
+                cornerRadius = CornerRadius(ringCorner, ringCorner),
+                style = Stroke(width = 1.2.dp.toPx())
+            )
+        }
+    }
+}
+
+/**
+ * Static preview renderer for the Needle Meter Trigger (Trigger G — Needle).
+ * Showcases the analog meter at 50% pull (needle pointing straight up) with illuminated progress arc,
+ * radial graduation ticks, and recessed optical window.
+ */
+@Composable
+internal fun StaticNeedleTrigger(
+    key: String,
+    modifier: Modifier = Modifier
+) {
+    val isLeft = key.uppercase().startsWith("L")
+    val glowColor = if (isLeft) Color(0xFF5CF29A) else Color(0xFFFF5C8A)
+
+    val widthDp = 108.dp
+    val heightDp = 94.dp
+    val chassisShape = RoundedCornerShape(topStart = 54.dp, topEnd = 54.dp, bottomStart = 14.dp, bottomEnd = 14.dp)
+    val windowShape = RoundedCornerShape(10.dp)
+    val previewFill = 0.50f
+
+    val baseDomeGradient = Brush.radialGradient(
+        colors = listOf(
+            Color(0xFF232527),
+            Color(0xFF0C0D0E),
+            Color(0xFF000000)
+        ),
+        center = Offset(0.50f, 0.45f),
+        radius = 220f
+    )
+
+    Box(
+        modifier = modifier
+            .size(widthDp, heightDp)
+            .shadow(5.dp, chassisShape, spotColor = glowColor, ambientColor = Color.Black)
+            .clip(chassisShape)
+            .background(baseDomeGradient)
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Black.copy(alpha = 0.50f),
+                        Color.Black.copy(alpha = 0.85f)
+                    )
+                ),
+                shape = chassisShape
+            )
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val pivotX = w / 2f
+            val pivotY = h - 28.dp.toPx()
+            val arcRadius = 40.dp.toPx()
+            val ticksRadius = 46.dp.toPx()
+            val startAngle = 200f
+            val sweepTotal = 140f
+
+            // Graduation Ticks Arc
+            drawArc(
+                color = Color.White.copy(alpha = 0.24f),
+                startAngle = startAngle,
+                sweepAngle = sweepTotal,
+                useCenter = false,
+                topLeft = Offset(pivotX - ticksRadius, pivotY - ticksRadius),
+                size = Size(ticksRadius * 2f, ticksRadius * 2f),
+                style = Stroke(
+                    width = 4.5.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(1.5f, 6.5f), 0f)
+                )
+            )
+
+            // Background Track Arc
+            drawArc(
+                color = Color.White.copy(alpha = 0.10f),
+                startAngle = startAngle,
+                sweepAngle = sweepTotal,
+                useCenter = false,
+                topLeft = Offset(pivotX - arcRadius, pivotY - arcRadius),
+                size = Size(arcRadius * 2f, arcRadius * 2f),
+                style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round)
+            )
+
+            // Active Glowing Progress Arc (50%)
+            val activeSweep = sweepTotal * previewFill
+            drawArc(
+                color = glowColor.copy(alpha = 0.45f),
+                startAngle = startAngle,
+                sweepAngle = activeSweep,
+                useCenter = false,
+                topLeft = Offset(pivotX - arcRadius, pivotY - arcRadius),
+                size = Size(arcRadius * 2f, arcRadius * 2f),
+                style = Stroke(width = 5.5.dp.toPx(), cap = StrokeCap.Round)
+            )
+            drawArc(
+                color = glowColor,
+                startAngle = startAngle,
+                sweepAngle = activeSweep,
+                useCenter = false,
+                topLeft = Offset(pivotX - arcRadius, pivotY - arcRadius),
+                size = Size(arcRadius * 2f, arcRadius * 2f),
+                style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round)
+            )
+
+            // Needle at 50% (pointing straight up at 0°)
+            val needleAngleDeg = -70f + previewFill * 140f
+            val needleLength = arcRadius + 4.dp.toPx()
+            val needleWidth = 3.dp.toPx()
+
+            rotate(degrees = needleAngleDeg, pivot = Offset(pivotX, pivotY)) {
+                drawLine(
+                    color = glowColor.copy(alpha = 0.65f),
+                    start = Offset(pivotX, pivotY),
+                    end = Offset(pivotX, pivotY - needleLength),
+                    strokeWidth = needleWidth + 3.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+                drawLine(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.White, glowColor),
+                        startY = pivotY - needleLength,
+                        endY = pivotY
+                    ),
+                    start = Offset(pivotX, pivotY),
+                    end = Offset(pivotX, pivotY - needleLength),
+                    strokeWidth = needleWidth,
+                    cap = StrokeCap.Round
+                )
+            }
+
+            // Pivot Center Hub
+            val hubRadius = 7.dp.toPx()
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color(0xFF34373B), Color(0xFF0C0D0E)),
+                    center = Offset(pivotX, pivotY),
+                    radius = hubRadius
+                ),
+                radius = hubRadius,
+                center = Offset(pivotX, pivotY)
+            )
+            drawCircle(
+                color = glowColor,
+                radius = 2.2.dp.toPx(),
+                center = Offset(pivotX, pivotY)
+            )
+        }
+
+        // Recessed Optical Window
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .offset(y = (-6).dp)
+                .size(48.dp, 20.dp)
+                .clip(windowShape)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(Color(0xFF050506), Color(0xFF121314)),
+                        center = Offset(0.50f, 0.60f),
+                        radius = 60f
+                    )
+                )
+                .border(
+                    width = 1.dp,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.Black.copy(alpha = 0.9f), Color.White.copy(alpha = 0.08f))
+                    ),
+                    shape = windowShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = key,
+                color = glowColor,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+
+        // Lens & Outer Chassis Ring
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+
+            drawRoundRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.16f), Color.White.copy(alpha = 0.04f), Color.Transparent),
+                    startY = 0f,
+                    endY = h * 0.35f
+                ),
+                topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
+                size = Size(w - 3.dp.toPx(), h * 0.35f),
+                cornerRadius = CornerRadius(54.dp.toPx(), 54.dp.toPx())
+            )
+
+            val ringInset = 2.dp.toPx()
+            drawRoundRect(
+                color = glowColor.copy(alpha = 0.30f),
+                topLeft = Offset(ringInset - 1f, ringInset - 1f),
+                size = Size(w - (ringInset - 1f) * 2f, h - (ringInset - 1f) * 2f),
+                cornerRadius = CornerRadius(52.dp.toPx(), 52.dp.toPx()),
+                style = Stroke(width = 2.8.dp.toPx())
+            )
+            drawRoundRect(
+                color = glowColor.copy(alpha = 0.75f),
+                topLeft = Offset(ringInset, ringInset),
+                size = Size(w - ringInset * 2f, h - ringInset * 2f),
+                cornerRadius = CornerRadius(52.dp.toPx(), 52.dp.toPx()),
+                style = Stroke(width = 1.3.dp.toPx())
+            )
+        }
+    }
+}
+
+/**
+ * Static preview renderer for the Test Tube Trigger (Trigger H — Test Tube).
+ * Showcases the glass tube with liquid filled to 50%, meniscus crest, bubbles, and graduation scale.
+ */
+@Composable
+internal fun StaticTestTubeTrigger(
+    key: String,
+    modifier: Modifier = Modifier
+) {
+    val isLeft = key.uppercase().startsWith("L")
+    val glowColor = if (isLeft) Color(0xFFFF9F43) else Color(0xFFBD5CFF)
+
+    val widthDp = 48.dp
+    val heightDp = 98.dp
+    val chassisShape = RoundedCornerShape(24.dp)
+    val chamberShape = RoundedCornerShape(19.dp)
+    val windowShape = RoundedCornerShape(10.dp)
+    val previewFill = 0.50f
+
+    val baseDomeGradient = Brush.radialGradient(
+        colors = listOf(
+            Color(0xFF232527),
+            Color(0xFF0C0D0E),
+            Color(0xFF000000)
+        ),
+        center = Offset(0.50f, 0.45f),
+        radius = 200f
+    )
+
+    Box(
+        modifier = modifier
+            .size(widthDp, heightDp)
+            .shadow(5.dp, chassisShape, spotColor = glowColor, ambientColor = Color.Black)
+            .clip(chassisShape)
+            .background(baseDomeGradient)
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Black.copy(alpha = 0.50f),
+                        Color.Black.copy(alpha = 0.85f)
+                    )
+                ),
+                shape = chassisShape
+            )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(5.dp)
+                .clip(chamberShape)
+                .background(Color(0xFF07080A))
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val w = size.width
+                val h = size.height
+                val liquidHeight = h * previewFill
+                val liquidTopY = h - liquidHeight
+
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(glowColor.copy(alpha = 0.55f), glowColor.copy(alpha = 0.85f)),
+                        startY = liquidTopY,
+                        endY = h
+                    ),
+                    topLeft = Offset(0f, liquidTopY),
+                    size = Size(w, liquidHeight)
+                )
+
+                val meniscusHeight = 6.dp.toPx()
+                drawOval(
+                    color = glowColor,
+                    topLeft = Offset(-w * 0.15f, liquidTopY - meniscusHeight / 2f),
+                    size = Size(w * 1.3f, meniscusHeight)
+                )
+                drawOval(
+                    color = Color.White.copy(alpha = 0.70f),
+                    topLeft = Offset(w * 0.20f, liquidTopY - meniscusHeight * 0.35f),
+                    size = Size(w * 0.6f, meniscusHeight * 0.6f)
+                )
+
+                // Static sample bubbles
+                val bubbleOffsets = listOf(Pair(0.30f, 0.35f), Pair(0.60f, 0.65f), Pair(0.45f, 0.80f))
+                for (b in bubbleOffsets) {
+                    val bX = w * b.first
+                    val bY = liquidTopY + (h - liquidTopY) * b.second
+                    drawCircle(
+                        color = Color.White.copy(alpha = 0.75f),
+                        radius = 2.dp.toPx(),
+                        center = Offset(bX, bY),
+                        style = Stroke(width = 1.dp.toPx())
+                    )
+                }
+
+                // Volumetric ticks on right edge
+                val numTicks = 6
+                val scaleStartX = w - 8.dp.toPx()
+                val scaleEndX = w - 3.dp.toPx()
+                for (i in 0 until numTicks) {
+                    val tickY = 16.dp.toPx() + i * ((h - 32.dp.toPx()) / (numTicks - 1))
+                    drawLine(
+                        color = Color.White.copy(alpha = 0.35f),
+                        start = Offset(scaleStartX, tickY),
+                        end = Offset(scaleEndX, tickY),
+                        strokeWidth = 1.2.dp.toPx()
+                    )
+                }
+
+                // Gloss strip on left edge
+                drawRoundRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.White.copy(alpha = 0.35f), Color.White.copy(alpha = 0.08f), Color.Transparent)
+                    ),
+                    topLeft = Offset(3.dp.toPx(), 8.dp.toPx()),
+                    size = Size(3.dp.toPx(), h - 16.dp.toPx()),
+                    cornerRadius = CornerRadius(1.5.dp.toPx(), 1.5.dp.toPx())
+                )
+            }
+        }
+
+        // Optical Window centered
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .size(36.dp, 20.dp)
+                .clip(windowShape)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(Color(0xFF050506), Color(0xFF121314)),
+                        center = Offset(0.50f, 0.60f),
+                        radius = 40f
+                    )
+                )
+                .border(
+                    width = 1.dp,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.Black.copy(alpha = 0.9f), Color.White.copy(alpha = 0.10f))
+                    ),
+                    shape = windowShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = key,
+                color = glowColor,
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+
+        // Outer chassis neon ring and lens
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val rPx = 24.dp.toPx()
+
+            drawRoundRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.16f), Color.White.copy(alpha = 0.04f), Color.Transparent),
+                    startY = 0f,
+                    endY = h * 0.30f
+                ),
+                topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
+                size = Size(w - 3.dp.toPx(), h * 0.30f),
+                cornerRadius = CornerRadius(rPx, rPx)
+            )
+
+            val ringInset = 2.dp.toPx()
+            val ringCorner = rPx - ringInset
+            drawRoundRect(
+                color = glowColor.copy(alpha = 0.30f),
+                topLeft = Offset(ringInset - 1f, ringInset - 1f),
+                size = Size(w - (ringInset - 1f) * 2f, h - (ringInset - 1f) * 2f),
+                cornerRadius = CornerRadius(ringCorner, ringCorner),
+                style = Stroke(width = 2.6.dp.toPx())
+            )
+            drawRoundRect(
+                color = glowColor.copy(alpha = 0.75f),
+                topLeft = Offset(ringInset, ringInset),
+                size = Size(w - ringInset * 2f, h - ringInset * 2f),
+                cornerRadius = CornerRadius(ringCorner, ringCorner),
+                style = Stroke(width = 1.2.dp.toPx())
+            )
+        }
+    }
+}
+
+/**
+ * Static preview renderer for the Bloom Trigger (Trigger I — Bloom).
+ * Showcases the circular trigger with expanding light bloom at 50% radius and illuminated halo rim.
+ */
+@Composable
+internal fun StaticBloomTrigger(
+    key: String,
+    modifier: Modifier = Modifier
+) {
+    val isLeft = key.uppercase().startsWith("L")
+    val glowColor = if (isLeft) Color(0xFF7C9CFF) else Color(0xFFFF6584)
+    val buttonSize = 92.dp
+    val previewFill = 0.50f
+
+    val baseDomeGradient = Brush.radialGradient(
+        colors = listOf(
+            Color(0xFF232527),
+            Color(0xFF0C0D0E),
+            Color(0xFF000000)
+        ),
+        center = Offset(0.50f, 0.45f),
+        radius = 200f
+    )
+
+    Box(
+        modifier = modifier
+            .size(buttonSize)
+            .shadow(5.dp, CircleShape, spotColor = glowColor, ambientColor = Color.Black)
+            .clip(CircleShape)
+            .background(baseDomeGradient)
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Black.copy(alpha = 0.50f),
+                        Color.Black.copy(alpha = 0.85f)
+                    )
+                ),
+                shape = CircleShape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val center = Offset(size.width / 2f, size.height / 2f)
+            val maxRadius = size.minDimension / 2f - 4.dp.toPx()
+            val bloomRadius = previewFill * maxRadius
+
+            // Radiant Light Bloom
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.85f),
+                        glowColor.copy(alpha = 0.65f),
+                        glowColor.copy(alpha = 0.25f),
+                        Color.Transparent
+                    ),
+                    center = center,
+                    radius = bloomRadius + 8.dp.toPx()
+                ),
+                radius = bloomRadius + 8.dp.toPx(),
+                center = center
+            )
+
+            // Expanding Bloom Rim Halo
+            val rimRadius = previewFill * (maxRadius - 2.dp.toPx())
+            drawCircle(
+                color = glowColor.copy(alpha = 0.55f),
+                radius = rimRadius,
+                center = center,
+                style = Stroke(width = 4.dp.toPx())
+            )
+            drawCircle(
+                color = Color.White.copy(alpha = 0.85f),
+                radius = rimRadius,
+                center = center,
+                style = Stroke(width = 1.8.dp.toPx())
+            )
+        }
+
+        // Central Recessed Optical Eye Window
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(Color(0xFF050506), Color(0xFF121314)),
+                        center = Offset(0.50f, 0.60f),
+                        radius = 45f
+                    )
+                )
+                .border(
+                    width = 1.dp,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.Black.copy(alpha = 0.9f), Color.White.copy(alpha = 0.12f))
+                    ),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = key,
+                color = glowColor,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+
+        // Lens & Outer Chassis Ring
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val r = size.minDimension / 2f
+            val center = Offset(size.width / 2f, size.height / 2f)
+
+            drawArc(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.16f), Color.White.copy(alpha = 0.04f), Color.Transparent),
+                    startY = 0f,
+                    endY = size.height * 0.38f
+                ),
+                startAngle = 180f,
+                sweepAngle = 180f,
+                useCenter = false,
+                topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
+                size = Size(size.width - 3.dp.toPx(), size.height - 3.dp.toPx()),
+                style = Stroke(width = 1.2.dp.toPx())
+            )
+
+            val ringRadius = r - 2.5.dp.toPx()
+            drawCircle(
+                color = glowColor.copy(alpha = 0.30f),
+                radius = ringRadius,
+                center = center,
+                style = Stroke(width = 2.8.dp.toPx())
+            )
+            drawCircle(
+                color = glowColor.copy(alpha = 0.75f),
+                radius = ringRadius,
+                center = center,
+                style = Stroke(width = 1.3.dp.toPx())
+            )
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+

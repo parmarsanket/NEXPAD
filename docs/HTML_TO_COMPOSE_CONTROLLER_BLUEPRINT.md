@@ -13,8 +13,12 @@ This blueprint is NEXPAD's **universal conversion standard**. It covers the tran
 5. [Universal Touch, Drag & Hitbox Engine](#5-universal-touch-drag--hitbox-engine)
 6. [The Universal 7-Layer Display List Pipeline](#6-the-universal-7-layer-display-list-pipeline)
 7. [Step-by-Step Translation Algorithm for ANY Input HTML](#7-step-by-step-translation-algorithm-for-any-input-html)
-8. [Automated Verification Pipeline: Python, Headless Chrome & Tests](#8-automated-verification-pipeline-python-headless-chrome--tests)
-9. [Zero-Tolerance Architecture & Android Quality Rules](#9-zero-tolerance-architecture--android-quality-rules)
+8. [The Mandatory 6-Step End-to-End Component Wiring Pipeline (Button Studio Visibility)](#8-the-mandatory-6-step-end-to-end-component-wiring-pipeline-button-studio-visibility)
+9. [Automated Verification Pipeline: Python, Headless Chrome & Tests](#9-automated-verification-pipeline-python-headless-chrome--tests)
+10. [Zero-Tolerance Architecture & Android Quality Rules](#10-zero-tolerance-architecture--android-quality-rules)
+11. [Native D-Pad Family Catalog (All 6 Implemented Variants)](#11-native-d-pad-family-catalog-all-6-implemented-variants)
+12. [Native Shoulder Bumper Family Catalog](#12-native-shoulder-bumper-family-catalog)
+13. [Native Analog Trigger Family Catalog](#13-native-analog-trigger-family-catalog)
 
 ---
 
@@ -258,7 +262,158 @@ flowchart TD
 
 ---
 
-## 8. Automated Verification Pipeline: Python, Headless Chrome & Tests
+## 8. The Mandatory 6-Step End-to-End Component Wiring Pipeline (Button Studio Visibility)
+
+> [!CAUTION]
+> **Why components go missing in Button Studio**:
+> Registering a component in `NativeComponentRegistry.kt` connects the runtime rendering engine, but **Button Studio will NOT display it in the grid** unless it is also registered in `DefaultComponents.kt` (`ALL_PRESETS`). Button Studio (`ButtonStudioScreen.kt`) and HUD Editor (`HudEditorViewModel.kt`) query `ComponentRegistry.installedComponents`, which loads presets directly from `DefaultComponents.ALL_PRESETS`.
+> 
+> **Every new component variant MUST complete all 6 steps below.**
+
+```mermaid
+flowchart TD
+    HTML["1. Ingest HTML/CSS Design"] --> S1["Step 1: Interactive Composable<br/>ui/components/controller/&lt;Name&gt;.kt"]
+    S1 --> S2["Step 2: Static Studio Preview<br/>ui/studio/components/StaticDefaultButtonPreview.kt"]
+    S2 --> S3["Step 3: OOP Registry Variant<br/>runtime/registry/NativeComponentRegistry.kt"]
+    S3 --> S4["Step 4: Button Studio Preset (CRITICAL)<br/>runtime/registry/DefaultComponents.kt"]
+    S4 --> S5["Step 5: Unit Test Verification<br/>test/NativeComponentRegistryTest.kt"]
+    S5 --> S6["Step 6: Blueprint Catalog Documentation<br/>HTML_TO_COMPOSE_CONTROLLER_BLUEPRINT.md"]
+```
+
+### Step 1: Create Interactive Composable
+- **Location**: `app/src/main/java/com/sanket/tools/nexpad/ui/components/controller/<Name>.kt`
+- **Responsibilities**:
+  1. **Canonical Signature**:
+     ```kotlin
+     @Composable
+     fun <Name>(
+         key: String,
+         isConnected: Boolean,
+         onVibrate: () -> Unit,
+         viewModel: GamepadViewModel,
+         isRgbEnabled: Boolean,
+         modifier: Modifier = Modifier,
+         displayLabel: String? = null
+     )
+     ```
+  2. **Mobile Screen Sizing**:
+     Always scale down from desktop HTML dimensions to smartphone controller proportions:
+     - **Shoulder Bumpers**: `154.dp × 48.dp` or `154.dp × 56.dp`
+     - **Action Buttons**: `60.dp × 60.dp` to `72.dp × 72.dp`
+     - **D-Pads (Clusters)**: `150.dp × 150.dp` to `160.dp × 160.dp`
+     - **Analog Joysticks**: `140.dp × 140.dp` to `150.dp × 150.dp`
+     - **Analog Triggers**: `100.dp × 160.dp`
+     - **System Buttons**: `52.dp × 52.dp` to `64.dp × 64.dp`
+  3. **Kinematics & Feedback**:
+     - Buttons/Bumpers: `animateFloatAsState(targetValue = if (isPressed) 0.96f else 1.0f, animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f))`
+     - Haptics: Call `onVibrate()` immediately on down-touch.
+     - State Dispatch: `viewModel.updateButton(key, isPressed)`.
+  4. **7-Layer Display List**: Organize drawing in `Canvas` following Section 6.
+
+### Step 2: Create Static Studio Preview
+- **Location**: `app/src/main/java/com/sanket/tools/nexpad/ui/studio/components/StaticDefaultButtonPreview.kt`
+- **Responsibilities**:
+  - Add `@Composable internal fun Static<Name>(key: String = ..., modifier: Modifier = Modifier)`.
+  - Must have **100% visual parity** with the idle state of the interactive component.
+  - Zero pointer gestures or mutable state (ensures 60 FPS smooth scrolling in Button Studio grid).
+
+### Step 3: Register Native Element Variant in OOP Registry
+- **Location**: `app/src/main/java/com/sanket/tools/nexpad/runtime/registry/NativeComponentRegistry.kt`
+- **Responsibilities**:
+  1. **Declare the BaseNativeVariant Object**:
+     ```kotlin
+     object <Name>Variant : BaseNativeVariant("builtin.<id>", ControlKey.<KEY>, "<Display Name>", <seedCode>) {
+         override val isBaselineDefault: Boolean = false
+
+         @Composable
+         override fun RenderInteractive(context: NativeRenderContext) {
+             <Name>(
+                 key = K.<KEY>,
+                 isConnected = context.isConnected,
+                 onVibrate = context.onVibrate,
+                 viewModel = context.viewModel,
+                 isRgbEnabled = context.isRgbEnabled,
+                 displayLabel = context.displayLabel,
+                 modifier = context.modifier
+             )
+         }
+
+         @Composable
+         override fun RenderStaticPreview(context: NativePreviewContext) {
+             Static<Name>(
+                 key = context.displayLabel,
+                 modifier = context.modifier
+             )
+         }
+     }
+     ```
+  2. **Register in `DefaultNativeFamily.init`**:
+     ```kotlin
+     register(<Name>Variant)
+     ```
+  3. **Add Prefix to `isNativeBuiltin`**:
+     ```kotlin
+     id.startsWith("builtin.<prefix>_")
+     ```
+
+### Step 4: Register in Button Studio Catalog & Presets (MANDATORY FOR UI VISIBILITY)
+- **Location**: `app/src/main/java/com/sanket/tools/nexpad/runtime/registry/DefaultComponents.kt`
+- **Why this step is critical**: Button Studio (`ButtonStudioScreen.kt`) populates its browsing grid directly from `ComponentRegistry.installedComponents`, which loads `DefaultComponents.ALL_PRESETS`. Without this step, the component is registered in the engine but is completely invisible to users in Button Studio and HUD Editor!
+- **Responsibilities**:
+  1. **Define the `NxpComponentDef` Preset**:
+     ```kotlin
+     val <NAME> = NxpComponentDef(
+         manifest = NxpManifest(
+             id = "builtin.<id>",
+             name = "<Display Name>",
+             author = "NEXPAD Core",
+             version = "1.0.0",
+             category = NxprcCategory.<CATEGORY>.id,  // BUTTON, DPAD, BUMPER, TRIGGER, JOYSTICK, SYSTEM
+             defaultControl = ControlKey.<KEY>.key,
+             description = "<Description of style and kinematics>"
+         ),
+         geometry = NxpGeometry(type = "RoundedRect", cornerRadius = 24f),
+         visual = NxpVisual(
+             fillColor = "#26282B",
+             opacity = 0.95f,
+             borderColor = "#A97CF0",
+             borderWidth = 2f,
+             glowColor = "#A97CF0",
+             glowRadius = 10f
+         ),
+         pressed = NxpPressedState(scale = 0.97f, fillColor = "#A97CF0"),
+         label = NxpLabel(text = "<KEY>", color = "#A97CF0", pressedColor = "#FFFFFF", fontSize = 18f),
+         size = NxpSize(widthDp = 154, heightDp = 56)
+     )
+     ```
+  2. **Append to `ALL_PRESETS`**:
+     ```kotlin
+     val ALL_PRESETS = listOf(
+         ...
+         <NAME>,
+     )
+     ```
+
+### Step 5: Add Unit Test Coverage
+- **Location**: `app/src/test/java/com/sanket/tools/nexpad/NativeComponentRegistryTest.kt`
+- **Responsibilities**:
+  1. Add assertion to `testIsNativeBuiltin`:
+     `assertTrue(NativeComponentRegistry.isNativeBuiltin("builtin.<id>"))`
+  2. Add assertion to `testResolveVariantWithCustomIdAndFallback`:
+     Verify resolution returns the variant with the assigned `<seedCode>`.
+  3. Add assertion to `testResolveButtonSourceTypeAlwaysDefaultBadgeForNative`:
+     Verify it maps to `ButtonStudioType.DEFAULT`.
+  4. Add dedicated test `test<Name>VariantsRegistered()`:
+     Verify variant name, control key, seed code, and non-baseline flag.
+
+### Step 6: Update Blueprint Catalog
+- **Location**: `docs/HTML_TO_COMPOSE_CONTROLLER_BLUEPRINT.md`
+- **Responsibilities**:
+  - Add a new row to the corresponding component catalog table with Component ID, Seed Code, and Key Signature.
+
+---
+
+## 9. Automated Verification Pipeline: Python, Headless Chrome & Tests
 
 To ensure mathematical and visual 100% parity, execute this 3-tier testing pipeline:
 
@@ -356,7 +511,7 @@ class DPadHitboxTest {
 
 ---
 
-## 9. Zero-Tolerance Architecture & Android Quality Rules
+## 10. Zero-Tolerance Architecture & Android Quality Rules
 
 1. **Zero Suppression Rule**: Strictly **0 `@Suppress` and 0 `@SuppressLint`** across all of `app/src/`.
 2. **Modern API Gates**: Always gate API-dependent features using `Build.VERSION.SDK_INT` without deprecated fallbacks.
@@ -367,7 +522,7 @@ class DPadHitboxTest {
 
 ---
 
-## 10. Native D-Pad Family Catalog (All 6 Implemented Variants)
+## 11. Native D-Pad Family Catalog (All 6 Implemented Variants)
 
 | Variant Name | Component ID | Seed Code | Key Visual & Kinematic Signature |
 |---|---|---|---|
@@ -377,4 +532,41 @@ class DPadHitboxTest {
 | **Lens Capsules** | `builtin.capsules_dpad` | `4104` | Four discrete rounded pill capsule keys orbiting a central pivot hub with 3D rocker tilt. |
 | **Lens Metaballs** | `builtin.metaballs_dpad` | `4105` | Organic fluid metaballs layer connecting central fluid orb to four satellite nodes with spring retraction. |
 | **Lens Rails** | `builtin.rails_dpad` | `4106` | Orthogonal recessed guide rails, 40dp sliding tactile puck (52dp travel), animated extending light beams, and 4 end LEDs. |
+
+---
+
+## 12. Native Shoulder Bumper Family Catalog
+
+| Variant Name | Component ID | Seed Code | Key Visual & Kinematic Signature |
+|---|---|---|---|
+| **Realistic 3D Bumper** | `builtin.default_lb` / `builtin.default_rb` | `3001` / `3002` | Asymmetric ergonomic contour (10dp outer screen bezel, 26dp inner slope), 78dp×30dp magnifier window well, 7-layer optical lens with neon ring bloom & bottom undercut shadow. |
+| **Arc Bumper (Bumper A)** | `builtin.arc_lb` / `builtin.arc_rb` | `3101` / `3102` | Quadratic curved bridge contour (`M24 62 Q115 -10 206 62`), 154dp×56dp mobile controller ratio, thickened 46-unit tubular body (`#282a2e -> #08090a`), multi-pass emissive neon halo (`#a97cf0`), apex-centered bold glyph (`y = -10.5dp` offset) for high LB/L1 contrast, top specular highlight crescent, plunging spring travel (`translateY 2px, scale 0.97`). |
+| **LED Bar Bumper (Bumper B)** | `builtin.led_lb` / `builtin.led_rb` | `3201` / `3202` | Flipped mobile ergonomic contour (12dp outer screen bezel, 27dp inner slope), 154dp×54dp mobile ratio, recessed optical window (`48dp × 28dp`), 6-segment illuminated neon LED bar graph with permanent ambient neon glow aura and cascading wave animation on press (35ms stagger), top specular crescent highlight, plunging spring travel (`translateY 2px, scale 0.96`). |
+| **Peek Bumper (Bumper C)** | `builtin.peek_lb` / `builtin.peek_rb` | `3301` / `3302` | Symmetrical pill capsule contour (27dp radius), 154dp×54dp mobile ratio, oversized recessed optical magnifier aperture window (`124dp × 36dp`), framed bold peek glyph (`22sp`, `3sp` tracking in idle, 2.0x dynamic zoom expansion to `44sp` on press), plunging spring travel (`translateY 2px, scale 0.95`). |
+| **Ribbed Bumper (Bumper D)** | `builtin.rib_lb` / `builtin.rib_rb` | `3401` / `3402` | Mobile ergonomic contour (12dp outer screen bezel, 27dp inner slope), 154dp×54dp mobile ratio, tactile repeating vertical micro-rib knurling (2px rib every 8px), elevated optical window (`74dp × 30dp` at top 42%), lower illuminated neon lightbar accent strip (`110dp × 4dp` at bottom 9dp) igniting on press, plunging spring travel (`translateY 2px, scale 0.95`). |
+| **Underglow Bumper (Bumper E)** | `builtin.under_lb` / `builtin.under_rb` | `3501` / `3502` | Mobile ergonomic contour (12dp top outer corner, 14dp top inner, 27dp aerodynamic bottom hull), 154dp×54dp mobile ratio, bottom neon underglow ground bar (3dp thick, 12dp margin) emitting radiant downward floor bloom, dynamic upward neon surge flood illumination (0% to 100% height) on press, centered bold glyph (`24sp`), plunging spring travel (`translateY 2px, scale 0.95`). |
+| **Tube Bumper (Bumper F)** | `builtin.tube_lb` / `builtin.tube_rb` | `3601` / `3602` | Cylindrical tube pill contour (27dp radius), 154dp×54dp mobile ratio, dynamic illuminated liquid level surging horizontally (0% to 100% width) with meniscus wave front on press, laboratory calibration ruler tick marks along bottom (1dp tick every 10dp), recessed optical window (`74dp × 28dp`), plunging spring travel (`translateY 2px, scale 0.95`). |
+| **Flip Bumper (Bumper G)** | `builtin.flip_lb` / `builtin.flip_rb` | `3701` / `3702` | Symmetrical pill contour (27dp radius), 154dp×54dp mobile ratio, 3D card flip kinematics along horizontal X axis (0° to 180°), transitioning from Face A (resting dark dome with 96dp×32dp optical window) to Face B (active high-energy golden radiant neon plate with embossed dark tactical typography #0A0B0C). |
+
+---
+
+## 13. Native Analog Trigger Family Catalog
+
+| Variant Name | Component ID | Seed Code | Key Visual & Kinematic Signature |
+|---|---|---|---|
+| **Realistic Analog Trigger (Trigger A)** | `builtin.default_lt` / `builtin.default_rt` | `2001` / `2002` | Balanced mobile trigger contour (flipped upside down: $16\text{dp}$ top corners sitting flush below bumpers, $46\text{dp}$ semicircular bottom pedal hull), perfectly proportioned $100\text{dp} \times 92\text{dp}$ mobile ratio, progressive analog fluid meter (`.lx-meter`, $7\text{dp}$ inset) surging upward from bottom hull on press ($0\%$ to $100\%$ vertical travel) with top emissive crest bloom, recessed optical window (`.lx-window`, $68\text{dp} \times 30\text{dp}$, $r=15\text{dp}$ positioned at top offset $12\text{dp}$), bold medium typography ($18\text{sp}$, $1.5\text{sp}$ tracking), multi-pass neon lens ring (`.lx-ring`), top specular line highlight (`.lx-lens`), plunging spring travel (`translateY 2px, scale 0.95`). Excludes percentage readout text per design directive. |
+| **Dial Gauge Trigger (Trigger B)** | `builtin.dial_lt` / `builtin.dial_rt` | `2101` / `2102` | Pure optical radial gauge trigger: circular $92\text{dp} \times 92\text{dp}$ compact mobile standard (matching low $92\text{dp}$ vertical profile beneath bumpers), 270° radial gauge track (`StrokeCap.Round`, starting at $135^\circ$ South-West and sweeping clockwise to $45^\circ$ South-East leaving bottom $90^\circ$ gap), dynamic active surging neon gauge arc ($0\%$ to $100\%$ fill travel) with emissive halo bloom, recessed optical window (`.lx-window`, $48\text{dp} \times 26\text{dp}$, $r=13\text{dp}$ at center Y $-2\text{dp}$), bold tactical typography ($17\text{sp}$, $1.5\text{sp}$ tracking), multi-pass neon lens ring (`.lx-ring`), top specular crescent arc highlight (`.lx-lens`), and plunging spring travel (`translateY 2px, scale 0.95`). Excludes percentage readout text per design directive. |
+| **Liquid Orb Trigger (Trigger C)** | `builtin.liquid_lt` / `builtin.liquid_rt` | `2201` / `2202` | Fluid-filled spherical glass orb trigger: circular $92\text{dp} \times 92\text{dp}$ compact mobile standard (matching low $92\text{dp}$ vertical profile beneath bumpers), recessed spherical fluid chamber (`.liq-wrap`, $7\text{dp}$ inset), progressive rising neon liquid level ($14\%$ ambient baseline to max $80\%$ full on press so the liquid surface remains visibly defined) with dual-layer radiant fluid volume gradient, dynamic swaying fluid meniscus crest (`.liq::before`, $700\text{ms}$ harmonic rocking cycle while held) with core neon glow oval and specular wave crest glint, elevated recessed optical window (`.lx-window`, $48\text{dp} \times 26\text{dp}$, $r=13\text{dp}$ at top $34\%$ position), bold tactical typography ($17\text{sp}$, $1.5\text{sp}$ tracking), multi-pass neon lens ring (`.lx-ring`), top specular crescent arc highlight (`.lx-lens`), and plunging spring travel (`translateY 2px, scale 0.95`). Excludes percentage readout text per design directive. |
+| **VU Slabs Trigger (Trigger D)** | `builtin.vu_lt` / `builtin.vu_rt` | `2301` / `2302` | Seven-slab progressive LED audio meter trigger: balanced mobile trigger contour (Option D: balanced $22\text{dp}$ top corners, $34\text{dp}$ bottom pedal hull eliminating heavy bulging), proportioned $100\text{dp} \times 92\text{dp}$ mobile ratio, 7 audio meter LED slabs stacked vertically from bottom hull upward ($54\text{dp}$ to $72\text{dp}$ graceful taper widths, $4\text{dp}$ height, $2.5\text{dp}$ gap), progressive ignition curve ($\text{clamp}(0.13, (\text{fill} - i \times 0.143) \times 16, 1.0)$: dim $13\%$ idle ghosting rising to $100\%$ full neon bloom on pull), dual overdrive tiers (slabs 0–4: base neon green `#3FD25A` on LT / hot magenta `#E055B8` on RT; slab 5: warning hot amber `#FF8A3D`; slab 6: peak overdrive crimson `#FF5A4D`), recessed optical window (`.lx-window`, $54\text{dp} \times 24\text{dp}$, $r=12\text{dp}$ at top offset $10\text{dp}$), bold tactical typography ($15\text{sp}$, $1.5\text{sp}$ tracking), true geometry Path-rendered neon lens ring (`.lx-ring`), top specular crescent highlight (`.lx-lens`), and plunging spring travel (`translateY 2px, scale 0.95`). Excludes percentage readout text per design directive. |
+| **Target Trigger (Trigger E)** | `builtin.target_lt` / `builtin.target_rt` | `2401` / `2402` | Concentric circular radar target trigger: circular $92\text{dp} \times 92\text{dp}$ compact mobile standard (`CircleShape`, matching uniform $92\text{dp}$ vertical clearance below shoulder bumpers), 3 concentric illuminated target rings stacked at $74\text{dp}, 56\text{dp}, 38\text{dp}$ diameters ($37\text{dp}, 28\text{dp}, 19\text{dp}$ radii), progressive outside-in lighting curve ($\text{clamp}(0.14, (\text{fill} - i \times 0.30) \times 12, 1.0)$: dim $14\%$ ghost ring visibility in idle, igniting into full neon bloom with dual-layer filament glow on pull; Ring 0 outer ignites at $0.0$–$0.1$, Ring 1 middle at $0.3$–$0.4$, Ring 2 inner at $0.6$–$0.7$), central optical eye window ($32\text{dp} \times 32\text{dp}$, `CircleShape`) with circular vignette, reactive dynamic glyph brightening ($0.45 + \text{fill} \times 0.55$, $14\text{sp}$ bold), multi-pass chassis ring with top specular crescent arc highlight (`.lx-lens`), and plunging spring travel (`translateY 2px, scale 0.95`). Excludes percentage readout text per design directive. |
+| **Analog Slider Trigger (Trigger F)** | `builtin.slider_lt` / `builtin.slider_rt` | `2501` / `2502` | Continuous $0 \dots 255$ analog slider trigger designed for physical trigger clips & analog throttle/brake precision: compact ergonomic pill contour ($42\text{dp} \times 94\text{dp}$, $r=21\text{dp}$, scaled $45\%$ smaller for balanced mobile ergonomics), custom height scaling ($0.6\times \dots 2.2\times$) and toggleable pull direction ("Top $\to$ Down" default vs "Bottom $\to$ Top" flipped) in HUD Inspector, $5\text{dp}$ recessed track groove with dynamic illuminated neon fill beam, $26\text{dp}$ sliding optical puck handle with dual-layer neon filament ring and central luminous LED dot, real-time continuous $0.0 \dots 1.0$ dispatching directly into NexpadProtocol ($0 \dots 255$ byte over wire via UDP), damped harmonic spring return to $0.0$ broadcasting decay trajectory, recessed optical window ($30\text{dp} \times 14\text{dp}$, $r=7\text{dp}$) with radial vignette, bold tactical typography ($11\text{sp}$ bold), top specular crescent highlight, and multi-pass chassis neon ring bloom. Excludes numeric percentage readout text per design directive. |
+| **Needle Meter Trigger (Trigger G)** | `builtin.needle_lt` / `builtin.needle_rt` | `2601` / `2602` | Arched analog meter trigger with swinging needle: standard trigger press kinematics via `detectTapGestures` & `updateButton(key, true/false)`, arched dome contour ($108\text{dp} \times 94\text{dp}$, top $r=54\text{dp}$, bottom $r=14\text{dp}$), radial graduation ticks arc and background track ($200^\circ \dots 340^\circ$, $140^\circ$ span), dynamic surging neon progress arc, swinging analog needle blade rotating from $-70^\circ$ to $+70^\circ$ around a central capped hub with glowing LED dot, recessed optical window ($48\text{dp} \times 20\text{dp}$, $r=10\text{dp}$) with tactical typography ($12\text{sp}$ bold), damped harmonic spring kinematics (`translateY 2px, scale 0.95`), top specular crescent highlight, and chassis neon ring bloom. Mint green (`#5CF29A`) on LT / Coral pink (`#FF5C8A`) on RT. Excludes percentage readout text per design directive. |
+| **Test Tube Trigger (Trigger H)** | `builtin.testtube_lt` / `builtin.testtube_rt` | `2701` / `2702` | Cylindrical glass test tube trigger with rising liquid & bubbles: standard trigger press kinematics via `detectTapGestures` & `updateButton(key, true/false)`, compact capsule contour ($48\text{dp} \times 98\text{dp}$, $r=24\text{dp}$), recessed dark glass chamber, dynamic rising liquid volume with swaying liquid meniscus crest ($700\text{ms}$ harmonic rocking cycle while held), 5 rising bubbles floating up through the liquid column, volumetric measurement graduation scale ticks along right edge, specular vertical gloss strip along left edge, elevated optical window ($32\text{dp} \times 16\text{dp}$, $r=8\text{dp}$) near top, damped harmonic spring kinematics (`translateY 2px, scale 0.95`), and chassis neon ring bloom. Amber orange (`#FF9F43`) on LT / Violet purple (`#BD5CFF`) on RT. Excludes percentage readout text per design directive. |
+| **Bloom Trigger (Trigger I)** | `builtin.bloom_lt` / `builtin.bloom_rt` | `2801` / `2802` | Expanding radial light bloom trigger: standard trigger press kinematics via `detectTapGestures` & `updateButton(key, true/false)`, circular $92\text{dp} \times 92\text{dp}$ compact mobile standard (`CircleShape`), central dark pupil core emitting an expanding radial bloom of radiant white/neon light as trigger is pressed ($0 \dots 42\text{dp}$ bloom radius), expanding bright circular bloom rim halo ($0 \dots 74\text{dp}$ diameter), central circular recessed optical eye window ($34\text{dp} \times 34\text{dp}$, `CircleShape`) with edge vignette and tactical glyph ($12\text{sp}$ bold), damped harmonic spring kinematics (`translateY 2px, scale 0.95`), top specular crescent arc highlight, and chassis neon ring bloom. Electric periwinkle (`#7C9CFF`) on LT / Neon rose (`#FF6584`) on RT. Excludes percentage readout text per design directive. |
+
+
+
+
+
+
 

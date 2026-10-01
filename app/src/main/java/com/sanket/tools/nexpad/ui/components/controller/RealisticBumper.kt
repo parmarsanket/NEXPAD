@@ -8,8 +8,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -19,22 +17,39 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
-import kotlin.math.roundToInt
 
 /**
- * Ergonomic 3D shoulder bumper with physical spring compression,
- * textured micro-grip ridges, specular chrome chamfer, and RGB neon bloom.
+ * NEXPAD Mobile-Ergonomic Lens Bumper (LB / RB / L1 / R1)
+ *
+ * Implements the master engineering architecture from HTML_TO_COMPOSE_CONTROLLER_BLUEPRINT.md:
+ * - Scaled & proportioned for smartphone gamepad ergonomics (154dp × 48dp)
+ * - Flipped contour: squarer corner (10dp) hugs the outer screen boundary,
+ *   aerodynamic rounded curve (26dp) points inward toward thumb reach.
+ * - 7-Layer Display List Pipeline:
+ *   1. Ambient Chassis Bloom (cast behind housing with drawBehind)
+ *   2. Bezel housing & 1px casing rim
+ *   3. Actuator surface dome (convex dark gradient + bottom undercut shadow)
+ *   4. Neon Ring (inset 2.5dp, dual-pass halo bloom + core stroke)
+ *   5. Magnifier Window (78dp × 30dp pill well with vignette + centered neon glyph)
+ *   6. Dynamic press depth (translateY 2px, scale 0.95 with damped harmonic spring)
+ *   7. Optical Glass Lens (top specular crescent, rim highlights, bottom-right sheen)
  */
 @Composable
 fun RealisticBumper(
@@ -47,162 +62,323 @@ fun RealisticBumper(
     displayLabel: String? = null
 ) {
     var isPressed by remember { mutableStateOf(false) }
-    val isLeft = key.uppercase() == com.sanket.tools.nexpad.model.NexpadKeys.LB
+    val isLeft = remember(key) {
+        val upper = key.uppercase()
+        upper == NexpadKeys.LB || upper == "L1" || upper == "LEFT"
+    }
 
+    // Flipped Mobile Ergonomic Shape:
+    // Left bumper: squarer (10dp) at screen outer edge, rounded (26dp) toward center
+    // Right bumper: rounded (26dp) toward center, squarer (10dp) at screen outer edge
     val bumperShape = remember(isLeft) {
         if (isLeft) {
-            RoundedCornerShape(topStart = 38.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 10.dp)
+            RoundedCornerShape(
+                topStart = 10.dp,
+                topEnd = 26.dp,
+                bottomEnd = 26.dp,
+                bottomStart = 10.dp
+            )
         } else {
-            RoundedCornerShape(topStart = 16.dp, topEnd = 38.dp, bottomStart = 10.dp, bottomEnd = 16.dp)
+            RoundedCornerShape(
+                topStart = 26.dp,
+                topEnd = 10.dp,
+                bottomEnd = 10.dp,
+                bottomStart = 26.dp
+            )
         }
     }
 
+    // Kinematic Physics Engine — Damped Harmonic Spring (Engine 2)
     val scaleAnim by animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
-        animationSpec = spring(dampingRatio = 0.65f, stiffness = 650f),
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "bumper_scale"
     )
     val pressOffsetYAnim by animateFloatAsState(
-        targetValue = if (isPressed) 2.5f else 0f,
-        animationSpec = spring(dampingRatio = 0.65f, stiffness = 650f),
+        targetValue = if (isPressed) 2.0f else 0f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "bumper_offset"
     )
-    val rgbBloomAlpha by animateFloatAsState(
-        targetValue = if (isPressed) 0.90f else 0.35f,
+    val ringAlphaAnim by animateFloatAsState(
+        targetValue = if (isPressed) 1.0f else 0.70f,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
-        label = "bumper_rgb_bloom"
+        label = "bumper_ring_alpha"
+    )
+    val ringBloomAnim by animateFloatAsState(
+        targetValue = if (isPressed) 1.0f else 0.40f,
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
+        label = "bumper_ring_bloom"
     )
 
-    val neonColor = if (isLeft) Color(0xFF7C3AED) else Color(0xFF00E5FF)
+    // CSS: --glow: #a97cf0
+    val neonColor = remember(isRgbEnabled) {
+        if (isRgbEnabled) Color(0xFFA97CF0) else Color(0xFFD8DEE9)
+    }
 
-    val baseGradient = remember {
-        Brush.verticalGradient(
+    // Body surface dome gradient: radial-gradient(circle at 50% 55%, #232527 0%, #0c0d0e 75%, #000 100%)
+    val baseDomeGradient = remember {
+        Brush.radialGradient(
             colors = listOf(
-                Color(0xFF3A4454),
-                Color(0xFF222934),
-                Color(0xFF13171F)
-            )
+                Color(0xFF232527),
+                Color(0xFF0C0D0E),
+                Color(0xFF000000)
+            ),
+            center = Offset(0.50f, 0.55f),
+            radius = 280f
         )
     }
 
-    val pressedGradient = remember {
-        Brush.verticalGradient(
-            colors = listOf(
-                Color(0xFF1D222A),
-                Color(0xFF11141A),
-                Color(0xFF090B0E)
-            )
-        )
-    }
+    val currentOnVibrate by rememberUpdatedState(onVibrate)
+    val currentViewModel by rememberUpdatedState(viewModel)
 
     Box(
         modifier = modifier
-            .size(160.dp, 60.dp)
+            .size(154.dp, 48.dp)
+            // Layer 1: Ambient Chassis Bloom
             .drawBehind {
                 if (isRgbEnabled) {
-                    drawRoundRect(
-                        color = neonColor.copy(alpha = rgbBloomAlpha * 0.40f),
-                        size = size.copy(width = size.width + 16.dp.toPx(), height = size.height + 14.dp.toPx()),
-                        topLeft = Offset(-8.dp.toPx(), -7.dp.toPx()),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(24.dp.toPx(), 24.dp.toPx())
-                    )
+                    val pad = 5.dp.toPx()
+                    val bloomPath = Path().apply {
+                        addRoundRect(
+                            RoundRect(
+                                rect = Rect(-pad, -pad, size.width + pad, size.height + pad),
+                                topLeft = CornerRadius(if (isLeft) 14.dp.toPx() else 30.dp.toPx()),
+                                topRight = CornerRadius(if (isLeft) 30.dp.toPx() else 14.dp.toPx()),
+                                bottomRight = CornerRadius(if (isLeft) 30.dp.toPx() else 14.dp.toPx()),
+                                bottomLeft = CornerRadius(if (isLeft) 14.dp.toPx() else 30.dp.toPx())
+                            )
+                        )
+                    }
+                    drawPath(bloomPath, neonColor.copy(alpha = if (isPressed) 0.35f else 0.18f))
                 }
             }
-            .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
-            }
-            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .shadow(
-                elevation = if (isPressed) 3.dp else 10.dp,
+                elevation = if (isPressed) 1.dp else 4.dp,
                 shape = bumperShape,
-                spotColor = if (isRgbEnabled) neonColor else Color.Black,
-                ambientColor = if (isRgbEnabled) neonColor else Color.Black
+                spotColor = Color.Black.copy(alpha = 0.55f),
+                ambientColor = Color.Black.copy(alpha = 0.40f)
             )
-            .clip(bumperShape)
-            .background(if (isPressed) pressedGradient else baseGradient)
             .border(
-                width = 1.5.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF718096).copy(alpha = if (isPressed) 0.3f else 0.7f),
-                        Color(0xFF1A202C)
-                    )
-                ),
+                width = 1.dp,
+                color = Color.Black.copy(alpha = 0.50f),
                 shape = bumperShape
             )
             .pointerInput(key) {
                 detectTapGestures(
                     onPress = {
-                        onVibrate()
+                        currentOnVibrate()
                         isPressed = true
-                        viewModel.updateButton(key, true)
+                        currentViewModel.updateButton(key, true)
                         tryAwaitRelease()
                         isPressed = false
-                        viewModel.updateButton(key, false)
+                        currentViewModel.updateButton(key, false)
                     }
                 )
             },
         contentAlignment = Alignment.Center
     ) {
-        // Specular Top Bevel & Tactile Grip Texture Lines
-        Canvas(modifier = Modifier.fillMaxSize().padding(4.dp)) {
-            val startX = if (isLeft) 28f else 12f
-            val endX = if (isLeft) size.width - 12f else size.width - 28f
+        // Layer 2 & 3: Plunging Actuator Body (.lx-body)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    scaleX = scaleAnim
+                    scaleY = scaleAnim
+                    translationY = pressOffsetYAnim.dp.toPx()
+                }
+                .clip(bumperShape)
+                .background(baseDomeGradient),
+            contentAlignment = Alignment.Center
+        ) {
+            // Body shadows and highlights
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val w = size.width
+                val h = size.height
 
-            // Top specular chamfer edge
-            drawLine(
-                brush = Brush.horizontalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isPressed) 0.15f else 0.50f),
-                        Color.White.copy(alpha = if (isPressed) 0.05f else 0.20f)
+                // Top edge highlight: linear-gradient(180deg, rgba(255,255,255,0.07), transparent 42%)
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.White.copy(alpha = 0.07f), Color.Transparent),
+                        startY = 0f,
+                        endY = h * 0.42f
                     ),
-                    startX = startX,
-                    endX = endX
-                ),
-                start = Offset(startX, 6f),
-                end = Offset(endX, 6f),
-                strokeWidth = 2.5f
-            )
-
-            // Tactile anti-slip micro ridges (three subtle laser-etched lines)
-            val ridgeStartX = if (isLeft) size.width * 0.18f else size.width * 0.35f
-            val ridgeEndX = if (isLeft) size.width * 0.65f else size.width * 0.82f
-            for (i in 0..2) {
-                val y = size.height * 0.68f + (i * 6f)
-                drawLine(
-                    color = Color.Black.copy(alpha = 0.45f),
-                    start = Offset(ridgeStartX, y),
-                    end = Offset(ridgeEndX, y),
-                    strokeWidth = 2f
+                    size = Size(w, h * 0.42f)
                 )
-                drawLine(
-                    color = Color.White.copy(alpha = 0.15f),
-                    start = Offset(ridgeStartX, y + 1f),
-                    end = Offset(ridgeEndX, y + 1f),
-                    strokeWidth = 1f
+
+                // Bottom undercut shadow: inset 0 -5px 7px rgba(0,0,0,0.70)
+                val undercutH = h * 0.40f
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
+                        startY = h - undercutH,
+                        endY = h
+                    ),
+                    topLeft = Offset(0f, h - undercutH),
+                    size = Size(w, undercutH)
+                )
+
+                // Pressed inset shadow: inset 0 3px 7px rgba(0,0,0,0.85)
+                if (isPressed) {
+                    val pressedH = h * 0.40f
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent),
+                            startY = 0f,
+                            endY = pressedH
+                        ),
+                        size = Size(w, pressedH)
+                    )
+                }
+            }
+
+            // Layer 5: Magnifier Window (.lx-window) — 78dp × 30dp (centered)
+            val windowShape = RoundedCornerShape(15.dp)
+            Box(
+                modifier = Modifier
+                    .size(78.dp, 30.dp)
+                    .clip(windowShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val winW = size.width
+                    val winH = size.height
+
+                    // Window background: radial-gradient(ellipse at 50% 60%, #050506 0%, #121314 100%)
+                    drawRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(Color(0xFF050506), Color(0xFF121314)),
+                            center = Offset(winW * 0.50f, winH * 0.60f),
+                            radius = winW * 0.60f
+                        ),
+                        size = Size(winW, winH)
+                    )
+
+                    // Inset top shadow: inset 0 2.5px 5px rgba(0,0,0,0.9)
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(Color.Black.copy(alpha = 0.90f), Color.Transparent),
+                            startY = 0f,
+                            endY = 8.dp.toPx()
+                        ),
+                        size = Size(winW, 8.dp.toPx())
+                    )
+
+                    // Vignette: radial-gradient(ellipse at 50% 50%, transparent 32%, rgba(0,0,0,0.82) 100%)
+                    drawRect(
+                        brush = Brush.radialGradient(
+                            0.0f to Color.Transparent,
+                            0.32f to Color.Transparent,
+                            1.0f to Color.Black.copy(alpha = 0.82f),
+                            center = Offset(winW / 2f, winH / 2f),
+                            radius = winW / 2f
+                        ),
+                        size = Size(winW, winH)
+                    )
+
+                    // Bottom specular line: 0 1px 0 rgba(255,255,255,0.05)
+                    drawLine(
+                        color = Color.White.copy(alpha = 0.05f),
+                        start = Offset(3.dp.toPx(), winH - 0.5f),
+                        end = Offset(winW - 3.dp.toPx(), winH - 0.5f),
+                        strokeWidth = 1.dp.toPx()
+                    )
+                }
+
+                // Glyph (.lx-g): font-weight: 500, font-size: 20sp, letter-spacing: 1.5sp, color: var(--glow)
+                Text(
+                    text = displayLabel ?: key,
+                    color = neonColor,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 20.sp,
+                    letterSpacing = 1.5.sp,
+                    textAlign = TextAlign.Center
                 )
             }
         }
 
-        val labelColor = if (isRgbEnabled) {
-            if (isLeft) Color(0xFFC4B5FD) else Color(0xFF67E8F9)
-        } else {
-            Color.White.copy(alpha = if (isPressed) 0.70f else 0.95f)
-        }
+        // Layer 4 & 7: Stationary Overlays (Neon Ring + Glass Lens)
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
 
-        Text(
-            text = displayLabel ?: key,
-            color = labelColor,
-            fontWeight = FontWeight.Black,
-            fontSize = 19.sp,
-            style = androidx.compose.ui.text.TextStyle(
-                shadow = androidx.compose.ui.graphics.Shadow(
-                    color = if (isRgbEnabled) neonColor.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.8f),
-                    offset = Offset(0f, 2f),
-                    blurRadius = if (isRgbEnabled) 8f else 3f
+            // --- Layer 4: Neon Ring (.lx-ring) ---
+            val ringInset = 2.5.dp.toPx()
+            val ringPath = Path().apply {
+                addRoundRect(
+                    RoundRect(
+                        rect = Rect(ringInset, ringInset, w - ringInset, h - ringInset),
+                        topLeft = CornerRadius(if (isLeft) 7.5.dp.toPx() else 23.5.dp.toPx()),
+                        topRight = CornerRadius(if (isLeft) 23.5.dp.toPx() else 7.5.dp.toPx()),
+                        bottomRight = CornerRadius(if (isLeft) 23.5.dp.toPx() else 7.5.dp.toPx()),
+                        bottomLeft = CornerRadius(if (isLeft) 7.5.dp.toPx() else 23.5.dp.toPx())
+                    )
                 )
+            }
+
+            // Outer bloom pass
+            drawPath(
+                path = ringPath,
+                color = neonColor.copy(alpha = (if (isPressed) 0.50f else 0.25f) * ringBloomAnim),
+                style = Stroke(width = 5.dp.toPx())
             )
-        )
+            // Inner bloom pass
+            drawPath(
+                path = ringPath,
+                color = neonColor.copy(alpha = (if (isPressed) 0.40f else 0.18f) * ringBloomAnim),
+                style = Stroke(width = 3.dp.toPx())
+            )
+            // Core crisp stroke: 2px solid var(--glow)
+            drawPath(
+                path = ringPath,
+                color = neonColor.copy(alpha = ringAlphaAnim),
+                style = Stroke(width = 2.dp.toPx())
+            )
+
+            // --- Layer 7: Glass Lens (.lx-lens) ---
+            // Specular sheen circle: circle at 70% 78%, rgba(255,255,255,0.06) 0%, transparent 40%
+            drawCircle(
+                brush = Brush.radialGradient(
+                    0.0f to Color.White.copy(alpha = 0.06f),
+                    0.40f to Color.Transparent,
+                    1.0f to Color.Transparent,
+                    center = Offset(w * 0.70f, h * 0.78f),
+                    radius = w * 0.30f
+                ),
+                center = Offset(w * 0.70f, h * 0.78f),
+                radius = w * 0.30f
+            )
+
+            // Top specular edge highlight: inset 0 2px 2px rgba(255,255,255,0.10)
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.10f), Color.Transparent),
+                    startY = 0f,
+                    endY = 3.5.dp.toPx()
+                ),
+                size = Size(w, 3.5.dp.toPx())
+            )
+
+            // Specular border lines
+            val rtl = if (isLeft) 10.dp.toPx() else 26.dp.toPx()
+            val rtr = if (isLeft) 26.dp.toPx() else 10.dp.toPx()
+            val rbl = if (isLeft) 10.dp.toPx() else 26.dp.toPx()
+            val rbr = if (isLeft) 26.dp.toPx() else 10.dp.toPx()
+
+            // Top specular line: border-top 1px solid rgba(255,255,255,0.12)
+            drawLine(
+                color = Color.White.copy(alpha = 0.12f),
+                start = Offset(rtl, 0.5f),
+                end = Offset(w - rtr, 0.5f),
+                strokeWidth = 1.dp.toPx()
+            )
+
+            // Bottom line: border-bottom 1px solid rgba(0,0,0,0.30)
+            drawLine(
+                color = Color.Black.copy(alpha = 0.30f),
+                start = Offset(rbl, h - 0.5f),
+                end = Offset(w - rbr, h - 0.5f),
+                strokeWidth = 1.dp.toPx()
+            )
+        }
     }
 }

@@ -44,6 +44,8 @@ fun HudDockedInspector(
     onScaleChange: (Float) -> Unit,
     onOpacityChange: (Float) -> Unit,
     onSensitivityChange: ((Float) -> Unit)? = null,
+    onHeightScaleChange: ((Float) -> Unit)? = null,
+    onToggleFlip: (() -> Unit)? = null,
     onCycleSkin: () -> Unit,
     onOpenStudio: () -> Unit,
     onResetPos: () -> Unit,
@@ -60,6 +62,10 @@ fun HudDockedInspector(
             element.controlKey.equals("RTP", ignoreCase = true) ||
             element.categoryTitle.equals("TOUCHPAD", ignoreCase = true) ||
             element.spec?.componentType == com.sanket.tools.nexpad.category.ComponentType.TOUCHPAD
+
+    val isSliderTrigger = element.skinId?.contains("slider", ignoreCase = true) == true ||
+            element.skinId == "builtin.slider_lt" ||
+            element.skinId == "builtin.slider_rt"
 
     val borderColor = if (isDragging) NeonPalette.Cyan else NeonPalette.Cyan.copy(alpha = 0.5f)
     val borderWidth = if (isDragging) 1.5.dp else 1.dp
@@ -306,7 +312,7 @@ fun HudDockedInspector(
                     Slider(
                         value = transform.scale,
                         onValueChange = onScaleChange,
-                        valueRange = 0.5f..2.5f,
+                        valueRange = if (isSliderTrigger) 0.4f..3.0f else 0.5f..2.5f,
                         modifier = Modifier.width(90.dp),
                         colors = SliderDefaults.colors(thumbColor = NeonPalette.Cyan, activeTrackColor = NeonPalette.Cyan)
                     )
@@ -373,6 +379,71 @@ fun HudDockedInspector(
                             modifier = Modifier.size(28.dp)
                         ) {
                             Icon(Icons.Rounded.Add, contentDescription = "Increase Sensitivity", tint = Color.White, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
+
+                // 3.6. Trigger Height & Direction Controls (EXCLUSIVELY for Analog Slider Trigger)
+                if (isSliderTrigger && onHeightScaleChange != null) {
+                    VerticalDivider(modifier = Modifier.height(28.dp), color = Color.White.copy(alpha = 0.1f))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "Height: ${(transform.heightScale * 100).roundToInt()}%",
+                            fontSize = 11.sp,
+                            color = Color(0xFFFFB13F),
+                            fontWeight = FontWeight.Bold
+                        )
+                        IconButton(
+                            onClick = {
+                                val newH = ((transform.heightScale - 0.1f) * 10f).roundToInt() / 10f
+                                onHeightScaleChange(newH.coerceIn(0.6f, 2.2f))
+                            },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(Icons.Rounded.Remove, contentDescription = "Decrease Height", tint = Color.White, modifier = Modifier.size(16.dp))
+                        }
+                        Slider(
+                            value = transform.heightScale,
+                            onValueChange = { onHeightScaleChange(it) },
+                            valueRange = 0.6f..2.2f,
+                            modifier = Modifier.width(90.dp),
+                            colors = SliderDefaults.colors(thumbColor = Color(0xFFFFB13F), activeTrackColor = Color(0xFFFFB13F))
+                        )
+                        IconButton(
+                            onClick = {
+                                val newH = ((transform.heightScale + 0.1f) * 10f).roundToInt() / 10f
+                                onHeightScaleChange(newH.coerceIn(0.6f, 2.2f))
+                            },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(Icons.Rounded.Add, contentDescription = "Increase Height", tint = Color.White, modifier = Modifier.size(16.dp))
+                        }
+
+                        if (onToggleFlip != null) {
+                            Button(
+                                onClick = onToggleFlip,
+                                shape = RoundedCornerShape(6.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (transform.isFlipped) Color(0xFFFFB13F).copy(alpha = 0.25f) else Color.White.copy(alpha = 0.08f)
+                                ),
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.dp,
+                                    if (transform.isFlipped) Color(0xFFFFB13F) else Color.White.copy(alpha = 0.2f)
+                                ),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                modifier = Modifier.height(28.dp)
+                            ) {
+                                Text(
+                                    text = if (transform.isFlipped) "⇅ Bottom→Top" else "⇅ Top→Down",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (transform.isFlipped) Color(0xFFFFB13F) else Color.White
+                                )
+                            }
                         }
                     }
                 }

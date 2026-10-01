@@ -24,6 +24,8 @@ data class NativeRenderContext(
     val viewModel: GamepadViewModel,
     val onVibrate: () -> Unit = {},
     val sensitivity: Float? = null,
+    val heightScale: Float = 1.0f,
+    val isFlipped: Boolean = false,
     val labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
     val modifier: Modifier = Modifier
 ) {
@@ -717,6 +719,210 @@ class RealisticButtonVariant(
     }
 }
 
+class LiquidButtonVariant(
+    controlKey: ControlKey,
+    private val buttonColor: Color,
+    seedCode: Int
+) : BaseNativeVariant("builtin.liq_${controlKey.key.lowercase()}", controlKey, "Liquid Fill", seedCode) {
+    override val isBaselineDefault: Boolean = false
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        LiquidButton(
+            key = controlKey.key,
+            buttonColor = buttonColor,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticLiquidButton(
+            controlKey = controlKey.key,
+            labelStyle = context.labelStyle,
+            modifier = context.modifier
+        )
+    }
+}
+
+class FacetButtonVariant(
+    controlKey: ControlKey,
+    private val buttonColor: Color,
+    seedCode: Int
+) : BaseNativeVariant("builtin.facet_${controlKey.key.lowercase()}", controlKey, "Facet Gem", seedCode) {
+    override val isBaselineDefault: Boolean = false
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        FacetButton(
+            key = controlKey.key,
+            buttonColor = buttonColor,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticFacetButton(
+            controlKey = controlKey.key,
+            labelStyle = context.labelStyle,
+            modifier = context.modifier
+        )
+    }
+}
+
+class FlipButtonVariant(
+    controlKey: ControlKey,
+    private val buttonColor: Color,
+    seedCode: Int
+) : BaseNativeVariant("builtin.flipbtn_${controlKey.key.lowercase()}", controlKey, "Flip Card", seedCode) {
+    override val isBaselineDefault: Boolean = false
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        FlipButton(
+            key = controlKey.key,
+            buttonColor = buttonColor,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticFlipButton(
+            controlKey = controlKey.key,
+            labelStyle = context.labelStyle,
+            modifier = context.modifier
+        )
+    }
+}
+
+class RippleButtonVariant(
+    controlKey: ControlKey,
+    private val buttonColor: Color,
+    seedCode: Int
+) : BaseNativeVariant("builtin.ripple_${controlKey.key.lowercase()}", controlKey, "Ripple Rings", seedCode) {
+    override val isBaselineDefault: Boolean = false
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        RippleButton(
+            key = controlKey.key,
+            buttonColor = buttonColor,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticRippleButton(
+            controlKey = controlKey.key,
+            labelStyle = context.labelStyle,
+            modifier = context.modifier
+        )
+    }
+}
+
+
+class OrbitButtonVariant(
+    controlKey: ControlKey,
+    private val buttonColor: Color,
+    seedCode: Int
+) : BaseNativeVariant("builtin.orbit_${controlKey.key.lowercase()}", controlKey, "Orbit Rings", seedCode) {
+    override val isBaselineDefault: Boolean = false
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        OrbitButton(
+            key = controlKey.key,
+            buttonColor = buttonColor,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticOrbitButton(
+            controlKey = controlKey.key,
+            labelStyle = context.labelStyle,
+            modifier = context.modifier
+        )
+    }
+}
+
+class CapsulesButtonVariant(
+    controlKey: ControlKey,
+    private val buttonColor: Color,
+    seedCode: Int
+) : BaseNativeVariant("builtin.caps_${controlKey.key.lowercase()}", controlKey, "Capsule Fill", seedCode) {
+    override val isBaselineDefault: Boolean = false
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        CapsulesButton(
+            key = controlKey.key,
+            buttonColor = buttonColor,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticCapsulesButton(
+            controlKey = controlKey.key,
+            labelStyle = context.labelStyle,
+            modifier = context.modifier
+        )
+    }
+}
+
+class EclipseButtonVariant(
+    controlKey: ControlKey,
+    private val buttonColor: Color,
+    seedCode: Int
+) : BaseNativeVariant("builtin.ecl_${controlKey.key.lowercase()}", controlKey, "Eclipse Disc", seedCode) {
+    override val isBaselineDefault: Boolean = false
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        EclipseButton(
+            key = controlKey.key,
+            buttonColor = buttonColor,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticEclipseButton(
+            controlKey = controlKey.key,
+            labelStyle = context.labelStyle,
+            modifier = context.modifier
+        )
+    }
+}
+
 // =========================================================================
 // TRIGGER & BUMPER VARIANTS (LT / RT / LB / RB)
 // =========================================================================
@@ -824,6 +1030,781 @@ object RealisticRightBumperVariant : BaseNativeVariant("builtin.default_rb", Con
         )
     }
 }
+
+object ArcLeftBumperVariant : BaseNativeVariant("builtin.arc_lb", ControlKey.LB, "Arc Bumper", 3101) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        ArcBumper(
+            key = K.LB,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticArcBumper(
+            key = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+}
+
+object ArcRightBumperVariant : BaseNativeVariant("builtin.arc_rb", ControlKey.RB, "Arc Bumper", 3102) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        ArcBumper(
+            key = K.RB,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticArcBumper(
+            key = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+}
+
+object LedLeftBumperVariant : BaseNativeVariant("builtin.led_lb", ControlKey.LB, "LED Bar Bumper", 3201) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        LedBumper(
+            key = K.LB,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticLedBumper(
+            key = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+}
+
+object LedRightBumperVariant : BaseNativeVariant("builtin.led_rb", ControlKey.RB, "LED Bar Bumper", 3202) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        LedBumper(
+            key = K.RB,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticLedBumper(
+            key = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+}
+
+object PeekLeftBumperVariant : BaseNativeVariant("builtin.peek_lb", ControlKey.LB, "Peek Bumper", 3301) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        PeekBumper(
+            key = K.LB,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticPeekBumper(
+            key = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+}
+
+object PeekRightBumperVariant : BaseNativeVariant("builtin.peek_rb", ControlKey.RB, "Peek Bumper", 3302) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        PeekBumper(
+            key = K.RB,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticPeekBumper(
+            key = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+}
+
+object RibbedLeftBumperVariant : BaseNativeVariant("builtin.rib_lb", ControlKey.LB, "Ribbed Bumper", 3401) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        RibbedBumper(
+            key = K.LB,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticRibbedBumper(
+            key = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+}
+
+object RibbedRightBumperVariant : BaseNativeVariant("builtin.rib_rb", ControlKey.RB, "Ribbed Bumper", 3402) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        RibbedBumper(
+            key = K.RB,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticRibbedBumper(
+            key = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+}
+
+object UnderglowLeftBumperVariant : BaseNativeVariant("builtin.under_lb", ControlKey.LB, "Underglow Bumper", 3501) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        UnderglowBumper(
+            key = K.LB,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticUnderglowBumper(
+            key = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+}
+
+object UnderglowRightBumperVariant : BaseNativeVariant("builtin.under_rb", ControlKey.RB, "Underglow Bumper", 3502) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        UnderglowBumper(
+            key = K.RB,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticUnderglowBumper(
+            key = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+}
+
+object TubeLeftBumperVariant : BaseNativeVariant("builtin.tube_lb", ControlKey.LB, "Tube Bumper", 3601) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        TubeBumper(
+            key = K.LB,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticTubeBumper(
+            key = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+}
+
+object TubeRightBumperVariant : BaseNativeVariant("builtin.tube_rb", ControlKey.RB, "Tube Bumper", 3602) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        TubeBumper(
+            key = K.RB,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticTubeBumper(
+            key = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+}
+
+object FlipLeftBumperVariant : BaseNativeVariant("builtin.flip_lb", ControlKey.LB, "Flip Bumper", 3701) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        FlipBumper(
+            key = K.LB,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticFlipBumper(
+            key = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+}
+
+object FlipRightBumperVariant : BaseNativeVariant("builtin.flip_rb", ControlKey.RB, "Flip Bumper", 3702) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        FlipBumper(
+            key = K.RB,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticFlipBumper(
+            key = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+}
+
+// =========================================================================
+// DIAL TRIGGER VARIANTS (LT / RT)
+// =========================================================================
+
+object DialLeftTriggerVariant : BaseNativeVariant("builtin.dial_lt", ControlKey.LT, "Dial Gauge", 2101) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        DialTrigger(
+            key = K.LT,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticDialTrigger(
+            key = context.displayLabel.ifBlank { "LT" },
+            modifier = context.modifier
+        )
+    }
+}
+
+object DialRightTriggerVariant : BaseNativeVariant("builtin.dial_rt", ControlKey.RT, "Dial Gauge", 2102) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        DialTrigger(
+            key = K.RT,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticDialTrigger(
+            key = context.displayLabel.ifBlank { "RT" },
+            modifier = context.modifier
+        )
+    }
+}
+
+// =========================================================================
+// LIQUID ORB TRIGGER VARIANTS (LT / RT)
+// =========================================================================
+
+object LiquidOrbLeftTriggerVariant : BaseNativeVariant("builtin.liquid_lt", ControlKey.LT, "Liquid Orb", 2201) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        LiquidOrbTrigger(
+            key = K.LT,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticLiquidOrbTrigger(
+            key = context.displayLabel.ifBlank { "LT" },
+            modifier = context.modifier
+        )
+    }
+}
+
+object LiquidOrbRightTriggerVariant : BaseNativeVariant("builtin.liquid_rt", ControlKey.RT, "Liquid Orb", 2202) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        LiquidOrbTrigger(
+            key = K.RT,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticLiquidOrbTrigger(
+            key = context.displayLabel.ifBlank { "RT" },
+            modifier = context.modifier
+        )
+    }
+}
+
+// =========================================================================
+// VU SLABS TRIGGER VARIANTS (LT / RT)
+// =========================================================================
+
+object VuSlabsLeftTriggerVariant : BaseNativeVariant("builtin.vu_lt", ControlKey.LT, "VU Slabs", 2301) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        VuSlabsTrigger(
+            key = K.LT,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticVuSlabsTrigger(
+            key = context.displayLabel.ifBlank { "LT" },
+            modifier = context.modifier
+        )
+    }
+}
+
+object VuSlabsRightTriggerVariant : BaseNativeVariant("builtin.vu_rt", ControlKey.RT, "VU Slabs", 2302) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        VuSlabsTrigger(
+            key = K.RT,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticVuSlabsTrigger(
+            key = context.displayLabel.ifBlank { "RT" },
+            modifier = context.modifier
+        )
+    }
+}
+
+// =========================================================================
+// TARGET TRIGGER VARIANTS (LT / RT)
+// =========================================================================
+
+object TargetLeftTriggerVariant : BaseNativeVariant("builtin.target_lt", ControlKey.LT, "Target Crosshair", 2401) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        TargetTrigger(
+            key = K.LT,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticTargetTrigger(
+            key = context.displayLabel.ifBlank { "LT" },
+            modifier = context.modifier
+        )
+    }
+}
+
+object TargetRightTriggerVariant : BaseNativeVariant("builtin.target_rt", ControlKey.RT, "Target Crosshair", 2402) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        TargetTrigger(
+            key = K.RT,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticTargetTrigger(
+            key = context.displayLabel.ifBlank { "RT" },
+            modifier = context.modifier
+        )
+    }
+}
+
+// =========================================================================
+// SLIDER TRIGGER VARIANTS (LT / RT)
+// =========================================================================
+
+object SliderLeftTriggerVariant : BaseNativeVariant("builtin.slider_lt", ControlKey.LT, "Analog Slider", 2501) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        SliderTrigger(
+            key = K.LT,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            heightScale = context.heightScale,
+            isFlipped = context.isFlipped,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticSliderTrigger(
+            key = context.displayLabel.ifBlank { "LT" },
+            modifier = context.modifier
+        )
+    }
+}
+
+object SliderRightTriggerVariant : BaseNativeVariant("builtin.slider_rt", ControlKey.RT, "Analog Slider", 2502) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        SliderTrigger(
+            key = K.RT,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            heightScale = context.heightScale,
+            isFlipped = context.isFlipped,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticSliderTrigger(
+            key = context.displayLabel.ifBlank { "RT" },
+            modifier = context.modifier
+        )
+    }
+}
+
+object NeedleLeftTriggerVariant : BaseNativeVariant("builtin.needle_lt", ControlKey.LT, "Needle Meter", 2601) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        NeedleTrigger(
+            key = K.LT,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticNeedleTrigger(
+            key = context.displayLabel.ifBlank { "LT" },
+            modifier = context.modifier
+        )
+    }
+}
+
+object NeedleRightTriggerVariant : BaseNativeVariant("builtin.needle_rt", ControlKey.RT, "Needle Meter", 2602) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        NeedleTrigger(
+            key = K.RT,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticNeedleTrigger(
+            key = context.displayLabel.ifBlank { "RT" },
+            modifier = context.modifier
+        )
+    }
+}
+
+object TestTubeLeftTriggerVariant : BaseNativeVariant("builtin.testtube_lt", ControlKey.LT, "Test Tube", 2701) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        TestTubeTrigger(
+            key = K.LT,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticTestTubeTrigger(
+            key = context.displayLabel.ifBlank { "LT" },
+            modifier = context.modifier
+        )
+    }
+}
+
+object TestTubeRightTriggerVariant : BaseNativeVariant("builtin.testtube_rt", ControlKey.RT, "Test Tube", 2702) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        TestTubeTrigger(
+            key = K.RT,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticTestTubeTrigger(
+            key = context.displayLabel.ifBlank { "RT" },
+            modifier = context.modifier
+        )
+    }
+}
+
+object BloomLeftTriggerVariant : BaseNativeVariant("builtin.bloom_lt", ControlKey.LT, "Bloom Light", 2801) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        BloomTrigger(
+            key = K.LT,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticBloomTrigger(
+            key = context.displayLabel.ifBlank { "LT" },
+            modifier = context.modifier
+        )
+    }
+}
+
+object BloomRightTriggerVariant : BaseNativeVariant("builtin.bloom_rt", ControlKey.RT, "Bloom Light", 2802) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        BloomTrigger(
+            key = K.RT,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticBloomTrigger(
+            key = context.displayLabel.ifBlank { "RT" },
+            modifier = context.modifier
+        )
+    }
+}
+
 
 // =========================================================================
 // DPAD & TOUCHPAD & SYSTEM & MACRO VARIANTS
@@ -1158,6 +2139,34 @@ object DefaultNativeFamily {
         register(RealisticButtonVariant(ControlKey.B, Color(0xFFE6474E), 1002))
         register(RealisticButtonVariant(ControlKey.X, Color(0xFF3F8FE0), 1003))
         register(RealisticButtonVariant(ControlKey.Y, Color(0xFFE0A03F), 1004))
+        register(LiquidButtonVariant(ControlKey.A, Color(0xFF3FD25A), 1101))
+        register(LiquidButtonVariant(ControlKey.B, Color(0xFFE6474E), 1102))
+        register(LiquidButtonVariant(ControlKey.X, Color(0xFF3F8FE0), 1103))
+        register(LiquidButtonVariant(ControlKey.Y, Color(0xFFE0A03F), 1104))
+        register(FacetButtonVariant(ControlKey.A, Color(0xFF3FD25A), 1201))
+        register(FacetButtonVariant(ControlKey.B, Color(0xFFE6474E), 1202))
+        register(FacetButtonVariant(ControlKey.X, Color(0xFF3F8FE0), 1203))
+        register(FacetButtonVariant(ControlKey.Y, Color(0xFFE0A03F), 1204))
+        register(FlipButtonVariant(ControlKey.A, Color(0xFF3FD25A), 1301))
+        register(FlipButtonVariant(ControlKey.B, Color(0xFFE6474E), 1302))
+        register(FlipButtonVariant(ControlKey.X, Color(0xFF3F8FE0), 1303))
+        register(FlipButtonVariant(ControlKey.Y, Color(0xFFE0A03F), 1304))
+        register(RippleButtonVariant(ControlKey.A, Color(0xFF3FD25A), 1401))
+        register(RippleButtonVariant(ControlKey.B, Color(0xFFE6474E), 1402))
+        register(RippleButtonVariant(ControlKey.X, Color(0xFF3F8FE0), 1403))
+        register(RippleButtonVariant(ControlKey.Y, Color(0xFFE0A03F), 1404))
+        register(OrbitButtonVariant(ControlKey.A, Color(0xFF3FD25A), 1601))
+        register(OrbitButtonVariant(ControlKey.B, Color(0xFFE6474E), 1602))
+        register(OrbitButtonVariant(ControlKey.X, Color(0xFF3F8FE0), 1603))
+        register(OrbitButtonVariant(ControlKey.Y, Color(0xFFE0A03F), 1604))
+        register(CapsulesButtonVariant(ControlKey.A, Color(0xFF3FD25A), 1701))
+        register(CapsulesButtonVariant(ControlKey.B, Color(0xFFE6474E), 1702))
+        register(CapsulesButtonVariant(ControlKey.X, Color(0xFF3F8FE0), 1703))
+        register(CapsulesButtonVariant(ControlKey.Y, Color(0xFFE0A03F), 1704))
+        register(EclipseButtonVariant(ControlKey.A, Color(0xFF3FD25A), 1801))
+        register(EclipseButtonVariant(ControlKey.B, Color(0xFFE6474E), 1802))
+        register(EclipseButtonVariant(ControlKey.X, Color(0xFF3F8FE0), 1803))
+        register(EclipseButtonVariant(ControlKey.Y, Color(0xFFE0A03F), 1804))
         register(RealisticSystemButtonVariant(ControlKey.GUIDE, 5001))
         register(RealisticSystemButtonVariant(ControlKey.START, 5002))
         register(RealisticSystemButtonVariant(ControlKey.BACK, 5003))
@@ -1214,6 +2223,66 @@ object DefaultNativeFamily {
 
         // --- 12. Rails D-Pad Variant (Orthogonal Rails, Sliding Puck & Light Beams) ---
         register(RailsDPadVariant)
+
+        // --- 13. Arc Bumper Variants (Curved Bridge Contour & Emissive Neon Halo) ---
+        register(ArcLeftBumperVariant)
+        register(ArcRightBumperVariant)
+
+        // --- 14. LED Bar Bumper Variants (Asymmetrical Ergonomic Contour & 6-Segment LED Bar) ---
+        register(LedLeftBumperVariant)
+        register(LedRightBumperVariant)
+
+        // --- 15. Peek Bumper Variants (Oversized Aperture Window & 1.18x Zoom Glyph) ---
+        register(PeekLeftBumperVariant)
+        register(PeekRightBumperVariant)
+
+        // --- 16. Ribbed Bumper Variants (Tactile Ribbed Knurling & Lower Lightbar Strip) ---
+        register(RibbedLeftBumperVariant)
+        register(RibbedRightBumperVariant)
+
+        // --- 17. Underglow Bumper Variants (Bottom Neon Ground Bar & Dynamic Surge Flood) ---
+        register(UnderglowLeftBumperVariant)
+        register(UnderglowRightBumperVariant)
+
+        // --- 18. Tube Bumper Variants (Dynamic Horizontal Liquid Level Surge) ---
+        register(TubeLeftBumperVariant)
+        register(TubeRightBumperVariant)
+
+        // --- 19. Flip Bumper Variants (3D Horizontal Card Flip Face A / Face B) ---
+        register(FlipLeftBumperVariant)
+        register(FlipRightBumperVariant)
+
+        // --- 20. Dial Trigger Variants (270° Sweeping Radial Arc Gauge) ---
+        register(DialLeftTriggerVariant)
+        register(DialRightTriggerVariant)
+
+        // --- 21. Liquid Orb Trigger Variants (Dynamic Rising Fluid & Swaying Meniscus) ---
+        register(LiquidOrbLeftTriggerVariant)
+        register(LiquidOrbRightTriggerVariant)
+
+        // --- 22. VU Slabs Trigger Variants (7-Slab Audio VU Meter Physics) ---
+        register(VuSlabsLeftTriggerVariant)
+        register(VuSlabsRightTriggerVariant)
+
+        // --- 23. Target Trigger Variants (3 Concentric Radar Rings Outside-In Ignition) ---
+        register(TargetLeftTriggerVariant)
+        register(TargetRightTriggerVariant)
+
+        // --- 24. Slider Trigger Variants (Analog Continuous 0..255 Slider Physics) ---
+        register(SliderLeftTriggerVariant)
+        register(SliderRightTriggerVariant)
+
+        // --- 25. Needle Meter Trigger Variants (Analog Needle Meter Physics) ---
+        register(NeedleLeftTriggerVariant)
+        register(NeedleRightTriggerVariant)
+
+        // --- 26. Test Tube Trigger Variants (Rising Liquid & Swaying Meniscus Physics) ---
+        register(TestTubeLeftTriggerVariant)
+        register(TestTubeRightTriggerVariant)
+
+        // --- 27. Bloom Trigger Variants (Expanding Radiant Light Bloom Physics) ---
+        register(BloomLeftTriggerVariant)
+        register(BloomRightTriggerVariant)
     }
 
     /**
@@ -1271,7 +2340,17 @@ object NativeComponentRegistry {
         if (id.startsWith("builtin.default_") || id.startsWith("builtin.flux_") || id.startsWith("builtin.orb_") ||
             id.startsWith("builtin.compass_") || id.startsWith("builtin.gyro_") || id.startsWith("builtin.spotlight_") ||
             id.startsWith("builtin.lens_") || id.startsWith("builtin.four_lenses_") || id.startsWith("builtin.disc_") ||
-            id.startsWith("builtin.capsules_") || id.startsWith("builtin.metaballs_") || id.startsWith("builtin.rails_")
+            id.startsWith("builtin.capsules_") || id.startsWith("builtin.metaballs_") || id.startsWith("builtin.rails_") ||
+            id.startsWith("builtin.arc_") || id.startsWith("builtin.led_") || id.startsWith("builtin.peek_") ||
+            id.startsWith("builtin.rib_") || id.startsWith("builtin.under_") ||
+            id.startsWith("builtin.tube_") || id.startsWith("builtin.flip_") ||
+            id.startsWith("builtin.dial_") || id.startsWith("builtin.liquid_") ||
+            id.startsWith("builtin.vu_") || id.startsWith("builtin.target_") ||
+            id.startsWith("builtin.slider_") ||
+            id.startsWith("builtin.liq_") || id.startsWith("builtin.facet_") ||
+            id.startsWith("builtin.flipbtn_") || id.startsWith("builtin.ripple_") ||
+            id.startsWith("builtin.orbit_") ||
+            id.startsWith("builtin.caps_") || id.startsWith("builtin.ecl_")
         ) return true
         return DefaultNativeFamily.getVariant(id) != null
     }
@@ -1301,6 +2380,8 @@ object NativeComponentRegistry {
         viewModel: GamepadViewModel,
         onVibrate: () -> Unit = {},
         sensitivity: Float? = null,
+        heightScale: Float = 1.0f,
+        isFlipped: Boolean = false,
         labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
         modifier: Modifier = Modifier
     ) {
@@ -1314,6 +2395,8 @@ object NativeComponentRegistry {
             viewModel = viewModel,
             onVibrate = onVibrate,
             sensitivity = sensitivity,
+            heightScale = heightScale,
+            isFlipped = isFlipped,
             labelStyle = labelStyle,
             modifier = modifier
         )

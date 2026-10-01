@@ -20,7 +20,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -168,11 +167,6 @@ fun RealisticButton(
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "btn_depth"
     )
-    val rgbBloomAlpha by animateFloatAsState(
-        targetValue = if (isPressed) 0.95f else 0.45f,
-        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
-        label = "btn_rgb_bloom"
-    )
 
     val activeLabel = displayLabel ?: key
 
@@ -224,23 +218,6 @@ fun RealisticButton(
     Box(
         modifier = modifier
             .size(80.dp)
-            // Ambient RGB Bloom behind button socket
-            .drawBehind {
-                if (isRgbEnabled) {
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                buttonColor.copy(alpha = rgbBloomAlpha * 0.55f),
-                                buttonColor.copy(alpha = rgbBloomAlpha * 0.22f),
-                                Color.Transparent
-                            ),
-                            center = center,
-                            radius = size.minDimension * 1f
-                        ),
-                        radius = size.minDimension * 1f
-                    )
-                }
-            }
             .graphicsLayer {
                 scaleX = scaleAnim
                 scaleY = scaleAnim
@@ -250,8 +227,8 @@ fun RealisticButton(
             .shadow(
                 elevation = if (isPressed) 1.dp else 4.dp,
                 shape = CircleShape,
-                ambientColor = if (isRgbEnabled) buttonColor else Color.Black,
-                spotColor = if (isRgbEnabled) buttonColor else Color.Black
+                ambientColor = Color.Black.copy(alpha = 0.40f),
+                spotColor = Color.Black.copy(alpha = 0.55f)
             )
             .clip(CircleShape)
             // .cap base dome: radial-gradient(circle at 50% 55%, #232527 0%, #0c0d0e 75%, #000 100%)

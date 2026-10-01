@@ -324,6 +324,8 @@ fun GamepadScreen(
                     onVibrate = safeOnVibrate,
                     customComponentId = position.customComponentId,
                     sensitivity = position.sensitivity,
+                    heightScale = position.heightScale ?: 1.0f,
+                    isFlipped = position.isFlipped ?: false,
                     labelStyle = profile.controllerLabelStyle
                 )
             }
