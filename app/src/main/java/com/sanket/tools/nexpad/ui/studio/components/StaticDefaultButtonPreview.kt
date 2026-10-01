@@ -2245,9 +2245,10 @@ private fun StaticRealisticDPadButton(
 @Preview
 @Composable
 internal fun StaticLensDPad(
+    isRgbEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    val glowColor = Color(0xFFD8DEE9)
+    val glowColor = if (isRgbEnabled) Color(0xFF00E5FF) else Color(0xFFD8DEE9)
 
     val socketGradient = Brush.radialGradient(
         colors = listOf(
@@ -2426,9 +2427,10 @@ internal fun StaticLensDPad(
 @Preview
 @Composable
 internal fun StaticFourLensesDPad(
+    isRgbEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    val glowColor = Color(0xFFD8DEE9)
+    val glowColor = if (isRgbEnabled) Color(0xFF00E5FF) else Color(0xFFD8DEE9)
 
     val hubGradient = remember {
         Brush.radialGradient(

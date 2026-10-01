@@ -37,8 +37,11 @@ data class NativePreviewContext(
     val controlKey: ControlKey,
     val key: String = controlKey.key,
     val labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
+    val isRgbEnabled: Boolean = true,
     val modifier: Modifier = Modifier
-)
+) {
+    val displayLabel: String get() = CategoryManager.getLabelForStyle(key, labelStyle)
+}
 
 /**
  * OOP Contract: Every native component variant added to the unified Default Family
@@ -403,6 +406,7 @@ object FluxLeftStickButtonVariant : BaseNativeVariant("builtin.flux_lsb", Contro
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticFluxStickButton(
             isLeft = true,
+            label = context.displayLabel,
             modifier = context.modifier
         )
     }
@@ -456,6 +460,7 @@ object FluxRightStickButtonVariant : BaseNativeVariant("builtin.flux_rsb", Contr
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticFluxStickButton(
             isLeft = false,
+            label = context.displayLabel,
             modifier = context.modifier
         )
     }
@@ -482,6 +487,7 @@ object OrbLeftStickButtonVariant : BaseNativeVariant("builtin.orb_lsb", ControlK
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticOrbStickButton(
             isLeft = true,
+            label = context.displayLabel,
             modifier = context.modifier
         )
     }
@@ -508,6 +514,7 @@ object OrbRightStickButtonVariant : BaseNativeVariant("builtin.orb_rsb", Control
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticOrbStickButton(
             isLeft = false,
+            label = context.displayLabel,
             modifier = context.modifier
         )
     }
@@ -534,6 +541,7 @@ object CompassLeftStickButtonVariant : BaseNativeVariant("builtin.compass_lsb", 
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticCompassStickButton(
             isLeft = true,
+            label = context.displayLabel,
             modifier = context.modifier
         )
     }
@@ -560,6 +568,7 @@ object CompassRightStickButtonVariant : BaseNativeVariant("builtin.compass_rsb",
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticCompassStickButton(
             isLeft = false,
+            label = context.displayLabel,
             modifier = context.modifier
         )
     }
@@ -586,6 +595,7 @@ object GyroLeftStickButtonVariant : BaseNativeVariant("builtin.gyro_lsb", Contro
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticGyroStickButton(
             isLeft = true,
+            label = context.displayLabel,
             modifier = context.modifier
         )
     }
@@ -612,6 +622,7 @@ object GyroRightStickButtonVariant : BaseNativeVariant("builtin.gyro_rsb", Contr
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticGyroStickButton(
             isLeft = false,
+            label = context.displayLabel,
             modifier = context.modifier
         )
     }
@@ -638,6 +649,7 @@ object SpotlightLeftStickButtonVariant : BaseNativeVariant("builtin.spotlight_ls
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticSpotlightStickButton(
             isLeft = true,
+            label = context.displayLabel,
             modifier = context.modifier
         )
     }
@@ -664,6 +676,7 @@ object SpotlightRightStickButtonVariant : BaseNativeVariant("builtin.spotlight_r
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticSpotlightStickButton(
             isLeft = false,
+            label = context.displayLabel,
             modifier = context.modifier
         )
     }
@@ -883,6 +896,7 @@ object LensDPadVariant : BaseNativeVariant("builtin.lens_dpad", ControlKey.DPAD,
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticLensDPad(
+            isRgbEnabled = context.isRgbEnabled,
             modifier = context.modifier
         )
     }
@@ -905,6 +919,7 @@ object FourLensesDPadVariant : BaseNativeVariant("builtin.four_lenses_dpad", Con
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticFourLensesDPad(
+            isRgbEnabled = context.isRgbEnabled,
             modifier = context.modifier
         )
     }

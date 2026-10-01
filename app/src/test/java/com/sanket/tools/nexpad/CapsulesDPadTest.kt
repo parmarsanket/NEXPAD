@@ -107,11 +107,18 @@ class CapsulesDPadTest {
         // RIGHT capsule center: (136, 85)
         assertEquals(setOf(K.RIGHT), resolveCapsulesTouch(Offset(136f, center), stageSize))
 
-        // 4. Diagonal Zone Taps
-        assertEquals(setOf(K.UP, K.RIGHT), resolveCapsulesTouch(Offset(center + 40f, center - 40f), stageSize))
-        assertEquals(setOf(K.DOWN, K.RIGHT), resolveCapsulesTouch(Offset(center + 40f, center + 40f), stageSize))
-        assertEquals(setOf(K.DOWN, K.LEFT), resolveCapsulesTouch(Offset(center - 40f, center + 40f), stageSize))
-        assertEquals(setOf(K.UP, K.LEFT), resolveCapsulesTouch(Offset(center - 40f, center - 40f), stageSize))
+        // 4. Diagonal corner voids must NOT trigger any buttons (no diagonal clicks or multi-button triggering)
+        val cornerTopRight = resolveCapsulesTouch(Offset(center + 40f, center - 40f), stageSize)
+        assertTrue("Diagonal corner touch must NOT trigger buttons", cornerTopRight.isEmpty())
+
+        val cornerBottomRight = resolveCapsulesTouch(Offset(center + 40f, center + 40f), stageSize)
+        assertTrue("Diagonal corner touch must NOT trigger buttons", cornerBottomRight.isEmpty())
+
+        val cornerBottomLeft = resolveCapsulesTouch(Offset(center - 40f, center + 40f), stageSize)
+        assertTrue("Diagonal corner touch must NOT trigger buttons", cornerBottomLeft.isEmpty())
+
+        val cornerTopLeft = resolveCapsulesTouch(Offset(center - 40f, center - 40f), stageSize)
+        assertTrue("Diagonal corner touch must NOT trigger buttons", cornerTopLeft.isEmpty())
     }
 
     @Test

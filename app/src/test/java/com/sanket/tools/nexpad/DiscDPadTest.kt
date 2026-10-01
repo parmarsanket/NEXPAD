@@ -173,11 +173,18 @@ class DiscDPadTest {
         assertEquals(setOf(K.LEFT), resolveDiscTouch(Offset(25f, center), stageSize))
         assertEquals(setOf(K.RIGHT), resolveDiscTouch(Offset(135f, center), stageSize))
 
-        // 4. Diagonal Zone Taps
-        assertEquals(setOf(K.UP, K.RIGHT), resolveDiscTouch(Offset(center + 35f, center - 35f), stageSize))
-        assertEquals(setOf(K.DOWN, K.RIGHT), resolveDiscTouch(Offset(center + 35f, center + 35f), stageSize))
-        assertEquals(setOf(K.DOWN, K.LEFT), resolveDiscTouch(Offset(center - 35f, center + 35f), stageSize))
-        assertEquals(setOf(K.UP, K.LEFT), resolveDiscTouch(Offset(center - 35f, center - 35f), stageSize))
+        // 4. Diagonal corner voids must NOT trigger any buttons (no diagonal clicks or multi-button triggering)
+        val cornerTopRight = resolveDiscTouch(Offset(center + 35f, center - 35f), stageSize)
+        assertTrue("Diagonal corner touch must NOT trigger buttons", cornerTopRight.isEmpty())
+
+        val cornerBottomRight = resolveDiscTouch(Offset(center + 35f, center + 35f), stageSize)
+        assertTrue("Diagonal corner touch must NOT trigger buttons", cornerBottomRight.isEmpty())
+
+        val cornerBottomLeft = resolveDiscTouch(Offset(center - 35f, center + 35f), stageSize)
+        assertTrue("Diagonal corner touch must NOT trigger buttons", cornerBottomLeft.isEmpty())
+
+        val cornerTopLeft = resolveDiscTouch(Offset(center - 35f, center - 35f), stageSize)
+        assertTrue("Diagonal corner touch must NOT trigger buttons", cornerTopLeft.isEmpty())
     }
 
     @Test

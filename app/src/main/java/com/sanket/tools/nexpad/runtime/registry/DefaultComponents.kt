@@ -1186,7 +1186,7 @@ object DefaultComponents {
             name = "Default Left Stick Button (LSB)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = NxprcCategory.BUTTON.id,
+            category = NxprcCategory.JOYSTICK.id,
             defaultControl = ControlKey.LSB.key,
             description = "Standalone left thumbstick click button (L3 / LSB) for sprint or special actions."
         ),
@@ -1210,7 +1210,7 @@ object DefaultComponents {
             name = "Default Right Stick Button (RSB)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = NxprcCategory.BUTTON.id,
+            category = NxprcCategory.JOYSTICK.id,
             defaultControl = ControlKey.RSB.key,
             description = "Standalone right thumbstick click button (R3 / RSB) for melee, crouch, or zoom actions."
         ),
@@ -1282,7 +1282,7 @@ object DefaultComponents {
             name = "Flux Cyber Left Stick Button (LSB)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = NxprcCategory.BUTTON.id,
+            category = NxprcCategory.JOYSTICK.id,
             defaultControl = ControlKey.LSB.key,
             description = "Tactile Flux thumbstick click button (L3 / LSB) with knurled grip and cyan neon glow."
         ),
@@ -1306,7 +1306,7 @@ object DefaultComponents {
             name = "Flux Cyber Right Stick Button (RSB)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = NxprcCategory.BUTTON.id,
+            category = NxprcCategory.JOYSTICK.id,
             defaultControl = ControlKey.RSB.key,
             description = "Tactile Flux thumbstick click button (R3 / RSB) with knurled grip and hot-pink neon glow."
         ),
@@ -1378,7 +1378,7 @@ object DefaultComponents {
             name = "Orb Glass Left Stick Button (LSB)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = NxprcCategory.BUTTON.id,
+            category = NxprcCategory.JOYSTICK.id,
             defaultControl = ControlKey.LSB.key,
             description = "Tactile Orb thumbstick click button (L3 / LSB) with spherical glass cavity and cyan liquid core."
         ),
@@ -1402,7 +1402,7 @@ object DefaultComponents {
             name = "Orb Glass Right Stick Button (RSB)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = NxprcCategory.BUTTON.id,
+            category = NxprcCategory.JOYSTICK.id,
             defaultControl = ControlKey.RSB.key,
             description = "Tactile Orb thumbstick click button (R3 / RSB) with spherical glass cavity and hot-pink liquid core."
         ),
@@ -1474,7 +1474,7 @@ object DefaultComponents {
             name = "Compass Left Stick Button (LSB)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = NxprcCategory.BUTTON.id,
+            category = NxprcCategory.JOYSTICK.id,
             defaultControl = ControlKey.LSB.key,
             description = "Tactile Compass thumbstick click button (L3 / LSB) with perimeter compass pips and ice-blue neon glow."
         ),
@@ -1498,7 +1498,7 @@ object DefaultComponents {
             name = "Compass Right Stick Button (RSB)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = NxprcCategory.BUTTON.id,
+            category = NxprcCategory.JOYSTICK.id,
             defaultControl = ControlKey.RSB.key,
             description = "Tactile Compass thumbstick click button (R3 / RSB) with perimeter compass pips and coral-pink neon glow."
         ),
@@ -1570,7 +1570,7 @@ object DefaultComponents {
             name = "Gyro Gimbal Left Stick Button (LSB)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = NxprcCategory.BUTTON.id,
+            category = NxprcCategory.JOYSTICK.id,
             defaultControl = ControlKey.LSB.key,
             description = "Tactile Gyro thumbstick click button (L3 / LSB) with concentric gimbal rings and electric cyan glow."
         ),
@@ -1594,7 +1594,7 @@ object DefaultComponents {
             name = "Gyro Gimbal Right Stick Button (RSB)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = NxprcCategory.BUTTON.id,
+            category = NxprcCategory.JOYSTICK.id,
             defaultControl = ControlKey.RSB.key,
             description = "Tactile Gyro thumbstick click button (R3 / RSB) with concentric gimbal rings and electric magenta glow."
         ),
@@ -1666,7 +1666,7 @@ object DefaultComponents {
             name = "Spotlight Left Stick Button (LSB)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = NxprcCategory.BUTTON.id,
+            category = NxprcCategory.JOYSTICK.id,
             defaultControl = ControlKey.LSB.key,
             description = "Tactile Spotlight thumbstick click button (L3 / LSB) with floor light pool and warm gold glow."
         ),
@@ -1690,7 +1690,7 @@ object DefaultComponents {
             name = "Spotlight Right Stick Button (RSB)",
             author = "NEXPAD Core",
             version = "1.0.0",
-            category = NxprcCategory.BUTTON.id,
+            category = NxprcCategory.JOYSTICK.id,
             defaultControl = ControlKey.RSB.key,
             description = "Tactile Spotlight thumbstick click button (R3 / RSB) with floor light pool and electric magenta glow."
         ),

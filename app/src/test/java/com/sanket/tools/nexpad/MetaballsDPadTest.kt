@@ -148,11 +148,18 @@ class MetaballsDPadTest {
         // RIGHT satellite center: (144, 86)
         assertEquals(setOf(K.RIGHT), resolveMetaballsTouch(Offset(center + 58f, center), stageSize))
 
-        // 4. Diagonal Zone Taps
-        assertEquals(setOf(K.UP, K.RIGHT), resolveMetaballsTouch(Offset(center + 40f, center - 40f), stageSize))
-        assertEquals(setOf(K.DOWN, K.RIGHT), resolveMetaballsTouch(Offset(center + 40f, center + 40f), stageSize))
-        assertEquals(setOf(K.DOWN, K.LEFT), resolveMetaballsTouch(Offset(center - 40f, center + 40f), stageSize))
-        assertEquals(setOf(K.UP, K.LEFT), resolveMetaballsTouch(Offset(center - 40f, center - 40f), stageSize))
+        // 4. Diagonal corner voids must NOT trigger any buttons (no diagonal clicks or multi-button triggering)
+        val cornerTopRight = resolveMetaballsTouch(Offset(center + 40f, center - 40f), stageSize)
+        assertTrue("Diagonal corner touch must NOT trigger buttons", cornerTopRight.isEmpty())
+
+        val cornerBottomRight = resolveMetaballsTouch(Offset(center + 40f, center + 40f), stageSize)
+        assertTrue("Diagonal corner touch must NOT trigger buttons", cornerBottomRight.isEmpty())
+
+        val cornerBottomLeft = resolveMetaballsTouch(Offset(center - 40f, center + 40f), stageSize)
+        assertTrue("Diagonal corner touch must NOT trigger buttons", cornerBottomLeft.isEmpty())
+
+        val cornerTopLeft = resolveMetaballsTouch(Offset(center - 40f, center - 40f), stageSize)
+        assertTrue("Diagonal corner touch must NOT trigger buttons", cornerTopLeft.isEmpty())
     }
 
     @Test

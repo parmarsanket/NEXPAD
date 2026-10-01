@@ -34,7 +34,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.sanket.tools.nexpad.model.NexpadKeys as K
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
-import kotlin.math.atan2
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 
@@ -59,8 +58,9 @@ fun calculateFourLensesTilt(pressedDirs: Set<String>): Pair<Float, Float> {
 }
 
 /**
- * Resolves touch position on the 164dp Four Lenses stage into cardinal and diagonal directions.
- * Includes center hub deadzone (18dp) and outer boundary containment (82dp).
+ * Resolves touch position on the 164dp Four Lenses stage strictly to the four circular lens keys.
+ * Empty spaces (diagonal corner voids), center hub deadzone (18dp), and outer bounds (>82dp)
+ * are non-clickable, preventing diagonal clicks and ensuring single-direction activation.
  */
 fun resolveFourLensesTouch(
     pos: Offset,
@@ -68,28 +68,34 @@ fun resolveFourLensesTouch(
 ): Set<String> {
     val centerX = sizePx / 2f
     val centerY = sizePx / 2f
-    val dx = pos.x - centerX
-    val dy = pos.y - centerY
-    val dist = hypot(dx, dy)
     val scale = sizePx / 164f
-    val centerDeadzone = 18f * scale
-    val maxRadius = 82f * scale
+    val keyHitRadius = 28f * scale
 
-    if (dist < centerDeadzone || dist > maxRadius) {
-        return emptySet()
-    }
+    val upCenter = Offset(centerX, 27f * scale)
+    val downCenter = Offset(centerX, 137f * scale)
+    val leftCenter = Offset(27f * scale, centerY)
+    val rightCenter = Offset(137f * scale, centerY)
 
-    val deg = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())).toFloat()
+    val distUp = hypot(pos.x - upCenter.x, pos.y - upCenter.y)
+    val distDown = hypot(pos.x - downCenter.x, pos.y - downCenter.y)
+    val distLeft = hypot(pos.x - leftCenter.x, pos.y - leftCenter.y)
+    val distRight = hypot(pos.x - rightCenter.x, pos.y - rightCenter.y)
+
+    val isUp = distUp <= keyHitRadius
+    val isDown = distDown <= keyHitRadius
+    val isLeft = distLeft <= keyHitRadius
+    val isRight = distRight <= keyHitRadius
 
     return when {
-        deg in -112.5f..-67.5f -> setOf(K.UP)
-        deg in -67.5f..-22.5f -> setOf(K.UP, K.RIGHT)
-        deg in -22.5f..22.5f -> setOf(K.RIGHT)
-        deg in 22.5f..67.5f -> setOf(K.DOWN, K.RIGHT)
-        deg in 67.5f..112.5f -> setOf(K.DOWN)
-        deg in 112.5f..157.5f -> setOf(K.DOWN, K.LEFT)
-        deg in -157.5f..-112.5f -> setOf(K.UP, K.LEFT)
-        else -> setOf(K.LEFT)
+        isUp && isRight -> if (distUp <= distRight) setOf(K.UP) else setOf(K.RIGHT)
+        isUp && isLeft  -> if (distUp <= distLeft) setOf(K.UP) else setOf(K.LEFT)
+        isDown && isRight -> if (distDown <= distRight) setOf(K.DOWN) else setOf(K.RIGHT)
+        isDown && isLeft  -> if (distDown <= distLeft) setOf(K.DOWN) else setOf(K.LEFT)
+        isUp -> setOf(K.UP)
+        isDown -> setOf(K.DOWN)
+        isLeft -> setOf(K.LEFT)
+        isRight -> setOf(K.RIGHT)
+        else -> emptySet()
     }
 }
 

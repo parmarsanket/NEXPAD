@@ -345,11 +345,11 @@ class DPadHitboxTest {
     }
 
     @Test
-    fun `corner touch outside shaft triggers clean diagonal chording`() {
+    fun `corner touch outside shaft in diagonal void registers no buttons`() {
         val dx = 35f
         val dy = -35f
         val result = resolveDpadHit(dx, dy, shaftHalfWidth = 23f, deadzone = 14f, outerRadius = 78f)
-        assertEquals(setOf(DpadDirection.UP, DpadDirection.RIGHT), result)
+        assertTrue(result.isEmpty())
     }
 }
 ```

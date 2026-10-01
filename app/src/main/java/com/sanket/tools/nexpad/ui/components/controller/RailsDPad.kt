@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.sanket.tools.nexpad.model.NexpadKeys as K
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
-import kotlin.math.atan2
+import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 
@@ -76,34 +76,35 @@ fun calculateRailsPuckOffset(pressedDirs: Set<String>): Pair<Float, Float> {
 }
 
 /**
- * Resolves touch coordinate on 160dp Rails D-Pad stage into cardinal and diagonal directions.
- * Includes center deadzone (14dp) and outer boundary containment (80dp).
+ * Resolves touch coordinate on 160dp Rails D-Pad stage strictly to the orthogonal recessed rails.
+ * Empty spaces (diagonal corner voids), center sliding puck deadzone (14dp), and outer boundary (>72dp)
+ * are non-clickable, preventing diagonal clicks and ensuring single-direction activation.
  */
 fun resolveRailsTouch(pos: Offset, sizePx: Float): Set<String> {
     val centerX = sizePx / 2f
     val centerY = sizePx / 2f
     val dx = pos.x - centerX
     val dy = pos.y - centerY
-    val dist = hypot(dx, dy)
     val scale = sizePx / 160f
+    val armHalfWidth = 20f * scale
+    val armMaxReach = 72f * scale
     val centerDeadzone = 14f * scale
-    val maxRadius = 80f * scale
 
-    if (dist < centerDeadzone || dist > maxRadius) {
-        return emptySet()
-    }
-
-    val deg = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())).toFloat()
+    val isUp = dy in (-armMaxReach)..(-centerDeadzone) && abs(dx) <= armHalfWidth
+    val isDown = dy in centerDeadzone..armMaxReach && abs(dx) <= armHalfWidth
+    val isLeft = dx in (-armMaxReach)..(-centerDeadzone) && abs(dy) <= armHalfWidth
+    val isRight = dx in centerDeadzone..armMaxReach && abs(dy) <= armHalfWidth
 
     return when {
-        deg in -112.5f..-67.5f -> setOf(K.UP)
-        deg in -67.5f..-22.5f -> setOf(K.UP, K.RIGHT)
-        deg in -22.5f..22.5f -> setOf(K.RIGHT)
-        deg in 22.5f..67.5f -> setOf(K.DOWN, K.RIGHT)
-        deg in 67.5f..112.5f -> setOf(K.DOWN)
-        deg in 112.5f..157.5f -> setOf(K.DOWN, K.LEFT)
-        deg in -157.5f..-112.5f -> setOf(K.UP, K.LEFT)
-        else -> setOf(K.LEFT)
+        isUp && isRight -> if (abs(dy) >= abs(dx)) setOf(K.UP) else setOf(K.RIGHT)
+        isUp && isLeft  -> if (abs(dy) >= abs(dx)) setOf(K.UP) else setOf(K.LEFT)
+        isDown && isRight -> if (abs(dy) >= abs(dx)) setOf(K.DOWN) else setOf(K.RIGHT)
+        isDown && isLeft  -> if (abs(dy) >= abs(dx)) setOf(K.DOWN) else setOf(K.LEFT)
+        isUp -> setOf(K.UP)
+        isDown -> setOf(K.DOWN)
+        isLeft -> setOf(K.LEFT)
+        isRight -> setOf(K.RIGHT)
+        else -> emptySet()
     }
 }
 
@@ -125,10 +126,8 @@ fun RailsDPad(
     onVibrate: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val pressedDirections = remember { mutableStateMapOf<String, Boolean>() }
-    val currentlyPressed = remember(pressedDirections.values.toList()) {
-        pressedDirections.filterValues { it }.keys.toSet()
-    }
+    var pressedDirs by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val currentlyPressed = pressedDirs
 
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
@@ -292,43 +291,37 @@ fun RailsDPad(
                     )
                 }
             }
-            .pointerInput(Unit) {
+            .pointerInput(isConnected) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
-                    val initialDirs = resolveRailsTouch(down.position, size.width.toFloat())
-                    if (initialDirs.isNotEmpty()) {
-                        currentOnVibrate()
-                    }
+                    down.consume()
+                    var activeDirs = emptySet<String>()
 
-                    listOf(K.UP, K.DOWN, K.LEFT, K.RIGHT).forEach { dir ->
-                        val pressed = initialDirs.contains(dir)
-                        pressedDirections[dir] = pressed
-                        currentViewModel?.updateButton(dir, pressed)
-                    }
-
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        val change = event.changes.firstOrNull { it.id == down.id }
-                        if (change == null || !change.pressed) break
-
-                        val currentDirs = resolveRailsTouch(change.position, size.width.toFloat())
-                        listOf(K.UP, K.DOWN, K.LEFT, K.RIGHT).forEach { dir ->
-                            val isDirPressed = currentDirs.contains(dir)
-                            if (pressedDirections[dir] != isDirPressed) {
-                                if (isDirPressed && pressedDirections[dir] != true) {
-                                    currentOnVibrate()
-                                }
-                                pressedDirections[dir] = isDirPressed
-                                currentViewModel?.updateButton(dir, isDirPressed)
-                            }
+                    fun evaluateOffset(pos: Offset) {
+                        val newDirs = resolveRailsTouch(pos, size.width.toFloat())
+                        if (newDirs != activeDirs) {
+                            val added = newDirs - activeDirs
+                            val removed = activeDirs - newDirs
+                            removed.forEach { dir -> currentViewModel?.updateButton(dir, false) }
+                            added.forEach { dir -> currentViewModel?.updateButton(dir, true) }
+                            if (added.isNotEmpty()) currentOnVibrate()
+                            activeDirs = newDirs
+                            pressedDirs = newDirs
                         }
-                        change.consume()
                     }
 
-                    // Release all
-                    listOf(K.UP, K.DOWN, K.LEFT, K.RIGHT).forEach { dir ->
-                        pressedDirections[dir] = false
-                        currentViewModel?.updateButton(dir, false)
+                    try {
+                        evaluateOffset(down.position)
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val pointer = event.changes.firstOrNull { it.id == down.id }
+                            if (pointer == null || !pointer.pressed) break
+                            pointer.consume()
+                            evaluateOffset(pointer.position)
+                        }
+                    } finally {
+                        activeDirs.forEach { dir -> currentViewModel?.updateButton(dir, false) }
+                        pressedDirs = emptySet()
                     }
                 }
             },

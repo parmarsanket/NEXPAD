@@ -53,6 +53,8 @@ import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
+import com.sanket.tools.nexpad.category.CategoryManager
+import com.sanket.tools.nexpad.category.ControllerLabelStyle
 
 /**
  * High-performance Jetpack Compose interpreter for .nxpcomponent definitions.
@@ -65,7 +67,8 @@ fun NxpComposeInterpreter(
     isConnected: Boolean,
     inputTarget: NexPadInputTarget,
     modifier: Modifier = Modifier,
-    isInteractive: Boolean = true
+    isInteractive: Boolean = true,
+    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX
 ) {
     val isDpadCross = definition.manifest.defaultControl.equals(NexpadKeys.DPAD, ignoreCase = true) ||
             (definition.manifest.category.equals(NexpadKeys.DPAD, ignoreCase = true) && definition.size.widthDp >= 100) ||
@@ -78,7 +81,7 @@ fun NxpComposeInterpreter(
     } else if (isDpadCross) {
         RenderNxpDPad(definition, isConnected, inputTarget, modifier, isInteractive)
     } else {
-        RenderNxpButton(definition, assignedControl, isConnected, inputTarget, modifier, isInteractive)
+        RenderNxpButton(definition, assignedControl, isConnected, inputTarget, modifier, isInteractive, labelStyle)
     }
 }
 
@@ -89,7 +92,8 @@ private fun RenderNxpButton(
     isConnected: Boolean,
     inputTarget: NexPadInputTarget,
     modifier: Modifier,
-    isInteractive: Boolean = true
+    isInteractive: Boolean = true,
+    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX
 ) {
     var isPressed by remember { mutableStateOf(false) }
     val currentInputTarget by rememberUpdatedState(inputTarget)
@@ -186,9 +190,10 @@ private fun RenderNxpButton(
                     NexpadKeys.RIGHT -> "▶"
                     NexpadKeys.A, NexpadKeys.B, NexpadKeys.X, NexpadKeys.Y,
                     NexpadKeys.LT, NexpadKeys.RT, NexpadKeys.LB, NexpadKeys.RB,
+                    NexpadKeys.LSB, NexpadKeys.RSB,
                     NexpadKeys.LS, NexpadKeys.RS, NexpadKeys.M1, NexpadKeys.M2,
                     NexpadKeys.M3, NexpadKeys.M4, NexpadKeys.VIEW, NexpadKeys.MENU,
-                    NexpadKeys.SHARE -> upper
+                    NexpadKeys.SHARE -> CategoryManager.getLabelForStyle(upper, labelStyle)
                     else -> label.text.ifBlank { upper }
                 }
             } else {

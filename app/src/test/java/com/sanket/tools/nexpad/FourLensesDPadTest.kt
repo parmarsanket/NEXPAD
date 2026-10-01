@@ -108,18 +108,18 @@ class FourLensesDPadTest {
         assertEquals(setOf(K.RIGHT), resolveFourLensesTouch(Offset(137f, center + 12f), stageSize))
         assertEquals(setOf(K.RIGHT), resolveFourLensesTouch(Offset(137f, center - 12f), stageSize))
 
-        // 5. 8-Way Diagonal Chords
-        // Top-Right Diagonal: dx = 38, dy = -38 (angle = -45°)
-        assertEquals(setOf(K.UP, K.RIGHT), resolveFourLensesTouch(Offset(center + 38f, center - 38f), stageSize))
+        // 5. Diagonal corner voids must NOT trigger any buttons (no diagonal clicks or multi-button triggering)
+        val cornerTopRight = resolveFourLensesTouch(Offset(center + 38f, center - 38f), stageSize)
+        assertTrue("Diagonal corner touch must NOT trigger buttons", cornerTopRight.isEmpty())
 
-        // Top-Left Diagonal: dx = -38, dy = -38 (angle = -135°)
-        assertEquals(setOf(K.UP, K.LEFT), resolveFourLensesTouch(Offset(center - 38f, center - 38f), stageSize))
+        val cornerTopLeft = resolveFourLensesTouch(Offset(center - 38f, center - 38f), stageSize)
+        assertTrue("Diagonal corner touch must NOT trigger buttons", cornerTopLeft.isEmpty())
 
-        // Bottom-Right Diagonal: dx = 38, dy = 38 (angle = 45°)
-        assertEquals(setOf(K.DOWN, K.RIGHT), resolveFourLensesTouch(Offset(center + 38f, center + 38f), stageSize))
+        val cornerBottomRight = resolveFourLensesTouch(Offset(center + 38f, center + 38f), stageSize)
+        assertTrue("Diagonal corner touch must NOT trigger buttons", cornerBottomRight.isEmpty())
 
-        // Bottom-Left Diagonal: dx = -38, dy = 38 (angle = 135°)
-        assertEquals(setOf(K.DOWN, K.LEFT), resolveFourLensesTouch(Offset(center - 38f, center + 38f), stageSize))
+        val cornerBottomLeft = resolveFourLensesTouch(Offset(center - 38f, center + 38f), stageSize)
+        assertTrue("Diagonal corner touch must NOT trigger buttons", cornerBottomLeft.isEmpty())
     }
 
     @Test
