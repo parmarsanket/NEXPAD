@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -96,10 +97,18 @@ fun LedBumper(
         label = "led_ring_bloom"
     )
 
-    // CSS: --glow: #a97cf0
-    val neonColor = remember(isRgbEnabled) {
-        if (isRgbEnabled) Color(0xFFA97CF0) else Color(0xFFD8DEE9)
+    // CSS: --glow: #a97cf0 (LB Purple / RB Cyan)
+    val neonColor = remember(isRgbEnabled, isLeft) {
+        if (isRgbEnabled) {
+            if (isLeft) Color(0xFFA97CF0) else Color(0xFF00E5FF)
+        } else Color(0xFFD8DEE9)
     }
+
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (isPressed) 1.0f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "led_bumper_rgb_bloom"
+    )
 
     // Cascading 6-LED Bar illumination wave on press (35ms stagger per LED)
     val led0Alpha by animateFloatAsState(
@@ -182,12 +191,31 @@ fun LedBumper(
                 scaleY = scaleAnim
             }
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
+            .drawBehind {
+                if (isRgbEnabled) {
+                    val pad = 12.dp.toPx()
+                    drawRoundRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.48f),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.18f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.width * 0.65f
+                        ),
+                        topLeft = Offset(-pad, -pad),
+                        size = Size(size.width + pad * 2, size.height + pad * 2),
+                        cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
+                    )
+                }
+            }
             // Outer drop shadow
             .shadow(
-                elevation = if (isPressed) 2.dp else 6.dp,
+                elevation = if (isPressed) 1.dp else 4.dp,
                 shape = bumperShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = if (isRgbEnabled) neonColor else Color.Black,
+                spotColor = if (isRgbEnabled) neonColor else Color.Black
             )
             .clip(bumperShape)
             // Convex dark body
@@ -427,6 +455,25 @@ private fun LedBarGroup(
             Box(
                 modifier = Modifier
                     .size(9.dp, 22.dp)
+                    .drawBehind {
+                        if (alpha > 0.25f) {
+                            val pad = 3.dp.toPx()
+                            drawRoundRect(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        neonColor.copy(alpha = alpha * 0.50f),
+                                        neonColor.copy(alpha = alpha * 0.15f),
+                                        Color.Transparent
+                                    ),
+                                    center = center,
+                                    radius = size.height * 0.70f
+                                ),
+                                topLeft = Offset(-pad, -pad),
+                                size = Size(size.width + pad * 2, size.height + pad * 2),
+                                cornerRadius = CornerRadius(5.dp.toPx(), 5.dp.toPx())
+                            )
+                        }
+                    }
                     .clip(RoundedCornerShape(3.5.dp))
                     .background(neonColor.copy(alpha = if (alpha > 0.5f) alpha else 0.22f))
             )

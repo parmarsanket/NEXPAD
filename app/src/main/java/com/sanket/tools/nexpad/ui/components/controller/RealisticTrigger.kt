@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -83,8 +84,8 @@ fun RealisticTrigger(
         label = "trigger_offset"
     )
     val rgbBloomAlpha by animateFloatAsState(
-        targetValue = if (isPressed) 1.0f else 0.55f,
-        animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
+        targetValue = if (isPressed) 1.0f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "trigger_rgb_bloom"
     )
     // Analog meter liquid ramp
@@ -144,12 +145,32 @@ fun RealisticTrigger(
                 scaleY = scaleAnim
             }
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
-            // Outer drop shadow
+            // Outer dynamic RGB aura
+            .drawBehind {
+                if (isRgbEnabled) {
+                    val pad = 10.dp.toPx()
+                    drawRoundRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.50f),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 0.95f
+                        ),
+                        topLeft = Offset(-pad, -pad),
+                        size = Size(size.width + pad * 2, size.height + pad * 2),
+                        cornerRadius = CornerRadius(26.dp.toPx(), 26.dp.toPx())
+                    )
+                }
+            }
+            // RGB-coordinated shadow
             .shadow(
-                elevation = if (isPressed) 2.dp else 7.dp,
+                elevation = if (isPressed) 2.dp else 6.dp,
                 shape = triggerShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = if (isRgbEnabled) neonColor else Color.Black,
+                spotColor = if (isRgbEnabled) neonColor else Color.Black
             )
             .clip(triggerShape)
             // Convex dome surface
@@ -280,7 +301,7 @@ fun RealisticTrigger(
             // Outer atmospheric bloom stroke
             drawPath(
                 path = ringPath,
-                color = neonColor.copy(alpha = if (isPressed) 0.55f else 0.28f),
+                color = neonColor.copy(alpha = rgbBloomAlpha * 0.55f),
                 style = Stroke(width = 3.5.dp.toPx())
             )
             // Core crisp filament stroke

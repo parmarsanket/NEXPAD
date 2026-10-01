@@ -2,6 +2,7 @@ package com.sanket.tools.nexpad.ui.components.controller
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -27,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -106,6 +108,12 @@ fun SliderTrigger(
     var isDragging by remember { mutableStateOf(false) }
     val fillAnim = remember { Animatable(0f) }
 
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (isDragging || fillAnim.value > 0.05f) 1.0f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "slider_rgb_bloom"
+    )
+
     val baseDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
@@ -123,12 +131,32 @@ fun SliderTrigger(
     Box(
         modifier = modifier
             .size(widthDp, totalHeightDp)
-            // Physical black drop shadow
+            // Outer dynamic RGB aura
+            .drawBehind {
+                if (isRgbEnabled) {
+                    val pad = 10.dp.toPx()
+                    drawRoundRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.50f),
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 0.95f
+                        ),
+                        topLeft = Offset(-pad, -pad),
+                        size = Size(size.width + pad * 2, size.height + pad * 2),
+                        cornerRadius = CornerRadius(26.dp.toPx(), 26.dp.toPx())
+                    )
+                }
+            }
+            // RGB-coordinated shadow
             .shadow(
-                elevation = 6.dp,
+                elevation = if (isDragging) 2.dp else 6.dp,
                 shape = chassisShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = if (isRgbEnabled) glowColor else Color.Black,
+                spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
             .clip(chassisShape)
             .background(baseDomeGradient)
@@ -267,11 +295,28 @@ fun SliderTrigger(
                         y = (puckCenterDp - puckRadiusDp).roundToPx()
                     )
                 }
+                // Active puck bloom
+                .drawBehind {
+                    if (isRgbEnabled) {
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    glowColor.copy(alpha = rgbBloomAlpha * 0.60f),
+                                    glowColor.copy(alpha = rgbBloomAlpha * 0.25f),
+                                    Color.Transparent
+                                ),
+                                center = center,
+                                radius = size.minDimension * 0.85f
+                            ),
+                            radius = size.minDimension * 0.85f
+                        )
+                    }
+                }
                 .shadow(
                     elevation = if (isDragging) 6.dp else 3.dp,
                     shape = CircleShape,
-                    ambientColor = Color.Black.copy(alpha = 0.40f),
-                    spotColor = Color.Black.copy(alpha = 0.55f)
+                    ambientColor = if (isRgbEnabled) glowColor else Color.Black,
+                    spotColor = if (isRgbEnabled) glowColor else Color.Black
                 )
                 .clip(CircleShape)
                 .background(
@@ -437,7 +482,7 @@ fun SliderTrigger(
             val ringCorner = rPx - ringInset
             // Bloom
             drawRoundRect(
-                color = glowColor.copy(alpha = if (isDragging) 0.50f else 0.20f),
+                color = glowColor.copy(alpha = rgbBloomAlpha * 0.50f),
                 topLeft = Offset(ringInset - 1f, ringInset - 1f),
                 size = Size(w - (ringInset - 1f) * 2f, h - (ringInset - 1f) * 2f),
                 cornerRadius = CornerRadius(ringCorner, ringCorner),

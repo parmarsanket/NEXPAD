@@ -25,6 +25,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
@@ -88,16 +89,40 @@ fun RealisticJoystick(
         radius = 150f
     )
 
+    val neonColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
+    val deflectionFraction = (hypot(thumbOffsetX, thumbOffsetY) / maxRadius).coerceIn(0f, 1f)
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = 0.40f + 0.55f * deflectionFraction,
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
+        label = "realistic_joystick_bloom"
+    )
+
     val rgbShadow = Modifier.shadow(
         elevation = 10.dp,
         shape = CircleShape,
-        ambientColor = Color.Black.copy(alpha = 0.40f),
-        spotColor = Color.Black.copy(alpha = 0.55f)
+        ambientColor = if (isRgbEnabled) neonColor.copy(alpha = 0.5f) else Color.Black,
+        spotColor = if (isRgbEnabled) neonColor else Color.Black
     )
 
     Box(
         modifier = modifier
             .size(150.dp)
+            .drawBehind {
+                if (isRgbEnabled) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.45f),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.18f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 0.95f
+                        ),
+                        radius = size.minDimension * 0.95f
+                    )
+                }
+            }
             .then(rgbShadow)
             .clip(CircleShape)
             .background(baseGradient)
@@ -316,7 +341,12 @@ fun RealisticJoystick(
             modifier = Modifier
                 .offset { IntOffset(thumbOffsetX.roundToInt(), thumbOffsetY.roundToInt()) }
                 .size(90.dp)
-                .shadow(12.dp, CircleShape)
+                .shadow(
+                    elevation = 12.dp,
+                    shape = CircleShape,
+                    ambientColor = if (isRgbEnabled) neonColor.copy(alpha = 0.5f) else Color.Black,
+                    spotColor = if (isRgbEnabled) neonColor else Color.Black
+                )
                 .clip(CircleShape)
                 .background(thumbGradient)
                 .border(
@@ -434,13 +464,19 @@ fun RealisticStickButton(
         )
     }
 
-    val accentColor = if (isLeft) Color.Cyan else Color(0xFFFF007F)
+    val neonColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "stick_btn_rgb_bloom"
+    )
+    val accentColor = neonColor
 
     val rgbShadow = Modifier.shadow(
         elevation = if (isPressed) 3.dp else 8.dp,
         shape = CircleShape,
-        ambientColor = Color.Black.copy(alpha = 0.40f),
-        spotColor = Color.Black.copy(alpha = 0.55f)
+        ambientColor = if (isRgbEnabled) neonColor else Color.Black,
+        spotColor = if (isRgbEnabled) neonColor else Color.Black
     )
 
     Box(
@@ -451,6 +487,22 @@ fun RealisticStickButton(
                 scaleY = scaleAnim
             }
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
+            .drawBehind {
+                if (isRgbEnabled) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.55f),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.22f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 1f
+                        ),
+                        radius = size.minDimension * 1f
+                    )
+                }
+            }
             .then(rgbShadow)
             .clip(CircleShape)
             .background(baseGradient)

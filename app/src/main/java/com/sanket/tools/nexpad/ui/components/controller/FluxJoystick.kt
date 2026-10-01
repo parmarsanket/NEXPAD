@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -169,15 +170,37 @@ fun FluxJoystick(
     val stickKey = remember(isLeft) { if (isLeft) "LSB" else "RSB" }
     val glyphLabel = remember(isLeft) { if (isLeft) "L" else "R" }
 
+    val deflectionFraction = (hypot(animOffsetX.value, animOffsetY.value) / maxTravelPx).coerceIn(0f, 1f)
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = 0.40f + 0.55f * deflectionFraction,
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
+        label = "flux_joystick_bloom"
+    )
+
     Box(
         modifier = modifier
             .size(150.dp)
-            // Drop shadow: 0 10px 12px rgba(0, 0, 0, 0.45)
+            .drawBehind {
+                if (isRgbEnabled) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.45f),
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.18f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 0.95f
+                        ),
+                        radius = size.minDimension * 0.95f
+                    )
+                }
+            }
             .shadow(
                 elevation = 12.dp,
                 shape = CircleShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = if (isRgbEnabled) glowColor.copy(alpha = 0.5f) else Color.Black,
+                spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
             .clip(CircleShape)
             .background(socketGradient)
@@ -496,6 +519,12 @@ fun FluxJoystick(
                     scaleX = capScaleAnim
                     scaleY = capScaleAnim
                 }
+                .shadow(
+                    elevation = 10.dp,
+                    shape = CircleShape,
+                    ambientColor = if (isRgbEnabled) glowColor.copy(alpha = 0.5f) else Color.Black,
+                    spotColor = if (isRgbEnabled) glowColor else Color.Black
+                )
                 .clip(CircleShape)
                 .background(capDomeGradient)
                 .border(
@@ -803,6 +832,12 @@ fun FluxStickButton(
         )
     }
 
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "flux_stick_btn_bloom"
+    )
+
     Box(
         modifier = modifier
             .size(70.dp)
@@ -811,11 +846,27 @@ fun FluxStickButton(
                 scaleY = scaleAnim
             }
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
+            .drawBehind {
+                if (isRgbEnabled) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.55f),
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.22f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 1f
+                        ),
+                        radius = size.minDimension * 1f
+                    )
+                }
+            }
             .shadow(
                 elevation = if (isPressed) 2.dp else 8.dp,
                 shape = CircleShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = if (isRgbEnabled) glowColor else Color.Black,
+                spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
             .clip(CircleShape)
             .background(capDomeGradient)

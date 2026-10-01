@@ -2,6 +2,7 @@ package com.sanket.tools.nexpad.ui.components.controller
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -15,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -203,6 +205,13 @@ fun LensDPad(
         if (isRgbEnabled) Color(0xFF00E5FF) else Color(0xFFD8DEE9)
     }
 
+    val hasActivePress = pressedDirs.isNotEmpty()
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (hasActivePress) 0.95f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "lens_dpad_rgb_bloom"
+    )
+
     // Socket radial gradient: circle at 50% 55%: #232527 -> #0c0d0e -> #000000
     val socketGradient = remember {
         Brush.radialGradient(
@@ -255,12 +264,27 @@ fun LensDPad(
     Box(
         modifier = modifier
             .size(160.dp)
-            // Outer drop shadow on socket: 0 4px 7px rgba(0,0,0,0.55)
+            .drawBehind {
+                if (isRgbEnabled) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.50f),
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 0.95f
+                        ),
+                        radius = size.minDimension * 0.95f
+                    )
+                }
+            }
             .shadow(
-                elevation = 7.dp,
+                elevation = if (hasActivePress) 3.dp else 8.dp,
                 shape = CircleShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = if (isRgbEnabled) glowColor else Color.Black,
+                spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
             .clip(CircleShape)
             .background(socketGradient)

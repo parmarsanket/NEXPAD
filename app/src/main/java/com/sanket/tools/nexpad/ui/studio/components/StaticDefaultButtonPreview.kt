@@ -16,7 +16,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -45,7 +47,6 @@ import com.sanket.tools.nexpad.ui.components.controller.LeftHorizonClipShape
 import com.sanket.tools.nexpad.ui.components.controller.RightHorizonClipShape
 import androidx.compose.ui.unit.IntOffset
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.StrokeJoin
@@ -171,11 +172,25 @@ private fun StaticRealisticButton(
     Box(
         modifier = modifier
             .size(80.dp)
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            buttonColor.copy(alpha = 0.45f * 0.55f),
+                            buttonColor.copy(alpha = 0.45f * 0.22f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 1f
+                    ),
+                    radius = size.minDimension * 1f
+                )
+            }
             .shadow(
                 elevation = 4.dp,
                 shape = CircleShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = buttonColor,
+                spotColor = buttonColor
             )
             .clip(CircleShape)
             .background(baseDomeGradient),
@@ -416,7 +431,23 @@ private fun StaticRealisticJoystick(
         radius = 150f
     )
 
-    val shadow = Modifier.shadow(12.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.40f), spotColor = Color.Black.copy(alpha = 0.55f))
+    val neonColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
+    val shadow = Modifier
+        .drawBehind {
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        neonColor.copy(alpha = 0.40f * 0.45f),
+                        neonColor.copy(alpha = 0.40f * 0.18f),
+                        Color.Transparent
+                    ),
+                    center = center,
+                    radius = size.minDimension * 0.95f
+                ),
+                radius = size.minDimension * 0.95f
+            )
+        }
+        .shadow(10.dp, CircleShape, ambientColor = neonColor.copy(alpha = 0.5f), spotColor = neonColor)
 
     Box(
         modifier = modifier
@@ -494,7 +525,21 @@ internal fun StaticFluxJoystick(
     Box(
         modifier = modifier
             .size(150.dp)
-            .shadow(12.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.40f), spotColor = Color.Black.copy(alpha = 0.55f))
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            glowColor.copy(alpha = 0.40f * 0.45f),
+                            glowColor.copy(alpha = 0.40f * 0.18f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 0.95f
+                    ),
+                    radius = size.minDimension * 0.95f
+                )
+            }
+            .shadow(12.dp, CircleShape, ambientColor = glowColor.copy(alpha = 0.5f), spotColor = glowColor)
             .clip(CircleShape)
             .background(socketGradient)
             .border(1.dp, Color.Black.copy(alpha = 0.75f), CircleShape),
@@ -662,11 +707,25 @@ internal fun StaticFluxStickButton(
     Box(
         modifier = modifier
             .size(70.dp)
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            glowColor.copy(alpha = 0.45f * 0.55f),
+                            glowColor.copy(alpha = 0.45f * 0.22f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 1f
+                    ),
+                    radius = size.minDimension * 1f
+                )
+            }
             .shadow(
-                elevation = 8.dp,
+                elevation = 6.dp,
                 shape = CircleShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = glowColor,
+                spotColor = glowColor
             )
             .clip(CircleShape)
             .background(capDomeGradient)
@@ -753,7 +812,21 @@ internal fun StaticOrbJoystick(
     Box(
         modifier = modifier
             .size(150.dp)
-            .shadow(12.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.40f), spotColor = Color.Black.copy(alpha = 0.55f))
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            glowColor.copy(alpha = 0.40f * 0.45f),
+                            glowColor.copy(alpha = 0.40f * 0.18f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 0.95f
+                    ),
+                    radius = size.minDimension * 0.95f
+                )
+            }
+            .shadow(12.dp, CircleShape, ambientColor = glowColor.copy(alpha = 0.5f), spotColor = glowColor)
             .background(socketGradient, shape = CircleShape)
             .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape),
         contentAlignment = Alignment.Center
@@ -939,11 +1012,25 @@ internal fun StaticOrbStickButton(
     Box(
         modifier = modifier
             .size(70.dp)
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            glowColor.copy(alpha = 0.45f * 0.55f),
+                            glowColor.copy(alpha = 0.45f * 0.22f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 1f
+                    ),
+                    radius = size.minDimension * 1f
+                )
+            }
             .shadow(
-                elevation = 8.dp,
+                elevation = 6.dp,
                 shape = CircleShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = glowColor,
+                spotColor = glowColor
             )
             .clip(CircleShape)
             .background(orbCavityGradient)
@@ -1066,7 +1153,21 @@ internal fun StaticCompassJoystick(
     Box(
         modifier = modifier
             .size(150.dp)
-            .shadow(12.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.40f), spotColor = Color.Black.copy(alpha = 0.55f))
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            glowColor.copy(alpha = 0.40f * 0.45f),
+                            glowColor.copy(alpha = 0.40f * 0.18f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 0.95f
+                    ),
+                    radius = size.minDimension * 0.95f
+                )
+            }
+            .shadow(12.dp, CircleShape, ambientColor = glowColor.copy(alpha = 0.5f), spotColor = glowColor)
             .background(socketGradient, shape = CircleShape)
             .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape),
         contentAlignment = Alignment.Center
@@ -1266,7 +1367,21 @@ internal fun StaticCompassStickButton(
     Box(
         modifier = modifier
             .size(70.dp)
-            .shadow(8.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.40f), spotColor = Color.Black.copy(alpha = 0.55f))
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            glowColor.copy(alpha = 0.45f * 0.55f),
+                            glowColor.copy(alpha = 0.45f * 0.22f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 1f
+                    ),
+                    radius = size.minDimension * 1f
+                )
+            }
+            .shadow(6.dp, CircleShape, ambientColor = glowColor, spotColor = glowColor)
             .clip(CircleShape)
             .background(capDomeGradient)
             .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape),
@@ -1371,7 +1486,21 @@ internal fun StaticGyroJoystick(
     Box(
         modifier = modifier
             .size(150.dp)
-            .shadow(12.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.40f), spotColor = Color.Black.copy(alpha = 0.55f))
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            glowColor.copy(alpha = 0.40f * 0.45f),
+                            glowColor.copy(alpha = 0.40f * 0.18f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 0.95f
+                    ),
+                    radius = size.minDimension * 0.95f
+                )
+            }
+            .shadow(12.dp, CircleShape, ambientColor = glowColor.copy(alpha = 0.5f), spotColor = glowColor)
             .background(socketGradient, shape = CircleShape)
             .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape),
         contentAlignment = Alignment.Center
@@ -1530,7 +1659,21 @@ internal fun StaticGyroStickButton(
     Box(
         modifier = modifier
             .size(70.dp)
-            .shadow(8.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.40f), spotColor = Color.Black.copy(alpha = 0.55f))
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            glowColor.copy(alpha = 0.45f * 0.55f),
+                            glowColor.copy(alpha = 0.45f * 0.22f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 1f
+                    ),
+                    radius = size.minDimension * 1f
+                )
+            }
+            .shadow(6.dp, CircleShape, ambientColor = glowColor, spotColor = glowColor)
             .clip(CircleShape)
             .background(puckDomeGradient)
             .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape),
@@ -1630,7 +1773,21 @@ internal fun StaticSpotlightJoystick(
     Box(
         modifier = modifier
             .size(150.dp)
-            .shadow(12.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.40f), spotColor = Color.Black.copy(alpha = 0.55f))
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            glowColor.copy(alpha = 0.40f * 0.45f),
+                            glowColor.copy(alpha = 0.40f * 0.18f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 0.95f
+                    ),
+                    radius = size.minDimension * 0.95f
+                )
+            }
+            .shadow(12.dp, CircleShape, ambientColor = glowColor.copy(alpha = 0.5f), spotColor = glowColor)
             .background(socketGradient, shape = CircleShape)
             .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape),
         contentAlignment = Alignment.Center
@@ -1816,7 +1973,21 @@ internal fun StaticSpotlightStickButton(
     Box(
         modifier = modifier
             .size(70.dp)
-            .shadow(8.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.40f), spotColor = Color.Black.copy(alpha = 0.55f))
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            glowColor.copy(alpha = 0.45f * 0.55f),
+                            glowColor.copy(alpha = 0.45f * 0.22f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 1f
+                    ),
+                    radius = size.minDimension * 1f
+                )
+            }
+            .shadow(6.dp, CircleShape, ambientColor = glowColor, spotColor = glowColor)
             .clip(CircleShape)
             .background(puckDomeGradient)
             .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape),
@@ -1945,12 +2116,27 @@ private fun StaticRealisticStickButton(
         radius = 90f
     )
 
-    val shadow = Modifier.shadow(
-        elevation = 10.dp,
-        shape = CircleShape,
-        ambientColor = Color.Black.copy(alpha = 0.40f),
-        spotColor = Color.Black.copy(alpha = 0.55f)
-    )
+    val shadow = Modifier
+        .drawBehind {
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        accentColor.copy(alpha = 0.45f * 0.55f),
+                        accentColor.copy(alpha = 0.45f * 0.22f),
+                        Color.Transparent
+                    ),
+                    center = center,
+                    radius = size.minDimension * 0.95f
+                ),
+                radius = size.minDimension * 0.95f
+            )
+        }
+        .shadow(
+            elevation = 4.dp,
+            shape = CircleShape,
+            ambientColor = accentColor,
+            spotColor = accentColor
+        )
 
     Box(
         modifier = modifier
@@ -2026,7 +2212,24 @@ private fun StaticRealisticTouchPad(
     Box(
         modifier = modifier
             .size(180.dp)
-            .shadow(12.dp, shape, ambientColor = Color.Black, spotColor = Color.Black)
+            .drawBehind {
+                val pad = 12.dp.toPx()
+                drawRoundRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            accentColor.copy(alpha = 0.40f * 0.45f),
+                            accentColor.copy(alpha = 0.40f * 0.18f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.width * 0.70f
+                    ),
+                    topLeft = Offset(-pad, -pad),
+                    size = Size(size.width + pad * 2, size.height + pad * 2),
+                    cornerRadius = CornerRadius(26.dp.toPx() + pad, 26.dp.toPx() + pad)
+                )
+            }
+            .shadow(6.dp, shape, ambientColor = accentColor, spotColor = accentColor)
             .clip(shape)
             .background(surfaceGradient)
             .border(BorderStroke(2.dp, Color(0xFF353C4A)), shape)
@@ -2085,7 +2288,23 @@ private fun StaticRealisticDPad(
         start = Offset(0f, 0f),
         end = Offset(200f, 200f)
     )
-    val shadow = Modifier.shadow(12.dp, crossShape, ambientColor = Color.Black.copy(alpha = 0.40f), spotColor = Color.Black.copy(alpha = 0.55f))
+    val neonColor = Color(0xFF00F0FF)
+    val shadow = Modifier
+        .drawBehind {
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        neonColor.copy(alpha = 0.45f * 0.50f),
+                        neonColor.copy(alpha = 0.45f * 0.20f),
+                        Color.Transparent
+                    ),
+                    center = center,
+                    radius = size.minDimension * 0.95f
+                ),
+                radius = size.minDimension * 0.95f
+            )
+        }
+        .shadow(8.dp, crossShape, ambientColor = neonColor, spotColor = neonColor)
 
     Box(
         modifier = modifier
@@ -2198,7 +2417,24 @@ private fun StaticRealisticDPadButton(
     Box(
         modifier = modifier
             .size(72.dp)
-            .shadow(6.dp, shape, ambientColor = Color.Black.copy(alpha = 0.40f), spotColor = Color.Black.copy(alpha = 0.55f))
+            .drawBehind {
+                val pad = 10.dp.toPx()
+                drawRoundRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            themeColor.copy(alpha = 0.45f * 0.50f),
+                            themeColor.copy(alpha = 0.45f * 0.20f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 0.95f
+                    ),
+                    topLeft = Offset(-pad, -pad),
+                    size = Size(size.width + pad * 2, size.height + pad * 2),
+                    cornerRadius = CornerRadius(16.dp.toPx() + pad, 16.dp.toPx() + pad)
+                )
+            }
+            .shadow(4.dp, shape, ambientColor = themeColor, spotColor = themeColor)
             .clip(shape)
             .background(
                 Brush.linearGradient(
@@ -2279,7 +2515,23 @@ internal fun StaticLensDPad(
     Box(
         modifier = modifier
             .size(160.dp)
-            .shadow(12.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.40f), spotColor = Color.Black.copy(alpha = 0.55f))
+            .drawBehind {
+                if (isRgbEnabled) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                glowColor.copy(alpha = 0.40f * 0.45f),
+                                glowColor.copy(alpha = 0.40f * 0.18f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 0.95f
+                        ),
+                        radius = size.minDimension * 0.95f
+                    )
+                }
+            }
+            .shadow(12.dp, CircleShape, ambientColor = if (isRgbEnabled) glowColor else Color.Black, spotColor = if (isRgbEnabled) glowColor else Color.Black)
             .clip(CircleShape)
             .background(socketGradient)
             .border(1.dp, Color.Black.copy(alpha = 0.50f), CircleShape),
@@ -2540,7 +2792,21 @@ private fun StaticFourLensesKey(
     Box(
         modifier = modifier
             .size(54.dp)
-            .shadow(4.dp, CircleShape, spotColor = Color.Black, ambientColor = Color.Black)
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            glowColor.copy(alpha = 0.45f * 0.50f),
+                            glowColor.copy(alpha = 0.45f * 0.20f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 0.85f
+                    ),
+                    radius = size.minDimension * 0.85f
+                )
+            }
+            .shadow(4.dp, CircleShape, spotColor = glowColor, ambientColor = glowColor)
             .clip(CircleShape)
             .background(baseDomeGradient)
             .border(1.dp, Color.Black.copy(alpha = 0.50f), CircleShape),
@@ -2700,7 +2966,21 @@ internal fun StaticDiscDPad(
     Box(
         modifier = modifier
             .size(160.dp)
-            .shadow(6.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.40f), spotColor = Color.Black.copy(alpha = 0.55f))
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            glowColor.copy(alpha = 0.45f * 0.50f),
+                            glowColor.copy(alpha = 0.45f * 0.20f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 0.95f
+                    ),
+                    radius = size.minDimension * 0.95f
+                )
+            }
+            .shadow(6.dp, CircleShape, ambientColor = glowColor, spotColor = glowColor)
             .clip(CircleShape)
             .background(domeGradient)
             .border(1.dp, Color.Black.copy(alpha = 0.50f), CircleShape),
@@ -3020,11 +3300,28 @@ private fun StaticCapsuleKey(
     Box(
         modifier = modifier
             .size(capsuleWidth, capsuleHeight)
+            .drawBehind {
+                val pad = 8.dp.toPx()
+                drawRoundRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            glowColor.copy(alpha = 0.45f * 0.48f),
+                            glowColor.copy(alpha = 0.45f * 0.18f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 0.95f
+                    ),
+                    topLeft = Offset(-pad, -pad),
+                    size = Size(size.width + pad * 2, size.height + pad * 2),
+                    cornerRadius = CornerRadius(23.dp.toPx() + pad, 23.dp.toPx() + pad)
+                )
+            }
             .shadow(
                 elevation = 6.dp,
                 shape = capsuleShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = glowColor,
+                spotColor = glowColor
             )
             .clip(capsuleShape)
             .background(baseDomeGradient)
@@ -3173,7 +3470,22 @@ internal fun StaticMetaballsDPad(
     }
 
     Box(
-        modifier = modifier.size(172.dp),
+        modifier = modifier
+            .size(172.dp)
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            glowColor.copy(alpha = 0.45f * 0.50f),
+                            glowColor.copy(alpha = 0.45f * 0.20f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 0.95f
+                    ),
+                    radius = size.minDimension * 0.95f
+                )
+            },
         contentAlignment = Alignment.Center
     ) {
         // Base Convex Acrylic Dome Body
@@ -3183,8 +3495,8 @@ internal fun StaticMetaballsDPad(
                 .shadow(
                     elevation = 6.dp,
                     shape = CircleShape,
-                    ambientColor = Color.Black.copy(alpha = 0.40f),
-                    spotColor = Color.Black.copy(alpha = 0.55f)
+                    ambientColor = glowColor,
+                    spotColor = glowColor
                 )
                 .clip(CircleShape)
                 .background(domeGradient)
@@ -3495,7 +3807,22 @@ internal fun StaticRailsDPad(
     }
 
     Box(
-        modifier = modifier.size(160.dp),
+        modifier = modifier
+            .size(160.dp)
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            glowColor.copy(alpha = 0.45f * 0.50f),
+                            glowColor.copy(alpha = 0.45f * 0.20f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 0.95f
+                    ),
+                    radius = size.minDimension * 0.95f
+                )
+            },
         contentAlignment = Alignment.Center
     ) {
         // Base Convex Acrylic Dome Body
@@ -3505,8 +3832,8 @@ internal fun StaticRailsDPad(
                 .shadow(
                     elevation = 6.dp,
                     shape = CircleShape,
-                    ambientColor = Color.Black.copy(alpha = 0.40f),
-                    spotColor = Color.Black.copy(alpha = 0.55f)
+                    ambientColor = glowColor,
+                    spotColor = glowColor
                 )
                 .clip(CircleShape)
                 .background(domeGradient)
@@ -3774,11 +4101,28 @@ private fun StaticRealisticTrigger(
     Box(
         modifier = modifier
             .size(100.dp, 92.dp)
+            .drawBehind {
+                val pad = 10.dp.toPx()
+                drawRoundRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            neonColor.copy(alpha = 0.45f * 0.50f),
+                            neonColor.copy(alpha = 0.45f * 0.20f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 0.95f
+                    ),
+                    topLeft = Offset(-pad, -pad),
+                    size = Size(size.width + pad * 2, size.height + pad * 2),
+                    cornerRadius = CornerRadius(26.dp.toPx(), 26.dp.toPx())
+                )
+            }
             .shadow(
-                elevation = 7.dp,
+                elevation = 4.dp,
                 shape = triggerShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = neonColor,
+                spotColor = neonColor
             )
             .clip(triggerShape)
             .background(baseDomeGradient)
@@ -3949,11 +4293,28 @@ private fun StaticRealisticBumper(
     Box(
         modifier = modifier
             .size(154.dp, 48.dp)
+            .drawBehind {
+                val pad = 12.dp.toPx()
+                drawRoundRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            neonColor.copy(alpha = 0.45f * 0.48f),
+                            neonColor.copy(alpha = 0.45f * 0.18f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.width * 0.65f
+                    ),
+                    topLeft = Offset(-pad, -pad),
+                    size = Size(size.width + pad * 2, size.height + pad * 2),
+                    cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
+                )
+            }
             .shadow(
                 elevation = 4.dp,
                 shape = bumperShape,
-                spotColor = Color.Black.copy(alpha = 0.55f),
-                ambientColor = Color.Black.copy(alpha = 0.40f)
+                ambientColor = neonColor,
+                spotColor = neonColor
             )
             .border(
                 width = 1.dp,
@@ -4144,7 +4505,21 @@ private fun StaticRealisticSystemButton(
     Box(
         modifier = modifier
             .size(60.dp)
-            .shadow(6.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.40f), spotColor = Color.Black.copy(alpha = 0.55f))
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            textColor.copy(alpha = 0.40f * 0.55f),
+                            textColor.copy(alpha = 0.40f * 0.22f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 0.95f
+                    ),
+                    radius = size.minDimension * 0.95f
+                )
+            }
+            .shadow(4.dp, CircleShape, ambientColor = textColor, spotColor = textColor)
             .clip(CircleShape)
             .background(Color(0xFF2B2B2B)),
         contentAlignment = Alignment.Center
@@ -4169,11 +4544,29 @@ private fun StaticRealisticMacroButton(
     val gradient = Brush.linearGradient(
         colors = listOf(Color(0xFF333333), Color(0xFF111111))
     )
+    val macroColor = Color(0xFFFFD600)
 
     Box(
         modifier = modifier
             .size(80.dp, 40.dp)
-            .shadow(6.dp, RoundedCornerShape(16.dp), ambientColor = Color.Black.copy(alpha = 0.40f), spotColor = Color.Black.copy(alpha = 0.55f))
+            .drawBehind {
+                val pad = 12.dp.toPx()
+                drawRoundRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            macroColor.copy(alpha = 0.40f * 0.50f),
+                            macroColor.copy(alpha = 0.40f * 0.20f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.width * 0.70f
+                    ),
+                    topLeft = Offset(-pad, -pad),
+                    size = Size(size.width + pad * 2, size.height + pad * 2),
+                    cornerRadius = CornerRadius(16.dp.toPx() + pad, 16.dp.toPx() + pad)
+                )
+            }
+            .shadow(4.dp, RoundedCornerShape(16.dp), ambientColor = macroColor, spotColor = macroColor)
             .clip(RoundedCornerShape(16.dp))
             .background(gradient),
         contentAlignment = Alignment.Center
@@ -4195,11 +4588,34 @@ internal fun StaticArcBumper(
     key: String = "LB",
     modifier: Modifier = Modifier
 ) {
-    val neonColor = Color(0xFFA97CF0)
+    val isLeft = remember(key) {
+        val upper = key.uppercase()
+        upper == com.sanket.tools.nexpad.model.NexpadKeys.LB || upper == "L1" || upper == "LEFT"
+    }
+    val neonColor = if (isLeft) Color(0xFFA97CF0) else Color(0xFF00E5FF)
+    val bumperShape = RoundedCornerShape(24.dp)
 
     Box(
         modifier = modifier
-            .size(154.dp, 56.dp),
+            .size(154.dp, 56.dp)
+            .drawBehind {
+                val pad = 12.dp.toPx()
+                drawRoundRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            neonColor.copy(alpha = 0.45f * 0.48f),
+                            neonColor.copy(alpha = 0.45f * 0.18f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.width * 0.65f
+                    ),
+                    topLeft = Offset(-pad, -pad),
+                    size = Size(size.width + pad * 2, size.height + pad * 2),
+                    cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
+                )
+            }
+            .shadow(4.dp, bumperShape, ambientColor = neonColor, spotColor = neonColor),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
@@ -4285,7 +4701,7 @@ internal fun StaticLedBumper(
         val upper = key.uppercase()
         upper == com.sanket.tools.nexpad.model.NexpadKeys.LB || upper == "L1" || upper == "LEFT"
     }
-    val neonColor = Color(0xFFA97CF0)
+    val neonColor = if (isLeft) Color(0xFFA97CF0) else Color(0xFF00E5FF)
 
     val bumperShape = remember(isLeft) {
         if (isLeft) {
@@ -4325,11 +4741,28 @@ internal fun StaticLedBumper(
     Box(
         modifier = modifier
             .size(154.dp, 54.dp)
+            .drawBehind {
+                val pad = 12.dp.toPx()
+                drawRoundRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            neonColor.copy(alpha = 0.45f * 0.48f),
+                            neonColor.copy(alpha = 0.45f * 0.18f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.width * 0.65f
+                    ),
+                    topLeft = Offset(-pad, -pad),
+                    size = Size(size.width + pad * 2, size.height + pad * 2),
+                    cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
+                )
+            }
             .shadow(
-                elevation = 7.dp,
+                elevation = 4.dp,
                 shape = bumperShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = neonColor,
+                spotColor = neonColor
             )
             .clip(bumperShape)
             .background(baseDomeGradient)
@@ -4536,7 +4969,11 @@ internal fun StaticPeekBumper(
     key: String = "LB",
     modifier: Modifier = Modifier
 ) {
-    val neonColor = Color(0xFFA97CF0)
+    val isLeft = remember(key) {
+        val upper = key.uppercase()
+        upper == com.sanket.tools.nexpad.model.NexpadKeys.LB || upper == "L1" || upper == "LEFT"
+    }
+    val neonColor = if (isLeft) Color(0xFFA97CF0) else Color(0xFF00E5FF)
     val bumperShape = remember { androidx.compose.foundation.shape.RoundedCornerShape(27.dp) }
 
     val baseDomeGradient = remember {
@@ -4565,11 +5002,28 @@ internal fun StaticPeekBumper(
     Box(
         modifier = modifier
             .size(154.dp, 54.dp)
+            .drawBehind {
+                val pad = 12.dp.toPx()
+                drawRoundRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            neonColor.copy(alpha = 0.45f * 0.48f),
+                            neonColor.copy(alpha = 0.45f * 0.18f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.width * 0.65f
+                    ),
+                    topLeft = Offset(-pad, -pad),
+                    size = Size(size.width + pad * 2, size.height + pad * 2),
+                    cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
+                )
+            }
             .shadow(
-                elevation = 7.dp,
+                elevation = 4.dp,
                 shape = bumperShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = neonColor,
+                spotColor = neonColor
             )
             .clip(bumperShape)
             .background(baseDomeGradient)
@@ -4768,11 +5222,28 @@ internal fun StaticRibbedBumper(
     Box(
         modifier = modifier
             .size(154.dp, 54.dp)
+            .drawBehind {
+                val pad = 12.dp.toPx()
+                drawRoundRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            neonColor.copy(alpha = 0.45f * 0.48f),
+                            neonColor.copy(alpha = 0.45f * 0.18f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.width * 0.65f
+                    ),
+                    topLeft = Offset(-pad, -pad),
+                    size = Size(size.width + pad * 2, size.height + pad * 2),
+                    cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
+                )
+            }
             .shadow(
-                elevation = 7.dp,
+                elevation = 4.dp,
                 shape = bumperShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = neonColor,
+                spotColor = neonColor
             )
             .clip(bumperShape)
             .background(baseDomeGradient)
@@ -4999,11 +5470,28 @@ internal fun StaticUnderglowBumper(
     Box(
         modifier = modifier
             .size(154.dp, 54.dp)
+            .drawBehind {
+                val pad = 12.dp.toPx()
+                drawRoundRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            neonColor.copy(alpha = 0.45f * 0.48f),
+                            neonColor.copy(alpha = 0.45f * 0.18f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.width * 0.65f
+                    ),
+                    topLeft = Offset(-pad, -pad),
+                    size = Size(size.width + pad * 2, size.height + pad * 2),
+                    cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
+                )
+            }
             .shadow(
-                elevation = 7.dp,
+                elevation = 4.dp,
                 shape = bumperShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = neonColor,
+                spotColor = neonColor
             )
             .clip(bumperShape)
             .background(baseDomeGradient)
@@ -5159,11 +5647,28 @@ internal fun StaticTubeBumper(
     Box(
         modifier = modifier
             .size(154.dp, 54.dp)
+            .drawBehind {
+                val pad = 12.dp.toPx()
+                drawRoundRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            neonColor.copy(alpha = 0.45f * 0.48f),
+                            neonColor.copy(alpha = 0.45f * 0.18f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.width * 0.65f
+                    ),
+                    topLeft = Offset(-pad, -pad),
+                    size = Size(size.width + pad * 2, size.height + pad * 2),
+                    cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
+                )
+            }
             .shadow(
-                elevation = 7.dp,
+                elevation = 4.dp,
                 shape = bumperShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = neonColor,
+                spotColor = neonColor
             )
             .clip(bumperShape)
             .background(baseDomeGradient)
@@ -5377,11 +5882,28 @@ internal fun StaticFlipBumper(
     Box(
         modifier = modifier
             .size(154.dp, 54.dp)
+            .drawBehind {
+                val pad = 12.dp.toPx()
+                drawRoundRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            neonColor.copy(alpha = 0.45f * 0.48f),
+                            neonColor.copy(alpha = 0.45f * 0.18f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.width * 0.65f
+                    ),
+                    topLeft = Offset(-pad, -pad),
+                    size = Size(size.width + pad * 2, size.height + pad * 2),
+                    cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
+                )
+            }
             .shadow(
-                elevation = 7.dp,
+                elevation = 4.dp,
                 shape = bumperShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = neonColor,
+                spotColor = neonColor
             )
             .clip(bumperShape)
             .background(baseDomeGradient)
@@ -5542,11 +6064,25 @@ internal fun StaticDialTrigger(
     Box(
         modifier = modifier
             .size(92.dp, 92.dp)
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            neonColor.copy(alpha = 0.45f * 0.50f),
+                            neonColor.copy(alpha = 0.45f * 0.20f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 0.95f
+                    ),
+                    radius = size.minDimension * 0.95f
+                )
+            }
             .shadow(
-                elevation = 6.dp,
+                elevation = 4.dp,
                 shape = triggerShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = neonColor,
+                spotColor = neonColor
             )
             .clip(triggerShape)
             .background(baseDomeGradient)
@@ -5760,11 +6296,25 @@ internal fun StaticLiquidOrbTrigger(
     Box(
         modifier = modifier
             .size(92.dp, 92.dp)
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            neonColor.copy(alpha = 0.45f * 0.50f),
+                            neonColor.copy(alpha = 0.45f * 0.20f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 0.95f
+                    ),
+                    radius = size.minDimension * 0.95f
+                )
+            }
             .shadow(
-                elevation = 6.dp,
+                elevation = 4.dp,
                 shape = triggerShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = neonColor,
+                spotColor = neonColor
             )
             .clip(triggerShape)
             .background(baseDomeGradient)
@@ -6039,11 +6589,28 @@ internal fun StaticVuSlabsTrigger(
     Box(
         modifier = modifier
             .size(100.dp, 92.dp)
+            .drawBehind {
+                val pad = 10.dp.toPx()
+                drawRoundRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            neonColor.copy(alpha = 0.45f * 0.50f),
+                            neonColor.copy(alpha = 0.45f * 0.20f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 0.95f
+                    ),
+                    topLeft = Offset(-pad, -pad),
+                    size = Size(size.width + pad * 2, size.height + pad * 2),
+                    cornerRadius = CornerRadius(26.dp.toPx(), 26.dp.toPx())
+                )
+            }
             .shadow(
-                elevation = 6.dp,
+                elevation = 4.dp,
                 shape = triggerShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = neonColor,
+                spotColor = neonColor
             )
             .clip(triggerShape)
             .background(baseDomeGradient)
@@ -6278,11 +6845,25 @@ internal fun StaticTargetTrigger(
     Box(
         modifier = modifier
             .size(92.dp, 92.dp)
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            neonColor.copy(alpha = 0.45f * 0.50f),
+                            neonColor.copy(alpha = 0.45f * 0.20f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 0.95f
+                    ),
+                    radius = size.minDimension * 0.95f
+                )
+            }
             .shadow(
-                elevation = 6.dp,
+                elevation = 4.dp,
                 shape = triggerShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = neonColor,
+                spotColor = neonColor
             )
             .clip(triggerShape)
             .background(baseDomeGradient)
@@ -6493,7 +7074,24 @@ internal fun StaticSliderTrigger(
     Box(
         modifier = modifier
             .size(widthDp, totalHeightDp)
-            .shadow(5.dp, chassisShape, ambientColor = Color.Black.copy(alpha = 0.40f), spotColor = Color.Black.copy(alpha = 0.55f))
+            .drawBehind {
+                val pad = 10.dp.toPx()
+                drawRoundRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            glowColor.copy(alpha = 0.45f * 0.48f),
+                            glowColor.copy(alpha = 0.45f * 0.18f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 0.95f
+                    ),
+                    topLeft = Offset(-pad, -pad),
+                    size = Size(size.width + pad * 2, size.height + pad * 2),
+                    cornerRadius = CornerRadius(21.dp.toPx() + pad, 21.dp.toPx() + pad)
+                )
+            }
+            .shadow(5.dp, chassisShape, ambientColor = glowColor, spotColor = glowColor)
             .clip(chassisShape)
             .background(baseDomeGradient)
             .border(
@@ -6736,7 +7334,24 @@ internal fun StaticNeedleTrigger(
     Box(
         modifier = modifier
             .size(widthDp, heightDp)
-            .shadow(5.dp, chassisShape, ambientColor = Color.Black.copy(alpha = 0.40f), spotColor = Color.Black.copy(alpha = 0.55f))
+            .drawBehind {
+                val pad = 10.dp.toPx()
+                drawRoundRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            glowColor.copy(alpha = 0.45f * 0.48f),
+                            glowColor.copy(alpha = 0.45f * 0.18f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 0.95f
+                    ),
+                    topLeft = Offset(-pad, -pad),
+                    size = Size(size.width + pad * 2, size.height + pad * 2),
+                    cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
+                )
+            }
+            .shadow(5.dp, chassisShape, ambientColor = glowColor, spotColor = glowColor)
             .clip(chassisShape)
             .background(baseDomeGradient)
             .border(
@@ -6949,7 +7564,24 @@ internal fun StaticTestTubeTrigger(
     Box(
         modifier = modifier
             .size(widthDp, heightDp)
-            .shadow(5.dp, chassisShape, ambientColor = Color.Black.copy(alpha = 0.40f), spotColor = Color.Black.copy(alpha = 0.55f))
+            .drawBehind {
+                val pad = 10.dp.toPx()
+                drawRoundRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            glowColor.copy(alpha = 0.45f * 0.48f),
+                            glowColor.copy(alpha = 0.45f * 0.18f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 0.95f
+                    ),
+                    topLeft = Offset(-pad, -pad),
+                    size = Size(size.width + pad * 2, size.height + pad * 2),
+                    cornerRadius = CornerRadius(24.dp.toPx() + pad, 24.dp.toPx() + pad)
+                )
+            }
+            .shadow(5.dp, chassisShape, ambientColor = glowColor, spotColor = glowColor)
             .clip(chassisShape)
             .background(baseDomeGradient)
             .border(
@@ -7132,7 +7764,21 @@ internal fun StaticBloomTrigger(
     Box(
         modifier = modifier
             .size(buttonSize)
-            .shadow(5.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.40f), spotColor = Color.Black.copy(alpha = 0.55f))
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            glowColor.copy(alpha = 0.45f * 0.50f),
+                            glowColor.copy(alpha = 0.45f * 0.20f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 0.95f
+                    ),
+                    radius = size.minDimension * 0.95f
+                )
+            }
+            .shadow(5.dp, CircleShape, ambientColor = glowColor, spotColor = glowColor)
             .clip(CircleShape)
             .background(baseDomeGradient)
             .border(

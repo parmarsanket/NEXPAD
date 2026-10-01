@@ -2,6 +2,7 @@ package com.sanket.tools.nexpad.ui.components.controller
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -17,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -132,6 +134,11 @@ fun FourLensesKey(
         animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
         label = "four_lenses_key_ring_$direction"
     )
+    val keyBloomAlpha by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "four_lenses_key_rgb_bloom_$direction"
+    )
 
     val baseDomeGradient = remember {
         Brush.radialGradient(
@@ -171,6 +178,22 @@ fun FourLensesKey(
     Box(
         modifier = modifier
             .size(54.dp)
+            .drawBehind {
+                if (isRgbEnabled) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                glowColor.copy(alpha = keyBloomAlpha * 0.50f),
+                                glowColor.copy(alpha = keyBloomAlpha * 0.20f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 0.85f
+                        ),
+                        radius = size.minDimension * 0.85f
+                    )
+                }
+            }
             .graphicsLayer {
                 scaleX = scaleAnim
                 scaleY = scaleAnim
@@ -179,8 +202,8 @@ fun FourLensesKey(
             .shadow(
                 elevation = if (isPressed) 1.dp else 4.dp,
                 shape = CircleShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = if (isRgbEnabled) glowColor else Color.Black,
+                spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
             .clip(CircleShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
@@ -400,6 +423,13 @@ fun FourLensesDPad(
         if (isRgbEnabled) Color(0xFF00E5FF) else Color(0xFFD8DEE9)
     }
 
+    val hasActivePress = pressedDirs.isNotEmpty()
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (hasActivePress) 0.95f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "four_lenses_rgb_bloom"
+    )
+
     val hubGradient = remember {
         Brush.radialGradient(
             colors = listOf(
@@ -414,6 +444,28 @@ fun FourLensesDPad(
     Box(
         modifier = modifier
             .size(164.dp)
+            .drawBehind {
+                if (isRgbEnabled) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.50f),
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 0.95f
+                        ),
+                        radius = size.minDimension * 0.95f
+                    )
+                }
+            }
+            .shadow(
+                elevation = if (hasActivePress) 3.dp else 8.dp,
+                shape = CircleShape,
+                ambientColor = if (isRgbEnabled) glowColor else Color.Black,
+                spotColor = if (isRgbEnabled) glowColor else Color.Black
+            )
             .pointerInput(isConnected) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)

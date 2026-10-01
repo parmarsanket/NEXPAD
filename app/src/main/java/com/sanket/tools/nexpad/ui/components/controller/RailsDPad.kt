@@ -19,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -226,6 +227,12 @@ fun RailsDPad(
         if (isRgbEnabled) Color(0xFFFFB13F) else Color(0xFFFFB13F)
     }
 
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (isAnyPressed) 0.95f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "rails_rgb_bloom"
+    )
+
     val density = LocalDensity.current.density
 
     // Dome base gradient: radial-gradient(circle at 50% 55%, #232527 0%, #0c0d0e 75%, #000 100%)
@@ -281,6 +288,22 @@ fun RailsDPad(
     Box(
         modifier = modifier
             .size(160.dp)
+            .drawBehind {
+                if (isRgbEnabled) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.50f),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 0.95f
+                        ),
+                        radius = size.minDimension * 0.95f
+                    )
+                }
+            }
             .pointerInput(isConnected) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -330,10 +353,10 @@ fun RailsDPad(
                     cameraDistance = 12f * density
                 }
                 .shadow(
-                    elevation = if (isAnyPressed) 2.dp else 6.dp,
+                    elevation = if (isAnyPressed) 3.dp else 8.dp,
                     shape = CircleShape,
-                    spotColor = Color.Black.copy(alpha = 0.55f),
-                    ambientColor = Color.Black.copy(alpha = 0.40f)
+                    spotColor = if (isRgbEnabled) neonColor else Color.Black,
+                    ambientColor = if (isRgbEnabled) neonColor else Color.Black
                 )
                 .clip(CircleShape)
                 .background(if (isAnyPressed) pressedDomeGradient else domeGradient)

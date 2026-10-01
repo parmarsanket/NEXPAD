@@ -16,8 +16,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -60,7 +63,16 @@ fun RealisticMacroButton(
     val currentViewModel by rememberUpdatedState(viewModel)
 
     val shape = RoundedCornerShape(16.dp)
-    val accentColor = Color(0xFFF59E0B) // Amber gold for Elite rear paddles
+
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 0.40f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "macro_btn_rgb_bloom"
+    )
+
+    val auraColor = remember(key) {
+        if (key.contains("3") || key.contains("4")) Color(0xFF00E5FF) else Color(0xFFFFD600)
+    }
 
     val baseGradient = remember(isPressed) {
         Brush.verticalGradient(
@@ -80,11 +92,30 @@ fun RealisticMacroButton(
                 scaleY = scaleAnim
             }
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
+            .drawBehind {
+                if (isRgbEnabled) {
+                    val pad = 12.dp.toPx()
+                    drawRoundRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                auraColor.copy(alpha = rgbBloomAlpha * 0.50f),
+                                auraColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.width * 0.70f
+                        ),
+                        topLeft = Offset(-pad, -pad),
+                        size = Size(size.width + pad * 2, size.height + pad * 2),
+                        cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
+                    )
+                }
+            }
             .shadow(
-                elevation = if (isPressed) 2.dp else 4.dp,
+                elevation = if (isPressed) 1.dp else 4.dp,
                 shape = shape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = if (isRgbEnabled) auraColor else Color.Black,
+                spotColor = if (isRgbEnabled) auraColor else Color.Black
             )
             .clip(shape)
             .background(baseGradient)
@@ -92,7 +123,7 @@ fun RealisticMacroButton(
                 width = 1.2.dp,
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xFF718096).copy(alpha = if (isPressed) 0.35f else 0.70f),
+                        (if (isRgbEnabled) auraColor else Color(0xFF718096)).copy(alpha = if (isPressed) 0.40f else 0.70f),
                         Color(0xFF1A202C)
                     )
                 ),
@@ -129,15 +160,15 @@ fun RealisticMacroButton(
 
         Text(
             text = displayLabel ?: key,
-            color = if (isPressed) Color.White else if (isRgbEnabled) accentColor else Color.White.copy(alpha = 0.85f),
+            color = if (isPressed) Color.White else if (isRgbEnabled) auraColor else Color.White.copy(alpha = 0.85f),
             fontWeight = FontWeight.Black,
             fontSize = 13.sp,
             letterSpacing = 0.5.sp,
             style = androidx.compose.ui.text.TextStyle(
                 shadow = androidx.compose.ui.graphics.Shadow(
-                    color = if (isRgbEnabled) accentColor.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.8f),
+                    color = if (isRgbEnabled) auraColor.copy(alpha = rgbBloomAlpha * 0.85f) else Color.Black.copy(alpha = 0.8f),
                     offset = Offset(0f, 1.5f),
-                    blurRadius = 3f
+                    blurRadius = 4f
                 )
             )
         )

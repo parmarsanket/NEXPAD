@@ -109,6 +109,13 @@ fun RealisticDPad(
     )
 
     val neonColor = if (isRgbEnabled) Color(0xFF00E5FF) else Color(0xFF4ADE80)
+    val hasActivePress = pressedDirs.isNotEmpty()
+
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (hasActivePress) 0.95f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "realistic_dpad_rgb_bloom"
+    )
 
     val surfaceGradient = remember {
         Brush.radialGradient(
@@ -129,6 +136,23 @@ fun RealisticDPad(
             .drawBehind {
                 val center = Offset(size.width / 2f, size.height / 2f)
                 val socketRadius = size.minDimension / 2f + 4.dp.toPx()
+
+                // Ambient RGB outer bloom aura behind the recessed socket well
+                if (isRgbEnabled) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.50f),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 0.95f
+                        ),
+                        radius = size.minDimension * 0.95f,
+                        center = center
+                    )
+                }
 
                 // Recessed circular chassis socket
                 drawCircle(
@@ -158,10 +182,10 @@ fun RealisticDPad(
                 scaleY = scaleAnim
             }
             .shadow(
-                elevation = if (pressedDirs.isNotEmpty()) 4.dp else 10.dp,
+                elevation = if (hasActivePress) 3.dp else 8.dp,
                 shape = crossShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = if (isRgbEnabled) neonColor else Color.Black,
+                spotColor = if (isRgbEnabled) neonColor else Color.Black
             )
             .clip(crossShape)
             .background(surfaceGradient)
@@ -406,22 +430,47 @@ fun RealisticDPadButton(
     val themeColor = if (isRgbEnabled) Color(0xFF00F0FF) else Color(0xFF4ADE80)
     val shape = RoundedCornerShape(18.dp)
 
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "dpad_btn_rgb_bloom"
+    )
+
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
 
     Box(
         modifier = modifier
             .size(72.dp)
+            .drawBehind {
+                if (isRgbEnabled) {
+                    val pad = 8.dp.toPx()
+                    drawRoundRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                themeColor.copy(alpha = rgbBloomAlpha * 0.50f),
+                                themeColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.width * 0.85f
+                        ),
+                        topLeft = Offset(-pad, -pad),
+                        size = Size(size.width + pad * 2, size.height + pad * 2),
+                        cornerRadius = CornerRadius(22.dp.toPx(), 22.dp.toPx())
+                    )
+                }
+            }
             .graphicsLayer {
                 scaleX = scaleAnim
                 scaleY = scaleAnim
             }
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .shadow(
-                elevation = if (isPressed) 3.dp else 6.dp,
+                elevation = if (isPressed) 3.dp else 8.dp,
                 shape = shape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = if (isRgbEnabled) themeColor else Color.Black,
+                spotColor = if (isRgbEnabled) themeColor else Color.Black
             )
             .clip(shape)
             .background(

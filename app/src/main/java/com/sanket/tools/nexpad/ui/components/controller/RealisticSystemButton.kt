@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -28,7 +29,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.category.ControlKey
-import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.roundToInt
 
@@ -64,9 +64,19 @@ fun RealisticSystemButton(
     val ctrl = remember(key) { ControlKey.fromIdentifier(key) }
     val isGuide = ctrl == ControlKey.GUIDE
 
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 0.40f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "sys_btn_rgb_bloom"
+    )
+
+    val auraColor = remember(isGuide) {
+        if (isGuide) Color(0xFF00E5FF) else Color(0xFF94A3B8)
+    }
+
     val (symbol, symbolColor) = remember(ctrl, key) {
         when (ctrl) {
-            ControlKey.GUIDE -> Pair("⨂", NeonPalette.Cyan)
+            ControlKey.GUIDE -> Pair("⨂", Color(0xFF00E5FF))
             ControlKey.START -> Pair("☰", Color.White)
             ControlKey.BACK  -> Pair("⧉", Color.White)
             ControlKey.SHARE -> Pair("⇪", Color.White)
@@ -76,7 +86,6 @@ fun RealisticSystemButton(
 
     val buttonSize = 60.dp
     val fontSize = 20.sp
-    val glowColor = if (isGuide) NeonPalette.Cyan else Color(0xFF64748B)
 
     val surfaceGradient = remember(isPressed, isGuide) {
         Brush.radialGradient(
@@ -100,11 +109,28 @@ fun RealisticSystemButton(
                 scaleY = scaleAnim
             }
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
+            .drawBehind {
+                if (isRgbEnabled) {
+                    val radius = size.minDimension * 0.95f
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                auraColor.copy(alpha = rgbBloomAlpha * 0.55f),
+                                auraColor.copy(alpha = rgbBloomAlpha * 0.22f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = radius
+                        ),
+                        radius = radius
+                    )
+                }
+            }
             .shadow(
-                elevation = if (isPressed) 2.dp else if (isGuide) 8.dp else 4.dp,
+                elevation = if (isPressed) 1.dp else if (isGuide) 6.dp else 4.dp,
                 shape = CircleShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = if (isRgbEnabled) auraColor else Color.Black,
+                spotColor = if (isRgbEnabled) auraColor else Color.Black
             )
             .clip(CircleShape)
             .background(surfaceGradient)
@@ -112,7 +138,7 @@ fun RealisticSystemButton(
                 width = if (isGuide) 1.5.dp else 1.2.dp,
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xFF718096).copy(alpha = if (isPressed) 0.35f else 0.70f),
+                        (if (isRgbEnabled) auraColor else Color(0xFF718096)).copy(alpha = if (isPressed) 0.35f else 0.70f),
                         Color(0xFF1A202C)
                     )
                 ),
@@ -148,14 +174,14 @@ fun RealisticSystemButton(
 
         Text(
             text = symbol,
-            color = if (isPressed) Color.White else symbolColor,
+            color = if (isPressed) Color.White else if (isRgbEnabled && isGuide) auraColor else symbolColor,
             fontWeight = FontWeight.Black,
             fontSize = fontSize,
             style = androidx.compose.ui.text.TextStyle(
                 shadow = androidx.compose.ui.graphics.Shadow(
-                    color = if (isGuide) glowColor.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.8f),
+                    color = if (isRgbEnabled) auraColor.copy(alpha = rgbBloomAlpha * 0.85f) else Color.Black.copy(alpha = 0.8f),
                     offset = Offset(0f, 1.5f),
-                    blurRadius = if (isGuide) 6f else 2f
+                    blurRadius = if (isGuide) 8f else 3f
                 )
             )
         )

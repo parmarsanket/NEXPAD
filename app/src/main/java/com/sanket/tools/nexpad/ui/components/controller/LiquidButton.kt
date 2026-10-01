@@ -27,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -88,6 +89,11 @@ fun LiquidButton(
         animationSpec = tween(durationMillis = 150, delayMillis = 150),
         label = "liq_ink_alpha"
     )
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "liq_rgb_bloom"
+    )
 
     // Meniscus wave horizontal sway and vertical wobble (sway 0.7s alternate)
     val infiniteTransition = rememberInfiniteTransition(label = "liq_wave")
@@ -129,16 +135,32 @@ fun LiquidButton(
     Box(
         modifier = modifier
             .size(80.dp)
+            .drawBehind {
+                if (isRgbEnabled) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                buttonColor.copy(alpha = rgbBloomAlpha * 0.55f),
+                                buttonColor.copy(alpha = rgbBloomAlpha * 0.22f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 1f
+                        ),
+                        radius = size.minDimension * 1f
+                    )
+                }
+            }
             .graphicsLayer {
                 scaleX = scaleAnim
                 scaleY = scaleAnim
             }
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .shadow(
-                elevation = if (isPressed) 2.dp else 6.dp,
+                elevation = if (isPressed) 1.dp else 4.dp,
                 shape = CircleShape,
-                spotColor = Color.Black,
-                ambientColor = Color.Black
+                ambientColor = if (isRgbEnabled) buttonColor else Color.Black,
+                spotColor = if (isRgbEnabled) buttonColor else Color.Black
             )
             .clip(CircleShape)
             .background(baseDomeGradient)
@@ -336,11 +358,25 @@ internal fun StaticLiquidButton(
     Box(
         modifier = modifier
             .size(80.dp)
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            buttonColor.copy(alpha = 0.45f * 0.55f),
+                            buttonColor.copy(alpha = 0.45f * 0.22f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 1f
+                    ),
+                    radius = size.minDimension * 1f
+                )
+            }
             .shadow(
-                elevation = 6.dp,
+                elevation = 4.dp,
                 shape = CircleShape,
-                spotColor = Color.Black,
-                ambientColor = Color.Black
+                spotColor = buttonColor,
+                ambientColor = buttonColor
             )
             .clip(CircleShape)
             .background(

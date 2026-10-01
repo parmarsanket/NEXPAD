@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -125,11 +126,27 @@ fun OrbitButton(
                 scaleY = scaleAnim
             }
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
+            .drawBehind {
+                if (isRgbEnabled) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                buttonColor.copy(alpha = rgbBloomAlpha * 0.55f),
+                                buttonColor.copy(alpha = rgbBloomAlpha * 0.22f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 1f
+                        ),
+                        radius = size.minDimension * 1f
+                    )
+                }
+            }
             .shadow(
-                elevation = if (isPressed) 2.dp else 6.dp,
+                elevation = if (isPressed) 1.dp else 4.dp,
                 shape = CircleShape,
-                spotColor = Color.Black,
-                ambientColor = Color.Black
+                ambientColor = if (isRgbEnabled) buttonColor else Color.Black,
+                spotColor = if (isRgbEnabled) buttonColor else Color.Black
             )
             .clip(CircleShape)
             .background(baseDomeGradient)
@@ -306,11 +323,25 @@ internal fun StaticOrbitButton(
     Box(
         modifier = modifier
             .size(80.dp)
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            buttonColor.copy(alpha = 0.45f * 0.55f),
+                            buttonColor.copy(alpha = 0.45f * 0.22f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 1f
+                    ),
+                    radius = size.minDimension * 1f
+                )
+            }
             .shadow(
-                elevation = 6.dp,
+                elevation = 4.dp,
                 shape = CircleShape,
-                spotColor = Color.Black,
-                ambientColor = Color.Black
+                ambientColor = buttonColor,
+                spotColor = buttonColor
             )
             .clip(CircleShape)
             .background(

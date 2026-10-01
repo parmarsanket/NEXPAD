@@ -21,7 +21,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -68,6 +72,11 @@ fun CapsulesButton(
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "caps_flood"
     )
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "caps_rgb_bloom"
+    )
 
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
@@ -110,16 +119,35 @@ fun CapsulesButton(
             modifier = Modifier
                 .width(pillW)
                 .height(pillH)
+                .drawBehind {
+                    if (isRgbEnabled) {
+                        val pad = 10.dp.toPx()
+                        drawRoundRect(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    buttonColor.copy(alpha = rgbBloomAlpha * 0.50f),
+                                    buttonColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                    Color.Transparent
+                                ),
+                                center = center,
+                                radius = size.minDimension * 0.95f
+                            ),
+                            topLeft = Offset(-pad, -pad),
+                            size = Size(size.width + pad * 2, size.height + pad * 2),
+                            cornerRadius = CornerRadius(26.dp.toPx() + pad, 26.dp.toPx() + pad)
+                        )
+                    }
+                }
                 .graphicsLayer {
                     scaleX = scaleAnim
                     scaleY = scaleAnim
                 }
                 .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
                 .shadow(
-                    elevation = if (isPressed) 4.dp else 10.dp,
+                    elevation = if (isPressed) 1.dp else 4.dp,
                     shape = pillShape,
-                    spotColor = Color.Black,
-                    ambientColor = Color.Black
+                    spotColor = if (isRgbEnabled) buttonColor else Color.Black,
+                    ambientColor = if (isRgbEnabled) buttonColor else Color.Black
                 )
                 .clip(pillShape)
                 .background(domeBrush)
@@ -187,7 +215,24 @@ internal fun StaticCapsulesButton(
             modifier = Modifier
                 .width(pillW)
                 .height(pillH)
-                .shadow(elevation = 8.dp, shape = pillShape, spotColor = Color.Black, ambientColor = Color.Black)
+                .drawBehind {
+                    val pad = 10.dp.toPx()
+                    drawRoundRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                buttonColor.copy(alpha = 0.45f * 0.50f),
+                                buttonColor.copy(alpha = 0.45f * 0.20f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 0.95f
+                        ),
+                        topLeft = Offset(-pad, -pad),
+                        size = Size(size.width + pad * 2, size.height + pad * 2),
+                        cornerRadius = CornerRadius(26.dp.toPx() + pad, 26.dp.toPx() + pad)
+                    )
+                }
+                .shadow(elevation = 4.dp, shape = pillShape, spotColor = buttonColor, ambientColor = buttonColor)
                 .clip(pillShape)
                 .background(domeBrush)
                 .border(

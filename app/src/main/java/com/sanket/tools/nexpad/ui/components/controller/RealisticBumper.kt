@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -109,10 +110,18 @@ fun RealisticBumper(
         label = "bumper_ring_bloom"
     )
 
-    // CSS: --glow: #a97cf0
-    val neonColor = remember(isRgbEnabled) {
-        if (isRgbEnabled) Color(0xFFA97CF0) else Color(0xFFD8DEE9)
+    // CSS: --glow: #a97cf0 (LB Purple / RB Cyan)
+    val neonColor = remember(isRgbEnabled, isLeft) {
+        if (isRgbEnabled) {
+            if (isLeft) Color(0xFFA97CF0) else Color(0xFF00E5FF)
+        } else Color(0xFFD8DEE9)
     }
+
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (isPressed) 1.0f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "realistic_bumper_rgb_bloom"
+    )
 
     // Body surface dome gradient: radial-gradient(circle at 50% 55%, #232527 0%, #0c0d0e 75%, #000 100%)
     val baseDomeGradient = remember {
@@ -133,11 +142,30 @@ fun RealisticBumper(
     Box(
         modifier = modifier
             .size(154.dp, 48.dp)
+            .drawBehind {
+                if (isRgbEnabled) {
+                    val pad = 12.dp.toPx()
+                    drawRoundRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.48f),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.18f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.width * 0.65f
+                        ),
+                        topLeft = Offset(-pad, -pad),
+                        size = Size(size.width + pad * 2, size.height + pad * 2),
+                        cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
+                    )
+                }
+            }
             .shadow(
                 elevation = if (isPressed) 1.dp else 4.dp,
                 shape = bumperShape,
-                spotColor = Color.Black.copy(alpha = 0.55f),
-                ambientColor = Color.Black.copy(alpha = 0.40f)
+                ambientColor = if (isRgbEnabled) neonColor else Color.Black,
+                spotColor = if (isRgbEnabled) neonColor else Color.Black
             )
             .border(
                 width = 1.dp,

@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -84,8 +85,8 @@ fun LiquidOrbTrigger(
         label = "liquid_orb_offset"
     )
     val rgbBloomAlpha by animateFloatAsState(
-        targetValue = if (isPressed) 1.0f else 0.55f,
-        animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
+        targetValue = if (isPressed) 1.0f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "liquid_orb_rgb_bloom"
     )
     // Rising liquid fill level: starts at 14% ambient fluid, capped at 80% (0.80f) on full pull
@@ -170,12 +171,29 @@ fun LiquidOrbTrigger(
                 scaleY = scaleAnim
             }
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
-            // Drop shadow with physical black
+            // Outer dynamic RGB aura
+            .drawBehind {
+                if (isRgbEnabled) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.55f),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.22f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 0.70f
+                        ),
+                        radius = size.minDimension * 0.70f
+                    )
+                }
+            }
+            // RGB-coordinated shadow
             .shadow(
                 elevation = if (isPressed) 2.dp else 6.dp,
                 shape = triggerShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = if (isRgbEnabled) neonColor else Color.Black,
+                spotColor = if (isRgbEnabled) neonColor else Color.Black
             )
             .clip(triggerShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
@@ -231,7 +249,7 @@ fun LiquidOrbTrigger(
             val ringInset = 3.dp.toPx()
             val ringRadius = (w / 2f) - ringInset
             drawCircle(
-                color = neonColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
+                color = neonColor.copy(alpha = rgbBloomAlpha * 0.55f),
                 radius = ringRadius,
                 style = Stroke(width = 4.dp.toPx())
             )

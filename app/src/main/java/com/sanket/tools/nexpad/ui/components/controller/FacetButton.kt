@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -100,7 +101,24 @@ fun FacetButton(
     val gemShape = remember { RoundedCornerShape(14.dp) }
 
     Box(
-        modifier = modifier.size(80.dp),
+        modifier = modifier
+            .size(80.dp)
+            .drawBehind {
+                if (isRgbEnabled) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                buttonColor.copy(alpha = rgbBloomAlpha * 0.55f),
+                                buttonColor.copy(alpha = rgbBloomAlpha * 0.22f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 0.95f
+                        ),
+                        radius = size.minDimension * 0.95f
+                    )
+                }
+            },
         contentAlignment = Alignment.Center
     ) {
         // ── GEM DIAMOND (64dp square rotated 45°) ──
@@ -113,10 +131,10 @@ fun FacetButton(
                     scaleY = scaleAnim
                 }
                 .shadow(
-                    elevation = if (isPressed) 2.dp else 6.dp,
+                    elevation = if (isPressed) 1.dp else 4.dp,
                     shape = gemShape,
-                    spotColor = Color.Black,
-                    ambientColor = Color.Black
+                    spotColor = if (isRgbEnabled) buttonColor else Color.Black,
+                    ambientColor = if (isRgbEnabled) buttonColor else Color.Black
                 )
                 .clip(gemShape)
                 .background(
@@ -293,7 +311,22 @@ internal fun StaticFacetButton(
     val gemShape = remember { RoundedCornerShape(14.dp) }
 
     Box(
-        modifier = modifier.size(80.dp),
+        modifier = modifier
+            .size(80.dp)
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            buttonColor.copy(alpha = 0.45f * 0.55f),
+                            buttonColor.copy(alpha = 0.45f * 0.22f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 0.95f
+                    ),
+                    radius = size.minDimension * 0.95f
+                )
+            },
         contentAlignment = Alignment.Center
     ) {
         Box(
@@ -301,10 +334,10 @@ internal fun StaticFacetButton(
                 .size(64.dp)
                 .graphicsLayer { rotationZ = 45f }
                 .shadow(
-                    elevation = 6.dp,
+                    elevation = 4.dp,
                     shape = gemShape,
-                    spotColor = Color.Black,
-                    ambientColor = Color.Black
+                    spotColor = buttonColor,
+                    ambientColor = buttonColor
                 )
                 .clip(gemShape)
                 .background(

@@ -133,8 +133,23 @@ fun RippleButton(
         modifier = modifier
             .size(80.dp)
             .drawBehind {
+                if (isRgbEnabled) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                buttonColor.copy(alpha = rgbBloomAlpha * 0.55f),
+                                buttonColor.copy(alpha = rgbBloomAlpha * 0.22f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 1f
+                        ),
+                        radius = size.minDimension * 1f
+                    )
+                }
+
                 // ── THREE RIPPLE RINGS PULSING OUTWARD (UN-CANCELABLE) ──
-                val center = Offset(size.width / 2f, size.height / 2f)
+                val rippleCenter = Offset(size.width / 2f, size.height / 2f)
                 val baseR = size.minDimension / 2f
 
                 fun drawRipple(progress: Float) {
@@ -144,7 +159,7 @@ fun RippleButton(
                         drawCircle(
                             color = buttonColor.copy(alpha = currentAlpha),
                             radius = baseR * currentScale,
-                            center = center,
+                            center = rippleCenter,
                             style = Stroke(width = 2.dp.toPx())
                         )
                     }
@@ -160,10 +175,10 @@ fun RippleButton(
             }
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .shadow(
-                elevation = if (isPressed) 2.dp else 6.dp,
+                elevation = if (isPressed) 1.dp else 4.dp,
                 shape = CircleShape,
-                spotColor = Color.Black,
-                ambientColor = Color.Black
+                ambientColor = if (isRgbEnabled) buttonColor else Color.Black,
+                spotColor = if (isRgbEnabled) buttonColor else Color.Black
             )
             .clip(CircleShape)
             .background(baseDomeGradient)
@@ -304,11 +319,25 @@ internal fun StaticRippleButton(
     Box(
         modifier = modifier
             .size(80.dp)
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            buttonColor.copy(alpha = 0.45f * 0.55f),
+                            buttonColor.copy(alpha = 0.45f * 0.22f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = size.minDimension * 1f
+                    ),
+                    radius = size.minDimension * 1f
+                )
+            }
             .shadow(
-                elevation = 6.dp,
+                elevation = 4.dp,
                 shape = CircleShape,
-                spotColor = Color.Black,
-                ambientColor = Color.Black
+                ambientColor = buttonColor,
+                spotColor = buttonColor
             )
             .clip(CircleShape)
             .background(

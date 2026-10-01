@@ -20,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -145,11 +146,11 @@ val RightHorizonClipShape = GenericShape { size, _ ->
  */
 @Composable
 fun RealisticButton(
-    key: String, 
+    key: String,
     buttonColor: Color,
-    isConnected: Boolean, 
-    onVibrate: () -> Unit, 
-    viewModel: GamepadViewModel, 
+    isConnected: Boolean,
+    onVibrate: () -> Unit,
+    viewModel: GamepadViewModel,
     isRgbEnabled: Boolean,
     modifier: Modifier = Modifier,
     displayLabel: String? = null
@@ -223,17 +224,34 @@ fun RealisticButton(
     Box(
         modifier = modifier
             .size(80.dp)
+            // Ambient RGB Bloom behind button socket
+            .drawBehind {
+                if (isRgbEnabled) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                buttonColor.copy(alpha = rgbBloomAlpha * 0.55f),
+                                buttonColor.copy(alpha = rgbBloomAlpha * 0.22f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 1f
+                        ),
+                        radius = size.minDimension * 1f
+                    )
+                }
+            }
             .graphicsLayer {
                 scaleX = scaleAnim
                 scaleY = scaleAnim
             }
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
-            // Outer drop shadow: physical black
+            // Outer drop shadow: 0 4px 7px rgba(0, 0, 0, 0.55)
             .shadow(
                 elevation = if (isPressed) 1.dp else 4.dp,
                 shape = CircleShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = if (isRgbEnabled) buttonColor else Color.Black,
+                spotColor = if (isRgbEnabled) buttonColor else Color.Black
             )
             .clip(CircleShape)
             // .cap base dome: radial-gradient(circle at 50% 55%, #232527 0%, #0c0d0e 75%, #000 100%)
@@ -391,11 +409,11 @@ fun RealisticButton(
                 style = Stroke(width = 2.dp.toPx())
             )
 
-            // Layer #6: Socket Bevel Rim — 1px rgba(255, 255, 255, 0.12) outside neon ring
+            // Layer #6: Socket Bevel Rim — outside neon ring
             drawCircle(
-                color = buttonColor.copy(alpha = 0.12f),
+                color = buttonColor.copy(alpha = if (isPressed) 0.35f else 0.12f),
                 radius = ringRadius + 1.5.dp.toPx(),
-                style = if (isPressed)  Stroke(width = 20 .dp.toPx()) else  Stroke(width = 2.dp.toPx())
+                style = Stroke(width = if (isPressed) 3.5.dp.toPx() else 2.dp.toPx())
             )
 
             // .lens: Acrylic Glass Lens Specular Reflections

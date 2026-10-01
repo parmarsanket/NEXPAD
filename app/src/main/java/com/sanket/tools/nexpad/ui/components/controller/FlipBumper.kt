@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -79,6 +80,12 @@ fun FlipBumper(
         label = "flip_ring_bloom"
     )
 
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (isPressed) 1.0f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "flip_rgb_bloom"
+    )
+
     // CSS: --glow: #ffd23f (Cyber Gold / Amber Neon) for LB, Coral for RB
     val neonColor = remember(isRgbEnabled, isLeft) {
         if (isRgbEnabled) {
@@ -130,14 +137,31 @@ fun FlipBumper(
     Box(
         modifier = modifier
             .size(154.dp, 54.dp)
-            // Outer drop shadow
+            .drawBehind {
+                if (isRgbEnabled) {
+                    val pad = 12.dp.toPx()
+                    drawRoundRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.48f),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.18f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.width * 0.65f
+                        ),
+                        topLeft = Offset(-pad, -pad),
+                        size = Size(size.width + pad * 2, size.height + pad * 2),
+                        cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
+                    )
+                }
+            }
             .shadow(
-                elevation = if (isPressed) 2.dp else 6.dp,
+                elevation = if (isPressed) 1.dp else 4.dp,
                 shape = bumperShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = if (isRgbEnabled) neonColor else Color.Black,
+                spotColor = if (isRgbEnabled) neonColor else Color.Black
             )
-            .clip(bumperShape)
             // 1px casing rim
             .border(
                 width = 1.dp,
@@ -182,6 +206,7 @@ fun FlipBumper(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .clip(bumperShape)
                         .background(baseDomeGradient),
                     contentAlignment = Alignment.Center
                 ) {
@@ -285,6 +310,7 @@ fun FlipBumper(
                             // Invert 180° so typography and highlights render upright
                             rotationX = 180f
                         }
+                        .clip(bumperShape)
                         .background(neonFaceGradient),
                     contentAlignment = Alignment.Center
                 ) {

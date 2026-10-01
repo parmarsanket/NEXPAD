@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -30,6 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.roundToInt
 
@@ -58,6 +60,11 @@ fun PeekBumper(
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
+    val isLeft = remember(key) {
+        val upper = key.uppercase()
+        upper == NexpadKeys.LB || upper == "L1" || upper == "LEFT"
+    }
+
     // Full pill shape (27dp radius for 54dp height)
     val bumperShape = remember { RoundedCornerShape(27.dp) }
 
@@ -77,6 +84,11 @@ fun PeekBumper(
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
         label = "peek_ring_bloom"
     )
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (isPressed) 1.0f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "peek_bumper_rgb_bloom"
+    )
 
     // Iconic Peek feature: glyph is 2x smaller in idle (22sp) and zooms 2.0x on press (to 44sp) inside the magnifier aperture
     val glyphScaleAnim by animateFloatAsState(
@@ -85,9 +97,11 @@ fun PeekBumper(
         label = "peek_glyph_scale"
     )
 
-    // CSS: --glow: #a97cf0
-    val neonColor = remember(isRgbEnabled) {
-        if (isRgbEnabled) Color(0xFFA97CF0) else Color(0xFFD8DEE9)
+    // CSS: --glow: #a97cf0 (LB Purple / RB Cyan)
+    val neonColor = remember(isRgbEnabled, isLeft) {
+        if (isRgbEnabled) {
+            if (isLeft) Color(0xFFA97CF0) else Color(0xFF00E5FF)
+        } else Color(0xFFD8DEE9)
     }
 
     val currentOnVibrate by rememberUpdatedState(onVibrate)
@@ -138,12 +152,31 @@ fun PeekBumper(
                 scaleY = scaleAnim
             }
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
+            .drawBehind {
+                if (isRgbEnabled) {
+                    val pad = 12.dp.toPx()
+                    drawRoundRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.48f),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.18f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.width * 0.65f
+                        ),
+                        topLeft = Offset(-pad, -pad),
+                        size = Size(size.width + pad * 2, size.height + pad * 2),
+                        cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
+                    )
+                }
+            }
             // Outer drop shadow
             .shadow(
-                elevation = if (isPressed) 2.dp else 6.dp,
+                elevation = if (isPressed) 1.dp else 4.dp,
                 shape = bumperShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = if (isRgbEnabled) neonColor else Color.Black,
+                spotColor = if (isRgbEnabled) neonColor else Color.Black
             )
             .clip(bumperShape)
             // Convex dark body

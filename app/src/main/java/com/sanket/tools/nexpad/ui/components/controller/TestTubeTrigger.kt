@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -99,7 +100,7 @@ fun TestTubeTrigger(
     )
     val rgbBloomAlpha by animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.45f,
-        animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "testtube_bloom"
     )
     val fillProgress by animateFloatAsState(
@@ -160,12 +161,32 @@ fun TestTubeTrigger(
                 scaleY = scaleAnim
             }
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
-            // Physical black drop shadow
+            // Outer dynamic RGB aura
+            .drawBehind {
+                if (isRgbEnabled) {
+                    val pad = 10.dp.toPx()
+                    drawRoundRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.50f),
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 0.95f
+                        ),
+                        topLeft = Offset(-pad, -pad),
+                        size = Size(size.width + pad * 2, size.height + pad * 2),
+                        cornerRadius = CornerRadius(26.dp.toPx(), 26.dp.toPx())
+                    )
+                }
+            }
+            // RGB-coordinated shadow
             .shadow(
                 elevation = if (isPressed) 2.dp else 6.dp,
                 shape = chassisShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = if (isRgbEnabled) glowColor else Color.Black,
+                spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
             .clip(chassisShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
@@ -380,7 +401,7 @@ fun TestTubeTrigger(
             val ringInset = 2.dp.toPx()
             val ringCorner = rPx - ringInset
             drawRoundRect(
-                color = glowColor.copy(alpha = if (isPressed) 0.55f else 0.22f),
+                color = glowColor.copy(alpha = rgbBloomAlpha * 0.55f),
                 topLeft = Offset(ringInset - 1f, ringInset - 1f),
                 size = Size(w - (ringInset - 1f) * 2f, h - (ringInset - 1f) * 2f),
                 cornerRadius = CornerRadius(ringCorner, ringCorner),

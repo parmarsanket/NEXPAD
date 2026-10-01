@@ -2,6 +2,7 @@ package com.sanket.tools.nexpad.ui.components.controller
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -18,7 +19,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -108,6 +111,7 @@ fun CapsuleKey(
     isVertical: Boolean,
     glowColor: Color,
     rotationAngle: Float,
+    isRgbEnabled: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val scaleAnim by animateFloatAsState(
@@ -124,6 +128,11 @@ fun CapsuleKey(
         targetValue = if (isPressed) 1.0f else 0.70f,
         animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
         label = "capsule_key_ring_$direction"
+    )
+    val keyBloomAlpha by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "capsule_key_rgb_bloom_$direction"
     )
 
     val capsuleShape = remember { RoundedCornerShape(23.dp) }
@@ -159,6 +168,25 @@ fun CapsuleKey(
     Box(
         modifier = modifier
             .size(capsuleWidth, capsuleHeight)
+            .drawBehind {
+                if (isRgbEnabled) {
+                    val pad = 6.dp.toPx()
+                    drawRoundRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                glowColor.copy(alpha = keyBloomAlpha * 0.50f),
+                                glowColor.copy(alpha = keyBloomAlpha * 0.20f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 0.90f
+                        ),
+                        topLeft = Offset(-pad, -pad),
+                        size = Size(size.width + pad * 2, size.height + pad * 2),
+                        cornerRadius = CornerRadius(23.dp.toPx() + pad, 23.dp.toPx() + pad)
+                    )
+                }
+            }
             .graphicsLayer {
                 scaleX = scaleAnim
                 scaleY = scaleAnim
@@ -167,8 +195,8 @@ fun CapsuleKey(
             .shadow(
                 elevation = if (isPressed) 2.dp else 6.dp,
                 shape = capsuleShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = if (isRgbEnabled) glowColor else Color.Black,
+                spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
             .clip(capsuleShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
@@ -350,6 +378,12 @@ fun CapsulesDPad(
         if (isRgbEnabled) Color(0xFFB58CFF) else Color(0xFFB58CFF)
     }
 
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (isAnyPressed) 0.95f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "capsules_rgb_bloom"
+    )
+
     val density = LocalDensity.current.density
 
     // Hub Gradient: radial-gradient(circle at 50% 60%, #030304, #151617)
@@ -367,6 +401,28 @@ fun CapsulesDPad(
     Box(
         modifier = modifier
             .size(170.dp)
+            .drawBehind {
+                if (isRgbEnabled) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.50f),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 0.95f
+                        ),
+                        radius = size.minDimension * 0.95f
+                    )
+                }
+            }
+            .shadow(
+                elevation = if (isAnyPressed) 3.dp else 8.dp,
+                shape = CircleShape,
+                ambientColor = if (isRgbEnabled) neonColor else Color.Black,
+                spotColor = if (isRgbEnabled) neonColor else Color.Black
+            )
             .pointerInput(isConnected) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -457,6 +513,7 @@ fun CapsulesDPad(
                 isVertical = true,
                 glowColor = neonColor,
                 rotationAngle = 0f,
+                isRgbEnabled = isRgbEnabled,
                 modifier = Modifier.offset(62.dp, 0.dp)
             )
 
@@ -467,6 +524,7 @@ fun CapsulesDPad(
                 isVertical = true,
                 glowColor = neonColor,
                 rotationAngle = 180f,
+                isRgbEnabled = isRgbEnabled,
                 modifier = Modifier.offset(62.dp, 102.dp)
             )
 
@@ -477,6 +535,7 @@ fun CapsulesDPad(
                 isVertical = false,
                 glowColor = neonColor,
                 rotationAngle = 270f,
+                isRgbEnabled = isRgbEnabled,
                 modifier = Modifier.offset(0.dp, 62.dp)
             )
 
@@ -487,6 +546,7 @@ fun CapsulesDPad(
                 isVertical = false,
                 glowColor = neonColor,
                 rotationAngle = 90f,
+                isRgbEnabled = isRgbEnabled,
                 modifier = Modifier.offset(102.dp, 62.dp)
             )
         }

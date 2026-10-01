@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -100,6 +101,12 @@ fun UnderglowBumper(
         label = "underglow_bloom"
     )
 
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (isPressed) 1.0f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "under_bumper_rgb_bloom"
+    )
+
     // CSS: --glow: #5cf29a (Neon Mint) for LB, Hot Coral for RB
     val neonColor = remember(isRgbEnabled, isLeft) {
         if (isRgbEnabled) {
@@ -145,12 +152,49 @@ fun UnderglowBumper(
                 scaleY = scaleAnim
             }
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
+            .drawBehind {
+                if (isRgbEnabled) {
+                    val pad = 12.dp.toPx()
+                    // Ambient hull aura
+                    drawRoundRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.48f),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.18f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.width * 0.65f
+                        ),
+                        topLeft = Offset(-pad, -pad),
+                        size = Size(size.width + pad * 2, size.height + pad * 2),
+                        cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
+                    )
+                    // Emphasized ground-effect radiance beneath lower edge
+                    val groundPadX = 8.dp.toPx()
+                    val groundH = 22.dp.toPx()
+                    drawRoundRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.70f),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.30f),
+                                Color.Transparent
+                            ),
+                            center = Offset(size.width / 2f, size.height + 4.dp.toPx()),
+                            radius = size.width * 0.55f
+                        ),
+                        topLeft = Offset(-groundPadX, size.height - 4.dp.toPx()),
+                        size = Size(size.width + groundPadX * 2, groundH),
+                        cornerRadius = CornerRadius(12.dp.toPx(), 12.dp.toPx())
+                    )
+                }
+            }
             // Outer drop shadow
             .shadow(
-                elevation = if (isPressed) 2.dp else 6.dp,
+                elevation = if (isPressed) 1.dp else 4.dp,
                 shape = bumperShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = if (isRgbEnabled) neonColor else Color.Black,
+                spotColor = if (isRgbEnabled) neonColor else Color.Black
             )
             .clip(bumperShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)

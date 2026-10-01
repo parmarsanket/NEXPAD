@@ -21,7 +21,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -85,7 +87,7 @@ fun BloomTrigger(
     )
     val rgbBloomAlpha by animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.45f,
-        animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "bloom_bloom"
     )
     val fillProgress by animateFloatAsState(
@@ -125,12 +127,32 @@ fun BloomTrigger(
                 scaleY = scaleAnim
             }
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
-            // Physical black drop shadow
+            // Outer dynamic RGB aura
+            .drawBehind {
+                if (isRgbEnabled) {
+                    val pad = 10.dp.toPx()
+                    drawRoundRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.50f),
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 0.95f
+                        ),
+                        topLeft = Offset(-pad, -pad),
+                        size = Size(size.width + pad * 2, size.height + pad * 2),
+                        cornerRadius = CornerRadius(26.dp.toPx(), 26.dp.toPx())
+                    )
+                }
+            }
+            // RGB-coordinated shadow
             .shadow(
                 elevation = if (isPressed) 2.dp else 6.dp,
                 shape = CircleShape,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
-                spotColor = Color.Black.copy(alpha = 0.55f)
+                ambientColor = if (isRgbEnabled) glowColor else Color.Black,
+                spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
             .clip(CircleShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
@@ -282,7 +304,7 @@ fun BloomTrigger(
             // Outer chassis neon ring (.lx-ring)
             val ringRadius = r - 2.5.dp.toPx()
             drawCircle(
-                color = glowColor.copy(alpha = if (isPressed) 0.55f else 0.22f),
+                color = glowColor.copy(alpha = rgbBloomAlpha * 0.55f),
                 radius = ringRadius,
                 center = center,
                 style = Stroke(width = 2.8.dp.toPx())
