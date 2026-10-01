@@ -27,7 +27,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -124,26 +123,12 @@ fun SliderTrigger(
     Box(
         modifier = modifier
             .size(widthDp, totalHeightDp)
-            // Ambient neon aura
-            .drawBehind {
-                if (isRgbEnabled) {
-                    val auraAlpha = 0.30f + fillAnim.value * 0.40f
-                    drawRoundRect(
-                        color = glowColor.copy(alpha = auraAlpha * 0.35f),
-                        size = size.copy(
-                            width = size.width + 10.dp.toPx(),
-                            height = size.height + 10.dp.toPx()
-                        ),
-                        topLeft = Offset(-5.dp.toPx(), -5.dp.toPx()),
-                        cornerRadius = CornerRadius(25.dp.toPx(), 25.dp.toPx())
-                    )
-                }
-            }
+            // Physical black drop shadow
             .shadow(
                 elevation = 6.dp,
                 shape = chassisShape,
-                spotColor = if (isRgbEnabled) glowColor else Color.Black,
-                ambientColor = if (isRgbEnabled) glowColor.copy(alpha = 0.4f) else Color.Black
+                ambientColor = Color.Black.copy(alpha = 0.40f),
+                spotColor = Color.Black.copy(alpha = 0.55f)
             )
             .clip(chassisShape)
             .background(baseDomeGradient)
@@ -285,8 +270,8 @@ fun SliderTrigger(
                 .shadow(
                     elevation = if (isDragging) 6.dp else 3.dp,
                     shape = CircleShape,
-                    spotColor = glowColor,
-                    ambientColor = Color.Black
+                    ambientColor = Color.Black.copy(alpha = 0.40f),
+                    spotColor = Color.Black.copy(alpha = 0.55f)
                 )
                 .clip(CircleShape)
                 .background(

@@ -16,7 +16,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -96,14 +95,6 @@ fun RealisticSystemButton(
     Box(
         modifier = modifier
             .size(buttonSize)
-            .drawBehind {
-                if (isRgbEnabled && isGuide) {
-                    drawCircle(
-                        color = glowColor.copy(alpha = if (isPressed) 0.50f else 0.25f),
-                        radius = size.minDimension / 2f + 4.dp.toPx()
-                    )
-                }
-            }
             .graphicsLayer {
                 scaleX = scaleAnim
                 scaleY = scaleAnim
@@ -112,8 +103,8 @@ fun RealisticSystemButton(
             .shadow(
                 elevation = if (isPressed) 2.dp else if (isGuide) 8.dp else 4.dp,
                 shape = CircleShape,
-                ambientColor = if (isRgbEnabled) glowColor else Color.Black,
-                spotColor = if (isRgbEnabled) glowColor else Color.Black
+                ambientColor = Color.Black.copy(alpha = 0.40f),
+                spotColor = Color.Black.copy(alpha = 0.55f)
             )
             .clip(CircleShape)
             .background(surfaceGradient)

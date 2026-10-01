@@ -21,7 +21,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -138,26 +137,17 @@ fun TargetTrigger(
     Box(
         modifier = modifier
             .size(92.dp, 92.dp)
-            // Ambient RGB Bloom aura behind circular trigger housing
-            .drawBehind {
-                if (isRgbEnabled) {
-                    drawCircle(
-                        color = neonColor.copy(alpha = rgbBloomAlpha * 0.35f),
-                        radius = size.minDimension / 2f + 6.dp.toPx()
-                    )
-                }
-            }
             .graphicsLayer {
                 scaleX = scaleAnim
                 scaleY = scaleAnim
             }
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
-            // Drop shadow with RGB tint
+            // Physical black drop shadow
             .shadow(
                 elevation = if (isPressed) 2.dp else 6.dp,
                 shape = triggerShape,
-                spotColor = if (isRgbEnabled) neonColor else Color.Black,
-                ambientColor = if (isRgbEnabled) neonColor.copy(alpha = 0.5f) else Color.Black
+                ambientColor = Color.Black.copy(alpha = 0.40f),
+                spotColor = Color.Black.copy(alpha = 0.55f)
             )
             .clip(triggerShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)

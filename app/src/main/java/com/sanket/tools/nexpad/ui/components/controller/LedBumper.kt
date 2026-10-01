@@ -20,7 +20,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -178,29 +177,6 @@ fun LedBumper(
     Box(
         modifier = modifier
             .size(154.dp, 54.dp)
-            // Ambient RGB Bloom behind bumper housing with asymmetric contour matching
-            .drawBehind {
-                if (isRgbEnabled) {
-                    val pad = 6.dp.toPx()
-                    val rOuter = 27.dp.toPx() + pad
-                    val rInner = 12.dp.toPx() + pad
-                    val bloomPath = Path().apply {
-                        addRoundRect(
-                            RoundRect(
-                                rect = Rect(-pad, -pad, size.width + pad, size.height + pad),
-                                topLeft = CornerRadius(if (isLeft) rInner else rOuter),
-                                topRight = CornerRadius(if (isLeft) rOuter else rInner),
-                                bottomRight = CornerRadius(if (isLeft) rOuter else rInner),
-                                bottomLeft = CornerRadius(if (isLeft) rInner else rOuter)
-                            )
-                        )
-                    }
-                    drawPath(
-                        path = bloomPath,
-                        color = neonColor.copy(alpha = if (isPressed) 0.40f else 0.18f)
-                    )
-                }
-            }
             .graphicsLayer {
                 scaleX = scaleAnim
                 scaleY = scaleAnim
@@ -208,10 +184,10 @@ fun LedBumper(
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             // Outer drop shadow
             .shadow(
-                elevation = if (isPressed) 2.dp else 7.dp,
+                elevation = if (isPressed) 2.dp else 6.dp,
                 shape = bumperShape,
-                spotColor = if (isRgbEnabled) neonColor else Color.Black,
-                ambientColor = if (isRgbEnabled) neonColor.copy(alpha = 0.5f) else Color.Black
+                ambientColor = Color.Black.copy(alpha = 0.40f),
+                spotColor = Color.Black.copy(alpha = 0.55f)
             )
             .clip(bumperShape)
             // Convex dark body
@@ -451,17 +427,6 @@ private fun LedBarGroup(
             Box(
                 modifier = Modifier
                     .size(9.dp, 22.dp)
-                    // Ambient neon bloom aura around each LED bar (always visible, matching box-shadow: 0 0 8px var(--glow))
-                    .drawBehind {
-                        val glowAlpha = if (alpha > 0.5f) alpha * 0.60f else 0.22f
-                        val spread = if (alpha > 0.5f) 3.dp.toPx() else 2.dp.toPx()
-                        drawRoundRect(
-                            color = neonColor.copy(alpha = glowAlpha),
-                            topLeft = Offset(-spread, -spread),
-                            size = Size(size.width + spread * 2, size.height + spread * 2),
-                            cornerRadius = CornerRadius(4.5.dp.toPx(), 4.5.dp.toPx())
-                        )
-                    }
                     .clip(RoundedCornerShape(3.5.dp))
                     .background(neonColor.copy(alpha = if (alpha > 0.5f) alpha else 0.22f))
             )

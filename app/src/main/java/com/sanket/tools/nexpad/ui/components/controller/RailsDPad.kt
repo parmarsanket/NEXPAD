@@ -19,7 +19,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -282,15 +281,6 @@ fun RailsDPad(
     Box(
         modifier = modifier
             .size(160.dp)
-            // Ambient outer glow halo
-            .drawBehind {
-                if (isAnyPressed) {
-                    drawCircle(
-                        color = neonColor.copy(alpha = 0.22f),
-                        radius = size.minDimension / 2f + 8.dp.toPx()
-                    )
-                }
-            }
             .pointerInput(isConnected) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -342,8 +332,8 @@ fun RailsDPad(
                 .shadow(
                     elevation = if (isAnyPressed) 2.dp else 6.dp,
                     shape = CircleShape,
-                    spotColor = neonColor,
-                    ambientColor = neonColor.copy(alpha = 0.35f)
+                    spotColor = Color.Black.copy(alpha = 0.55f),
+                    ambientColor = Color.Black.copy(alpha = 0.40f)
                 )
                 .clip(CircleShape)
                 .background(if (isAnyPressed) pressedDomeGradient else domeGradient)
@@ -536,10 +526,10 @@ fun RailsDPad(
                     .offset { IntOffset((puckOffsetXAnim * density).roundToInt(), (puckOffsetYAnim * density).roundToInt()) }
                     .size(40.dp)
                     .shadow(
-                        elevation = if (isAnyPressed) 10.dp else 6.dp,
+                        elevation = if (isAnyPressed) 4.dp else 6.dp,
                         shape = CircleShape,
-                        spotColor = neonColor,
-                        ambientColor = Color.Black
+                        spotColor = Color.Black.copy(alpha = 0.55f),
+                        ambientColor = Color.Black.copy(alpha = 0.40f)
                     )
                     .clip(CircleShape)
                     .background(puckGradient)

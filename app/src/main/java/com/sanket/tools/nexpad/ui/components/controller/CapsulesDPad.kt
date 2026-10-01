@@ -18,7 +18,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -168,8 +167,8 @@ fun CapsuleKey(
             .shadow(
                 elevation = if (isPressed) 2.dp else 6.dp,
                 shape = capsuleShape,
-                spotColor = glowColor,
-                ambientColor = glowColor.copy(alpha = 0.35f)
+                ambientColor = Color.Black.copy(alpha = 0.40f),
+                spotColor = Color.Black.copy(alpha = 0.55f)
             )
             .clip(capsuleShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
@@ -368,15 +367,6 @@ fun CapsulesDPad(
     Box(
         modifier = modifier
             .size(170.dp)
-            // Ambient outer glow halo
-            .drawBehind {
-                if (isAnyPressed) {
-                    drawCircle(
-                        color = neonColor.copy(alpha = 0.20f),
-                        radius = size.minDimension / 2f + 8.dp.toPx()
-                    )
-                }
-            }
             .pointerInput(isConnected) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)

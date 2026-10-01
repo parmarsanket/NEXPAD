@@ -21,7 +21,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -129,30 +128,17 @@ fun NeedleTrigger(
     Box(
         modifier = modifier
             .size(widthDp, heightDp)
-            // Ambient RGB aura
-            .drawBehind {
-                if (isRgbEnabled) {
-                    drawRoundRect(
-                        color = glowColor.copy(alpha = rgbBloomAlpha * 0.35f),
-                        size = size.copy(
-                            width = size.width + 12.dp.toPx(),
-                            height = size.height + 12.dp.toPx()
-                        ),
-                        topLeft = Offset(-6.dp.toPx(), -6.dp.toPx()),
-                        cornerRadius = CornerRadius(56.dp.toPx(), 56.dp.toPx())
-                    )
-                }
-            }
             .graphicsLayer {
                 scaleX = scaleAnim
                 scaleY = scaleAnim
             }
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
+            // Physical black drop shadow
             .shadow(
                 elevation = if (isPressed) 2.dp else 6.dp,
                 shape = chassisShape,
-                spotColor = if (isRgbEnabled) glowColor else Color.Black,
-                ambientColor = if (isRgbEnabled) glowColor.copy(alpha = 0.5f) else Color.Black
+                ambientColor = Color.Black.copy(alpha = 0.40f),
+                spotColor = Color.Black.copy(alpha = 0.55f)
             )
             .clip(chassisShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)

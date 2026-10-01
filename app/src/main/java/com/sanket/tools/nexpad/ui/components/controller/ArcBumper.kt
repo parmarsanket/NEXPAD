@@ -12,7 +12,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -84,27 +83,6 @@ fun ArcBumper(
     Box(
         modifier = modifier
             .size(154.dp, 56.dp)
-            // Layer 1: Ambient Chassis Bloom
-            .drawBehind {
-                if (isRgbEnabled) {
-                    val w = size.width
-                    val h = size.height
-                    val s = min(w / 230f, h / 84f)
-                    val ox = (w - 230f * s) / 2f
-                    val oy = (h - 84f * s) / 2f
-
-                    val arcPath = Path().apply {
-                        moveTo(ox + 24f * s, oy + 62f * s)
-                        quadraticTo(ox + 115f * s, oy - 10f * s, ox + 206f * s, oy + 62f * s)
-                    }
-
-                    drawPath(
-                        path = arcPath,
-                        color = neonColor.copy(alpha = if (isPressed) 0.32f else 0.16f),
-                        style = Stroke(width = 68f * s, cap = StrokeCap.Round, join = StrokeJoin.Round)
-                    )
-                }
-            }
             .graphicsLayer {
                 scaleX = scaleAnim
                 scaleY = scaleAnim
@@ -152,20 +130,6 @@ fun ArcBumper(
             )
 
             // --- Layer 3: Emissive Neon Halo Ring (.a1) ---
-            // Outer drop-shadow bloom pass
-            drawPath(
-                path = arcPath,
-                color = neonColor.copy(alpha = (if (isPressed) 0.38f else 0.20f) * bloomAlphaAnim),
-                style = Stroke(width = 64f * s, cap = StrokeCap.Round, join = StrokeJoin.Round)
-            )
-
-            // Mid bloom pass
-            drawPath(
-                path = arcPath,
-                color = neonColor.copy(alpha = (if (isPressed) 0.70f else 0.40f) * bloomAlphaAnim),
-                style = Stroke(width = 56f * s, cap = StrokeCap.Round, join = StrokeJoin.Round)
-            )
-
             // Core crisp stroke: stroke-width 50
             drawPath(
                 path = arcPath,

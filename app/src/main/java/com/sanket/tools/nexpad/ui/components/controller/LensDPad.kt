@@ -259,8 +259,8 @@ fun LensDPad(
             .shadow(
                 elevation = 7.dp,
                 shape = CircleShape,
-                ambientColor = if (isRgbEnabled) glowColor.copy(alpha = 0.35f) else Color.Black,
-                spotColor = if (isRgbEnabled) glowColor else Color.Black
+                ambientColor = Color.Black.copy(alpha = 0.40f),
+                spotColor = Color.Black.copy(alpha = 0.55f)
             )
             .clip(CircleShape)
             .background(socketGradient)

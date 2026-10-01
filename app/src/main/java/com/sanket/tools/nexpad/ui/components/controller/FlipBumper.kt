@@ -15,7 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -131,22 +130,12 @@ fun FlipBumper(
     Box(
         modifier = modifier
             .size(154.dp, 54.dp)
-            // Emissive halo bloom behind housing
-            .drawBehind {
-                val pad = if (isPressed) 9.dp.toPx() else 5.dp.toPx()
-                drawRoundRect(
-                    color = neonColor.copy(alpha = if (isPressed) 0.50f else 0.18f),
-                    topLeft = Offset(-pad, -pad),
-                    size = Size(size.width + pad * 2, size.height + pad * 2),
-                    cornerRadius = CornerRadius(27.dp.toPx() + pad, 27.dp.toPx() + pad)
-                )
-            }
             // Outer drop shadow
             .shadow(
-                elevation = if (isPressed) 3.dp else 7.dp,
+                elevation = if (isPressed) 2.dp else 6.dp,
                 shape = bumperShape,
-                ambientColor = Color.Black.copy(alpha = 0.55f),
-                spotColor = Color.Black
+                ambientColor = Color.Black.copy(alpha = 0.40f),
+                spotColor = Color.Black.copy(alpha = 0.55f)
             )
             .clip(bumperShape)
             // 1px casing rim

@@ -172,11 +172,12 @@ fun RealisticTouchPad(
         radius = 280f
     )
 
-    val shadowModifier = if (isRgbEnabled) {
-        Modifier.shadow(16.dp, shape, ambientColor = accentColor, spotColor = accentColor)
-    } else {
-        Modifier.shadow(12.dp, shape, ambientColor = Color.Black, spotColor = Color.Black)
-    }
+    val shadowModifier = Modifier.shadow(
+        elevation = 12.dp,
+        shape = shape,
+        ambientColor = Color.Black.copy(alpha = 0.40f),
+        spotColor = Color.Black.copy(alpha = 0.55f)
+    )
 
     val context = LocalContext.current
     val density = LocalDensity.current.density

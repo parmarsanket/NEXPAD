@@ -18,16 +18,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
@@ -144,25 +140,6 @@ fun UnderglowBumper(
     Box(
         modifier = modifier
             .size(154.dp, 54.dp)
-            // Emissive underglow ground halo behind housing
-            .drawBehind {
-                val haloColor = neonColor.copy(alpha = if (isPressed) 0.55f else 0.22f)
-                val haloOffset = if (isPressed) 9.dp.toPx() else 6.dp.toPx()
-                val rBottom = 27.dp.toPx() + haloOffset
-                val rTop = 14.dp.toPx() + haloOffset
-                val haloPath = Path().apply {
-                    addRoundRect(
-                        RoundRect(
-                            rect = Rect(-haloOffset, -haloOffset, size.width + haloOffset, size.height + haloOffset),
-                            topLeft = CornerRadius(if (isLeft) 12.dp.toPx() + haloOffset else rTop),
-                            topRight = CornerRadius(if (isLeft) rTop else 12.dp.toPx() + haloOffset),
-                            bottomRight = CornerRadius(if (isLeft) rBottom else 20.dp.toPx() + haloOffset),
-                            bottomLeft = CornerRadius(if (isLeft) 20.dp.toPx() + haloOffset else rBottom)
-                        )
-                    )
-                }
-                drawPath(path = haloPath, color = haloColor)
-            }
             .graphicsLayer {
                 scaleX = scaleAnim
                 scaleY = scaleAnim
@@ -170,10 +147,10 @@ fun UnderglowBumper(
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             // Outer drop shadow
             .shadow(
-                elevation = if (isPressed) 2.dp else 7.dp,
+                elevation = if (isPressed) 2.dp else 6.dp,
                 shape = bumperShape,
-                ambientColor = Color.Black.copy(alpha = 0.55f),
-                spotColor = Color.Black
+                ambientColor = Color.Black.copy(alpha = 0.40f),
+                spotColor = Color.Black.copy(alpha = 0.55f)
             )
             .clip(bumperShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)

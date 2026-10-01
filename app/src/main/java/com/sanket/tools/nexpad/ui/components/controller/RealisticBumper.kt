@@ -15,7 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -43,7 +42,7 @@ import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
  * - Flipped contour: squarer corner (10dp) hugs the outer screen boundary,
  *   aerodynamic rounded curve (26dp) points inward toward thumb reach.
  * - 7-Layer Display List Pipeline:
- *   1. Ambient Chassis Bloom (cast behind housing with drawBehind)
+ *   1. Physical Drop Shadow (cast behind housing)
  *   2. Bezel housing & 1px casing rim
  *   3. Actuator surface dome (convex dark gradient + bottom undercut shadow)
  *   4. Neon Ring (inset 2.5dp, dual-pass halo bloom + core stroke)
@@ -134,24 +133,6 @@ fun RealisticBumper(
     Box(
         modifier = modifier
             .size(154.dp, 48.dp)
-            // Layer 1: Ambient Chassis Bloom
-            .drawBehind {
-                if (isRgbEnabled) {
-                    val pad = 5.dp.toPx()
-                    val bloomPath = Path().apply {
-                        addRoundRect(
-                            RoundRect(
-                                rect = Rect(-pad, -pad, size.width + pad, size.height + pad),
-                                topLeft = CornerRadius(if (isLeft) 14.dp.toPx() else 30.dp.toPx()),
-                                topRight = CornerRadius(if (isLeft) 30.dp.toPx() else 14.dp.toPx()),
-                                bottomRight = CornerRadius(if (isLeft) 30.dp.toPx() else 14.dp.toPx()),
-                                bottomLeft = CornerRadius(if (isLeft) 14.dp.toPx() else 30.dp.toPx())
-                            )
-                        )
-                    }
-                    drawPath(bloomPath, neonColor.copy(alpha = if (isPressed) 0.35f else 0.18f))
-                }
-            }
             .shadow(
                 elevation = if (isPressed) 1.dp else 4.dp,
                 shape = bumperShape,

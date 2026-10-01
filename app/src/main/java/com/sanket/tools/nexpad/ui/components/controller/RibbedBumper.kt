@@ -17,7 +17,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -150,25 +149,6 @@ fun RibbedBumper(
     Box(
         modifier = modifier
             .size(154.dp, 54.dp)
-            // Emissive halo bloom behind housing
-            .drawBehind {
-                val haloColor = neonColor.copy(alpha = if (isPressed) 0.45f else 0.18f)
-                val haloOffset = if (isPressed) 8.dp.toPx() else 5.dp.toPx()
-                val rOuter = 27.dp.toPx() + haloOffset
-                val rInner = 12.dp.toPx() + haloOffset
-                val haloPath = Path().apply {
-                    addRoundRect(
-                        RoundRect(
-                            rect = Rect(-haloOffset, -haloOffset, size.width + haloOffset, size.height + haloOffset),
-                            topLeft = CornerRadius(if (isLeft) rInner else rOuter),
-                            topRight = CornerRadius(if (isLeft) rOuter else rInner),
-                            bottomRight = CornerRadius(if (isLeft) rOuter else rInner),
-                            bottomLeft = CornerRadius(if (isLeft) rInner else rOuter)
-                        )
-                    )
-                }
-                drawPath(path = haloPath, color = haloColor)
-            }
             .graphicsLayer {
                 scaleX = scaleAnim
                 scaleY = scaleAnim
@@ -176,10 +156,10 @@ fun RibbedBumper(
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             // Outer drop shadow
             .shadow(
-                elevation = if (isPressed) 2.dp else 7.dp,
+                elevation = if (isPressed) 2.dp else 6.dp,
                 shape = bumperShape,
-                ambientColor = Color.Black.copy(alpha = 0.55f),
-                spotColor = Color.Black
+                ambientColor = Color.Black.copy(alpha = 0.40f),
+                spotColor = Color.Black.copy(alpha = 0.55f)
             )
             .clip(bumperShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
@@ -387,17 +367,6 @@ fun RibbedBumper(
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 9.dp)
                 .size(width = 110.dp, height = 4.dp)
-                // Pressed bloom aura
-                .drawBehind {
-                    if (isPressed) {
-                        drawRoundRect(
-                            color = neonColor.copy(alpha = 0.65f),
-                            size = Size(size.width + 12.dp.toPx(), size.height + 8.dp.toPx()),
-                            topLeft = Offset(-6.dp.toPx(), -4.dp.toPx()),
-                            cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
-                        )
-                    }
-                }
                 .clip(stripShape)
                 .background(neonColor.copy(alpha = stripAlphaAnim))
         )

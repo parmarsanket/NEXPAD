@@ -21,7 +21,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -153,20 +152,11 @@ fun SpotlightJoystick(
     Box(
         modifier = modifier
             .size(150.dp)
-            // Ambient neon bloom behind housing
-            .drawBehind {
-                if (isRgbEnabled) {
-                    drawCircle(
-                        color = glowColor.copy(alpha = ambientBloomAlpha * 0.40f),
-                        radius = size.minDimension / 2f + 10.dp.toPx()
-                    )
-                }
-            }
             .shadow(
                 elevation = 12.dp,
                 shape = CircleShape,
-                ambientColor = if (isRgbEnabled) glowColor.copy(alpha = 0.4f) else Color.Black,
-                spotColor = if (isRgbEnabled) glowColor else Color.Black
+                ambientColor = Color.Black.copy(alpha = 0.40f),
+                spotColor = Color.Black.copy(alpha = 0.55f)
             )
             .background(socketGradient, shape = CircleShape)
             .border(
@@ -536,8 +526,8 @@ fun SpotlightJoystick(
                 .shadow(
                     elevation = 10.dp,
                     shape = CircleShape,
-                    spotColor = if (isRgbEnabled) glowColor else Color.Black,
-                    ambientColor = if (isRgbEnabled) glowColor.copy(alpha = 0.4f) else Color.Black
+                    spotColor = Color.Black.copy(alpha = 0.55f),
+                    ambientColor = Color.Black.copy(alpha = 0.40f)
                 )
                 .clip(CircleShape)
                 .background(puckDomeGradient)
@@ -748,8 +738,8 @@ fun SpotlightStickButton(
             .shadow(
                 elevation = if (isPressed) 2.dp else 8.dp,
                 shape = CircleShape,
-                spotColor = if (isRgbEnabled) glowColor else Color.Black,
-                ambientColor = if (isRgbEnabled) glowColor.copy(alpha = 0.5f) else Color.Black
+                ambientColor = Color.Black.copy(alpha = 0.40f),
+                spotColor = Color.Black.copy(alpha = 0.55f)
             )
             .clip(CircleShape)
             .background(puckDomeGradient)

@@ -179,8 +179,8 @@ fun FourLensesKey(
             .shadow(
                 elevation = if (isPressed) 1.dp else 4.dp,
                 shape = CircleShape,
-                spotColor = if (isRgbEnabled) glowColor else Color.Black,
-                ambientColor = if (isRgbEnabled) glowColor.copy(alpha = 0.35f) else Color.Black
+                ambientColor = Color.Black.copy(alpha = 0.40f),
+                spotColor = Color.Black.copy(alpha = 0.55f)
             )
             .clip(CircleShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)

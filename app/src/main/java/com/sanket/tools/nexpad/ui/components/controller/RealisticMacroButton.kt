@@ -16,7 +16,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -76,26 +75,16 @@ fun RealisticMacroButton(
     Box(
         modifier = modifier
             .size(80.dp, 40.dp)
-            .drawBehind {
-                if (isRgbEnabled) {
-                    drawRoundRect(
-                        color = accentColor.copy(alpha = if (isPressed) 0.40f else 0.15f),
-                        size = size.copy(width = size.width + 8.dp.toPx(), height = size.height + 6.dp.toPx()),
-                        topLeft = Offset(-4.dp.toPx(), -3.dp.toPx()),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx(), 16.dp.toPx())
-                    )
-                }
-            }
             .graphicsLayer {
                 scaleX = scaleAnim
                 scaleY = scaleAnim
             }
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .shadow(
-                elevation = if (isPressed) 2.dp else if (isRgbEnabled) 6.dp else 4.dp,
+                elevation = if (isPressed) 2.dp else 4.dp,
                 shape = shape,
-                ambientColor = if (isRgbEnabled) accentColor else Color.Black,
-                spotColor = if (isRgbEnabled) accentColor else Color.Black
+                ambientColor = Color.Black.copy(alpha = 0.40f),
+                spotColor = Color.Black.copy(alpha = 0.55f)
             )
             .clip(shape)
             .background(baseGradient)

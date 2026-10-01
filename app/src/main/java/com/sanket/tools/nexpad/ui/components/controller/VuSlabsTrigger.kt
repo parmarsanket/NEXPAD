@@ -21,7 +21,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -153,43 +152,17 @@ fun VuSlabsTrigger(
     Box(
         modifier = modifier
             .size(100.dp, 92.dp)
-            // Ambient RGB Bloom aura accurately tracking balanced trigger contour
-            .drawBehind {
-                if (isRgbEnabled) {
-                    val glowInset = -4.dp.toPx()
-                    val glowTopR = 25.dp.toPx()
-                    val glowBotR = 37.dp.toPx()
-                    val glowPath = Path().apply {
-                        addRoundRect(
-                            RoundRect(
-                                left = glowInset,
-                                top = glowInset,
-                                right = size.width - glowInset,
-                                bottom = size.height - glowInset,
-                                topLeftCornerRadius = CornerRadius(glowTopR, glowTopR),
-                                topRightCornerRadius = CornerRadius(glowTopR, glowTopR),
-                                bottomLeftCornerRadius = CornerRadius(glowBotR, glowBotR),
-                                bottomRightCornerRadius = CornerRadius(glowBotR, glowBotR)
-                            )
-                        )
-                    }
-                    drawPath(
-                        path = glowPath,
-                        color = neonColor.copy(alpha = rgbBloomAlpha * 0.22f)
-                    )
-                }
-            }
             .graphicsLayer {
                 scaleX = scaleAnim
                 scaleY = scaleAnim
             }
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
-            // Drop shadow with RGB tint
+            // Physical black drop shadow
             .shadow(
                 elevation = if (isPressed) 2.dp else 6.dp,
                 shape = triggerShape,
-                spotColor = if (isRgbEnabled) neonColor else Color.Black,
-                ambientColor = if (isRgbEnabled) neonColor.copy(alpha = 0.5f) else Color.Black
+                ambientColor = Color.Black.copy(alpha = 0.40f),
+                spotColor = Color.Black.copy(alpha = 0.55f)
             )
             .clip(triggerShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)

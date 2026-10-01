@@ -25,7 +25,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
@@ -89,11 +88,12 @@ fun RealisticJoystick(
         radius = 150f
     )
 
-    val rgbShadow = if (isRgbEnabled) {
-        Modifier.shadow(15.dp, CircleShape, ambientColor = if (isLeft) Color.Cyan else Color.Magenta, spotColor = if (isLeft) Color.Blue else Color.Red)
-    } else {
-        Modifier.shadow(10.dp, CircleShape, ambientColor = Color.Black, spotColor = Color.Black)
-    }
+    val rgbShadow = Modifier.shadow(
+        elevation = 10.dp,
+        shape = CircleShape,
+        ambientColor = Color.Black.copy(alpha = 0.40f),
+        spotColor = Color.Black.copy(alpha = 0.55f)
+    )
 
     Box(
         modifier = modifier
@@ -436,21 +436,12 @@ fun RealisticStickButton(
 
     val accentColor = if (isLeft) Color.Cyan else Color(0xFFFF007F)
 
-    val rgbShadow = if (isRgbEnabled) {
-        Modifier.shadow(
-            elevation = if (isPressed) 18.dp else 10.dp,
-            shape = CircleShape,
-            ambientColor = accentColor,
-            spotColor = accentColor
-        )
-    } else {
-        Modifier.shadow(
-            elevation = if (isPressed) 3.dp else 8.dp,
-            shape = CircleShape,
-            ambientColor = Color.Black,
-            spotColor = Color.Black
-        )
-    }
+    val rgbShadow = Modifier.shadow(
+        elevation = if (isPressed) 3.dp else 8.dp,
+        shape = CircleShape,
+        ambientColor = Color.Black.copy(alpha = 0.40f),
+        spotColor = Color.Black.copy(alpha = 0.55f)
+    )
 
     Box(
         modifier = modifier

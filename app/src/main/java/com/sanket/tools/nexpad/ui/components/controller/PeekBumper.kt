@@ -16,7 +16,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -134,18 +133,6 @@ fun PeekBumper(
     Box(
         modifier = modifier
             .size(154.dp, 54.dp)
-            // Emissive outer halo
-            .drawBehind {
-                if (isRgbEnabled) {
-                    val pad = 6.dp.toPx()
-                    drawRoundRect(
-                        color = neonColor.copy(alpha = if (isPressed) 0.40f else 0.18f),
-                        topLeft = Offset(-pad, -pad),
-                        size = Size(size.width + pad * 2, size.height + pad * 2),
-                        cornerRadius = CornerRadius(27.dp.toPx() + pad, 27.dp.toPx() + pad)
-                    )
-                }
-            }
             .graphicsLayer {
                 scaleX = scaleAnim
                 scaleY = scaleAnim
@@ -153,10 +140,10 @@ fun PeekBumper(
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             // Outer drop shadow
             .shadow(
-                elevation = if (isPressed) 2.dp else 7.dp,
+                elevation = if (isPressed) 2.dp else 6.dp,
                 shape = bumperShape,
-                spotColor = if (isRgbEnabled) neonColor else Color.Black,
-                ambientColor = if (isRgbEnabled) neonColor.copy(alpha = 0.5f) else Color.Black
+                ambientColor = Color.Black.copy(alpha = 0.40f),
+                spotColor = Color.Black.copy(alpha = 0.55f)
             )
             .clip(bumperShape)
             // Convex dark body

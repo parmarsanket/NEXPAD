@@ -167,6 +167,11 @@ fun RealisticButton(
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "btn_depth"
     )
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "btn_rgb_bloom"
+    )
 
     val activeLabel = displayLabel ?: key
 
@@ -223,7 +228,7 @@ fun RealisticButton(
                 scaleY = scaleAnim
             }
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
-            // Outer drop shadow: 0 4px 7px rgba(0, 0, 0, 0.55)
+            // Outer drop shadow: physical black
             .shadow(
                 elevation = if (isPressed) 1.dp else 4.dp,
                 shape = CircleShape,

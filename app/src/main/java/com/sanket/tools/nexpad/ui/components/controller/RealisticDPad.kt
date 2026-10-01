@@ -130,15 +130,6 @@ fun RealisticDPad(
                 val center = Offset(size.width / 2f, size.height / 2f)
                 val socketRadius = size.minDimension / 2f + 4.dp.toPx()
 
-                // Ambient underglow bloom if RGB enabled
-                if (isRgbEnabled) {
-                    drawCircle(
-                        color = neonColor.copy(alpha = if (pressedDirs.isNotEmpty()) 0.35f else 0.15f),
-                        radius = socketRadius + 6.dp.toPx(),
-                        center = center
-                    )
-                }
-
                 // Recessed circular chassis socket
                 drawCircle(
                     brush = Brush.radialGradient(
@@ -169,8 +160,8 @@ fun RealisticDPad(
             .shadow(
                 elevation = if (pressedDirs.isNotEmpty()) 4.dp else 10.dp,
                 shape = crossShape,
-                ambientColor = if (isRgbEnabled) neonColor else Color.Black,
-                spotColor = if (isRgbEnabled) neonColor else Color.Black
+                ambientColor = Color.Black.copy(alpha = 0.40f),
+                spotColor = Color.Black.copy(alpha = 0.55f)
             )
             .clip(crossShape)
             .background(surfaceGradient)
@@ -427,10 +418,10 @@ fun RealisticDPadButton(
             }
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .shadow(
-                elevation = if (isPressed) 3.dp else if (isRgbEnabled) 10.dp else 6.dp,
+                elevation = if (isPressed) 3.dp else 6.dp,
                 shape = shape,
-                ambientColor = if (isRgbEnabled) themeColor else Color.Black,
-                spotColor = if (isRgbEnabled) themeColor else Color.Black
+                ambientColor = Color.Black.copy(alpha = 0.40f),
+                spotColor = Color.Black.copy(alpha = 0.55f)
             )
             .clip(shape)
             .background(

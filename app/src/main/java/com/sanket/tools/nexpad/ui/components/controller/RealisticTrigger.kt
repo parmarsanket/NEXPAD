@@ -21,7 +21,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -140,17 +139,6 @@ fun RealisticTrigger(
     Box(
         modifier = modifier
             .size(100.dp, 92.dp)
-            // Ambient neon aura behind trigger housing
-            .drawBehind {
-                if (isRgbEnabled) {
-                    drawRoundRect(
-                        color = neonColor.copy(alpha = rgbBloomAlpha * 0.40f),
-                        topLeft = Offset(-7.dp.toPx(), -7.dp.toPx()),
-                        size = Size(size.width + 14.dp.toPx(), size.height + 14.dp.toPx()),
-                        cornerRadius = CornerRadius(22.dp.toPx(), 52.dp.toPx())
-                    )
-                }
-            }
             .graphicsLayer {
                 scaleX = scaleAnim
                 scaleY = scaleAnim
@@ -160,8 +148,8 @@ fun RealisticTrigger(
             .shadow(
                 elevation = if (isPressed) 2.dp else 7.dp,
                 shape = triggerShape,
-                spotColor = if (isRgbEnabled) neonColor else Color.Black,
-                ambientColor = if (isRgbEnabled) neonColor.copy(alpha = 0.5f) else Color.Black
+                ambientColor = Color.Black.copy(alpha = 0.40f),
+                spotColor = Color.Black.copy(alpha = 0.55f)
             )
             .clip(triggerShape)
             // Convex dome surface
