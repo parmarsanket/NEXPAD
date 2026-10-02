@@ -40,8 +40,7 @@ class LayoutManager(private val context: Context) {
             val savedJson = prefs.getString("profile_${defaultProfile.name}", null)
             if (savedJson != null) {
                 if (savedJson.contains("\"M1\"") || savedJson.contains("\"M2\"") ||
-                    savedJson.contains("\"M3\"") || savedJson.contains("\"M4\"") ||
-                    savedJson.contains("0.055") || savedJson.contains("0.080")
+                    savedJson.contains("\"M3\"") || savedJson.contains("\"M4\"")
                 ) {
                     editor.remove("profile_${defaultProfile.name}")
                     needsCommit = true

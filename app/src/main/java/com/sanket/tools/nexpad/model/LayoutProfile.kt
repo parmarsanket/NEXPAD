@@ -75,33 +75,34 @@ data class Position(
  */
 fun standardElitePositions(): Map<String, Position> {
     val positions = mutableMapOf(
-        // Shoulders (Top Left & Top Right): Zero-cutout safe placement
-        K.LT to Position(0.100f, 0.140f, scale = 0.92f),
-        K.LB to Position(0.100f, 0.285f, scale = 0.82f),
-        K.RT to Position(0.900f, 0.140f, scale = 0.92f),
-        K.RB to Position(0.900f, 0.285f, scale = 0.82f),
+        // Triggers and Bumpers (Top Corners)
+        K.LT to Position(0.080f, 0.055f, scale = 1.18f),
+        K.LB to Position(0.080f, 0.375f, scale = 0.95f),
+        K.RT to Position(0.920f, 0.055f, scale = 1.18f),
+        K.RB to Position(0.920f, 0.375f, scale = 0.95f),
 
-        // Asymmetric Left: Left Stick (Upper Primary) & D-Pad (Lower Secondary)
-        K.LS   to Position(0.165f, 0.570f, scale = 1.00f),
-        K.DPAD to Position(0.305f, 0.750f, scale = 1.05f),
+        // Left Stick & D-Pad (Integrated 4-Way Cross Pad)
+        K.LS   to Position(0.115f, 0.740f, scale = 1.05f),
+        K.DPAD to Position(0.320f, 0.740f, scale = 1.10f),
 
-        // Asymmetric Right: Right Stick (Lower Secondary)
-        K.RS   to Position(0.840f, 0.740f, scale = 1.00f),
+        // Right Stick
+        K.RS to Position(0.895f, 0.740f, scale = 1.05f),
 
-        // Center Console Cluster
-        K.GUIDE to Position(0.500f, 0.130f, scale = 0.95f),
-        K.BACK  to Position(0.420f, 0.245f, scale = 0.72f),
-        K.START to Position(0.500f, 0.245f, scale = 0.72f),
-        K.SHARE to Position(0.580f, 0.245f, scale = 0.72f)
+        // Center System Cluster
+        K.GUIDE to Position(0.500f, 0.080f, scale = 1.15f),
+        K.BACK  to Position(0.430f, 0.230f, scale = 0.70f),
+        K.START to Position(0.500f, 0.230f, scale = 0.70f),
+        K.SHARE to Position(0.570f, 0.230f, scale = 0.70f)
     )
 
-    // Face Buttons: Upper-Right Isotropic Diamond Cluster
+    // Face Buttons: Aspect-ratio corrected isotropic diamond cluster
+    // Center: (0.675f, 0.720f), Radius: 53 dp, Scale: 0.82f -> Adjacent gap ~9.5 dp, zero overlap
     positions.putAll(
         LayoutMetrics.createDiamondCluster(
-            centerX = 0.705f,
-            centerY = 0.520f,
-            radiusDp = 52.0f,
-            scale = 0.80f
+            centerX = 0.675f,
+            centerY = 0.720f,
+            radiusDp = 53.0f,
+            scale = 0.82f
         )
     )
 
