@@ -1,1 +1,4 @@
 /build
+/src/screenshotTest*/reference/
+/src/screenshotTestDebug/
+/src/screenshotTestRelease/

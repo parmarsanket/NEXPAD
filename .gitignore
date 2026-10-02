@@ -59,3 +59,9 @@ google-services.json
 
 # macOS
 .DS_Store
+
+# Compose Preview Screenshot Testing reference images
+**/screenshotTest*/reference/
+**/screenshotTestDebug/
+**/screenshotTestRelease/
+**/screenshotTest*/**/*.png
