@@ -188,8 +188,9 @@ All screenshot tests reside in the dedicated test source set:
 
 ## 4. Storage & Output Artifacts
 
-* **Golden Reference Images (77 files):**
-  `app/src/screenshotTestDebug/reference/com/sanket/tools/nexpad/screenshot/`
+* **Golden Reference Images (77 files, local only):**
+  `app/src/screenshotTestDebug/reference/com/sanket/tools/nexpad/screenshot/`  
+  *(Note: All reference `.png` images and test screenshots are excluded via `.gitignore` to prevent repository bloat on GitHub. Developers or CI runners generate/update references locally on-demand via `.\gradlew.bat updateDebugScreenshotTest`).*
 * **Interactive HTML Validation Report:**
   `app/build/reports/screenshotTest/preview/debug/index.html`
 
