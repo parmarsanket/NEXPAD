@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.IntOffset
@@ -309,15 +310,19 @@ fun GamepadScreenContent(
         val screenWidthPx = maxOf(constraints.maxWidth, constraints.maxHeight).toFloat()
         val screenHeightPx = minOf(constraints.maxWidth, constraints.maxHeight).toFloat()
 
-        // Back Button & Connection Status
+        // Back Button & Connection Status - Positioned in the safe upper corridor to avoid left shoulder trigger overlap
         Row(
-            modifier = Modifier.align(Alignment.TopStart).padding(16.dp),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .offset(x = (-135).dp)
+                .padding(top = 10.dp)
+                .zIndex(10f),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             IconButton(
                 onClick = onBack,
-                modifier = Modifier.size(36.dp)
+                modifier = Modifier.size(32.dp)
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
