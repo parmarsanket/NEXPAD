@@ -19,6 +19,7 @@ This blueprint is NEXPAD's **universal conversion standard**. It covers the tran
 11. [Native D-Pad Family Catalog (All 6 Implemented Variants)](#11-native-d-pad-family-catalog-all-6-implemented-variants)
 12. [Native Shoulder Bumper Family Catalog](#12-native-shoulder-bumper-family-catalog)
 13. [Native Analog Trigger Family Catalog](#13-native-analog-trigger-family-catalog)
+14. [Bespoke Controller Auras & Kinetic Bloom Architecture](#14-bespoke-controller-auras--kinetic-bloom-architecture)
 
 ---
 
@@ -564,9 +565,487 @@ class DPadHitboxTest {
 | **Test Tube Trigger (Trigger H)** | `builtin.testtube_lt` / `builtin.testtube_rt` | `2701` / `2702` | Cylindrical glass test tube trigger with rising liquid & bubbles: standard trigger press kinematics via `detectTapGestures` & `updateButton(key, true/false)`, compact capsule contour ($48\text{dp} \times 98\text{dp}$, $r=24\text{dp}$), recessed dark glass chamber, dynamic rising liquid volume with swaying liquid meniscus crest ($700\text{ms}$ harmonic rocking cycle while held), 5 rising bubbles floating up through the liquid column, volumetric measurement graduation scale ticks along right edge, specular vertical gloss strip along left edge, elevated optical window ($32\text{dp} \times 16\text{dp}$, $r=8\text{dp}$) near top, damped harmonic spring kinematics (`translateY 2px, scale 0.95`), and chassis neon ring bloom. Amber orange (`#FF9F43`) on LT / Violet purple (`#BD5CFF`) on RT. Excludes percentage readout text per design directive. |
 | **Bloom Trigger (Trigger I)** | `builtin.bloom_lt` / `builtin.bloom_rt` | `2801` / `2802` | Expanding radial light bloom trigger: standard trigger press kinematics via `detectTapGestures` & `updateButton(key, true/false)`, circular $92\text{dp} \times 92\text{dp}$ compact mobile standard (`CircleShape`), central dark pupil core emitting an expanding radial bloom of radiant white/neon light as trigger is pressed ($0 \dots 42\text{dp}$ bloom radius), expanding bright circular bloom rim halo ($0 \dots 74\text{dp}$ diameter), central circular recessed optical eye window ($34\text{dp} \times 34\text{dp}$, `CircleShape`) with edge vignette and tactical glyph ($12\text{sp}$ bold), damped harmonic spring kinematics (`translateY 2px, scale 0.95`), top specular crescent arc highlight, and chassis neon ring bloom. Electric periwinkle (`#7C9CFF`) on LT / Neon rose (`#FF6584`) on RT. Excludes percentage readout text per design directive. |
 
+---
 
+## 14. Bespoke Controller Auras & Kinetic Bloom Architecture
 
+### 14.1 Philosophy & Architectural Rationale
 
+Prior generations of gamepad UI utilized generic drop shadows (`Modifier.shadow`) or uniform circular radial gradients. While functional, these lacked physical authenticity and failed to express the mechanical or optical theme of each unique controller component.
 
+In NEXPAD's **Bespoke Aura Architecture**, every controller component features a customized outer `.drawBehind` canvas effect mathematically derived from its interaction kinematics (press depth, stick deflection vector, analog trigger travel, or capacitive touch coordinates).
 
+```
+ ┌──────────────────────────────────────────────────────────────┐
+ │                  NEXPAD 7-Layer Display List                  │
+ │                                                              │
+ │   Layer 0: .drawBehind { ... } Bespoke Kinetic Aura          │ ◄── THIS SYSTEM
+ │   Layer 1: Component Chassis (Dark Acrylic / Anodized Metal) │
+ │   Layer 2: Tactile Knurling, Laser Ticks, or Grooves         │
+ │   Layer 3: Dynamic Fill / Progress / Needle / Fluid Layer    │
+ │   Layer 4: Recessed Optical Window / Aperture                │
+ │   Layer 5: Tactical Typography / Center Glyphs               │
+ │   Layer 6: Top Specular Glass Crescent / Lens Reflection     │
+ └──────────────────────────────────────────────────────────────┘
+```
 
+#### Why `.drawBehind`?
+1. **Zero Layout Thrash**: `.drawBehind` executes directly on the graphics render layer behind the component, without triggering separate measure/layout passes.
+2. **Hitbox Isolation**: Drawing outside the bounding box via `.drawBehind` does not expand or distort the touch target hitbox.
+3. **Continuous Kinetic Access**: Draw passes have direct read access to dynamic animated state variables (`fillProgress`, `flipAngle`, `animOffsetX`, `touchX`, `touchY`) at 120 FPS.
+4. **Zero Clipping Guarantee**: By sizing the outer gradient radius to $0.55\times \dots 1.0\times$ component dimensions and anchoring the outermost color stop strictly at `Color.Transparent`, radiant blooms blend seamlessly into the background canvas without sharp edges.
+
+---
+
+### 14.2 Kinematic Modulation Mathematical Models
+
+#### Model A: Damped Harmonic Spring Alpha Modulation (Digital Press)
+Digital face buttons, D-pad arms, and tactile switches animate their baseline emissive aura using underdamped harmonic spring physics:
+
+$$\alpha_{\text{bloom}}(t) = \text{Spring}\left(\text{target} = \begin{cases} 0.95 & \text{if pressed} \\ 0.45 & \text{if idle} \end{cases}, \; k = 440\,\text{N/m}, \; \zeta = 0.68\right)$$
+
+#### Model B: 2D Polar Deflection Modulation (Joysticks)
+Analog stick auras modulate beam width, projection length, and radial intensity based on the normalized polar vector:
+
+$$\mathbf{v} = (x, y), \quad r = \|\mathbf{v}\| = \sqrt{x^2 + y^2}, \quad f_{\text{def}} = \text{clamp}\left(\frac{r}{r_{\text{max}}}, 0.0, 1.0\right)$$
+
+$$\theta_{\text{beam}} = \text{atan2}(y, x) \times \frac{180}{\pi}$$
+
+$$\text{Cone Spread} = 50^\circ - 15^\circ \times f_{\text{def}}, \quad L_{\text{beam}} = D_{\text{min}} \times (0.55 + 0.25 \times f_{\text{def}})$$
+
+As deflection increases, the beam tightens into a focused spotlight and elongates outward in real-time.
+
+#### Model C: 3D Anamorphic Squashing & Horizon Laser Edge (Flip Kinematics)
+Components that rotate in 3D space (`FlipButton`, `FlipBumper`) modulate their outer aura dimensions using projective cosine geometry:
+
+$$f_{\cos} = \left|\cos\left(\theta_{\text{flip}} \times \frac{\pi}{180}\right)\right|$$
+
+$$W_{\text{aura}} = (W_0 \times 1.15) \times \max(f_{\cos}, 0.08)$$
+
+$$\text{Slit Intensity} = \begin{cases} \left(1.0 - \frac{f_{\cos}}{0.38}\right) \times \alpha_{\text{bloom}} & \text{if } f_{\cos} < 0.38 \\ 0.0 & \text{otherwise} \end{cases}$$
+
+At $\theta_{\text{flip}} \approx 90^\circ$ (edge-on view), the broad circular aura collapses into an intense, laser-thin horizon blade.
+
+#### Model D: Continuous Multi-Tier Overdrive Shift (VU Slabs & Gauges)
+Analog triggers dynamically transition their aura color through 3 distinct spectral tiers:
+
+$$\mathbf{C}_{\text{aura}}(f) = \begin{cases} \mathbf{C}_{\text{crimson}} (\text{Peak Clipping}) & \text{if } f > 0.85 \\ \mathbf{C}_{\text{amber}} (\text{Warning Overdrive}) & \text{if } f > 0.60 \\ \mathbf{C}_{\text{neon}} (\text{Nominal Operating}) & \text{otherwise} \end{cases}$$
+
+#### Model E: Dynamic Capacitive Contact Waveform (Touchpads)
+Touchpads emit dynamic capacitive waves positioned directly at the active finger contact coordinates $\mathbf{p}_{\text{touch}} = (x_t, y_t)$, rather than the geometric center:
+
+$$\mathbf{C}(x, y) = \text{RadialGradient}\left(\text{center} = \mathbf{p}_{\text{touch}}, \; r = 46\,\text{dp}, \; \text{stops} = [1.0 \to \text{White}, 0.7 \to \mathbf{C}_{\text{aura}}, 0.0 \to \text{Transparent}]\right)$$
+
+---
+
+### 14.3 Master Catalog: The Complete 41-Component Themed Aura Matrix
+
+#### Cluster 1: Face Buttons (8/8)
+
+| Component | Archetype | Visual Aura Theme | Mathematical Formulation & Kinetic Behavior |
+|---|---|---|---|
+| **EclipseButton** | Face Button | Asymmetric Solar Penumbra + Diamond Corona Flare | Penumbra center shifts opposite to moon slide: $\mathbf{c}_p = \mathbf{c} - 0.55 \cdot \mathbf{d}_{\text{slide}}$. Ignites 4-point diamond starburst flare with annular limb halo on press. |
+| **OrbitButton** | Face Button | Dual Counter-Rotating Dashed Orbits + Satellite Pips | Two concentric dashed planetary rings ($r_1 = r - 8\text{dp}, r_2 = r - 14\text{dp}$) counter-rotating by $+120^\circ$ and $-120^\circ$ under spring dynamics with satellite pips. |
+| **RippleButton** | Face Button | Staggered 3-Wave Acoustic Shockwaves | 3 concentric rings launched on press staggered by $140\text{ms}$ delay. Each ring scales $1.0\times \to 1.9\times$ while alpha decays $0.85 \to 0.0$ over $800\text{ms}$. |
+| **FlipButton** | Face Button | 3D Anamorphic Squashed Oval + Horizon Slit | Anamorphic horizontal oval squashing via $W = 1.15 \cdot W_0 \cdot |\cos(\theta)|$. Ignites high-intensity vertical laser slit blade when $|\cos(\theta)| < 0.38$. |
+| **FacetButton** | Face Button | 8-Point Crystalline Diffraction Starburst | 45° diamond chassis aura with 8 diffraction spikes ($4$ primary at $0^\circ, 90^\circ, 180^\circ, 270^\circ$ and $4$ secondary at $45^\circ, 135^\circ, 225^\circ, 315^\circ$) flaring outward on press. |
+| **LiquidButton** | Face Button | Rising Fluid Reservoir + Meniscus Wave Crest | Base reservoir aura pool flooding upward ($0 \to 100\%$) with sinusoidal meniscus crest rocking horizontally $\pm 9\text{dp}$ at $700\text{ms}$ harmonic frequency. |
+| **CapsulesButton** | Face Button | Stadium Pill Capsule + Dual Endcap Node Blooms | Rounded stadium rectangle ($r = 26\text{dp}$) matching pill aspect ratio ($52\times 84\text{dp}$ vertical vs $84\times 52\text{dp}$ horizontal) with dual apex focus glow nodes. |
+| **GamepadButton** | Face Button | Dual-Layer Primary Neon Pulse + Spring Scale | High-density core bloom ($r = 0.55 \cdot D$) paired with wide ambient halo ($r = 0.95 \cdot D$), pulsing aggressively on spring compression. |
+
+#### Cluster 2: Directional Pads (D-Pads) (7/7)
+
+| Component | Archetype | Visual Aura Theme | Mathematical Formulation & Kinetic Behavior |
+|---|---|---|---|
+| **RealisticDPad** | D-Pad Cluster | 4-Way Cardinal Laser Crosshairs + Arm Flares | Orthogonal laser guide rays extending along 4 cardinal axes. Active directional arms emit localized forward laser flare beams. |
+| **LensDPad** | D-Pad Cluster | Optical Caustics Halo + Chromatic Aberration Fringe | 3D tilting caustics halo with subtle chromatic dispersion offset tracking rocker pivot tilt angles ($\text{rot}_X, \text{rot}_Y$). |
+| **FourLensesDPad** | D-Pad Cluster | Constellation Network Filaments | Illuminated orbital filament web interconnecting central stationary hub to 4 satellite lens nodes with active branch brightening. |
+| **DiscDPad** | D-Pad Cluster | 360° Grooved Turntable Rim + Angular Gate Wedge | Circular concentric groove halo with dynamic angular pie wedge flare opening along directional gate angle ($\theta_{\text{gate}} \pm 22.5^\circ$). |
+| **CapsulesDPad** | D-Pad Cluster | 4-Way Capsule Thruster Exhaust Plumes | 4 stadium exhaust corridors radiating outward; active pressed direction fires an elongated conical thruster plume. |
+| **MetaballsDPad** | D-Pad Cluster | Organic Viscous Fluid Bridge Neck Swelling | Inter-nodal fluid bridge aura whose neck thickness swells dynamically between the center core and the active satellite orb. |
+| **RailsDPad** | D-Pad Cluster | Orthogonal Laser Guide Tracks + Sliding Puck Beacon | Recessed laser rail channels with real-time omnidirectional puck beacon flare following touch coordinates across 52dp travel. |
+
+#### Cluster 3: Joysticks & Stick Buttons (6/6)
+
+| Component | Archetype | Visual Aura Theme | Mathematical Formulation & Kinetic Behavior |
+|---|---|---|---|
+| **RealisticJoystick** & **StickButton** | Analog Stick | Deflection Comet Plume + Knurled Disc Halo | Parabolic comet exhaust plume trailing along the stick deflection vector $\mathbf{v} = (x, y)$ combined with a 360° knurled outer disc halo. |
+| **FluxJoystick** & **StickButton** | Analog Stick | Reactor Flux Ticks + Arc Discharge Lightning | 32 radial electrical flux ticks around socket, central turbine core aura, and high-voltage arc discharge lightning bolt along stick angle. |
+| **OrbJoystick** & **StickButton** | Analog Stick | Solar Plasma Corona + Prominence Bursts | Radiant solar corona halo with parabolic plasma prominence flares erupting outward when deflection exceeds $70\%$. |
+| **CompassJoystick** & **StickButton** | Analog Stick | Navigational Compass Rose + Azimuth Ring + Arrow | Tactical 360° degree azimuth ring, 8 cardinal/intercardinal pips, and focused directional navigational arrow beam tracking stick angle. |
+| **GyroJoystick** & **StickButton** | Analog Stick | Dual 3D Elliptical Gimbal Rings + Precession Aura | Nested inner and outer gimbal ellipses tilting in 3D perspective ($e_1, e_2$) with precession suspension aura responding to stick roll/pitch. |
+| **SpotlightJoystick** & **StickButton** | Analog Stick | Reflector Dish Rim + Volumetric Spotlight Cone | Parabolic reflector dish aura casting a volumetric spotlight cone ($\text{spread} = 50^\circ - 15^\circ \cdot f_{\text{def}}$) and focused central laser core ray. |
+
+#### Cluster 4: Shoulder Bumpers (8/8)
+
+| Component | Archetype | Visual Aura Theme | Mathematical Formulation & Kinetic Behavior |
+|---|---|---|---|
+| **RealisticBumper** | Shoulder Bumper | Asymmetric Ergonomic Stadium + Corner Flares | Asymmetric rounded stadium hull aura ($10\text{dp}$ outer bezel, $26\text{dp}$ inner slope) with dual corner edge laser flares. |
+| **ArcBumper** | Shoulder Bumper | Quadratic Parabolic Crescent Ribbon + Apex Crown | True quadratic bezier curve path (`M24 62 Q115 -10 206 62`) emissive crescent ribbon with apex crown flare at top center. |
+| **FlipBumper** | Shoulder Bumper | 3D X-Axis Squashed Stadium + Horizon Edge Slit | 3D vertical squashing ($H = 1.15 \cdot H_0 \cdot |\cos(\theta_x)|$) collapsing into a brilliant horizontal edge-on laser slit at $\theta_x \approx 90^\circ$. |
+| **LedBumper** | Shoulder Bumper | 6 Cascading Segmented Projector Light Beams | 6 discrete vertical projector light columns positioned behind the bumper, igniting in a cascading wave ($35\text{ms}$ stagger) on press. |
+| **PeekBumper** | Shoulder Bumper | Keyhole Aperture Spotlight + Iris Rings | Symmetrical stadium halo with expanding keyhole spotlight aperture and concentric optical iris rings expanding with glyph zoom. |
+| **RibbedBumper** | Shoulder Bumper | Striated Vertical Diffraction Grating + Lightbar | Vertical light curtain teeth projected upward from tactile ribs, backed by a lower neon lightbar accent strip. |
+| **TubeBumper** | Shoulder Bumper | Ionized Neon Plasma Tube + Electrode Endcaps | Cylindrical tube aura with twin anode/cathode glow nodes and dynamic horizontal fluid surge level advancing $0\% \to 100\%$. |
+| **UnderglowBumper** | Shoulder Bumper | Automotive Ground-Effect Floor Wash Puddle | Broad downward ground-effect wash puddle radiating beneath the bottom hull ($12\text{dp}$ floor wash) with core reflection slit. |
+
+#### Cluster 5: Analog Triggers (9/9)
+
+| Component | Archetype | Visual Aura Theme | Mathematical Formulation & Kinetic Behavior |
+|---|---|---|---|
+| **RealisticTrigger** | Analog Trigger | Progressive Squeeze Shield Hull + Thruster Wash | Contoured trigger hull aura expanding vertically ($r_y \propto \text{pull}$) with broad downward thruster exhaust wash. |
+| **TargetTrigger** | Analog Trigger | Concentric Radar Reticle Tightening + Crosshairs | 3 concentric target rings tightening by $20\%$ on pull ($r \cdot (1 - 0.20 \cdot f)$) with 4-axis laser crosshair rays. |
+| **BloomTrigger** | Analog Trigger | Mechanical Iris Bloom with 8 Rotating Petal Lobes | 8-petal mechanical iris bloom expanding from $0\text{dp} \to 42\text{dp}$ radius and rotating by $45^\circ$ as trigger is pulled. |
+| **VuSlabsTrigger** | Analog Trigger | Tapered Hull Aura with VU Shift + Equalizer Wings | Dynamic spectral color shift (Green $\to$ Amber $\to$ Red) combined with 4 pairs of lateral equalizer wings expanding on pull. |
+| **TestTubeTrigger** | Analog Trigger | Bioluminescent Beaker Aura + Effervescent Bubbles | Rising bioluminescent fluid pool behind beaker chamber with floating bubble beacons tracking fluid level. |
+| **SliderTrigger** | Analog Trigger | Vertical Track Capsule + Travelling Puck Flare | Elongated vertical track capsule channel with real-time travelling puck beacon flare and lateral guide spikes tracking puck Y. |
+| **NeedleTrigger** | Analog Trigger | Arched Dome Aura + Sweeping Radial Sector ($140^\circ$) | Arched dome aura with radial sweeping tachometer gauge sector ($200^\circ \dots 340^\circ$) and bright needle tip flare. |
+| **LiquidOrbTrigger** | Analog Trigger | Surface-Tension Droplet + Swaying Meniscus | Teardrop fluid droplet aura whose center-of-mass rises with fluid level, featuring an oscillating meniscus wave. |
+| **DialTrigger** | Analog Trigger | 12-Point Radial Tick Halo + 270° Rotary Sector | 12-point graduation tick halo with 270° rotary gauge sector sweep ($135^\circ \text{ SW} \to 45^\circ \text{ SE}$) and pointer beacon. |
+
+#### Cluster 6: System, Macro & Auxiliary Controls (3/3)
+
+| Component | Archetype | Visual Aura Theme | Mathematical Formulation & Kinetic Behavior |
+|---|---|---|---|
+| **RealisticSystemButton** | Tactical Pill | Precision Telemetry Rings + 4 Calibration Pips | Compact tactical pill aura with dual concentric telemetry guide rings and 4 cardinal calibration alignment pips. |
+| **RealisticMacroButton** | Macro Toggle | Stadium Switch Aura + 4 Corner Bracket Reticles | Elongated stadium toggle aura with 4 corner bracket targeting reticles and central electric pulse slit. |
+| **RealisticTouchPad** | Inertial Touchpad | Ambient Boundary Glow + Capacitive Touch Ripple | Ambient glass boundary glow ($r = 36\text{dp}$) with dual concentric capacitive touch ripples expanding at active $(touchX, touchY)$. |
+
+---
+
+### 14.4 Master Implementation Recipes (Canonical Compose Snippets)
+
+#### Recipe 1: Volumetric Conical Spotlight Beam & Core Laser Ray
+*Used in directional sticks (`SpotlightJoystick.kt`):*
+
+```kotlin
+.drawBehind {
+    if (isRgbEnabled) {
+        val curX = animOffsetX.value
+        val curY = animOffsetY.value
+        val curDist = hypot(curX, curY)
+        val defFraction = (curDist / maxTravelPx).coerceIn(0f, 1f)
+
+        // 1. Ambient socket glow
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    glowColor.copy(alpha = rgbBloomAlpha * 0.35f),
+                    glowColor.copy(alpha = rgbBloomAlpha * 0.12f),
+                    Color.Transparent
+                ),
+                center = center,
+                radius = size.minDimension * 0.65f
+            ),
+            radius = size.minDimension * 0.65f
+        )
+
+        // 2. Volumetric spotlight cone cast along stick deflection
+        if (defFraction > 0.05f) {
+            val beamAngleDeg = Math.toDegrees(atan2(curY.toDouble(), curX.toDouble())).toFloat()
+            val coneSpread = 50f - 15f * defFraction
+            val beamStart = beamAngleDeg - coneSpread / 2f
+            val beamLength = size.minDimension * (0.55f + 0.25f * defFraction)
+
+            drawArc(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        glowColor.copy(alpha = rgbBloomAlpha * (0.60f + 0.35f * defFraction)),
+                        glowColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                        Color.Transparent
+                    ),
+                    center = center,
+                    radius = beamLength
+                ),
+                startAngle = beamStart,
+                sweepAngle = coneSpread,
+                useCenter = true,
+                topLeft = Offset(center.x - beamLength, center.y - beamLength),
+                size = Size(beamLength * 2f, beamLength * 2f)
+            )
+
+            // 3. Focused core beam laser ray
+            val beamRad = Math.toRadians(beamAngleDeg.toDouble())
+            val cosB = cos(beamRad).toFloat()
+            val sinB = sin(beamRad).toFloat()
+            drawLine(
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = rgbBloomAlpha * 0.90f),
+                        glowColor.copy(alpha = rgbBloomAlpha * 0.50f),
+                        Color.Transparent
+                    ),
+                    start = center,
+                    end = Offset(center.x + beamLength * cosB, center.y + beamLength * sinB)
+                ),
+                start = center,
+                end = Offset(center.x + beamLength * cosB, center.y + beamLength * sinB),
+                strokeWidth = 2.5f
+            )
+        }
+    }
+}
+```
+
+#### Recipe 2: 3D Squashed Anamorphic Aura & 90° Horizon Laser Slit
+*Used in 3D flipping components (`FlipButton.kt`, `FlipBumper.kt`):*
+
+```kotlin
+.drawBehind {
+    if (isRgbEnabled) {
+        val cosFactor = kotlin.math.abs(kotlin.math.cos(Math.toRadians(flipAngle.toDouble()))).toFloat()
+        val squashedWidth = (size.width * 1.15f) * cosFactor.coerceAtLeast(0.08f)
+        val auraHeight = size.height * 1.10f
+        val auraTopLeft = Offset(center.x - squashedWidth / 2f, center.y - auraHeight / 2f)
+        val auraSize = Size(squashedWidth, auraHeight)
+
+        // 1. 3D squashed anamorphic aura oval tracking flipAngle
+        drawOval(
+            brush = Brush.radialGradient(
+                colorStops = arrayOf(
+                    0.00f to (if (isBackFace) Color.White else buttonColor).copy(alpha = rgbBloomAlpha * 0.60f),
+                    0.40f to buttonColor.copy(alpha = rgbBloomAlpha * 0.30f),
+                    1.00f to Color.Transparent
+                ),
+                center = center,
+                radius = (auraHeight / 2f).coerceAtLeast(1f)
+            ),
+            topLeft = auraTopLeft,
+            size = auraSize
+        )
+
+        // 2. Vertical laser slit blade when near 90° edge-on
+        if (cosFactor < 0.38f) {
+            val bladeIntensity = (1.0f - cosFactor / 0.38f) * rgbBloomAlpha
+            val bladeHalfH = size.height * 0.65f
+            drawLine(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Transparent,
+                        Color.White.copy(alpha = bladeIntensity * 0.95f),
+                        buttonColor.copy(alpha = bladeIntensity * 0.85f),
+                        Color.Transparent
+                    ),
+                    startY = center.y - bladeHalfH,
+                    endY = center.y + bladeHalfH
+                ),
+                start = Offset(center.x, center.y - bladeHalfH),
+                end = Offset(center.x, center.y + bladeHalfH),
+                strokeWidth = 3f
+            )
+        }
+    }
+}
+```
+
+#### Recipe 3: Reactive Audio Spectrum Wings & Multi-Tier Overdrive Shift
+*Used in progressive audio meters and gauges (`VuSlabsTrigger.kt`):*
+
+```kotlin
+.drawBehind {
+    if (isRgbEnabled) {
+        val padX = 12.dp.toPx()
+        val padY = 8.dp.toPx()
+
+        // Multi-tier color shift based on pull depth
+        val activeVuColor = when {
+            fillProgress > 0.85f -> redOverdrive
+            fillProgress > 0.60f -> orangeOverdrive
+            else -> neonColor
+        }
+
+        // 1. Tapered Hull Aura with VU color shifting
+        drawRoundRect(
+            brush = Brush.verticalGradient(
+                colors = listOf(
+                    neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.50f else 0.30f)),
+                    activeVuColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.75f else 0.40f)),
+                    Color.Transparent
+                ),
+                startY = -padY,
+                endY = size.height + padY + 12.dp.toPx() * fillProgress
+            ),
+            topLeft = Offset(-padX, -padY),
+            size = Size(size.width + padX * 2f, size.height + padY * 2f + 12.dp.toPx() * fillProgress),
+            cornerRadius = CornerRadius(24.dp.toPx(), 36.dp.toPx())
+        )
+
+        // 2. Lateral Equalizer Soundwave Spectrum Wings (4 pairs on left & right)
+        if (fillProgress > 0.15f) {
+            val wingYStart = size.height * 0.40f
+            val wingYStep = 10.dp.toPx()
+            for (i in 0 until 4) {
+                val wingFrac = (fillProgress - (i * 0.2f)).coerceIn(0f, 1f)
+                if (wingFrac > 0f) {
+                    val wingLen = (6.dp + 12.dp * wingFrac).toPx()
+                    val wingY = wingYStart + i * wingYStep
+                    val barColor = when (i) {
+                        3 -> redOverdrive
+                        2 -> orangeOverdrive
+                        else -> neonColor
+                    }
+                    val barAlpha = rgbBloomAlpha * wingFrac * 0.85f
+
+                    // Left wing
+                    drawLine(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(Color.Transparent, barColor.copy(alpha = barAlpha)),
+                            startX = -padX - wingLen,
+                            endX = -padX
+                        ),
+                        start = Offset(-padX - wingLen, wingY),
+                        end = Offset(-padX, wingY),
+                        strokeWidth = 3f
+                    )
+                    // Right wing
+                    drawLine(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(barColor.copy(alpha = barAlpha), Color.Transparent),
+                            startX = size.width + padX,
+                            endX = size.width + padX + wingLen
+                        ),
+                        start = Offset(size.width + padX, wingY),
+                        end = Offset(size.width + padX + wingLen, wingY),
+                        strokeWidth = 3f
+                    )
+                }
+            }
+        }
+    }
+}
+```
+
+#### Recipe 4: Travelling Linear Puck Beacon with Lateral Spikes
+*Used in precision analog sliders and rails (`SliderTrigger.kt`):*
+
+```kotlin
+.drawBehind {
+    if (isRgbEnabled) {
+        val padX = 10.dp.toPx()
+        val padY = 8.dp.toPx()
+        val curPull = fillAnim.value
+
+        // 1. Vertical Track Channel Capsule Aura
+        drawRoundRect(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    glowColor.copy(alpha = rgbBloomAlpha * (if (isDragging) 0.50f else 0.30f)),
+                    glowColor.copy(alpha = rgbBloomAlpha * 0.12f),
+                    Color.Transparent
+                ),
+                center = center,
+                radius = size.height * 0.55f
+            ),
+            topLeft = Offset(-padX, -padY),
+            size = Size(size.width + padX * 2f, size.height + padY * 2f),
+            cornerRadius = CornerRadius(21.dp.toPx(), 21.dp.toPx())
+        )
+
+        // 2. Real-Time Travelling Puck Beacon Flare tracking current pull
+        val topRestPx = topRestCenterDp.toPx()
+        val travelSpanPx = travelSpanDp.toPx()
+        val puckCenterY = if (isFlipped) {
+            topRestPx + travelSpanPx * (1f - curPull)
+        } else {
+            topRestPx + travelSpanPx * curPull
+        }
+        val puckCenter = Offset(center.x, puckCenterY)
+
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = rgbBloomAlpha * (if (isDragging) 0.70f else 0.40f)),
+                    glowColor.copy(alpha = rgbBloomAlpha * 0.50f),
+                    glowColor.copy(alpha = rgbBloomAlpha * 0.15f),
+                    Color.Transparent
+                ),
+                center = puckCenter,
+                radius = 28.dp.toPx()
+            ),
+            center = puckCenter,
+            radius = 28.dp.toPx()
+        )
+
+        // Lateral laser guide spikes extending from puck center
+        val spikeLen = (8.dp + 10.dp * curPull).toPx()
+        val spikeAlpha = rgbBloomAlpha * (if (isDragging) 0.85f else 0.45f)
+        drawLine(glowColor.copy(alpha = spikeAlpha), Offset(center.x - size.width / 2f - spikeLen, puckCenterY), Offset(center.x - size.width / 2f, puckCenterY), 2.5f)
+        drawLine(glowColor.copy(alpha = spikeAlpha), Offset(center.x + size.width / 2f, puckCenterY), Offset(center.x + size.width / 2f + spikeLen, puckCenterY), 2.5f)
+    }
+}
+```
+
+#### Recipe 5: Capacitive Touch Ripple with Dynamic Coordinate Injection
+*Used in touch surfaces and trackpads (`RealisticTouchPad.kt`):*
+
+```kotlin
+.drawBehind {
+    if (isRgbEnabled) {
+        val pad = 12.dp.toPx()
+
+        // 1. Ambient Glass Boundary Glow
+        drawRoundRect(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    auraColor.copy(alpha = rgbBloomAlpha * (if (isDragging) 0.50f else 0.30f)),
+                    auraColor.copy(alpha = rgbBloomAlpha * 0.12f),
+                    Color.Transparent
+                ),
+                center = center,
+                radius = size.width * 0.65f
+            ),
+            topLeft = Offset(-pad, -pad),
+            size = Size(size.width + pad * 2f, size.height + pad * 2f),
+            cornerRadius = CornerRadius(36.dp.toPx(), 36.dp.toPx())
+        )
+
+        // 2. Capacitive Touch Ripple expanding from active finger contact coordinates
+        if (isDragging) {
+            val touchCenter = Offset(touchX, touchY)
+            val touchRadius = 46.dp.toPx()
+
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = rgbBloomAlpha * 0.65f),
+                        auraColor.copy(alpha = rgbBloomAlpha * 0.50f),
+                        auraColor.copy(alpha = rgbBloomAlpha * 0.15f),
+                        Color.Transparent
+                    ),
+                    center = touchCenter,
+                    radius = touchRadius
+                ),
+                center = touchCenter,
+                radius = touchRadius
+            )
+
+            // Dual concentric capacitive touch ripples
+            drawCircle(
+                color = auraColor.copy(alpha = rgbBloomAlpha * 0.80f),
+                radius = 20.dp.toPx(),
+                center = touchCenter,
+                style = Stroke(width = 1.5.dp.toPx())
+            )
+            drawCircle(
+                color = auraColor.copy(alpha = rgbBloomAlpha * 0.45f),
+                radius = 32.dp.toPx(),
+                center = touchCenter,
+                style = Stroke(width = 1.dp.toPx())
+            )
+        }
+    }
+}
+```
+
+---
+
+### 14.5 Implementation Checklist for Future Controller Components
+
+When creating ANY new button or controller component variant in NEXPAD, verify each of these 6 requirements before submitting code:
+
+- [ ] **1. Dedicated Theme Identity**: Does the component have a bespoke visual aura signature that matches its physical or optical theme (e.g., fluid meniscus for liquid, radar reticle for target, iris bloom for apertures)?
+- [ ] **2. Pure `.drawBehind` Placement**: Is the outer aura drawn on the root container `Box` using `.drawBehind { ... }` rather than inflating extra Composables, wrappers, or Canvas layers?
+- [ ] **3. Strict Radial Falloff to `Color.Transparent`**: Does the outermost color stop in every gradient evaluate to `Color.Transparent` at $0.65\times \dots 1.0\times$ component radius to guarantee zero layout boundary clipping?
+- [ ] **4. Kinematic Reactivity**: Does the aura modulate dynamically based on interaction state (e.g. `rgbBloomAlpha` spring on press, deflection vector on sticks, pull progress on triggers, or contact coordinates on touch surfaces)?
+- [ ] **5. Dynamic RGB Gating**: Is the entire aura block gated behind `if (isRgbEnabled)` so user customizations and power-saving modes are strictly honored?
+- [ ] **6. Zero Suppression Guarantee**: Strictly verify **0 `@Suppress` and 0 `@SuppressLint`** across all modified files, followed by passing `./gradlew testDebugUnitTest`.
