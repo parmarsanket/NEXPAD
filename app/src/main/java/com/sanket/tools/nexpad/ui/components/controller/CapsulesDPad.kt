@@ -403,18 +403,57 @@ fun CapsulesDPad(
             .size(170.dp)
             .drawBehind {
                 if (isRgbEnabled) {
+                    val w = size.width
+                    val h = size.height
+
+                    // 1. Central pivot hub containment aura
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.50f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.42f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 0.95f
+                            radius = size.minDimension * 0.35f
                         ),
-                        radius = size.minDimension * 0.95f
+                        radius = size.minDimension * 0.35f,
+                        center = center
                     )
+
+                    // 2. 4-Way Capsule Thruster Plumes
+                    fun drawThrusterPlume(isVertical: Boolean, cx: Float, cy: Float, isPressed: Boolean) {
+                        val plumeAlpha = if (isPressed) rgbBloomAlpha * 0.90f else (if (isAnyPressed) 0.18f else 0.38f)
+                        val plumeW = if (isVertical) 48.dp.toPx() else 70.dp.toPx()
+                        val plumeH = if (isVertical) 70.dp.toPx() else 48.dp.toPx()
+                        val pad = if (isPressed) 14.dp.toPx() else 8.dp.toPx()
+                        val cr = (if (isVertical) plumeW else plumeH) / 2f + pad
+
+                        drawRoundRect(
+                            brush = Brush.radialGradient(
+                                colorStops = arrayOf(
+                                    0.00f to (if (isPressed) Color.White else neonColor).copy(alpha = plumeAlpha * 0.65f),
+                                    0.45f to neonColor.copy(alpha = plumeAlpha * 0.30f),
+                                    1.00f to Color.Transparent
+                                ),
+                                center = Offset(cx, cy),
+                                radius = (plumeH.coerceAtLeast(plumeW) / 2f) + pad * 1.5f
+                            ),
+                            topLeft = Offset(cx - plumeW / 2f - pad, cy - plumeH / 2f - pad),
+                            size = Size(plumeW + pad * 2f, plumeH + pad * 2f),
+                            cornerRadius = CornerRadius(cr, cr)
+                        )
+                    }
+
+                    // UP, DOWN, LEFT, RIGHT capsule centers
+                    val upY = 36.dp.toPx()
+                    val downY = h - 36.dp.toPx()
+                    val leftX = 36.dp.toPx()
+                    val rightX = w - 36.dp.toPx()
+
+                    drawThrusterPlume(true, center.x, upY, pressedDirs.contains(K.UP))
+                    drawThrusterPlume(true, center.x, downY, pressedDirs.contains(K.DOWN))
+                    drawThrusterPlume(false, leftX, center.y, pressedDirs.contains(K.LEFT))
+                    drawThrusterPlume(false, rightX, center.y, pressedDirs.contains(K.RIGHT))
                 }
             }
             .shadow(

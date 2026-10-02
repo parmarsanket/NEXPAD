@@ -105,18 +105,73 @@ fun FacetButton(
             .size(80.dp)
             .drawBehind {
                 if (isRgbEnabled) {
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                buttonColor.copy(alpha = rgbBloomAlpha * 0.55f),
-                                buttonColor.copy(alpha = rgbBloomAlpha * 0.22f),
-                                Color.Transparent
+                    val cr = 16.dp.toPx()
+                    val halfSize = 31.dp.toPx()
+                    val pad = 6.dp.toPx()
+
+                    // 1. Rotating crystalline diamond aura (tracks 45° chassis + innerRotAnim spring)
+                    rotate(degrees = 45f + innerRotAnim * 0.5f, pivot = center) {
+                        drawRoundRect(
+                            brush = Brush.radialGradient(
+                                colorStops = arrayOf(
+                                    0.00f to buttonColor.copy(alpha = rgbBloomAlpha * 0.60f),
+                                    0.45f to buttonColor.copy(alpha = rgbBloomAlpha * 0.22f),
+                                    1.00f to Color.Transparent
+                                ),
+                                center = center,
+                                radius = size.minDimension * 0.65f
                             ),
-                            center = center,
-                            radius = size.minDimension * 0.95f
-                        ),
-                        radius = size.minDimension * 0.95f
-                    )
+                            topLeft = Offset(center.x - halfSize - pad, center.y - halfSize - pad),
+                            size = Size((halfSize + pad) * 2f, (halfSize + pad) * 2f),
+                            cornerRadius = CornerRadius(cr, cr)
+                        )
+
+                        // 8-point crystalline diffraction spikes
+                        val spikeLen = size.minDimension * 0.58f
+                        val spikeColor = buttonColor.copy(alpha = if (isPressed) 0.85f else 0.40f)
+                        // Cardinal axes
+                        drawLine(
+                            color = spikeColor,
+                            start = Offset(center.x - spikeLen, center.y),
+                            end = Offset(center.x + spikeLen, center.y),
+                            strokeWidth = if (isPressed) 2.5f else 1.5f
+                        )
+                        drawLine(
+                            color = spikeColor,
+                            start = Offset(center.x, center.y - spikeLen),
+                            end = Offset(center.x, center.y + spikeLen),
+                            strokeWidth = if (isPressed) 2.5f else 1.5f
+                        )
+                        // Diagonal 45° cross spikes
+                        rotate(degrees = 45f, pivot = center) {
+                            val diagLen = spikeLen * 0.72f
+                            drawLine(
+                                color = spikeColor.copy(alpha = spikeColor.alpha * 0.7f),
+                                start = Offset(center.x - diagLen, center.y),
+                                end = Offset(center.x + diagLen, center.y),
+                                strokeWidth = 1.2f
+                            )
+                            drawLine(
+                                color = spikeColor.copy(alpha = spikeColor.alpha * 0.7f),
+                                start = Offset(center.x, center.y - diagLen),
+                                end = Offset(center.x, center.y + diagLen),
+                                strokeWidth = 1.2f
+                            )
+                        }
+                    }
+
+                    // 2. High-intensity crystal core glint on press
+                    if (isPressed) {
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(Color.White.copy(alpha = 0.8f), Color.Transparent),
+                                center = center,
+                                radius = 16f
+                            ),
+                            radius = 16f,
+                            center = center
+                        )
+                    }
                 }
             },
         contentAlignment = Alignment.Center

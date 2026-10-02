@@ -212,35 +212,74 @@ fun RealisticTouchPad(
             .size(180.dp)
             .drawBehind {
                 if (isRgbEnabled) {
-                    val pad = 14.dp.toPx()
+                    val pad = 12.dp.toPx()
+
+                    // 1. Ambient Glass Boundary Glow
                     drawRoundRect(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                auraColor.copy(alpha = rgbBloomAlpha * 0.45f),
-                                auraColor.copy(alpha = rgbBloomAlpha * 0.18f),
+                                auraColor.copy(alpha = rgbBloomAlpha * (if (isDragging) 0.50f else 0.30f)),
+                                auraColor.copy(alpha = rgbBloomAlpha * 0.12f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.width * 0.75f
+                            radius = size.width * 0.65f
                         ),
                         topLeft = Offset(-pad, -pad),
-                        size = Size(size.width + pad * 2, size.height + pad * 2),
+                        size = Size(size.width + pad * 2f, size.height + pad * 2f),
                         cornerRadius = CornerRadius(36.dp.toPx(), 36.dp.toPx())
                     )
 
+                    // 2. 4 Corner Registration Pips
+                    val bracketAlpha = rgbBloomAlpha * (if (isDragging) 0.85f else 0.40f)
+                    val bracketLen = 10.dp.toPx()
+                    val inset = 2.dp.toPx()
+
+                    // TL
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(-inset, -inset), Offset(-inset + bracketLen, -inset), 2f)
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(-inset, -inset), Offset(-inset, -inset + bracketLen), 2f)
+                    // TR
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(size.width + inset, -inset), Offset(size.width + inset - bracketLen, -inset), 2f)
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(size.width + inset, -inset), Offset(size.width + inset + bracketLen, -inset), 2f)
+                    // BL
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(-inset, size.height + inset), Offset(-inset + bracketLen, size.height + inset), 2f)
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(-inset, size.height + inset), Offset(-inset, size.height + inset - bracketLen), 2f)
+                    // BR
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(size.width + inset, size.height + inset), Offset(size.width + inset - bracketLen, size.height + inset), 2f)
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(size.width + inset, size.height + inset), Offset(size.width + inset, size.height + inset - bracketLen), 2f)
+
+                    // 3. Capacitive Touch Ripple expanding from finger contact coordinates
                     if (isDragging) {
+                        val touchCenter = Offset(touchX, touchY)
+                        val touchRadius = 46.dp.toPx()
+
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    auraColor.copy(alpha = rgbBloomAlpha * 0.40f),
+                                    Color.White.copy(alpha = rgbBloomAlpha * 0.65f),
+                                    auraColor.copy(alpha = rgbBloomAlpha * 0.50f),
                                     auraColor.copy(alpha = rgbBloomAlpha * 0.15f),
                                     Color.Transparent
                                 ),
-                                center = Offset(touchX, touchY),
-                                radius = 48.dp.toPx()
+                                center = touchCenter,
+                                radius = touchRadius
                             ),
-                            center = Offset(touchX, touchY),
-                            radius = 48.dp.toPx()
+                            center = touchCenter,
+                            radius = touchRadius
+                        )
+
+                        // Dual concentric capacitive touch ripples
+                        drawCircle(
+                            color = auraColor.copy(alpha = rgbBloomAlpha * 0.80f),
+                            radius = 20.dp.toPx(),
+                            center = touchCenter,
+                            style = Stroke(width = 1.5.dp.toPx())
+                        )
+                        drawCircle(
+                            color = auraColor.copy(alpha = rgbBloomAlpha * 0.45f),
+                            radius = 32.dp.toPx(),
+                            center = touchCenter,
+                            style = Stroke(width = 1.dp.toPx())
                         )
                     }
                 }

@@ -32,6 +32,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
+import kotlin.math.abs
+import kotlin.math.cos
 
 /**
  * NEXPAD Bumper G — Flip (LB / RB / L1 / R1)
@@ -139,21 +141,60 @@ fun FlipBumper(
             .size(154.dp, 54.dp)
             .drawBehind {
                 if (isRgbEnabled) {
-                    val pad = 12.dp.toPx()
+                    val rotRad = Math.toRadians(flipRotationXAnim.toDouble())
+                    val cosFactor = abs(cos(rotRad)).toFloat().coerceIn(0.04f, 1f)
+                    val isBackFace = abs(flipRotationXAnim % 360f) > 90f
+
+                    // 1. 3D anamorphic vertically-squashed stadium aura
+                    val padX = 14.dp.toPx()
+                    val halfH = (size.height / 2f + 8.dp.toPx()) * cosFactor
                     drawRoundRect(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.48f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.18f),
-                                Color.Transparent
-                            ),
+                            colors = if (isBackFace) {
+                                listOf(
+                                    neonColor.copy(alpha = rgbBloomAlpha * 0.70f),
+                                    neonColor.copy(alpha = rgbBloomAlpha * 0.25f),
+                                    Color.Transparent
+                                )
+                            } else {
+                                listOf(
+                                    neonColor.copy(alpha = rgbBloomAlpha * 0.45f),
+                                    neonColor.copy(alpha = rgbBloomAlpha * 0.12f),
+                                    Color.Transparent
+                                )
+                            },
                             center = center,
-                            radius = size.width * 0.65f
+                            radius = size.width * 0.55f
                         ),
-                        topLeft = Offset(-pad, -pad),
-                        size = Size(size.width + pad * 2, size.height + pad * 2),
-                        cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
+                        topLeft = Offset(-padX, center.y - halfH),
+                        size = Size(size.width + padX * 2f, halfH * 2f),
+                        cornerRadius = CornerRadius(22.dp.toPx() * cosFactor, 22.dp.toPx() * cosFactor)
                     )
+
+                    // 2. Horizon edge-on laser slit line (peaks at 90° rotation)
+                    val edgeOnIntensity = 1f - cosFactor
+                    if (edgeOnIntensity > 0.05f) {
+                        val slitLength = size.width * (0.85f + 0.25f * edgeOnIntensity)
+                        val slitStartX = center.x - slitLength / 2f
+                        val slitEndX = center.x + slitLength / 2f
+
+                        drawLine(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    neonColor.copy(alpha = rgbBloomAlpha * edgeOnIntensity * 0.85f),
+                                    Color.White.copy(alpha = rgbBloomAlpha * edgeOnIntensity * 0.95f),
+                                    neonColor.copy(alpha = rgbBloomAlpha * edgeOnIntensity * 0.85f),
+                                    Color.Transparent
+                                ),
+                                startX = slitStartX,
+                                endX = slitEndX
+                            ),
+                            start = Offset(slitStartX, center.y),
+                            end = Offset(slitEndX, center.y),
+                            strokeWidth = (2.5f + 3f * edgeOnIntensity).dp.toPx()
+                        )
+                    }
                 }
             }
             .shadow(

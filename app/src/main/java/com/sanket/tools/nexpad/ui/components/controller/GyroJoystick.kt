@@ -29,6 +29,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -167,18 +168,51 @@ fun GyroJoystick(
             .size(150.dp)
             .drawBehind {
                 if (isRgbEnabled) {
+                    val curX = animOffsetX.value
+                    val curY = animOffsetY.value
+                    val curDist = hypot(curX, curY)
+                    val defFraction = (curDist / maxTravelPx).coerceIn(0f, 1f)
+                    val stickAngleDeg = Math.toDegrees(atan2(curY.toDouble(), curX.toDouble())).toFloat()
+
+                    // 1. Ambient gyroscope core bloom
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.45f),
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.18f),
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.40f),
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.15f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 0.95f
+                            radius = size.minDimension * 0.55f
                         ),
-                        radius = size.minDimension * 0.95f
+                        radius = size.minDimension * 0.55f,
+                        center = center
                     )
+
+                    // 2. Dual 3D Elliptical Gimbal Rings (tilt and precess with deflection)
+                    val outerGimbalR = size.minDimension * 0.52f
+                    // Outer Gimbal Ring (tilts along deflection vector)
+                    rotate(degrees = stickAngleDeg, pivot = center) {
+                        val squashedH = outerGimbalR * (1.0f - 0.45f * defFraction)
+                        drawOval(
+                            color = glowColor.copy(alpha = if (defFraction > 0.3f) 0.75f else 0.40f),
+                            topLeft = Offset(center.x - outerGimbalR, center.y - squashedH),
+                            size = Size(outerGimbalR * 2f, squashedH * 2f),
+                            style = Stroke(width = 2.0f)
+                        )
+                    }
+
+                    // Inner Counter-Gimbal Ring (orthogonal tilt)
+                    val innerGimbalR = size.minDimension * 0.44f
+                    rotate(degrees = stickAngleDeg + 90f, pivot = center) {
+                        val squashedW = innerGimbalR * (1.0f - 0.35f * defFraction)
+                        drawOval(
+                            color = (if (defFraction > 0.5f) Color.White else glowColor).copy(alpha = if (defFraction > 0.3f) 0.85f else 0.30f),
+                            topLeft = Offset(center.x - squashedW, center.y - innerGimbalR),
+                            size = Size(squashedW * 2f, innerGimbalR * 2f),
+                            style = Stroke(width = 1.6f)
+                        )
+                    }
                 }
             }
             .shadow(
@@ -828,17 +862,40 @@ fun GyroStickButton(
             .offset { IntOffset(0, pressOffsetY.dp.roundToPx()) }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val coreR = size.minDimension * (if (isPressed) 1.05f else 0.85f)
+                    // 1. Gyro gimbal core beacon
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.55f),
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.22f),
-                                Color.Transparent
+                            colorStops = arrayOf(
+                                0.00f to (if (isPressed) Color.White else glowColor).copy(alpha = rgbBloomAlpha * 0.65f),
+                                0.35f to glowColor.copy(alpha = rgbBloomAlpha * 0.30f),
+                                0.75f to glowColor.copy(alpha = rgbBloomAlpha * 0.10f),
+                                1.00f to Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 1f
+                            radius = coreR
                         ),
-                        radius = size.minDimension * 1f
+                        radius = coreR,
+                        center = center
+                    )
+
+                    // 2. Precession gimbal suspension rings
+                    val gimbalR1 = size.minDimension * 0.52f
+                    val gimbalR2 = size.minDimension * 0.45f
+                    drawCircle(
+                        color = glowColor.copy(alpha = if (isPressed) 0.70f else 0.30f),
+                        radius = gimbalR1,
+                        center = center,
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.8f)
+                    )
+                    drawCircle(
+                        color = (if (isPressed) Color.White else glowColor).copy(alpha = if (isPressed) 0.85f else 0.25f),
+                        radius = gimbalR2,
+                        center = center,
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(
+                            width = 1.2f,
+                            pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(4f, 6f), 0f)
+                        )
                     )
                 }
             }

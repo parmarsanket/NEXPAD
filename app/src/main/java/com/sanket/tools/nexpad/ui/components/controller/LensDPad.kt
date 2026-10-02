@@ -266,17 +266,55 @@ fun LensDPad(
             .size(160.dp)
             .drawBehind {
                 if (isRgbEnabled) {
+                    val causticCenter = Offset(
+                        center.x + tiltYAnim * 1.8f,
+                        center.y - tiltXAnim * 1.8f
+                    )
+                    // 1. Primary optical caustic bloom
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.50f),
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.20f),
-                                Color.Transparent
+                            colorStops = arrayOf(
+                                0.00f to Color.White.copy(alpha = if (hasActivePress) 0.65f else 0.25f),
+                                0.35f to glowColor.copy(alpha = rgbBloomAlpha * 0.55f),
+                                0.70f to glowColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                1.00f to Color.Transparent
                             ),
-                            center = center,
+                            center = causticCenter,
                             radius = size.minDimension * 0.95f
                         ),
-                        radius = size.minDimension * 0.95f
+                        radius = size.minDimension * 0.95f,
+                        center = causticCenter
+                    )
+
+                    // 2. Chromatic aberration edge fringe (magenta/cyan prismatic split)
+                    val fringeRadius = size.minDimension * 0.54f
+                    drawCircle(
+                        color = Color(0xFFFF2A85).copy(alpha = if (hasActivePress) 0.45f else 0.18f),
+                        radius = fringeRadius + 3f,
+                        center = Offset(causticCenter.x - 2f, causticCenter.y),
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.0f)
+                    )
+                    drawCircle(
+                        color = Color(0xFF00E5FF).copy(alpha = if (hasActivePress) 0.55f else 0.22f),
+                        radius = fringeRadius - 1f,
+                        center = Offset(causticCenter.x + 2f, causticCenter.y),
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.0f)
+                    )
+
+                    // 3. Dual concentric optical caustic rings
+                    val causticR1 = size.minDimension * 0.48f
+                    val causticR2 = size.minDimension * 0.40f
+                    drawCircle(
+                        color = glowColor.copy(alpha = if (hasActivePress) 0.75f else 0.35f),
+                        radius = causticR1,
+                        center = causticCenter,
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.2f)
+                    )
+                    drawCircle(
+                        color = Color.White.copy(alpha = if (hasActivePress) 0.85f else 0.30f),
+                        radius = causticR2,
+                        center = causticCenter,
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.4f)
                     )
                 }
             }

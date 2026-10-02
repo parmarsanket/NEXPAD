@@ -182,18 +182,73 @@ fun FluxJoystick(
             .size(150.dp)
             .drawBehind {
                 if (isRgbEnabled) {
+                    val fluxRadius = size.minDimension * 0.52f
+                    val curX = animOffsetX.value
+                    val curY = animOffsetY.value
+                    val curDist = hypot(curX, curY)
+                    val defFraction = (curDist / maxTravelPx).coerceIn(0f, 1f)
+
+                    // 1. Ambient reactor plasma core bloom
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.45f),
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.18f),
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.40f),
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.15f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 0.95f
+                            radius = size.minDimension * 0.60f
                         ),
-                        radius = size.minDimension * 0.95f
+                        radius = size.minDimension * 0.60f,
+                        center = center
                     )
+
+                    // 2. 12-Point Reactor Flux Ring ticks
+                    for (i in 0 until 12) {
+                        val tickAngleRad = Math.toRadians((i * 30.0))
+                        val cosA = cos(tickAngleRad).toFloat()
+                        val sinA = sin(tickAngleRad).toFloat()
+                        val innerR = fluxRadius - 4.dp.toPx()
+                        val outerR = fluxRadius + 4.dp.toPx()
+                        drawLine(
+                            color = glowColor.copy(alpha = if (defFraction > 0.3f) 0.85f else 0.40f),
+                            start = Offset(center.x + innerR * cosA, center.y + innerR * sinA),
+                            end = Offset(center.x + outerR * cosA, center.y + outerR * sinA),
+                            strokeWidth = 2.0f
+                        )
+                    }
+
+                    // 3. Sweeping Magnetic Deflection Discharge Arc
+                    if (defFraction > 0.08f) {
+                        val defAngleDeg = Math.toDegrees(atan2(curY.toDouble(), curX.toDouble())).toFloat()
+                        val arcSweep = 50f + 20f * defFraction
+                        val arcStart = defAngleDeg - arcSweep / 2f
+
+                        // Outer diffuse magnetic flare
+                        drawArc(
+                            brush = Brush.radialGradient(
+                                colors = listOf(Color.White, glowColor, Color.Transparent),
+                                center = Offset(center.x + curX * 0.5f, center.y + curY * 0.5f),
+                                radius = size.minDimension * 0.65f
+                            ),
+                            startAngle = arcStart,
+                            sweepAngle = arcSweep,
+                            useCenter = false,
+                            topLeft = Offset(center.x - fluxRadius - 6f, center.y - fluxRadius - 6f),
+                            size = Size((fluxRadius + 6f) * 2f, (fluxRadius + 6f) * 2f),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 8.dp.toPx())
+                        )
+                        // Core electric arc line
+                        drawArc(
+                            color = Color.White.copy(alpha = 0.95f),
+                            startAngle = arcStart,
+                            sweepAngle = arcSweep,
+                            useCenter = false,
+                            topLeft = Offset(center.x - fluxRadius, center.y - fluxRadius),
+                            size = Size(fluxRadius * 2f, fluxRadius * 2f),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.5f)
+                        )
+                    }
                 }
             }
             .shadow(
@@ -848,18 +903,38 @@ fun FluxStickButton(
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val coreR = size.minDimension * (if (isPressed) 1.05f else 0.85f)
+                    // 1. Turbine core halo
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.55f),
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.22f),
-                                Color.Transparent
+                            colorStops = arrayOf(
+                                0.00f to (if (isPressed) Color.White else glowColor).copy(alpha = rgbBloomAlpha * 0.65f),
+                                0.35f to glowColor.copy(alpha = rgbBloomAlpha * 0.30f),
+                                0.75f to glowColor.copy(alpha = rgbBloomAlpha * 0.10f),
+                                1.00f to Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 1f
+                            radius = coreR
                         ),
-                        radius = size.minDimension * 1f
+                        radius = coreR,
+                        center = center
                     )
+
+                    // 2. Radiating turbine vanes
+                    val vaneR1 = size.minDimension * 0.44f
+                    val vaneR2 = size.minDimension * 0.54f
+                    val vaneColor = glowColor.copy(alpha = if (isPressed) 0.85f else 0.35f)
+                    for (i in 0 until 8) {
+                        val angle = Math.toRadians(i * 45.0)
+                        val cosA = cos(angle).toFloat()
+                        val sinA = sin(angle).toFloat()
+                        drawLine(
+                            color = vaneColor,
+                            start = Offset(center.x + vaneR1 * cosA, center.y + vaneR1 * sinA),
+                            end = Offset(center.x + vaneR2 * cosA, center.y + vaneR2 * sinA),
+                            strokeWidth = if (isPressed) 2.5f else 1.5f
+                        )
+                    }
                 }
             }
             .shadow(

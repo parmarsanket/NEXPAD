@@ -137,18 +137,47 @@ fun LiquidButton(
             .size(80.dp)
             .drawBehind {
                 if (isRgbEnabled) {
+                    val clampedFill = fillFraction.coerceIn(0f, 1f)
+                    // 1. Buoyant fluid reservoir pool that rises and expands upward with fillFraction
+                    val poolCenterY = center.y + (1f - clampedFill * 0.75f) * (size.height * 0.26f)
+                    val poolCenterX = center.x + (if (isPressed) swayXPercent * size.width * 0.5f else 0f)
+                    val poolCenter = Offset(poolCenterX, poolCenterY)
+                    val poolRadius = size.minDimension * (0.68f + 0.32f * clampedFill)
+
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                buttonColor.copy(alpha = rgbBloomAlpha * 0.55f),
-                                buttonColor.copy(alpha = rgbBloomAlpha * 0.22f),
-                                Color.Transparent
+                            colorStops = arrayOf(
+                                0.00f to (if (isPressed) Color.White else buttonColor).copy(alpha = rgbBloomAlpha * 0.55f),
+                                0.35f to buttonColor.copy(alpha = rgbBloomAlpha * (0.35f + 0.35f * clampedFill)),
+                                0.75f to buttonColor.copy(alpha = rgbBloomAlpha * 0.15f),
+                                1.00f to Color.Transparent
                             ),
-                            center = center,
-                            radius = size.minDimension * 1f
+                            center = poolCenter,
+                            radius = poolRadius
                         ),
-                        radius = size.minDimension * 1f
+                        radius = poolRadius,
+                        center = poolCenter
                     )
+
+                    // 2. Rising effervescent micro-bubble droplets on press
+                    if (clampedFill > 0.15f) {
+                        val bubbleAlpha = (clampedFill * rgbBloomAlpha).coerceIn(0f, 1f)
+                        drawCircle(
+                            color = Color.White.copy(alpha = bubbleAlpha * 0.85f),
+                            radius = 2.8f,
+                            center = Offset(center.x - 16f, poolCenterY - 14f * clampedFill)
+                        )
+                        drawCircle(
+                            color = buttonColor.copy(alpha = bubbleAlpha * 0.90f),
+                            radius = 3.6f,
+                            center = Offset(center.x + 18f, poolCenterY - 24f * clampedFill)
+                        )
+                        drawCircle(
+                            color = Color.White.copy(alpha = bubbleAlpha * 0.65f),
+                            radius = 2.2f,
+                            center = Offset(center.x + 2f, poolCenterY - 34f * clampedFill)
+                        )
+                    }
                 }
             }
             .graphicsLayer {

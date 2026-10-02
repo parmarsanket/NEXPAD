@@ -162,18 +162,86 @@ fun SpotlightJoystick(
             .size(150.dp)
             .drawBehind {
                 if (isRgbEnabled) {
+                    val curX = animOffsetX.value
+                    val curY = animOffsetY.value
+                    val curDist = hypot(curX, curY)
+                    val defFraction = (curDist / maxTravelPx).coerceIn(0f, 1f)
+
+                    // 1. Ambient projector socket glow
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.45f),
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.18f),
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.35f),
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.12f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 0.95f
+                            radius = size.minDimension * 0.58f
                         ),
-                        radius = size.minDimension * 0.95f
+                        radius = size.minDimension * 0.58f,
+                        center = center
                     )
+
+                    // 2. Reflector dish rim ticks around socket perimeter
+                    val rimRadius = size.minDimension * 0.49f
+                    for (i in 0 until 16) {
+                        val tickRad = Math.toRadians((i * 22.5))
+                        val cosT = cos(tickRad).toFloat()
+                        val sinT = sin(tickRad).toFloat()
+                        val innerR = rimRadius - (if (i % 4 == 0) 6.dp.toPx() else 3.dp.toPx())
+                        val outerR = rimRadius + 2.dp.toPx()
+                        val tickAlpha = if (i % 4 == 0) 0.55f else 0.25f
+                        drawLine(
+                            color = glowColor.copy(alpha = rgbBloomAlpha * tickAlpha),
+                            start = Offset(center.x + innerR * cosT, center.y + innerR * sinT),
+                            end = Offset(center.x + outerR * cosT, center.y + outerR * sinT),
+                            strokeWidth = if (i % 4 == 0) 2f else 1f
+                        )
+                    }
+
+                    // 3. Volumetric spotlight cone cast along stick deflection
+                    if (defFraction > 0.05f) {
+                        val beamAngleDeg = Math.toDegrees(atan2(curY.toDouble(), curX.toDouble())).toFloat()
+                        val coneSpread = 50f - 15f * defFraction
+                        val beamStart = beamAngleDeg - coneSpread / 2f
+                        val beamLength = size.minDimension * (0.55f + 0.25f * defFraction)
+
+                        drawArc(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    glowColor.copy(alpha = rgbBloomAlpha * (0.60f + 0.35f * defFraction)),
+                                    glowColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                    Color.Transparent
+                                ),
+                                center = center,
+                                radius = beamLength
+                            ),
+                            startAngle = beamStart,
+                            sweepAngle = coneSpread,
+                            useCenter = true,
+                            topLeft = Offset(center.x - beamLength, center.y - beamLength),
+                            size = Size(beamLength * 2f, beamLength * 2f)
+                        )
+
+                        // Focused core beam laser ray
+                        val beamRad = Math.toRadians(beamAngleDeg.toDouble())
+                        val cosB = cos(beamRad).toFloat()
+                        val sinB = sin(beamRad).toFloat()
+                        drawLine(
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = rgbBloomAlpha * 0.90f),
+                                    glowColor.copy(alpha = rgbBloomAlpha * 0.50f),
+                                    Color.Transparent
+                                ),
+                                start = center,
+                                end = Offset(center.x + beamLength * cosB, center.y + beamLength * sinB)
+                            ),
+                            start = center,
+                            end = Offset(center.x + beamLength * cosB, center.y + beamLength * sinB),
+                            strokeWidth = 3.5.dp.toPx()
+                        )
+                    }
                 }
             }
             .shadow(
@@ -767,18 +835,43 @@ fun SpotlightStickButton(
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val buttonR = size.minDimension * 0.5f
+
+                    // 1. Reflector dish parabolic ambient flare
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.55f),
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.22f),
+                                glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.65f else 0.35f)),
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.15f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 1f
+                            radius = size.minDimension * 0.70f
                         ),
-                        radius = size.minDimension * 1f
+                        radius = size.minDimension * 0.70f
                     )
+
+                    // 2. Dual concentric fresnel reflector rings
+                    drawCircle(
+                        color = glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.80f else 0.40f)),
+                        radius = buttonR + 3.dp.toPx(),
+                        style = Stroke(width = 1.5.dp.toPx())
+                    )
+                    drawCircle(
+                        color = glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.50f else 0.22f)),
+                        radius = buttonR + 7.dp.toPx(),
+                        style = Stroke(width = 1.dp.toPx())
+                    )
+
+                    // 3. 4 Orthogonal projector alignment notches
+                    val notchLen = 5.dp.toPx()
+                    val notchStart = buttonR + 2.dp.toPx()
+                    val notchEnd = notchStart + notchLen
+                    val notchAlpha = rgbBloomAlpha * (if (isPressed) 0.90f else 0.50f)
+                    drawLine(glowColor.copy(alpha = notchAlpha), Offset(center.x, center.y - notchEnd), Offset(center.x, center.y - notchStart), strokeWidth = 2f)
+                    drawLine(glowColor.copy(alpha = notchAlpha), Offset(center.x, center.y + notchStart), Offset(center.x, center.y + notchEnd), strokeWidth = 2f)
+                    drawLine(glowColor.copy(alpha = notchAlpha), Offset(center.x - notchEnd, center.y), Offset(center.x - notchStart, center.y), strokeWidth = 2f)
+                    drawLine(glowColor.copy(alpha = notchAlpha), Offset(center.x + notchStart, center.y), Offset(center.x + notchEnd, center.y), strokeWidth = 2f)
                 }
             }
             .shadow(

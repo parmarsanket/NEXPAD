@@ -134,20 +134,77 @@ fun SliderTrigger(
             // Outer dynamic RGB aura
             .drawBehind {
                 if (isRgbEnabled) {
-                    val pad = 10.dp.toPx()
+                    val padX = 10.dp.toPx()
+                    val padY = 8.dp.toPx()
+                    val curPull = fillAnim.value
+
+                    // 1. Vertical Track Channel Capsule Aura
                     drawRoundRect(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.50f),
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                glowColor.copy(alpha = rgbBloomAlpha * (if (isDragging) 0.50f else 0.30f)),
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.12f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 0.95f
+                            radius = size.height * 0.55f
                         ),
-                        topLeft = Offset(-pad, -pad),
-                        size = Size(size.width + pad * 2, size.height + pad * 2),
-                        cornerRadius = CornerRadius(26.dp.toPx(), 26.dp.toPx())
+                        topLeft = Offset(-padX, -padY),
+                        size = Size(size.width + padX * 2f, size.height + padY * 2f),
+                        cornerRadius = CornerRadius(21.dp.toPx(), 21.dp.toPx())
+                    )
+
+                    // 2. Linear Laser Track Guide Beam
+                    val topRestPx = topRestCenterDp.toPx()
+                    val travelSpanPx = travelSpanDp.toPx()
+                    val bottomRestPx = topRestPx + travelSpanPx
+                    val puckY = if (isFlipped) bottomRestPx - curPull * travelSpanPx else topRestPx + curPull * travelSpanPx
+
+                    drawLine(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.40f),
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.40f),
+                                Color.Transparent
+                            ),
+                            startY = topRestPx - 10.dp.toPx(),
+                            endY = bottomRestPx + 10.dp.toPx()
+                        ),
+                        start = Offset(center.x, topRestPx - 10.dp.toPx()),
+                        end = Offset(center.x, bottomRestPx + 10.dp.toPx()),
+                        strokeWidth = 2.dp.toPx()
+                    )
+
+                    // 3. Travelling Puck Beacon Flare tracking puck coordinates
+                    val beaconRadius = (if (isDragging) 18.dp else 12.dp).toPx()
+                    val beaconAlpha = rgbBloomAlpha * (if (isDragging) 0.90f else 0.55f)
+
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = beaconAlpha),
+                                glowColor.copy(alpha = beaconAlpha * 0.85f),
+                                Color.Transparent
+                            ),
+                            center = Offset(center.x, puckY),
+                            radius = beaconRadius
+                        ),
+                        center = Offset(center.x, puckY),
+                        radius = beaconRadius
+                    )
+
+                    // Lateral flare wing spikes
+                    val wingLen = (if (isDragging) 14.dp else 8.dp).toPx()
+                    drawLine(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(Color.Transparent, glowColor.copy(alpha = beaconAlpha), Color.Transparent),
+                            startX = center.x - wingLen,
+                            endX = center.x + wingLen
+                        ),
+                        start = Offset(center.x - wingLen, puckY),
+                        end = Offset(center.x + wingLen, puckY),
+                        strokeWidth = (if (isDragging) 3f else 1.5f).dp.toPx()
                     )
                 }
             }

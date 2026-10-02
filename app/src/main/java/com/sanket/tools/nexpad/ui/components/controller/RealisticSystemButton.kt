@@ -111,19 +111,47 @@ fun RealisticSystemButton(
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .drawBehind {
                 if (isRgbEnabled) {
-                    val radius = size.minDimension * 0.95f
+                    val baseR = size.minDimension * 0.5f
+
+                    // 1. Precision tactical circular halo
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                auraColor.copy(alpha = rgbBloomAlpha * 0.55f),
-                                auraColor.copy(alpha = rgbBloomAlpha * 0.22f),
+                                auraColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.65f else 0.35f)),
+                                auraColor.copy(alpha = rgbBloomAlpha * 0.15f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = radius
+                            radius = size.minDimension * 0.75f
                         ),
-                        radius = radius
+                        radius = size.minDimension * 0.75f,
+                        center = center
                     )
+
+                    // 2. Dual Precision Telemetry Guide Rings
+                    drawCircle(
+                        color = auraColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.85f else 0.45f)),
+                        radius = baseR + 3.dp.toPx(),
+                        center = center,
+                        style = Stroke(width = 1.2.dp.toPx())
+                    )
+                    drawCircle(
+                        color = auraColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.50f else 0.20f)),
+                        radius = baseR + 7.dp.toPx(),
+                        center = center,
+                        style = Stroke(width = 1.dp.toPx())
+                    )
+
+                    // 3. 4 Cardinal Telemetry Calibration Pips
+                    val pipLen = (if (isPressed) 6.dp else 3.5.dp).toPx()
+                    val pipStart = baseR + 2.dp.toPx()
+                    val pipEnd = pipStart + pipLen
+                    val pipAlpha = rgbBloomAlpha * (if (isPressed) 0.95f else 0.55f)
+
+                    drawLine(auraColor.copy(alpha = pipAlpha), Offset(center.x, center.y - pipEnd), Offset(center.x, center.y - pipStart), strokeWidth = 2f)
+                    drawLine(auraColor.copy(alpha = pipAlpha), Offset(center.x, center.y + pipStart), Offset(center.x, center.y + pipEnd), strokeWidth = 2f)
+                    drawLine(auraColor.copy(alpha = pipAlpha), Offset(center.x - pipEnd, center.y), Offset(center.x - pipStart, center.y), strokeWidth = 2f)
+                    drawLine(auraColor.copy(alpha = pipAlpha), Offset(center.x + pipStart, center.y), Offset(center.x + pipEnd, center.y), strokeWidth = 2f)
                 }
             }
             .shadow(

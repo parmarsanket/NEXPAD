@@ -134,21 +134,24 @@ fun RippleButton(
             .size(80.dp)
             .drawBehind {
                 if (isRgbEnabled) {
+                    // 1. Acoustic shockwave epicenter bloom
+                    val epicenterRadius = size.minDimension * 0.95f
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                buttonColor.copy(alpha = rgbBloomAlpha * 0.55f),
-                                buttonColor.copy(alpha = rgbBloomAlpha * 0.22f),
+                                buttonColor.copy(alpha = rgbBloomAlpha * 0.45f),
+                                buttonColor.copy(alpha = rgbBloomAlpha * 0.16f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 1f
+                            radius = epicenterRadius
                         ),
-                        radius = size.minDimension * 1f
+                        radius = epicenterRadius,
+                        center = center
                     )
                 }
 
-                // ── THREE RIPPLE RINGS PULSING OUTWARD (UN-CANCELABLE) ──
+                // ── THREE RIPPLE SHOCKWAVE WAVEFRONTS PULSING OUTWARD ──
                 val rippleCenter = Offset(size.width / 2f, size.height / 2f)
                 val baseR = size.minDimension / 2f
 
@@ -156,9 +159,18 @@ fun RippleButton(
                     if (progress < 0.999f) {
                         val currentScale = 1.0f + 0.90f * progress // 1.0f to 1.9f
                         val currentAlpha = 0.85f * (1.0f - progress) // 0.85f down to 0f
+                        val ringR = baseR * currentScale
+                        // Soft bloom outer wavefront
                         drawCircle(
-                            color = buttonColor.copy(alpha = currentAlpha),
-                            radius = baseR * currentScale,
+                            color = buttonColor.copy(alpha = currentAlpha * 0.35f),
+                            radius = ringR,
+                            center = rippleCenter,
+                            style = Stroke(width = 4.5.dp.toPx())
+                        )
+                        // Sharp energetic core wavefront
+                        drawCircle(
+                            color = (if (progress < 0.25f) Color.White else buttonColor).copy(alpha = currentAlpha),
+                            radius = ringR,
                             center = rippleCenter,
                             style = Stroke(width = 2.dp.toPx())
                         )

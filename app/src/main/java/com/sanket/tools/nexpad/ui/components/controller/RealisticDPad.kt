@@ -137,21 +137,65 @@ fun RealisticDPad(
                 val center = Offset(size.width / 2f, size.height / 2f)
                 val socketRadius = size.minDimension / 2f + 4.dp.toPx()
 
-                // Ambient RGB outer bloom aura behind the recessed socket well
+                // Bespoke 4-way cardinal laser cross halo flaring along pressed directions
                 if (isRgbEnabled) {
+                    val w = size.width
+                    val h = size.height
+                    val halfArmW = 20.dp.toPx()
+                    val armLen = size.minDimension * 0.62f
+
+                    // 1. Central hub bloom
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
                                 neonColor.copy(alpha = rgbBloomAlpha * 0.50f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.18f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 0.95f
+                            radius = size.minDimension * 0.55f
                         ),
-                        radius = size.minDimension * 0.95f,
+                        radius = size.minDimension * 0.55f,
                         center = center
                     )
+
+                    // 2. Cardinal laser cross arms
+                    val isUp = pressedDirs.contains(K.UP)
+                    val isDown = pressedDirs.contains(K.DOWN)
+                    val isLeft = pressedDirs.contains(K.LEFT)
+                    val isRight = pressedDirs.contains(K.RIGHT)
+
+                    fun drawCardinalBeam(dx: Float, dy: Float, isActive: Boolean) {
+                        val beamAlpha = if (isActive) rgbBloomAlpha * 0.90f else (if (hasActivePress) 0.18f else 0.38f)
+                        val endPt = Offset(center.x + dx * armLen, center.y + dy * armLen)
+                        // Diffuse beam glow
+                        drawLine(
+                            brush = Brush.linearGradient(
+                                colors = listOf(neonColor.copy(alpha = beamAlpha * 0.7f), Color.Transparent),
+                                start = center,
+                                end = endPt
+                            ),
+                            start = center,
+                            end = endPt,
+                            strokeWidth = halfArmW * (if (isActive) 1.6f else 1.0f)
+                        )
+                        // Laser core
+                        drawLine(
+                            brush = Brush.linearGradient(
+                                colors = listOf((if (isActive) Color.White else neonColor).copy(alpha = beamAlpha), Color.Transparent),
+                                start = center,
+                                end = endPt
+                            ),
+                            start = center,
+                            end = endPt,
+                            strokeWidth = if (isActive) 3.5f else 1.5f
+                        )
+                    }
+
+                    drawCardinalBeam(0f, -1f, isUp)
+                    drawCardinalBeam(0f, 1f, isDown)
+                    drawCardinalBeam(-1f, 0f, isLeft)
+                    drawCardinalBeam(1f, 0f, isRight)
                 }
 
                 // Recessed circular chassis socket

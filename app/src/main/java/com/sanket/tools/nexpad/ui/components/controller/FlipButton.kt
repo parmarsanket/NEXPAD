@@ -81,6 +81,48 @@ fun FlipButton(
     Box(
         modifier = modifier
             .size(80.dp)
+            .drawBehind {
+                if (isRgbEnabled) {
+                    val cosFactor = kotlin.math.abs(kotlin.math.cos(Math.toRadians(flipAngle.toDouble()))).toFloat()
+                    val squashedWidth = (size.width * 1.15f) * cosFactor.coerceAtLeast(0.08f)
+                    val auraHeight = size.height * 1.10f
+                    val auraTopLeft = Offset(center.x - squashedWidth / 2f, center.y - auraHeight / 2f)
+                    val auraSize = Size(squashedWidth, auraHeight)
+
+                    // 1. 3D squashed anamorphic aura oval tracking flipAngle
+                    drawOval(
+                        brush = Brush.radialGradient(
+                            colorStops = arrayOf(
+                                0.00f to (if (isBackFace) Color.White else buttonColor).copy(alpha = rgbBloomAlpha * 0.60f),
+                                0.40f to buttonColor.copy(alpha = rgbBloomAlpha * 0.30f),
+                                1.00f to Color.Transparent
+                            ),
+                            center = center,
+                            radius = (auraHeight / 2f).coerceAtLeast(1f)
+                        ),
+                        topLeft = auraTopLeft,
+                        size = auraSize
+                    )
+
+                    // 2. Vertical laser slit blade when near 90° edge-on
+                    if (cosFactor < 0.38f) {
+                        val bladeIntensity = (1.0f - cosFactor / 0.38f) * rgbBloomAlpha
+                        val bladeHalfH = size.height * 0.65f
+                        drawLine(
+                            color = Color.White.copy(alpha = bladeIntensity * 0.95f),
+                            start = Offset(center.x, center.y - bladeHalfH),
+                            end = Offset(center.x, center.y + bladeHalfH),
+                            strokeWidth = 2.5f
+                        )
+                        drawLine(
+                            color = buttonColor.copy(alpha = bladeIntensity * 0.70f),
+                            start = Offset(center.x, center.y - bladeHalfH * 1.15f),
+                            end = Offset(center.x, center.y + bladeHalfH * 1.15f),
+                            strokeWidth = 5.0f
+                        )
+                    }
+                }
+            }
             .shadow(
                 elevation = if (isPressed) 2.dp else 6.dp,
                 shape = CircleShape,

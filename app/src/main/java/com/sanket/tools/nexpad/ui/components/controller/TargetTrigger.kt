@@ -28,6 +28,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -147,20 +148,92 @@ fun TargetTrigger(
             // Outer dynamic RGB aura
             .drawBehind {
                 if (isRgbEnabled) {
-                    val pad = 10.dp.toPx()
-                    drawRoundRect(
+                    val baseRadius = size.minDimension * 0.5f
+
+                    // 1. Ambient tactical target halo
+                    drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.50f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.55f else 0.35f)),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.15f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 0.95f
+                            radius = size.minDimension * 0.75f
                         ),
-                        topLeft = Offset(-pad, -pad),
-                        size = Size(size.width + pad * 2, size.height + pad * 2),
-                        cornerRadius = CornerRadius(26.dp.toPx(), 26.dp.toPx())
+                        radius = size.minDimension * 0.75f,
+                        center = center
+                    )
+
+                    // 2. Concentric Sniper Reticle Rings tightening with pull
+                    val reticleTighten = 1f - 0.20f * fillProgress
+                    val outerReticleR = (baseRadius + 8.dp.toPx()) * reticleTighten
+                    val innerReticleR = (baseRadius + 3.dp.toPx()) * reticleTighten
+
+                    drawCircle(
+                        color = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.85f else 0.45f)),
+                        radius = outerReticleR,
+                        center = center,
+                        style = Stroke(
+                            width = 1.5.dp.toPx(),
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx()), 0f)
+                        )
+                    )
+                    drawCircle(
+                        color = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.95f else 0.60f)),
+                        radius = innerReticleR,
+                        center = center,
+                        style = Stroke(width = 1.dp.toPx())
+                    )
+
+                    // 3. 4-Axis Laser Crosshair Beams (N, S, E, W)
+                    val crosshairStart = innerReticleR + 2.dp.toPx()
+                    val crosshairLen = (if (isPressed) 16.dp else 8.dp).toPx()
+                    val crosshairEnd = crosshairStart + crosshairLen
+                    val crosshairAlpha = rgbBloomAlpha * (if (isPressed) 0.90f else 0.50f)
+
+                    // North & South
+                    drawLine(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, neonColor.copy(alpha = crosshairAlpha)),
+                            startY = center.y - crosshairEnd,
+                            endY = center.y - crosshairStart
+                        ),
+                        start = Offset(center.x, center.y - crosshairEnd),
+                        end = Offset(center.x, center.y - crosshairStart),
+                        strokeWidth = 2f
+                    )
+                    drawLine(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(neonColor.copy(alpha = crosshairAlpha), Color.Transparent),
+                            startY = center.y + crosshairStart,
+                            endY = center.y + crosshairEnd
+                        ),
+                        start = Offset(center.x, center.y + crosshairStart),
+                        end = Offset(center.x, center.y + crosshairEnd),
+                        strokeWidth = 2f
+                    )
+
+                    // West & East
+                    drawLine(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(Color.Transparent, neonColor.copy(alpha = crosshairAlpha)),
+                            startX = center.x - crosshairEnd,
+                            endX = center.x - crosshairStart
+                        ),
+                        start = Offset(center.x - crosshairEnd, center.y),
+                        end = Offset(center.x - crosshairStart, center.y),
+                        strokeWidth = 2f
+                    )
+                    drawLine(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(neonColor.copy(alpha = crosshairAlpha), Color.Transparent),
+                            startX = center.x + crosshairStart,
+                            endX = center.x + crosshairEnd
+                        ),
+                        start = Offset(center.x + crosshairStart, center.y),
+                        end = Offset(center.x + crosshairEnd, center.y),
+                        strokeWidth = 2f
                     )
                 }
             }

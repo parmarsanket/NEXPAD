@@ -121,20 +121,55 @@ fun CapsulesButton(
                 .height(pillH)
                 .drawBehind {
                     if (isRgbEnabled) {
-                        val pad = 10.dp.toPx()
+                        val pad = 12.dp.toPx()
+                        val capR = 26.dp.toPx()
+
+                        // 1. Elongated stadium capsule aura
                         drawRoundRect(
                             brush = Brush.radialGradient(
-                                colors = listOf(
-                                    buttonColor.copy(alpha = rgbBloomAlpha * 0.50f),
-                                    buttonColor.copy(alpha = rgbBloomAlpha * 0.20f),
-                                    Color.Transparent
+                                colorStops = arrayOf(
+                                    0.00f to buttonColor.copy(alpha = rgbBloomAlpha * 0.55f),
+                                    0.45f to buttonColor.copy(alpha = rgbBloomAlpha * 0.22f),
+                                    1.00f to Color.Transparent
                                 ),
                                 center = center,
-                                radius = size.minDimension * 0.95f
+                                radius = size.maxDimension * 0.70f
                             ),
                             topLeft = Offset(-pad, -pad),
                             size = Size(size.width + pad * 2, size.height + pad * 2),
-                            cornerRadius = CornerRadius(26.dp.toPx() + pad, 26.dp.toPx() + pad)
+                            cornerRadius = CornerRadius(capR + pad, capR + pad)
+                        )
+
+                        // 2. Dual focal node blooms at stadium endcaps
+                        val node1 = if (isVertical) Offset(center.x, capR) else Offset(capR, center.y)
+                        val node2 = if (isVertical) Offset(center.x, size.height - capR) else Offset(size.width - capR, center.y)
+                        val nodeRadius = capR * 1.2f
+
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    (if (isPressed) Color.White else buttonColor).copy(alpha = rgbBloomAlpha * 0.70f),
+                                    buttonColor.copy(alpha = rgbBloomAlpha * 0.25f),
+                                    Color.Transparent
+                                ),
+                                center = node1,
+                                radius = nodeRadius
+                            ),
+                            radius = nodeRadius,
+                            center = node1
+                        )
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    (if (isPressed) Color.White else buttonColor).copy(alpha = rgbBloomAlpha * 0.70f),
+                                    buttonColor.copy(alpha = rgbBloomAlpha * 0.25f),
+                                    Color.Transparent
+                                ),
+                                center = node2,
+                                radius = nodeRadius
+                            ),
+                            radius = nodeRadius,
+                            center = node2
                         )
                     }
                 }

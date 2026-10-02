@@ -154,21 +154,64 @@ fun PeekBumper(
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .drawBehind {
                 if (isRgbEnabled) {
-                    val pad = 12.dp.toPx()
+                    val padX = 14.dp.toPx()
+                    val padY = 8.dp.toPx()
+
+                    // 1. Stadium ambient base wash
                     drawRoundRect(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.48f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.18f),
+                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.50f else 0.30f)),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.12f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.width * 0.65f
+                            radius = size.width * 0.55f
                         ),
-                        topLeft = Offset(-pad, -pad),
-                        size = Size(size.width + pad * 2, size.height + pad * 2),
-                        cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
+                        topLeft = Offset(-padX, -padY),
+                        size = Size(size.width + padX * 2f, size.height + padY * 2f),
+                        cornerRadius = CornerRadius(22.dp.toPx(), 22.dp.toPx())
                     )
+
+                    // 2. Keyhole Aperture Spotlight Beam expanding with glyph zoom
+                    val apertureRadius = (22.dp * glyphScaleAnim).toPx()
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.85f else 0.45f)),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.25f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = apertureRadius * 1.6f
+                        ),
+                        center = center,
+                        radius = apertureRadius * 1.6f
+                    )
+
+                    // 3. Concentric iris aperture boundary rings
+                    drawCircle(
+                        color = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.90f else 0.50f)),
+                        radius = apertureRadius,
+                        center = center,
+                        style = Stroke(width = if (isPressed) 2.5.dp.toPx() else 1.5.dp.toPx())
+                    )
+                    drawCircle(
+                        color = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.50f else 0.20f)),
+                        radius = apertureRadius + 6.dp.toPx(),
+                        center = center,
+                        style = Stroke(width = 1.dp.toPx())
+                    )
+
+                    // 4. Cardinal aperture alignment pips
+                    val pipLen = if (isPressed) 6.dp.toPx() else 4.dp.toPx()
+                    val pipStart = apertureRadius + 1.dp.toPx()
+                    val pipEnd = pipStart + pipLen
+                    val pipAlpha = rgbBloomAlpha * (if (isPressed) 0.90f else 0.45f)
+                    drawLine(neonColor.copy(alpha = pipAlpha), Offset(center.x, center.y - pipEnd), Offset(center.x, center.y - pipStart), strokeWidth = 2f)
+                    drawLine(neonColor.copy(alpha = pipAlpha), Offset(center.x, center.y + pipStart), Offset(center.x, center.y + pipEnd), strokeWidth = 2f)
+                    drawLine(neonColor.copy(alpha = pipAlpha), Offset(center.x - pipEnd, center.y), Offset(center.x - pipStart, center.y), strokeWidth = 2f)
+                    drawLine(neonColor.copy(alpha = pipAlpha), Offset(center.x + pipStart, center.y), Offset(center.x + pipEnd, center.y), strokeWidth = 2f)
                 }
             }
             // Outer drop shadow

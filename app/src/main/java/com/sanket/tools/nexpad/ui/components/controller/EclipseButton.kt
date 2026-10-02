@@ -104,18 +104,65 @@ fun EclipseButton(
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .drawBehind {
                 if (isRgbEnabled) {
+                    // 1. Asymmetric Solar Corona & Penumbra shifted opposite to moon slide
+                    val penumbraCenter = Offset(
+                        center.x - slideOffset * 0.55f,
+                        center.y - slideOffset * 0.55f
+                    )
+                    val penumbraRadius = size.minDimension * 0.95f
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                buttonColor.copy(alpha = rgbBloomAlpha * 0.55f),
-                                buttonColor.copy(alpha = rgbBloomAlpha * 0.22f),
-                                Color.Transparent
+                            colorStops = arrayOf(
+                                0.00f to Color.White.copy(alpha = if (isPressed) 0.65f else 0.20f),
+                                0.25f to buttonColor.copy(alpha = rgbBloomAlpha * 0.70f),
+                                0.65f to buttonColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                1.00f to Color.Transparent
                             ),
-                            center = center,
-                            radius = size.minDimension * 1f
+                            center = penumbraCenter,
+                            radius = penumbraRadius
                         ),
-                        radius = size.minDimension * 1f
+                        radius = penumbraRadius,
+                        center = penumbraCenter
                     )
+
+                    // 2. Annular limb ring
+                    drawCircle(
+                        color = buttonColor.copy(alpha = if (isPressed) 0.55f else 0.22f),
+                        radius = size.minDimension * 0.52f,
+                        center = center,
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.5f)
+                    )
+
+                    // 3. Diamond Ring flare spike on press at 135° limb
+                    if (isPressed) {
+                        val limbR = size.minDimension * 0.50f
+                        val fx = center.x + limbR * 0.7071f
+                        val fy = center.y + limbR * 0.7071f
+                        val flareCenter = Offset(fx, fy)
+                        // Brilliant diamond core
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(Color.White, buttonColor, Color.Transparent),
+                                center = flareCenter,
+                                radius = 22f
+                            ),
+                            radius = 22f,
+                            center = flareCenter
+                        )
+                        // Cross rays
+                        drawLine(
+                            color = Color.White.copy(alpha = 0.85f),
+                            start = Offset(fx - 20f, fy),
+                            end = Offset(fx + 20f, fy),
+                            strokeWidth = 2.5f
+                        )
+                        drawLine(
+                            color = Color.White.copy(alpha = 0.85f),
+                            start = Offset(fx, fy - 20f),
+                            end = Offset(fx, fy + 20f),
+                            strokeWidth = 2.5f
+                        )
+                    }
                 }
             }
             .shadow(

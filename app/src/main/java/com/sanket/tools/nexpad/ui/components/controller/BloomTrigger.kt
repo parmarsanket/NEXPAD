@@ -38,7 +38,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
+import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 /**
  * Native Jetpack Compose implementation of the NEXPAD Bloom Trigger (Trigger I — Bloom).
@@ -130,20 +132,64 @@ fun BloomTrigger(
             // Outer dynamic RGB aura
             .drawBehind {
                 if (isRgbEnabled) {
-                    val pad = 10.dp.toPx()
-                    drawRoundRect(
+                    val baseR = size.minDimension * 0.5f
+                    val bloomExpansion = 0.55f + 0.35f * fillProgress
+                    val outerBloomR = size.minDimension * bloomExpansion
+
+                    // 1. Radiant central pupil bloom
+                    drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.50f),
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                Color.White.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.80f else 0.40f)),
+                                glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.65f else 0.30f)),
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.15f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 0.95f
+                            radius = outerBloomR
                         ),
-                        topLeft = Offset(-pad, -pad),
-                        size = Size(size.width + pad * 2, size.height + pad * 2),
-                        cornerRadius = CornerRadius(26.dp.toPx(), 26.dp.toPx())
+                        radius = outerBloomR,
+                        center = center
+                    )
+
+                    // 2. 8 Expanding Mechanical Iris Petal Lobes
+                    val petalCount = 8
+                    val petalRot = 45f * fillProgress
+                    val petalLength = (10.dp + 16.dp * fillProgress).toPx()
+                    val petalStartR = baseR - 4.dp.toPx()
+
+                    for (i in 0 until petalCount) {
+                        val angleDeg = i * (360.0 / petalCount) + petalRot
+                        val angleRad = Math.toRadians(angleDeg)
+                        val cosP = cos(angleRad).toFloat()
+                        val sinP = sin(angleRad).toFloat()
+
+                        val startPt = Offset(center.x + petalStartR * cosP, center.y + petalStartR * sinP)
+                        val endPt = Offset(center.x + (petalStartR + petalLength) * cosP, center.y + (petalStartR + petalLength) * sinP)
+                        val petalAlpha = rgbBloomAlpha * (0.35f + 0.55f * fillProgress)
+
+                        drawLine(
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    glowColor.copy(alpha = petalAlpha),
+                                    Color.White.copy(alpha = petalAlpha * 0.90f),
+                                    Color.Transparent
+                                ),
+                                start = startPt,
+                                end = endPt
+                            ),
+                            start = startPt,
+                            end = endPt,
+                            strokeWidth = (2.5f + 2f * fillProgress).dp.toPx()
+                        )
+                    }
+
+                    // 3. Expanding circular iris perimeter rim
+                    drawCircle(
+                        color = glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.90f else 0.50f)),
+                        radius = baseR + 4.dp.toPx() + 8.dp.toPx() * fillProgress,
+                        center = center,
+                        style = Stroke(width = 1.5.dp.toPx())
                     )
                 }
             }

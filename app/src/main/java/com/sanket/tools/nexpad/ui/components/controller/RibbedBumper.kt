@@ -162,21 +162,69 @@ fun RibbedBumper(
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .drawBehind {
                 if (isRgbEnabled) {
-                    val pad = 12.dp.toPx()
+                    val padX = 14.dp.toPx()
+                    val padY = 8.dp.toPx()
+
+                    // 1. Base stadium glow
                     drawRoundRect(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.48f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.18f),
+                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.52f else 0.32f)),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.12f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.width * 0.65f
+                            radius = size.width * 0.55f
                         ),
-                        topLeft = Offset(-pad, -pad),
-                        size = Size(size.width + pad * 2, size.height + pad * 2),
-                        cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
+                        topLeft = Offset(-padX, -padY),
+                        size = Size(size.width + padX * 2f, size.height + padY * 2f),
+                        cornerRadius = CornerRadius(22.dp.toPx(), 22.dp.toPx())
                     )
+
+                    // 2. Striated diffraction grating light curtain along bottom strip
+                    val stripWidth = 110.dp.toPx()
+                    val stripStartX = center.x - stripWidth / 2f
+                    val stripY = size.height - 9.dp.toPx()
+                    val ribCount = 14
+                    val ribStep = stripWidth / (ribCount - 1)
+                    val ribSpikeH = (if (isPressed) 14.dp else 7.dp).toPx()
+
+                    // Diffuse bottom light curtain wash
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                neonColor.copy(alpha = rgbBloomAlpha * stripAlphaAnim * (if (isPressed) 0.70f else 0.35f)),
+                                Color.Transparent
+                            ),
+                            startY = stripY,
+                            endY = stripY + ribSpikeH * 1.5f
+                        ),
+                        topLeft = Offset(stripStartX - 6.dp.toPx(), stripY),
+                        size = Size(stripWidth + 12.dp.toPx(), ribSpikeH * 1.5f)
+                    )
+
+                    // Striated vertical diffraction teeth
+                    for (i in 0 until ribCount) {
+                        val rx = stripStartX + i * ribStep
+                        val isMajorRib = i % 2 == 0
+                        val teethH = if (isMajorRib) ribSpikeH else ribSpikeH * 0.65f
+                        val teethAlpha = rgbBloomAlpha * stripAlphaAnim * (if (isMajorRib) 0.85f else 0.50f)
+
+                        drawLine(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = teethAlpha),
+                                    neonColor.copy(alpha = teethAlpha * 0.80f),
+                                    Color.Transparent
+                                ),
+                                startY = stripY,
+                                endY = stripY + teethH
+                            ),
+                            start = Offset(rx, stripY),
+                            end = Offset(rx, stripY + teethH),
+                            strokeWidth = if (isMajorRib) 2.5f else 1.5f
+                        )
+                    }
                 }
             }
             // Outer drop shadow

@@ -154,20 +154,77 @@ fun TubeBumper(
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .drawBehind {
                 if (isRgbEnabled) {
-                    val pad = 12.dp.toPx()
+                    val padX = 14.dp.toPx()
+                    val padY = 8.dp.toPx()
+
+                    // 1. Ambient stadium floor aura
                     drawRoundRect(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.48f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.18f),
+                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.50f else 0.30f)),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.12f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.width * 0.65f
+                            radius = size.width * 0.55f
                         ),
-                        topLeft = Offset(-pad, -pad),
-                        size = Size(size.width + pad * 2, size.height + pad * 2),
-                        cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
+                        topLeft = Offset(-padX, -padY),
+                        size = Size(size.width + padX * 2f, size.height + padY * 2f),
+                        cornerRadius = CornerRadius(22.dp.toPx(), 22.dp.toPx())
+                    )
+
+                    // 2. Ionized Plasma Tube Column
+                    val tubeH = 18.dp.toPx()
+                    val tubeW = (size.width - 24.dp.toPx()) * (0.45f + 0.55f * liquidProgress)
+                    val tubeLeft = center.x - tubeW / 2f
+
+                    drawRoundRect(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.80f else 0.40f)),
+                                Color.White.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.95f else 0.55f)),
+                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.80f else 0.40f))
+                            ),
+                            startX = tubeLeft,
+                            endX = tubeLeft + tubeW
+                        ),
+                        topLeft = Offset(tubeLeft, center.y - tubeH / 2f),
+                        size = Size(tubeW, tubeH),
+                        cornerRadius = CornerRadius(tubeH / 2f, tubeH / 2f)
+                    )
+
+                    // 3. Glowing Electrode Terminal Endcaps
+                    val nodeRadius = if (isPressed) 14.dp.toPx() else 8.dp.toPx()
+                    val nodeAlpha = rgbBloomAlpha * (if (isPressed) 0.90f else 0.50f)
+                    val leftNodeX = tubeLeft
+                    val rightNodeX = tubeLeft + tubeW
+
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = nodeAlpha),
+                                neonColor.copy(alpha = nodeAlpha * 0.70f),
+                                Color.Transparent
+                            ),
+                            center = Offset(leftNodeX, center.y),
+                            radius = nodeRadius
+                        ),
+                        center = Offset(leftNodeX, center.y),
+                        radius = nodeRadius
+                    )
+
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = nodeAlpha),
+                                neonColor.copy(alpha = nodeAlpha * 0.70f),
+                                Color.Transparent
+                            ),
+                            center = Offset(rightNodeX, center.y),
+                            radius = nodeRadius
+                        ),
+                        center = Offset(rightNodeX, center.y),
+                        radius = nodeRadius
                     )
                 }
             }

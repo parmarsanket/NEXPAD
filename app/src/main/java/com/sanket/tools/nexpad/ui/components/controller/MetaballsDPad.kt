@@ -243,18 +243,67 @@ fun MetaballsDPad(
             .size(172.dp)
             .drawBehind {
                 if (isRgbEnabled) {
+                    // 1. Central viscous fluid reservoir
+                    val coreRadius = size.minDimension * 0.42f
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
                                 neonColor.copy(alpha = rgbBloomAlpha * 0.50f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.18f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 0.95f
+                            radius = coreRadius
                         ),
-                        radius = size.minDimension * 0.95f
+                        radius = coreRadius,
+                        center = center
                     )
+
+                    // 2. Viscous satellite fluid fields swelling toward plunging centers
+                    val baseDist = 58.dp.toPx()
+                    val plungeTravel = 26.dp.toPx()
+
+                    fun drawFluidSatellite(dx: Float, dy: Float, progress: Float) {
+                        val isPlunging = progress > 0.05f
+                        val dist = baseDist - plungeTravel * progress
+                        val satPos = Offset(center.x + dx * dist, center.y + dy * dist)
+                        val satR = 24.dp.toPx() + (12.dp.toPx() * progress)
+                        val satAlpha = if (isPlunging) rgbBloomAlpha * 0.90f else (if (isAnyPressed) 0.20f else 0.40f)
+
+                        // Viscous connecting bridge to center
+                        if (isPlunging) {
+                            drawLine(
+                                brush = Brush.linearGradient(
+                                    colors = listOf(neonColor.copy(alpha = satAlpha * 0.7f), Color.White.copy(alpha = satAlpha * 0.85f)),
+                                    start = center,
+                                    end = satPos
+                                ),
+                                start = center,
+                                end = satPos,
+                                strokeWidth = 20.dp.toPx() * progress
+                            )
+                        }
+
+                        // Swelling satellite blob aura
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colorStops = arrayOf(
+                                    0.00f to (if (isPlunging) Color.White else neonColor).copy(alpha = satAlpha * 0.70f),
+                                    0.45f to neonColor.copy(alpha = satAlpha * 0.35f),
+                                    1.00f to Color.Transparent
+                                ),
+                                center = satPos,
+                                radius = satR * 1.35f
+                            ),
+                            radius = satR * 1.35f,
+                            center = satPos
+                        )
+                    }
+
+                    drawFluidSatellite(0f, -1f, upProgress)
+                    drawFluidSatellite(0f, 1f, downProgress)
+                    drawFluidSatellite(-1f, 0f, leftProgress)
+                    drawFluidSatellite(1f, 0f, rightProgress)
                 }
             }
             .pointerInput(isConnected) {

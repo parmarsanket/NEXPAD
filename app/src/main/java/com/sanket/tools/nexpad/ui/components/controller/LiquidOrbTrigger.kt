@@ -174,17 +174,53 @@ fun LiquidOrbTrigger(
             // Outer dynamic RGB aura
             .drawBehind {
                 if (isRgbEnabled) {
-                    drawCircle(
+                    val baseR = size.minDimension * 0.5f
+
+                    // 1. Buoyant bottom-weighted fluid reservoir pool
+                    val fluidH = size.height * fillProgress
+                    val poolCenterY = size.height - fluidH * 0.45f
+                    val dropletW = size.width * (0.80f + 0.15f * swayScaleY)
+                    val dropletH = fluidH + 16.dp.toPx()
+
+                    drawOval(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.55f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.22f),
+                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.65f else 0.35f)),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.18f),
                                 Color.Transparent
                             ),
-                            center = center,
-                            radius = size.minDimension * 0.70f
+                            center = Offset(center.x + swayOffsetX, poolCenterY),
+                            radius = size.minDimension * 0.65f
                         ),
-                        radius = size.minDimension * 0.70f
+                        topLeft = Offset(center.x - dropletW / 2f + swayOffsetX, poolCenterY - dropletH / 2f),
+                        size = Size(dropletW, dropletH)
+                    )
+
+                    // 2. Liquid surface tension meniscus wave halo
+                    val meniscusY = size.height - fluidH
+                    val meniscusW = size.width * 0.70f
+                    val meniscusH = 10.dp.toPx() * swayScaleY
+
+                    drawOval(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.80f else 0.40f)),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.60f),
+                                Color.Transparent
+                            ),
+                            center = Offset(center.x + swayOffsetX, meniscusY),
+                            radius = meniscusW * 0.50f
+                        ),
+                        topLeft = Offset(center.x - meniscusW / 2f + swayOffsetX, meniscusY - meniscusH / 2f),
+                        size = Size(meniscusW, meniscusH)
+                    )
+
+                    // 3. Ambient glass orb containment corona ring
+                    drawCircle(
+                        color = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.70f else 0.35f)),
+                        radius = baseR + 3.dp.toPx(),
+                        center = center,
+                        style = Stroke(width = 1.5.dp.toPx())
                     )
                 }
             }

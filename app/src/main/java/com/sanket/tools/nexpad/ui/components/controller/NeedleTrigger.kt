@@ -41,7 +41,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
+import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 /**
  * Native Jetpack Compose implementation of the NEXPAD Needle Meter Trigger (Trigger G — Needle).
@@ -137,21 +139,92 @@ fun NeedleTrigger(
             // Outer dynamic RGB aura
             .drawBehind {
                 if (isRgbEnabled) {
-                    val pad = 10.dp.toPx()
+                    val padX = 12.dp.toPx()
+                    val padY = 8.dp.toPx()
+                    val curPull = fillProgress
+
+                    // 1. Arched Dome Chassis Aura (54dp top curve, 14dp bottom)
                     drawRoundRect(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.50f),
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.50f else 0.30f)),
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.12f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 0.95f
+                            radius = size.width * 0.55f
                         ),
-                        topLeft = Offset(-pad, -pad),
-                        size = Size(size.width + pad * 2, size.height + pad * 2),
-                        cornerRadius = CornerRadius(26.dp.toPx(), 26.dp.toPx())
+                        topLeft = Offset(-padX, -padY),
+                        size = Size(size.width + padX * 2f, size.height + padY * 2f),
+                        cornerRadius = CornerRadius(54.dp.toPx(), 14.dp.toPx())
                     )
+
+                    // 2. Sweeping Radial Tachometer Sector Halo
+                    val pivotX = size.width / 2f
+                    val pivotY = size.height - 28.dp.toPx()
+                    val arcR = 48.dp.toPx()
+                    val startAngle = 200f
+                    val sweepTotal = 140f
+
+                    // Base tachometer track glow
+                    drawArc(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.25f),
+                                Color.Transparent
+                            ),
+                            center = Offset(pivotX, pivotY),
+                            radius = arcR + 10.dp.toPx()
+                        ),
+                        startAngle = startAngle,
+                        sweepAngle = sweepTotal,
+                        useCenter = true,
+                        topLeft = Offset(pivotX - arcR, pivotY - arcR),
+                        size = Size(arcR * 2f, arcR * 2f)
+                    )
+
+                    // Active sweeping sector plume
+                    if (curPull > 0.02f) {
+                        val activeSweep = sweepTotal * curPull
+                        drawArc(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = rgbBloomAlpha * curPull * 0.70f),
+                                    glowColor.copy(alpha = rgbBloomAlpha * curPull * 0.85f),
+                                    Color.Transparent
+                                ),
+                                center = Offset(pivotX, pivotY),
+                                radius = arcR + 12.dp.toPx()
+                            ),
+                            startAngle = startAngle,
+                            sweepAngle = activeSweep,
+                            useCenter = true,
+                            topLeft = Offset(pivotX - arcR - 6.dp.toPx(), pivotY - arcR - 6.dp.toPx()),
+                            size = Size((arcR + 6.dp.toPx()) * 2f, (arcR + 6.dp.toPx()) * 2f)
+                        )
+
+                        // 3. Tachometer Needle Tip Beacon Flare
+                        val currentAngleDeg = startAngle + activeSweep
+                        val angleRad = Math.toRadians(currentAngleDeg.toDouble())
+                        val cosN = cos(angleRad).toFloat()
+                        val sinN = sin(angleRad).toFloat()
+                        val tipX = pivotX + (arcR + 4.dp.toPx()) * cosN
+                        val tipY = pivotY + (arcR + 4.dp.toPx()) * sinN
+
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = rgbBloomAlpha * 0.90f),
+                                    glowColor.copy(alpha = rgbBloomAlpha * 0.80f),
+                                    Color.Transparent
+                                ),
+                                center = Offset(tipX, tipY),
+                                radius = (if (isPressed) 16.dp else 10.dp).toPx()
+                            ),
+                            center = Offset(tipX, tipY),
+                            radius = (if (isPressed) 16.dp else 10.dp).toPx()
+                        )
+                    }
                 }
             }
             // RGB-coordinated shadow

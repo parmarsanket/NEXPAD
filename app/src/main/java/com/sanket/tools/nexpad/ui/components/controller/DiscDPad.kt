@@ -270,18 +270,64 @@ fun DiscDPad(
             .size(160.dp)
             .drawBehind {
                 if (isRgbEnabled) {
+                    val rimRadius = size.minDimension * 0.52f
+
+                    // 1. Holographic turntable base bloom
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.50f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.45f),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.16f),
                                 Color.Transparent
                             ),
                             center = center,
                             radius = size.minDimension * 0.95f
                         ),
-                        radius = size.minDimension * 0.95f
+                        radius = size.minDimension * 0.95f,
+                        center = center
                     )
+
+                    // 2. Fine holographic turntable rim circle
+                    drawCircle(
+                        color = neonColor.copy(alpha = if (isAnyPressed) 0.60f else 0.25f),
+                        radius = rimRadius,
+                        center = center,
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.0f)
+                    )
+
+                    // 3. Directional angular sweep wedge flare following tilt / gate angle
+                    val activeGate = gateAngle
+                    if (isAnyPressed && activeGate != null) {
+                        val flareRadius = size.minDimension * 0.62f
+                        val flareWedgeStart = activeGate - 35f
+                        drawArc(
+                            brush = Brush.radialGradient(
+                                colorStops = arrayOf(
+                                    0.00f to Color.White.copy(alpha = 0.85f * gateAlphaAnim),
+                                    0.40f to neonColor.copy(alpha = 0.65f * gateAlphaAnim),
+                                    1.00f to Color.Transparent
+                                ),
+                                center = center,
+                                radius = flareRadius
+                            ),
+                            startAngle = flareWedgeStart,
+                            sweepAngle = 70f,
+                            useCenter = true,
+                            topLeft = Offset(center.x - flareRadius, center.y - flareRadius),
+                            size = Size(flareRadius * 2f, flareRadius * 2f)
+                        )
+
+                        // Intense rim beacon arc at apex of touch vector
+                        drawArc(
+                            color = Color.White.copy(alpha = 0.95f * gateAlphaAnim),
+                            startAngle = activeGate - 18f,
+                            sweepAngle = 36f,
+                            useCenter = false,
+                            topLeft = Offset(center.x - rimRadius, center.y - rimRadius),
+                            size = Size(rimRadius * 2f, rimRadius * 2f),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4.0f)
+                        )
+                    }
                 }
             }
             .pointerInput(isConnected) {

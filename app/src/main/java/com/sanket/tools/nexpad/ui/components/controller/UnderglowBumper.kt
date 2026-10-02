@@ -154,38 +154,65 @@ fun UnderglowBumper(
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .drawBehind {
                 if (isRgbEnabled) {
-                    val pad = 12.dp.toPx()
-                    // Ambient hull aura
+                    val padX = 14.dp.toPx()
+                    val padY = 6.dp.toPx()
+
+                    // 1. Ambient upper hull aura
                     drawRoundRect(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.48f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.18f),
+                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.45f else 0.25f)),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.10f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.width * 0.65f
-                        ),
-                        topLeft = Offset(-pad, -pad),
-                        size = Size(size.width + pad * 2, size.height + pad * 2),
-                        cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
-                    )
-                    // Emphasized ground-effect radiance beneath lower edge
-                    val groundPadX = 8.dp.toPx()
-                    val groundH = 22.dp.toPx()
-                    drawRoundRect(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.70f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.30f),
-                                Color.Transparent
-                            ),
-                            center = Offset(size.width / 2f, size.height + 4.dp.toPx()),
                             radius = size.width * 0.55f
                         ),
-                        topLeft = Offset(-groundPadX, size.height - 4.dp.toPx()),
-                        size = Size(size.width + groundPadX * 2, groundH),
-                        cornerRadius = CornerRadius(12.dp.toPx(), 12.dp.toPx())
+                        topLeft = Offset(-padX, -padY),
+                        size = Size(size.width + padX * 2f, size.height + padY * 2f),
+                        cornerRadius = CornerRadius(22.dp.toPx(), 22.dp.toPx())
+                    )
+
+                    // 2. Automotive Ground-Effect Floor Wash Puddle beneath bottom hull
+                    val puddleW = size.width * (0.85f + 0.25f * floodHeightProgress)
+                    val puddleH = (22.dp + 12.dp * floodHeightProgress).toPx()
+                    val puddleCenterY = size.height + 4.dp.toPx()
+                    val puddleLeft = center.x - puddleW / 2f
+                    val puddleAlpha = rgbBloomAlpha * underglowBloomAlpha * (if (isPressed) 0.90f else 0.60f)
+
+                    // Soft diffuse ground reflection oval
+                    drawOval(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                neonColor.copy(alpha = puddleAlpha * 0.85f),
+                                neonColor.copy(alpha = puddleAlpha * 0.35f),
+                                Color.Transparent
+                            ),
+                            center = Offset(center.x, puddleCenterY),
+                            radius = puddleW * 0.55f
+                        ),
+                        topLeft = Offset(puddleLeft, puddleCenterY - puddleH / 2f),
+                        size = Size(puddleW, puddleH)
+                    )
+
+                    // High-intensity core underglow slit reflection
+                    val coreSlitW = puddleW * 0.65f
+                    val coreSlitLeft = center.x - coreSlitW / 2f
+                    drawLine(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.White.copy(alpha = puddleAlpha * 0.90f),
+                                neonColor.copy(alpha = puddleAlpha * 0.95f),
+                                Color.White.copy(alpha = puddleAlpha * 0.90f),
+                                Color.Transparent
+                            ),
+                            startX = coreSlitLeft,
+                            endX = coreSlitLeft + coreSlitW
+                        ),
+                        start = Offset(coreSlitLeft, size.height),
+                        end = Offset(coreSlitLeft + coreSlitW, size.height),
+                        strokeWidth = (if (isPressed) 3.5.dp else 2.dp).toPx()
                     )
                 }
             }

@@ -42,6 +42,8 @@ import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlin.math.roundToInt
 
 /**
@@ -128,17 +130,75 @@ fun OrbitButton(
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .drawBehind {
                 if (isRgbEnabled) {
+                    // 1. Ambient planetary core bloom
+                    val coreRadius = size.minDimension * 0.95f
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                buttonColor.copy(alpha = rgbBloomAlpha * 0.55f),
-                                buttonColor.copy(alpha = rgbBloomAlpha * 0.22f),
+                                buttonColor.copy(alpha = rgbBloomAlpha * 0.50f),
+                                buttonColor.copy(alpha = rgbBloomAlpha * 0.18f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 1f
+                            radius = coreRadius
                         ),
-                        radius = size.minDimension * 1f
+                        radius = coreRadius,
+                        center = center
+                    )
+
+                    // 2. Outer planetary dashed orbit ring 1 (rotated by rotation1)
+                    val r1 = size.minDimension * 0.62f
+                    rotate(degrees = rotation1, pivot = center) {
+                        drawCircle(
+                            color = buttonColor.copy(alpha = if (isPressed) 0.85f else 0.40f),
+                            radius = r1,
+                            center = center,
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                width = 2.5f,
+                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f), 0f)
+                            )
+                        )
+                    }
+                    // Orbiting photon spark pip 1 at leading tip
+                    val rad1 = Math.toRadians(rotation1.toDouble())
+                    val pip1 = Offset(
+                        center.x + r1 * cos(rad1).toFloat(),
+                        center.y + r1 * sin(rad1).toFloat()
+                    )
+                    drawCircle(
+                        color = Color.White,
+                        radius = if (isPressed) 4.5f else 2.5f,
+                        center = pip1
+                    )
+                    drawCircle(
+                        color = buttonColor.copy(alpha = 0.6f),
+                        radius = if (isPressed) 8f else 5f,
+                        center = pip1
+                    )
+
+                    // 3. Counter-rotating inner orbit ring 2 (rotated by rotation2)
+                    val r2 = size.minDimension * 0.53f
+                    rotate(degrees = rotation2, pivot = center) {
+                        drawCircle(
+                            color = buttonColor.copy(alpha = if (isPressed) 0.70f else 0.30f),
+                            radius = r2,
+                            center = center,
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                width = 1.8f,
+                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 7f), 0f)
+                            )
+                        )
+                    }
+                    // Counter-orbiting photon spark pip 2
+                    val rad2 = Math.toRadians(rotation2.toDouble() + 180.0)
+                    val pip2 = Offset(
+                        center.x + r2 * cos(rad2).toFloat(),
+                        center.y + r2 * sin(rad2).toFloat()
+                    )
+                    drawCircle(
+                        color = Color.White.copy(alpha = 0.9f),
+                        radius = if (isPressed) 3.5f else 2f,
+                        center = pip2
                     )
                 }
             }

@@ -161,21 +161,73 @@ fun VuSlabsTrigger(
             // Outer dynamic RGB aura
             .drawBehind {
                 if (isRgbEnabled) {
-                    val pad = 10.dp.toPx()
+                    val padX = 12.dp.toPx()
+                    val padY = 8.dp.toPx()
+
+                    val activeVuColor = when {
+                        fillProgress > 0.85f -> redOverdrive
+                        fillProgress > 0.60f -> orangeOverdrive
+                        else -> neonColor
+                    }
+
+                    // 1. Tapered Hull Aura with VU color shifting
                     drawRoundRect(
-                        brush = Brush.radialGradient(
+                        brush = Brush.verticalGradient(
                             colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.50f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.50f else 0.30f)),
+                                activeVuColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.75f else 0.40f)),
                                 Color.Transparent
                             ),
-                            center = center,
-                            radius = size.minDimension * 0.95f
+                            startY = -padY,
+                            endY = size.height + padY + 12.dp.toPx() * fillProgress
                         ),
-                        topLeft = Offset(-pad, -pad),
-                        size = Size(size.width + pad * 2, size.height + pad * 2),
-                        cornerRadius = CornerRadius(26.dp.toPx(), 26.dp.toPx())
+                        topLeft = Offset(-padX, -padY),
+                        size = Size(size.width + padX * 2f, size.height + padY * 2f + 12.dp.toPx() * fillProgress),
+                        cornerRadius = CornerRadius(24.dp.toPx(), 36.dp.toPx())
                     )
+
+                    // 2. Lateral Equalizer Soundwave Spectrum Wings (4 pairs on left & right)
+                    if (fillProgress > 0.15f) {
+                        val wingYStart = size.height * 0.40f
+                        val wingYStep = 10.dp.toPx()
+                        for (i in 0 until 4) {
+                            val wingFrac = (fillProgress - (i * 0.2f)).coerceIn(0f, 1f)
+                            if (wingFrac > 0f) {
+                                val wingLen = (6.dp + 12.dp * wingFrac).toPx()
+                                val wingY = wingYStart + i * wingYStep
+                                val barColor = when (i) {
+                                    3 -> redOverdrive
+                                    2 -> orangeOverdrive
+                                    else -> neonColor
+                                }
+                                val barAlpha = rgbBloomAlpha * wingFrac * 0.85f
+
+                                // Left wing
+                                drawLine(
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(Color.Transparent, barColor.copy(alpha = barAlpha)),
+                                        startX = -padX - wingLen,
+                                        endX = -padX
+                                    ),
+                                    start = Offset(-padX - wingLen, wingY),
+                                    end = Offset(-padX, wingY),
+                                    strokeWidth = 3.dp.toPx()
+                                )
+
+                                // Right wing
+                                drawLine(
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(barColor.copy(alpha = barAlpha), Color.Transparent),
+                                        startX = size.width + padX,
+                                        endX = size.width + padX + wingLen
+                                    ),
+                                    start = Offset(size.width + padX, wingY),
+                                    end = Offset(size.width + padX + wingLen, wingY),
+                                    strokeWidth = 3.dp.toPx()
+                                )
+                            }
+                        }
+                    }
                 }
             }
             // RGB-coordinated shadow

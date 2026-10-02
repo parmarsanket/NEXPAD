@@ -190,18 +190,54 @@ fun OrbJoystick(
             .size(150.dp)
             .drawBehind {
                 if (isRgbEnabled) {
+                    val plasmaCenter = Offset(
+                        center.x + coreLagOffsetX * 0.75f,
+                        center.y + coreLagOffsetY * 0.75f
+                    )
+                    val coronaRadius = size.minDimension * 0.54f
+
+                    // 1. Levitating plasma containment sphere corona
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.45f),
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.18f),
-                                Color.Transparent
+                            colorStops = arrayOf(
+                                0.00f to Color.White.copy(alpha = rgbBloomAlpha * 0.60f),
+                                0.35f to glowColor.copy(alpha = rgbBloomAlpha * 0.40f),
+                                0.75f to glowColor.copy(alpha = rgbBloomAlpha * 0.14f),
+                                1.00f to Color.Transparent
                             ),
-                            center = center,
-                            radius = size.minDimension * 0.95f
+                            center = plasmaCenter,
+                            radius = size.minDimension * 0.70f
                         ),
-                        radius = size.minDimension * 0.95f
+                        radius = size.minDimension * 0.70f,
+                        center = plasmaCenter
                     )
+
+                    // 2. Magnetic containment corona ring
+                    drawCircle(
+                        color = glowColor.copy(alpha = if (deflectionFraction > 0.3f) 0.85f else 0.45f),
+                        radius = coronaRadius,
+                        center = plasmaCenter,
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.2f)
+                    )
+
+                    // 3. Solar prominences (6 flaring coronal plasma arcs)
+                    for (i in 0 until 6) {
+                        val arcAngle = (i * 60f) + (deflectionFraction * 30f)
+                        val arcRad = Math.toRadians(arcAngle.toDouble())
+                        val cosA = kotlin.math.cos(arcRad).toFloat()
+                        val sinA = kotlin.math.sin(arcRad).toFloat()
+                        val promLen = 8.dp.toPx() + (6.dp.toPx() * deflectionFraction)
+                        drawLine(
+                            brush = Brush.linearGradient(
+                                colors = listOf(Color.White.copy(alpha = 0.8f), Color.Transparent),
+                                start = Offset(plasmaCenter.x + coronaRadius * cosA, plasmaCenter.y + coronaRadius * sinA),
+                                end = Offset(plasmaCenter.x + (coronaRadius + promLen) * cosA, plasmaCenter.y + (coronaRadius + promLen) * sinA)
+                            ),
+                            start = Offset(plasmaCenter.x + coronaRadius * cosA, plasmaCenter.y + coronaRadius * sinA),
+                            end = Offset(plasmaCenter.x + (coronaRadius + promLen) * cosA, plasmaCenter.y + (coronaRadius + promLen) * sinA),
+                            strokeWidth = 2.0f
+                        )
+                    }
                 }
             }
             .shadow(
@@ -816,17 +852,29 @@ fun OrbStickButton(
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val flareR = size.minDimension * (if (isPressed) 1.05f else 0.85f)
+                    // 1. Plasma caustic core flare
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.55f),
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.22f),
-                                Color.Transparent
+                            colorStops = arrayOf(
+                                0.00f to (if (isPressed) Color.White else glowColor).copy(alpha = rgbBloomAlpha * 0.70f),
+                                0.35f to glowColor.copy(alpha = rgbBloomAlpha * 0.35f),
+                                0.75f to glowColor.copy(alpha = rgbBloomAlpha * 0.12f),
+                                1.00f to Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 1f
+                            radius = flareR
                         ),
-                        radius = size.minDimension * 1f
+                        radius = flareR,
+                        center = center
+                    )
+
+                    // 2. Concentric caustic containment ring
+                    drawCircle(
+                        color = glowColor.copy(alpha = if (isPressed) 0.65f else 0.28f),
+                        radius = size.minDimension * 0.52f,
+                        center = center,
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.8f)
                     )
                 }
             }

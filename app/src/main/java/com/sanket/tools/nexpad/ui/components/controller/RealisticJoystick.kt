@@ -109,17 +109,60 @@ fun RealisticJoystick(
             .size(150.dp)
             .drawBehind {
                 if (isRgbEnabled) {
+                    val capPos = Offset(center.x + thumbOffsetX, center.y + thumbOffsetY)
+                    val disp = hypot(thumbOffsetX, thumbOffsetY)
+                    val maxR = size.minDimension * 0.35f
+                    val dispFraction = (disp / maxR).coerceIn(0f, 1f)
+
+                    // 1. Base socket containment bloom
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.45f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.18f),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.35f),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.12f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 0.95f
+                            radius = size.minDimension * 0.55f
                         ),
-                        radius = size.minDimension * 0.95f
+                        radius = size.minDimension * 0.55f,
+                        center = center
+                    )
+
+                    // 2. Deflection comet-plume trailing wake aura
+                    val plumeCenter = Offset(
+                        center.x + thumbOffsetX * 0.65f,
+                        center.y + thumbOffsetY * 0.65f
+                    )
+                    val plumeRadius = size.minDimension * (0.40f + 0.35f * dispFraction)
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colorStops = arrayOf(
+                                0.00f to (if (dispFraction > 0.4f) Color.White else neonColor).copy(alpha = rgbBloomAlpha * (0.50f + 0.35f * dispFraction)),
+                                0.40f to neonColor.copy(alpha = rgbBloomAlpha * (0.30f + 0.25f * dispFraction)),
+                                1.00f to Color.Transparent
+                            ),
+                            center = plumeCenter,
+                            radius = plumeRadius
+                        ),
+                        radius = plumeRadius,
+                        center = plumeCenter
+                    )
+
+                    // 3. High-energy thumbstick cap beacon bloom
+                    val capBloomR = 48.dp.toPx() + (12.dp.toPx() * dispFraction)
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                (if (dispFraction > 0.6f) Color.White else neonColor).copy(alpha = rgbBloomAlpha * 0.70f),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.25f),
+                                Color.Transparent
+                            ),
+                            center = capPos,
+                            radius = capBloomR
+                        ),
+                        radius = capBloomR,
+                        center = capPos
                     )
                 }
             }
@@ -489,17 +532,32 @@ fun RealisticStickButton(
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val clickBloomR = size.minDimension * (if (isPressed) 1.05f else 0.85f)
+                    // 1. Tactile click pulse bloom
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.55f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.22f),
-                                Color.Transparent
+                            colorStops = arrayOf(
+                                0.00f to (if (isPressed) Color.White else neonColor).copy(alpha = rgbBloomAlpha * 0.65f),
+                                0.35f to neonColor.copy(alpha = rgbBloomAlpha * 0.30f),
+                                0.75f to neonColor.copy(alpha = rgbBloomAlpha * 0.10f),
+                                1.00f to Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 1f
+                            radius = clickBloomR
                         ),
-                        radius = size.minDimension * 1f
+                        radius = clickBloomR,
+                        center = center
+                    )
+
+                    // 2. Tactile knurled guide ring
+                    drawCircle(
+                        color = neonColor.copy(alpha = if (isPressed) 0.60f else 0.25f),
+                        radius = size.minDimension * 0.52f,
+                        center = center,
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(
+                            width = 2.0f,
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f), 0f)
+                        )
                     )
                 }
             }

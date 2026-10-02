@@ -144,20 +144,58 @@ fun RealisticBumper(
             .size(154.dp, 48.dp)
             .drawBehind {
                 if (isRgbEnabled) {
-                    val pad = 12.dp.toPx()
+                    val padX = 14.dp.toPx()
+                    val padY = 8.dp.toPx()
+
+                    // 1. Asymmetrical shoulder stadium aura
                     drawRoundRect(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.48f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.18f),
+                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.55f else 0.35f)),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.15f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.width * 0.65f
+                            radius = size.width * 0.55f
                         ),
-                        topLeft = Offset(-pad, -pad),
-                        size = Size(size.width + pad * 2, size.height + pad * 2),
-                        cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
+                        topLeft = Offset(-padX, -padY),
+                        size = Size(size.width + padX * 2f, size.height + padY * 2f),
+                        cornerRadius = CornerRadius(22.dp.toPx(), 22.dp.toPx())
+                    )
+
+                    // 2. Dual corner edge shoulder flares
+                    val flareY = center.y
+                    val flareLen = if (isPressed) 16.dp.toPx() else 8.dp.toPx()
+                    val flareAlpha = rgbBloomAlpha * (if (isPressed) 0.85f else 0.45f)
+
+                    val outerX = if (isLeft) 6.dp.toPx() else size.width - 6.dp.toPx()
+                    val innerX = if (isLeft) size.width - 12.dp.toPx() else 12.dp.toPx()
+                    val outerDir = if (isLeft) -1f else 1f
+
+                    // Outer shoulder laser flare
+                    drawLine(
+                        brush = Brush.linearGradient(
+                            colors = listOf(neonColor.copy(alpha = flareAlpha), Color.Transparent),
+                            start = Offset(outerX, flareY),
+                            end = Offset(outerX + outerDir * flareLen, flareY)
+                        ),
+                        start = Offset(outerX, flareY),
+                        end = Offset(outerX + outerDir * flareLen, flareY),
+                        strokeWidth = if (isPressed) 3.5.dp.toPx() else 2.dp.toPx()
+                    )
+
+                    // Inner rounded shoulder arc flare
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                neonColor.copy(alpha = flareAlpha * 0.80f),
+                                Color.Transparent
+                            ),
+                            center = Offset(innerX, flareY),
+                            radius = if (isPressed) 20.dp.toPx() else 12.dp.toPx()
+                        ),
+                        center = Offset(innerX, flareY),
+                        radius = if (isPressed) 20.dp.toPx() else 12.dp.toPx()
                     )
                 }
             }

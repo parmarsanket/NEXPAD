@@ -193,21 +193,52 @@ fun LedBumper(
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .drawBehind {
                 if (isRgbEnabled) {
-                    val pad = 12.dp.toPx()
+                    val padX = 14.dp.toPx()
+                    val padY = 8.dp.toPx()
+
+                    // 1. Asymmetrical stadium glow
                     drawRoundRect(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.48f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.18f),
+                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.52f else 0.32f)),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.12f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.width * 0.65f
+                            radius = size.width * 0.55f
                         ),
-                        topLeft = Offset(-pad, -pad),
-                        size = Size(size.width + pad * 2, size.height + pad * 2),
-                        cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
+                        topLeft = Offset(-padX, -padY),
+                        size = Size(size.width + padX * 2f, size.height + padY * 2f),
+                        cornerRadius = CornerRadius(22.dp.toPx(), 22.dp.toPx())
                     )
+
+                    // 2. 6 Segmented Vertical Light Slit Projections
+                    val ledStartX = if (isLeft) center.x + 12.dp.toPx() else center.x - 56.dp.toPx()
+                    val ledPitch = 8.5.dp.toPx()
+                    val beamHalfH = size.height / 2f + 14.dp.toPx()
+
+                    for (i in 0 until 6) {
+                        val barAlpha = ledAlphas[i]
+                        val barX = ledStartX + i * ledPitch
+                        val beamAlpha = rgbBloomAlpha * barAlpha * (if (isPressed) 0.85f else 0.40f)
+
+                        drawLine(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    neonColor.copy(alpha = beamAlpha * 0.40f),
+                                    neonColor.copy(alpha = beamAlpha),
+                                    neonColor.copy(alpha = beamAlpha * 0.40f),
+                                    Color.Transparent
+                                ),
+                                startY = center.y - beamHalfH,
+                                endY = center.y + beamHalfH
+                            ),
+                            start = Offset(barX, center.y - beamHalfH),
+                            end = Offset(barX, center.y + beamHalfH),
+                            strokeWidth = (if (isPressed) 4.5.dp else 2.5.dp).toPx()
+                        )
+                    }
                 }
             }
             // Outer drop shadow

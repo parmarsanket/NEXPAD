@@ -94,21 +94,68 @@ fun RealisticMacroButton(
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .drawBehind {
                 if (isRgbEnabled) {
-                    val pad = 12.dp.toPx()
+                    val padX = 12.dp.toPx()
+                    val padY = 8.dp.toPx()
+
+                    // 1. Stadium Macro Toggle Switch Aura
                     drawRoundRect(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                auraColor.copy(alpha = rgbBloomAlpha * 0.50f),
-                                auraColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                auraColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.55f else 0.32f)),
+                                auraColor.copy(alpha = rgbBloomAlpha * 0.12f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.width * 0.70f
+                            radius = size.width * 0.55f
                         ),
-                        topLeft = Offset(-pad, -pad),
-                        size = Size(size.width + pad * 2, size.height + pad * 2),
-                        cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
+                        topLeft = Offset(-padX, -padY),
+                        size = Size(size.width + padX * 2f, size.height + padY * 2f),
+                        cornerRadius = CornerRadius(20.dp.toPx(), 20.dp.toPx())
                     )
+
+                    // 2. 4 Corner Tactical Bracket Pips
+                    val bracketAlpha = rgbBloomAlpha * (if (isPressed) 0.90f else 0.45f)
+                    val bracketLen = (if (isPressed) 8.dp else 5.dp).toPx()
+                    val insetX = 4.dp.toPx()
+                    val insetY = 3.dp.toPx()
+
+                    // Top-Left corner bracket
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(-insetX, -insetY), Offset(-insetX + bracketLen, -insetY), 2f)
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(-insetX, -insetY), Offset(-insetX, -insetY + bracketLen), 2f)
+
+                    // Top-Right corner bracket
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(size.width + insetX, -insetY), Offset(size.width + insetX - bracketLen, -insetY), 2f)
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(size.width + insetX, -insetY), Offset(size.width + insetX, -insetY + bracketLen), 2f)
+
+                    // Bottom-Left corner bracket
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(-insetX, size.height + insetY), Offset(-insetX + bracketLen, size.height + insetY), 2f)
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(-insetX, size.height + insetY), Offset(-insetX, size.height + insetY - bracketLen), 2f)
+
+                    // Bottom-Right corner bracket
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(size.width + insetX, size.height + insetY), Offset(size.width + insetX - bracketLen, size.height + insetY), 2f)
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(size.width + insetX, size.height + insetY), Offset(size.width + insetX, size.height + insetY - bracketLen), 2f)
+
+                    // 3. Central Electric Pulse Slit on press
+                    if (isPressed) {
+                        val slitW = size.width * 0.75f
+                        val slitLeft = center.x - slitW / 2f
+                        drawLine(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    auraColor.copy(alpha = rgbBloomAlpha * 0.85f),
+                                    Color.White.copy(alpha = rgbBloomAlpha * 0.95f),
+                                    auraColor.copy(alpha = rgbBloomAlpha * 0.85f),
+                                    Color.Transparent
+                                ),
+                                startX = slitLeft,
+                                endX = slitLeft + slitW
+                            ),
+                            start = Offset(slitLeft, center.y),
+                            end = Offset(slitLeft + slitW, center.y),
+                            strokeWidth = 3.dp.toPx()
+                        )
+                    }
                 }
             }
             .shadow(

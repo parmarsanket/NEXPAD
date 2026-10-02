@@ -446,18 +446,66 @@ fun FourLensesDPad(
             .size(164.dp)
             .drawBehind {
                 if (isRgbEnabled) {
+                    val podR = 27.dp.toPx()
+                    val upCenter = Offset(center.x, podR)
+                    val downCenter = Offset(center.x, size.height - podR)
+                    val leftCenter = Offset(podR, center.y)
+                    val rightCenter = Offset(size.width - podR, center.y)
+
+                    // 1. Central constellation node bloom
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.50f),
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.45f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 0.95f
+                            radius = size.minDimension * 0.35f
                         ),
-                        radius = size.minDimension * 0.95f
+                        radius = size.minDimension * 0.35f,
+                        center = center
                     )
+
+                    // 2. Connective energy filaments from central hub to satellites
+                    fun drawFilament(target: Offset, isPressed: Boolean) {
+                        val filamentAlpha = if (isPressed) rgbBloomAlpha * 0.90f else (if (hasActivePress) 0.18f else 0.40f)
+                        drawLine(
+                            brush = Brush.linearGradient(
+                                colors = listOf(glowColor.copy(alpha = filamentAlpha * 0.5f), glowColor.copy(alpha = filamentAlpha)),
+                                start = center,
+                                end = target
+                            ),
+                            start = center,
+                            end = target,
+                            strokeWidth = if (isPressed) 3.5f else 1.8f
+                        )
+                    }
+                    drawFilament(upCenter, isUpPressed)
+                    drawFilament(downCenter, isDownPressed)
+                    drawFilament(leftCenter, isLeftPressed)
+                    drawFilament(rightCenter, isRightPressed)
+
+                    // 3. Discrete satellite lens pod blooms
+                    fun drawPodBloom(podCenter: Offset, isPressed: Boolean) {
+                        val podBloomR = podR * (if (isPressed) 1.55f else 1.25f)
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    (if (isPressed) Color.White else glowColor).copy(alpha = if (isPressed) 0.85f else 0.40f),
+                                    glowColor.copy(alpha = if (isPressed) 0.40f else 0.15f),
+                                    Color.Transparent
+                                ),
+                                center = podCenter,
+                                radius = podBloomR
+                            ),
+                            radius = podBloomR,
+                            center = podCenter
+                        )
+                    }
+                    drawPodBloom(upCenter, isUpPressed)
+                    drawPodBloom(downCenter, isDownPressed)
+                    drawPodBloom(leftCenter, isLeftPressed)
+                    drawPodBloom(rightCenter, isRightPressed)
                 }
             }
             .shadow(

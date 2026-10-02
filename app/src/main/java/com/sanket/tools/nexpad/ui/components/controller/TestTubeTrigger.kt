@@ -164,21 +164,64 @@ fun TestTubeTrigger(
             // Outer dynamic RGB aura
             .drawBehind {
                 if (isRgbEnabled) {
-                    val pad = 10.dp.toPx()
+                    val padX = 10.dp.toPx()
+                    val padY = 8.dp.toPx()
+
+                    // 1. Elongated Test Tube Capsule Aura
                     drawRoundRect(
-                        brush = Brush.radialGradient(
+                        brush = Brush.verticalGradient(
                             colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.50f),
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.35f else 0.15f)),
+                                glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.70f else 0.40f)),
                                 Color.Transparent
                             ),
-                            center = center,
-                            radius = size.minDimension * 0.95f
+                            startY = -padY,
+                            endY = size.height + padY
                         ),
-                        topLeft = Offset(-pad, -pad),
-                        size = Size(size.width + pad * 2, size.height + pad * 2),
-                        cornerRadius = CornerRadius(26.dp.toPx(), 26.dp.toPx())
+                        topLeft = Offset(-padX, -padY),
+                        size = Size(size.width + padX * 2f, size.height + padY * 2f),
+                        cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
                     )
+
+                    // 2. Rising Bioluminescent Liquid Reservoir Pool (surges with fillProgress)
+                    if (fillProgress > 0.05f) {
+                        val poolH = (size.height * 0.70f) * fillProgress
+                        val poolTop = size.height - poolH
+                        drawRoundRect(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    glowColor.copy(alpha = rgbBloomAlpha * fillProgress * 0.85f),
+                                    glowColor.copy(alpha = rgbBloomAlpha * fillProgress * 0.30f),
+                                    Color.Transparent
+                                ),
+                                center = Offset(center.x, size.height - poolH * 0.5f),
+                                radius = size.width * 0.80f
+                            ),
+                            topLeft = Offset(-padX - 4.dp.toPx(), poolTop),
+                            size = Size(size.width + (padX + 4.dp.toPx()) * 2f, poolH + padY),
+                            cornerRadius = CornerRadius(20.dp.toPx(), 20.dp.toPx())
+                        )
+                    }
+
+                    // 3. Effervescent Rising Micro-Bubble Glow Pips
+                    if (isPressed) {
+                        val bubblePhase = bubbleTime
+                        val bY1 = size.height * (1f - ((bubblePhase * 0.9f) % 1f))
+                        val bX1 = center.x - 14.dp.toPx() + (swayProgress * 3.dp.toPx())
+                        val bY2 = size.height * (1f - (((bubblePhase + 0.4f) * 0.8f) % 1f))
+                        val bX2 = center.x + 14.dp.toPx() - (swayProgress * 2.dp.toPx())
+
+                        drawCircle(
+                            color = Color.White.copy(alpha = rgbBloomAlpha * 0.85f),
+                            radius = 2.5.dp.toPx(),
+                            center = Offset(bX1, bY1)
+                        )
+                        drawCircle(
+                            color = glowColor.copy(alpha = rgbBloomAlpha * 0.70f),
+                            radius = 2.dp.toPx(),
+                            center = Offset(bX2, bY2)
+                        )
+                    }
                 }
             }
             // RGB-coordinated shadow

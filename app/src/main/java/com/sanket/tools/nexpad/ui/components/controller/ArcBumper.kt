@@ -109,20 +109,61 @@ fun ArcBumper(
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .drawBehind {
                 if (isRgbEnabled) {
-                    val pad = 12.dp.toPx()
-                    drawRoundRect(
+                    val w = size.width
+                    val h = size.height
+                    val s = min(w / 230f, h / 84f)
+                    val ox = (w - 230f * s) / 2f
+                    val oy = (h - 84f * s) / 2f
+
+                    val arcPath = Path().apply {
+                        moveTo(ox + 24f * s, oy + 62f * s)
+                        quadraticTo(ox + 115f * s, oy - 10f * s, ox + 206f * s, oy + 62f * s)
+                    }
+
+                    // 1. Broad outer crescent ribbon bloom
+                    drawPath(
+                        path = arcPath,
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.48f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.18f),
+                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.55f else 0.35f)),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.15f),
                                 Color.Transparent
                             ),
-                            center = center,
-                            radius = size.width * 0.65f
+                            center = Offset(w / 2f, oy + 20f * s),
+                            radius = w * 0.60f
                         ),
-                        topLeft = Offset(-pad, -pad),
-                        size = Size(size.width + pad * 2, size.height + pad * 2),
-                        cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
+                        style = Stroke(
+                            width = (if (isPressed) 76f else 64f) * s,
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round
+                        )
+                    )
+
+                    // 2. Focused parabolic neon beam
+                    drawPath(
+                        path = arcPath,
+                        color = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.85f else 0.50f)),
+                        style = Stroke(
+                            width = (if (isPressed) 58f else 52f) * s,
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round
+                        )
+                    )
+
+                    // 3. Arc apex focal crown flare
+                    val apexX = ox + 115f * s
+                    val apexY = oy - 10f * s
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.90f else 0.55f)),
+                                Color.Transparent
+                            ),
+                            center = Offset(apexX, apexY),
+                            radius = if (isPressed) 24.dp.toPx() else 14.dp.toPx()
+                        ),
+                        center = Offset(apexX, apexY),
+                        radius = if (isPressed) 24.dp.toPx() else 14.dp.toPx()
                     )
                 }
             }

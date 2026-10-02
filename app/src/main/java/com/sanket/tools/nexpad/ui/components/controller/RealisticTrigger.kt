@@ -148,21 +148,45 @@ fun RealisticTrigger(
             // Outer dynamic RGB aura
             .drawBehind {
                 if (isRgbEnabled) {
-                    val pad = 10.dp.toPx()
+                    val padX = 12.dp.toPx()
+                    val padTop = 6.dp.toPx()
+                    val padBottom = (10.dp + 16.dp * fillProgress).toPx()
+
+                    // 1. Asymmetric Trigger Shield Aura matching trigger contour
                     drawRoundRect(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.50f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.55f else 0.32f)),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.15f),
                                 Color.Transparent
                             ),
-                            center = center,
-                            radius = size.minDimension * 0.95f
+                            center = Offset(center.x, center.y + 6.dp.toPx() * fillProgress),
+                            radius = size.width * 0.65f
                         ),
-                        topLeft = Offset(-pad, -pad),
-                        size = Size(size.width + pad * 2, size.height + pad * 2),
-                        cornerRadius = CornerRadius(26.dp.toPx(), 26.dp.toPx())
+                        topLeft = Offset(-padX, -padTop),
+                        size = Size(size.width + padX * 2f, size.height + padTop + padBottom),
+                        cornerRadius = CornerRadius(20.dp.toPx(), 44.dp.toPx())
                     )
+
+                    // 2. Downward Squeeze Thruster Plume along bottom hull
+                    if (fillProgress > 0.05f) {
+                        val plumeW = size.width * 0.70f
+                        val plumeH = 20.dp.toPx() * fillProgress
+                        val plumeY = size.height + 2.dp.toPx()
+                        drawOval(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = rgbBloomAlpha * fillProgress * 0.70f),
+                                    neonColor.copy(alpha = rgbBloomAlpha * fillProgress * 0.90f),
+                                    Color.Transparent
+                                ),
+                                center = Offset(center.x, plumeY),
+                                radius = plumeW * 0.50f
+                            ),
+                            topLeft = Offset(center.x - plumeW / 2f, plumeY - plumeH * 0.30f),
+                            size = Size(plumeW, plumeH)
+                        )
+                    }
                 }
             }
             // RGB-coordinated shadow

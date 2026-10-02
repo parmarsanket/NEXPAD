@@ -39,7 +39,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
+import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 /**
  * Native Jetpack Compose implementation of the NEXPAD Dial Trigger (Trigger A — Dial).
@@ -139,18 +141,88 @@ fun DialTrigger(
             .size(92.dp, 92.dp)
             .drawBehind {
                 if (isRgbEnabled) {
+                    val baseR = size.minDimension * 0.5f
+                    val curPull = fillProgress
+
+                    // 1. Ambient dial circular halo
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.55f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.22f),
+                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.55f else 0.35f)),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.15f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 0.95f
+                            radius = size.minDimension * 0.75f
                         ),
-                        radius = size.minDimension * 0.95f
+                        radius = size.minDimension * 0.75f,
+                        center = center
                     )
+
+                    // 2. Circular Tick Graduation Halo (12 ticks around perimeter)
+                    val tickRadius = baseR + 4.dp.toPx()
+                    for (i in 0 until 12) {
+                        val tickAngleDeg = 135.0 + (i * 270.0 / 11.0)
+                        val tickRad = Math.toRadians(tickAngleDeg)
+                        val cosT = cos(tickRad).toFloat()
+                        val sinT = sin(tickRad).toFloat()
+                        val innerR = tickRadius
+                        val outerR = tickRadius + (if (i == 0 || i == 11) 6.dp.toPx() else 3.5.dp.toPx())
+                        val tickAlpha = rgbBloomAlpha * (if (i.toFloat() / 11f <= curPull) 0.90f else 0.30f)
+
+                        drawLine(
+                            color = neonColor.copy(alpha = tickAlpha),
+                            start = Offset(center.x + innerR * cosT, center.y + innerR * sinT),
+                            end = Offset(center.x + outerR * cosT, center.y + outerR * sinT),
+                            strokeWidth = if (i == 0 || i == 11) 2.5f else 1.5f
+                        )
+                    }
+
+                    // 3. Sweeping 270° Gauge Sector Arc
+                    val gaugeStart = 135f
+                    val gaugeTotalSweep = 270f
+                    if (curPull > 0.02f) {
+                        val activeSweep = gaugeTotalSweep * curPull
+                        drawArc(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = rgbBloomAlpha * curPull * 0.70f),
+                                    neonColor.copy(alpha = rgbBloomAlpha * curPull * 0.85f),
+                                    Color.Transparent
+                                ),
+                                center = center,
+                                radius = baseR + 8.dp.toPx()
+                            ),
+                            startAngle = gaugeStart,
+                            sweepAngle = activeSweep,
+                            useCenter = false,
+                            topLeft = Offset(center.x - (baseR + 8.dp.toPx()), center.y - (baseR + 8.dp.toPx())),
+                            size = Size((baseR + 8.dp.toPx()) * 2f, (baseR + 8.dp.toPx()) * 2f),
+                            style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
+                        )
+
+                        // 4. Pointer Beacon Flare at leading edge of rotary gauge
+                        val pointerAngleDeg = gaugeStart + activeSweep
+                        val pointerRad = Math.toRadians(pointerAngleDeg.toDouble())
+                        val cosP = cos(pointerRad).toFloat()
+                        val sinP = sin(pointerRad).toFloat()
+                        val ptrX = center.x + (baseR + 8.dp.toPx()) * cosP
+                        val ptrY = center.y + (baseR + 8.dp.toPx()) * sinP
+
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = rgbBloomAlpha * 0.95f),
+                                    neonColor.copy(alpha = rgbBloomAlpha * 0.80f),
+                                    Color.Transparent
+                                ),
+                                center = Offset(ptrX, ptrY),
+                                radius = (if (isPressed) 14.dp else 9.dp).toPx()
+                            ),
+                            center = Offset(ptrX, ptrY),
+                            radius = (if (isPressed) 14.dp else 9.dp).toPx()
+                        )
+                    }
                 }
             }
             .graphicsLayer {

@@ -290,17 +290,80 @@ fun RailsDPad(
             .size(160.dp)
             .drawBehind {
                 if (isRgbEnabled) {
+                    val w = size.width
+                    val h = size.height
+
+                    // 1. Central intersection base bloom
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.50f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.40f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 0.95f
+                            radius = size.minDimension * 0.45f
                         ),
-                        radius = size.minDimension * 0.95f
+                        radius = size.minDimension * 0.45f,
+                        center = center
+                    )
+
+                    // 2. Dual orthogonal laser slide guide track beams (X and Y axes)
+                    val isHorizActive = currentlyPressed.contains(K.LEFT) || currentlyPressed.contains(K.RIGHT)
+                    val isVertActive = currentlyPressed.contains(K.UP) || currentlyPressed.contains(K.DOWN)
+
+                    // Horizontal laser track
+                    val horizAlpha = if (isHorizActive) rgbBloomAlpha * 0.90f else (if (isAnyPressed) 0.20f else 0.40f)
+                    drawLine(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(Color.Transparent, neonColor.copy(alpha = horizAlpha * 0.65f), Color.Transparent)
+                        ),
+                        start = Offset(0f, center.y),
+                        end = Offset(w, center.y),
+                        strokeWidth = 6.dp.toPx()
+                    )
+                    drawLine(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(Color.Transparent, (if (isHorizActive) Color.White else neonColor).copy(alpha = horizAlpha), Color.Transparent)
+                        ),
+                        start = Offset(0f, center.y),
+                        end = Offset(w, center.y),
+                        strokeWidth = 2.dp.toPx()
+                    )
+
+                    // Vertical laser track
+                    val vertAlpha = if (isVertActive) rgbBloomAlpha * 0.90f else (if (isAnyPressed) 0.20f else 0.40f)
+                    drawLine(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, neonColor.copy(alpha = vertAlpha * 0.65f), Color.Transparent)
+                        ),
+                        start = Offset(center.x, 0f),
+                        end = Offset(center.x, h),
+                        strokeWidth = 6.dp.toPx()
+                    )
+                    drawLine(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, (if (isVertActive) Color.White else neonColor).copy(alpha = vertAlpha), Color.Transparent)
+                        ),
+                        start = Offset(center.x, 0f),
+                        end = Offset(center.x, h),
+                        strokeWidth = 2.dp.toPx()
+                    )
+
+                    // 3. Travelling sliding puck beacon flare
+                    val puckPos = Offset(center.x + puckOffsetXAnim, center.y + puckOffsetYAnim)
+                    val puckBloomR = if (isAnyPressed) 32.dp.toPx() else 20.dp.toPx()
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colorStops = arrayOf(
+                                0.00f to (if (isAnyPressed) Color.White else neonColor).copy(alpha = rgbBloomAlpha * 0.75f),
+                                0.45f to neonColor.copy(alpha = rgbBloomAlpha * 0.35f),
+                                1.00f to Color.Transparent
+                            ),
+                            center = puckPos,
+                            radius = puckBloomR
+                        ),
+                        radius = puckBloomR,
+                        center = puckPos
                     )
                 }
             }

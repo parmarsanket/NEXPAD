@@ -180,18 +180,82 @@ fun CompassJoystick(
             .size(150.dp)
             .drawBehind {
                 if (isRgbEnabled) {
+                    val azimuthR = size.minDimension * 0.52f
+                    val curX = animOffsetX.value
+                    val curY = animOffsetY.value
+                    val curDist = hypot(curX, curY)
+                    val defFraction = (curDist / maxTravelPx).coerceIn(0f, 1f)
+
+                    // 1. Ambient navigational core bloom
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.45f),
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.18f),
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.40f),
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.15f),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 0.95f
+                            radius = size.minDimension * 0.55f
                         ),
-                        radius = size.minDimension * 0.95f
+                        radius = size.minDimension * 0.55f,
+                        center = center
                     )
+
+                    // 2. Azimuth degree ring with graduation ticks
+                    drawCircle(
+                        color = glowColor.copy(alpha = if (defFraction > 0.3f) 0.65f else 0.35f),
+                        radius = azimuthR,
+                        center = center,
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(
+                            width = 1.8f,
+                            pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(3f, 7f), 0f)
+                        )
+                    )
+
+                    // 3. 4 Cardinal Compass Rose Star Flares (N, S, E, W)
+                    val starLen = size.minDimension * 0.60f
+                    val starColor = glowColor.copy(alpha = if (defFraction > 0.4f) 0.85f else 0.45f)
+                    // North/South ray
+                    drawLine(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, (if (curY < -10f) Color.White else starColor), Color.Transparent),
+                            startY = center.y - starLen,
+                            endY = center.y + starLen
+                        ),
+                        start = Offset(center.x, center.y - starLen),
+                        end = Offset(center.x, center.y + starLen),
+                        strokeWidth = 2.0f
+                    )
+                    // East/West ray
+                    drawLine(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(Color.Transparent, (if (curX.let { kotlin.math.abs(it) > 10f }) Color.White else starColor), Color.Transparent),
+                            startX = center.x - starLen,
+                            endX = center.x + starLen
+                        ),
+                        start = Offset(center.x - starLen, center.y),
+                        end = Offset(center.x + starLen, center.y),
+                        strokeWidth = 2.0f
+                    )
+
+                    // 4. Directional Azimuth Heading Flare Beacon
+                    if (defFraction > 0.08f) {
+                        val headingAngle = Math.toDegrees(atan2(curY.toDouble(), curX.toDouble())).toFloat()
+                        val headingRad = Math.toRadians(headingAngle.toDouble())
+                        val beaconPos = Offset(
+                            center.x + azimuthR * kotlin.math.cos(headingRad).toFloat(),
+                            center.y + azimuthR * kotlin.math.sin(headingRad).toFloat()
+                        )
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(Color.White, glowColor, Color.Transparent),
+                                center = beaconPos,
+                                radius = 24.dp.toPx()
+                            ),
+                            radius = 24.dp.toPx(),
+                            center = beaconPos
+                        )
+                    }
                 }
             }
             .shadow(
@@ -867,18 +931,37 @@ fun CompassStickButton(
             .offset { IntOffset(0, pressOffsetY.dp.roundToPx()) }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val coreR = size.minDimension * (if (isPressed) 1.05f else 0.85f)
+                    // 1. Core azimuth beacon bloom
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.55f),
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.22f),
-                                Color.Transparent
+                            colorStops = arrayOf(
+                                0.00f to (if (isPressed) Color.White else glowColor).copy(alpha = rgbBloomAlpha * 0.65f),
+                                0.35f to glowColor.copy(alpha = rgbBloomAlpha * 0.30f),
+                                0.75f to glowColor.copy(alpha = rgbBloomAlpha * 0.10f),
+                                1.00f to Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 1f
+                            radius = coreR
                         ),
-                        radius = size.minDimension * 1f
+                        radius = coreR,
+                        center = center
                     )
+
+                    // 2. 8-Point Compass Pips
+                    val pipR = size.minDimension * 0.52f
+                    for (i in 0 until 8) {
+                        val angle = Math.toRadians(i * 45.0)
+                        val cosA = kotlin.math.cos(angle).toFloat()
+                        val sinA = kotlin.math.sin(angle).toFloat()
+                        val pipPt = Offset(center.x + pipR * cosA, center.y + pipR * sinA)
+                        val isCardinal = i % 2 == 0
+                        drawCircle(
+                            color = (if (isPressed && isCardinal) Color.White else glowColor).copy(alpha = if (isPressed) 0.90f else 0.40f),
+                            radius = if (isCardinal) 2.8f else 1.6f,
+                            center = pipPt
+                        )
+                    }
                 }
             }
             .shadow(
