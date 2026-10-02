@@ -82,11 +82,11 @@ fun standardElitePositions(): Map<String, Position> {
         K.RB to Position(0.920f, 0.375f, scale = 0.95f),
 
         // Left Stick & D-Pad (Integrated 4-Way Cross Pad)
-        K.LS   to Position(0.115f, 0.740f, scale = 1.05f),
+        K.LS   to Position(0.115f, 0.740f, scale = 0.95f),
         K.DPAD to Position(0.320f, 0.740f, scale = 1.10f),
 
         // Right Stick
-        K.RS to Position(0.895f, 0.740f, scale = 1.05f),
+        K.RS to Position(0.895f, 0.740f, scale = 0.95f),
 
         // Center System Cluster
         K.GUIDE to Position(0.500f, 0.130f, scale = 1.15f),
@@ -111,41 +111,38 @@ fun standardElitePositions(): Map<String, Position> {
 
 /**
  * Default Layout 2: PlayStation DualSense Pro (Authentic Symmetric Ergonomics).
- * Symmetric lower thumbsticks, primary D-Pad, geometric face glyphs, and central touchpads.
+ * Symmetric thumbsticks at the bottom, D-Pad upper-left, face buttons upper-right,
+ * and PS/Options/Create trio in the middle band.
  */
 fun playStationDualSensePositions(): Map<String, Position> {
     val positions = mutableMapOf(
-        // DualSense L2 / L1 / R2 / R1 Shoulders
-        K.LT to Position(0.100f, 0.140f, scale = 0.92f),
-        K.LB to Position(0.100f, 0.285f, scale = 0.82f),
-        K.RT to Position(0.900f, 0.140f, scale = 0.92f),
-        K.RB to Position(0.900f, 0.285f, scale = 0.82f),
+        // L2 / R2 Analog Triggers (top corners, matching Elite height)
+        K.LT to Position(0.080f, 0.130f, scale = 1.15f),
+        K.RT to Position(0.920f, 0.130f, scale = 1.15f),
 
-        // Symmetric Dual Sticks along lower sweep
-        K.LS to Position(0.290f, 0.740f, scale = 1.00f),
-        K.RS to Position(0.710f, 0.740f, scale = 1.00f),
+        // L1 / R1 Digital Bumpers (below triggers)
+        K.LB to Position(0.080f, 0.360f, scale = 0.90f),
+        K.RB to Position(0.920f, 0.360f, scale = 0.90f),
 
-        // Primary Upper D-Pad & Stick Clicks
-        K.DPAD to Position(0.160f, 0.520f, scale = 1.05f),
-        K.LSB  to Position(0.290f, 0.570f, scale = 0.65f),
-        K.RSB  to Position(0.710f, 0.570f, scale = 0.65f),
+        // D-Pad — primary left thumb control (upper-mid, clear of LS)
+        K.DPAD to Position(0.130f, 0.650f, scale = 1.05f),
 
-        // DualSense Central Touchpad
-        K.LTP to Position(0.435f, 0.110f, scale = 0.80f),
-        K.RTP to Position(0.565f, 0.110f, scale = 0.80f),
+        // Symmetric DualSense Sticks — lower row, centered side-by-side
+        K.LS to Position(0.345f, 0.740f, scale = 0.95f),
+        K.RS to Position(0.655f, 0.740f, scale = 0.95f),
 
-        // PS Center System Buttons
-        K.GUIDE to Position(0.500f, 0.265f, scale = 0.90f),
-        K.BACK  to Position(0.355f, 0.265f, scale = 0.70f), // Create / Share
-        K.START to Position(0.645f, 0.265f, scale = 0.70f) // Options
+        // PS / Create / Options — center mid-band
+        K.GUIDE to Position(0.500f, 0.130f, scale = 1.15f), // PS button
+        K.BACK  to Position(0.440f, 0.310f, scale = 0.70f), // Create / Share
+        K.START to Position(0.560f, 0.310f, scale = 0.70f)  // Options
     )
 
-    // PlayStation Face Buttons (Cross, Circle, Square, Triangle)
+    // Cross / Circle / Square / Triangle — primary right thumb control (upper-mid, clear of RS)
     positions.putAll(
         LayoutMetrics.createDiamondCluster(
-            centerX = 0.840f,
-            centerY = 0.520f,
-            radiusDp = 52.0f,
+            centerX = 0.875f,
+            centerY = 0.650f,
+            radiusDp = 50.0f,
             scale = 0.80f
         )
     )
@@ -154,115 +151,118 @@ fun playStationDualSensePositions(): Map<String, Position> {
 }
 
 /**
- * Default Layout 3: FPS Tactical Claw (Competitive Shooter 6-Finger Grip).
- * Fast hair triggers, separated aim/strafe zones, and jump/slide macro paddles.
+ * Default Layout 3: FPS Tactical Claw (4-Finger Mobile Claw Grip).
+ * Designed for 2 thumbs + 2 index fingers (PUBG / Call of Duty Mobile style):
+ * - Left Index: Scope (LT) and Tactical (LB) at top-left.
+ * - Left Thumb: Dedicated 360° Movement Stick (LS) lower-left.
+ * - Right Index: Claw Action Matrix (A Jump, B Crouch, X Reload, Y Swap) + RT Fire / RB Melee at top-right.
+ * - Right Thumb: Pure unhindered Aiming Stick (RS) lower-right.
  */
-fun fpsTacticalClawPositions(): Map<String, Position> {
-    val positions = mutableMapOf(
-        // Hair Triggers & Instant Bumpers
-        K.LT to Position(0.100f, 0.140f, scale = 0.95f), // ADS / Quick-Draw
-        K.RT to Position(0.900f, 0.140f, scale = 0.95f), // Hair Fire
-        K.LB to Position(0.100f, 0.285f, scale = 0.82f), // Tactical / Grenade
-        K.RB to Position(0.900f, 0.285f, scale = 0.82f), // Melee / Ping
+fun fpsTacticalClawPositions(): Map<String, Position> = mapOf(
+    // Left Index Zone: Scope & Tactical
+    K.LT to Position(0.080f, 0.130f, scale = 1.15f), // ADS / Scope
+    K.LB to Position(0.080f, 0.350f, scale = 0.90f), // Tactical / Grenade
 
-        // Strafe Stick & Recoil Aim Stick (Separated for zero thumb clash)
-        K.LS to Position(0.165f, 0.580f, scale = 1.05f),
-        K.RS to Position(0.840f, 0.740f, scale = 1.05f),
+    // Left Thumb Zone: Pure Movement & Utilities
+    K.LS to Position(0.140f, 0.720f, scale = 1.02f), // Strafe / Sprint
+    K.DPAD to Position(0.340f, 0.720f, scale = 0.95f), // Ping / Inventory
 
-        // Stick Click Sprint & Melee
-        K.LSB to Position(0.165f, 0.760f, scale = 0.65f),
-        K.RSB to Position(0.840f, 0.570f, scale = 0.65f),
+    // Right Index Claw Matrix: High-frequency combat actions
+    K.Y to Position(0.660f, 0.180f, scale = 0.85f), // Weapon Swap
+    K.X to Position(0.765f, 0.180f, scale = 0.85f), // Reload
+    K.A to Position(0.660f, 0.360f, scale = 0.85f), // Jump
+    K.B to Position(0.765f, 0.360f, scale = 0.85f), // Crouch / Slide
 
-        // Tactical D-Pad for inventory & callouts
-        K.DPAD to Position(0.315f, 0.750f, scale = 1.00f),
+    // Right Index Shoulder Triggers: Primary Fire & Melee
+    K.RT to Position(0.920f, 0.130f, scale = 1.15f), // Primary Fire
+    K.RB to Position(0.920f, 0.350f, scale = 0.90f), // Melee / Bash
 
-        // Center Minimal System Controls
-        K.GUIDE to Position(0.500f, 0.130f, scale = 0.95f),
-        K.BACK  to Position(0.430f, 0.245f, scale = 0.72f),
-        K.START to Position(0.570f, 0.245f, scale = 0.72f)
-    )
+    // Right Thumb Zone: Dedicated Aim Stick (zero button obstruction)
+    K.RS to Position(0.840f, 0.720f, scale = 1.05f),
 
-    // Face Buttons in Upper-Right Zone (Zero RS Overlap)
-    positions.putAll(
-        LayoutMetrics.createDiamondCluster(
-            centerX = 0.840f,
-            centerY = 0.440f,
-            radiusDp = 48.0f,
-            scale = 0.75f
-        )
-    )
-
-    return positions
-}
+    // Center Console
+    K.GUIDE to Position(0.500f, 0.130f, scale = 1.15f),
+    K.BACK  to Position(0.440f, 0.310f, scale = 0.70f), // Map / Scoreboard
+    K.START to Position(0.560f, 0.310f, scale = 0.70f)  // Pause / Menu
+)
 
 /** Backward compatible alias for FPS layout. */
 fun fpsTacticalPositions(): Map<String, Position> = fpsTacticalClawPositions()
 
 /**
- * Default Layout 4: Retro Arcade Fightstick (Authentic 6-Button Fighting Matrix).
- * Authentic Capcom/Vewlix Japanese fightstick layout with heavy punch/kick buttons and 8-way D-Pad.
+ * Default Layout 4: Retro Arcade Fightstick (Authentic 6-Button Vewlix Matrix).
+ * 8-Way D-Pad lower-left, clean 3×2 punch/kick grid right, EX assists top-left,
+ * minimal center controls (Coin / Start).
  */
 fun retroArcadeFightstickPositions(): Map<String, Position> = mapOf(
-    // 8-Way Arcade Directional Pad & Optional 360 Grappler Stick
-    K.DPAD to Position(0.170f, 0.620f, scale = 1.15f),
-    K.LS   to Position(0.335f, 0.620f, scale = 1.00f),
+    // 8-Way Arcade D-Pad — primary directional input, lower-left
+    K.DPAD to Position(0.200f, 0.680f, scale = 1.15f),
 
-    // 6-Button Arcade Fightstick Matrix
-    // Top Row (Punches): Light (X), Medium (Y), Heavy (RB)
-    K.X  to Position(0.590f, 0.490f, scale = 0.82f),
-    K.Y  to Position(0.700f, 0.460f, scale = 0.82f),
-    K.RB to Position(0.815f, 0.435f, scale = 0.78f),
+    // EX / Assist Shoulder Buttons — upper-left (consistent with gamepad: LT trigger top, LB bumper below)
+    K.LT to Position(0.080f, 0.130f, scale = 1.00f), // 3-Kick V-Reversal / Assist 2
+    K.LB to Position(0.080f, 0.360f, scale = 0.90f), // 3-Punch EX / Assist 1
 
-    // Bottom Row (Kicks): Light (A), Medium (B), Heavy (RT)
-    K.A  to Position(0.590f, 0.740f, scale = 0.82f),
-    K.B  to Position(0.700f, 0.710f, scale = 0.82f),
-    K.RT to Position(0.815f, 0.685f, scale = 0.78f),
+    // 6-Button Vewlix Grid — authentic 3×2 layout
+    // Top row = Light / Medium / Heavy Punch
+    K.X  to Position(0.600f, 0.470f, scale = 0.86f), // Light Punch
+    K.Y  to Position(0.730f, 0.440f, scale = 0.86f), // Medium Punch
+    K.RB to Position(0.870f, 0.430f, scale = 0.85f), // Heavy Punch
 
-    // Left Shoulder EX / V-Reversal / Assist Buttons
-    K.LB to Position(0.100f, 0.140f, scale = 0.82f), // 3-Punch EX / Throw
-    K.LT to Position(0.100f, 0.285f, scale = 0.85f), // 3-Kick V-Reversal
+    // Bottom row = Light / Medium / Heavy Kick
+    K.A  to Position(0.600f, 0.720f, scale = 0.86f), // Light Kick
+    K.B  to Position(0.730f, 0.690f, scale = 0.86f), // Medium Kick
+    K.RT to Position(0.870f, 0.680f, scale = 0.85f), // Heavy Kick
 
-    // Fightstick Cabinet Center Controls
-    K.BACK  to Position(0.420f, 0.200f, scale = 0.72f), // Coin / Select
-    K.START to Position(0.580f, 0.200f, scale = 0.72f), // 1P Start
-    K.GUIDE to Position(0.500f, 0.125f, scale = 0.95f)
+    // Arcade Cabinet Center: Coin / Select, 1P Start, Home
+    K.GUIDE to Position(0.500f, 0.130f, scale = 1.15f),
+    K.BACK  to Position(0.440f, 0.310f, scale = 0.70f), // Coin / Select
+    K.START to Position(0.560f, 0.310f, scale = 0.70f)  // 1P Start
 )
 
 /** Backward compatible alias for Retro Arcade layout. */
 fun retroArcadePositions(): Map<String, Position> = retroArcadeFightstickPositions()
 
 /**
- * Default Layout 5: Sim Racing & Flight (Throttle, Brake & Sequential Shifters).
- * Large analog throttle & brake triggers, sequential paddle shifters, and steering stick.
+ * Default Layout 5: Sim Racing & Flight (Asymmetric Stick-High Cockpit).
+ * Based on authentic asymmetric gamepad & flight yoke geometry:
+ * - Upper-Left: Steering Yoke / Flight Stick (LS) high for natural thumb reach.
+ * - Lower-Left: Rudder / Pit-stop D-Pad (DPAD) below stick.
+ * - Outer Left Margin: Analog Brake (LT) and Downshift (LB).
+ * - Upper-Right: Cockpit instrument face cluster (X, Y, B, A).
+ * - Lower-Right: Camera / Cockpit Look Stick (RS).
+ * - Outer Right Margin: Analog Throttle (RT) and Upshift (RB).
  */
 fun simRacingFlightPositions(): Map<String, Position> {
     val positions = mutableMapOf(
-        // Analog Pedals: Right Throttle (RT) & Left Brake (LT)
-        K.RT to Position(0.895f, 0.160f, scale = 1.00f), // Progressive Throttle
-        K.LT to Position(0.105f, 0.160f, scale = 1.00f), // Progressive Brake
+        // Outer Left Shoulders: Brake on top, Downshift below
+        K.LT to Position(0.065f, 0.200f, scale = 0.95f),
+        K.LB to Position(0.065f, 0.450f, scale = 0.95f),
 
-        // Sequential Paddle Shifters
-        K.RB to Position(0.895f, 0.320f, scale = 0.82f), // Upshift
-        K.LB to Position(0.105f, 0.320f, scale = 0.82f), // Downshift
+        // Upper-Left: Steering Yoke / Flight Stick (LS)
+        K.LS to Position(0.245f, 0.280f, scale = 1.02f),
 
-        // Precision Steering Stick & Cockpit Look
-        K.LS to Position(0.175f, 0.660f, scale = 1.15f), // Steering Rack
-        K.RS to Position(0.825f, 0.660f, scale = 1.00f), // Cockpit Look
+        // Lower-Left: Pit Stop / Rudder D-Pad (DPAD)
+        K.DPAD to Position(0.245f, 0.740f, scale = 1.05f),
 
-        // Pit Stop & Engine Map D-Pad
-        K.DPAD to Position(0.340f, 0.750f, scale = 1.00f),
+        // Outer Right Shoulders: Throttle on top, Upshift below
+        K.RT to Position(0.935f, 0.200f, scale = 0.95f),
+        K.RB to Position(0.935f, 0.450f, scale = 0.95f),
 
-        // Center Controls
-        K.GUIDE to Position(0.500f, 0.130f, scale = 0.95f),
-        K.BACK  to Position(0.430f, 0.245f, scale = 0.72f), // Telemetry
-        K.START to Position(0.570f, 0.245f, scale = 0.72f)  // Pause
+        // Lower-Right: Camera / Cockpit Look Stick (RS)
+        K.RS to Position(0.755f, 0.740f, scale = 1.02f),
+
+        // Center Console: Dashboard Controls
+        K.GUIDE to Position(0.500f, 0.130f, scale = 1.15f), // Home / Radio
+        K.BACK  to Position(0.440f, 0.310f, scale = 0.70f), // Telemetry
+        K.START to Position(0.560f, 0.310f, scale = 0.70f)  // Pause / Menu
     )
 
+    // Upper-Right: Face Buttons — Cockpit instrument cluster (Gear/Nitro/Look Back)
     positions.putAll(
         LayoutMetrics.createDiamondCluster(
-            centerX = 0.695f,
-            centerY = 0.540f,
-            radiusDp = 50.0f,
+            centerX = 0.755f,
+            centerY = 0.280f,
+            radiusDp = 46.0f,
             scale = 0.78f
         )
     )
@@ -274,33 +274,35 @@ fun simRacingFlightPositions(): Map<String, Position> {
 fun racingSimPositions(): Map<String, Position> = simRacingFlightPositions()
 
 /**
- * Default Layout 6: Grand MOBA & RPG (Action RPG Radial Ability Sweep).
- * Primary auto-attack anchor, curved skillshot fanning, and quick potion/spell triggers.
+ * Default Layout 6: Grand MOBA & RPG (Action RPG Radial Ability Wheel).
+ * Designed for League of Legends Wild Rift, Mobile Legends, and Genshin Impact:
+ * - Left Side: 360° Movement Stick (LS) + Quick Item / Recall (DPAD) + Potion (LB) / Heal (LT).
+ * - Right Side: Large Basic Attack anchor button (A) with radial ability fan (X, Y, B),
+ *   crowned by Ultimate Ability (RT) and Target Lock (RB).
  */
 fun grandMobaRpgPositions(): Map<String, Position> = mapOf(
-    // 360° Movement Stick & Quick Item D-Pad
-    K.LS   to Position(0.170f, 0.650f, scale = 1.15f),
-    K.DPAD to Position(0.330f, 0.650f, scale = 1.00f),
+    // 360° Movement Stick — far left, smooth analog movement
+    K.LS to Position(0.160f, 0.680f, scale = 1.05f),
 
-    // Radial Ability Fan: Primary Attack (A) anchor with outer skill sweep
-    K.A to Position(0.760f, 0.740f, scale = 1.00f), // Primary Attack / Auto-Attack Anchor
-    K.X to Position(0.630f, 0.690f, scale = 0.85f), // Skill 1
-    K.Y to Position(0.675f, 0.520f, scale = 0.85f), // Skill 2
-    K.B to Position(0.800f, 0.540f, scale = 0.85f), // Skill 3 / Dash
+    // Quick Item / Recall / Shop D-Pad
+    K.DPAD to Position(0.360f, 0.680f, scale = 0.95f),
 
-    // Ultimate Ability & Potions
-    K.RB to Position(0.900f, 0.285f, scale = 0.82f), // Ultimate Ability
-    K.LB to Position(0.100f, 0.285f, scale = 0.82f), // Potion / Flask
-    K.RT to Position(0.900f, 0.140f, scale = 0.92f), // Target Lock
-    K.LT to Position(0.100f, 0.140f, scale = 0.92f), // Secondary Skill
+    // Secondary Ability / Heal & Potion / Flask
+    K.LT to Position(0.080f, 0.140f, scale = 1.05f), // Heal / Secondary
+    K.LB to Position(0.080f, 0.360f, scale = 0.90f), // Potion / Flask
 
-    // Camera / Target Aim Stick
-    K.RS to Position(0.900f, 0.740f, scale = 0.85f),
+    // Radial Ability Fan around Primary Attack:
+    K.A  to Position(0.810f, 0.720f, scale = 1.18f), // Primary Attack / Auto-Attack Anchor
+    K.X  to Position(0.690f, 0.760f, scale = 0.88f), // Skill 1 / Tactical
+    K.Y  to Position(0.660f, 0.570f, scale = 0.88f), // Skill 2 / Area Effect
+    K.RT to Position(0.770f, 0.430f, scale = 1.05f), // Ultimate Ability (Crown Trigger)
+    K.B  to Position(0.925f, 0.630f, scale = 0.88f), // Dash / Evade / Dodge
+    K.RB to Position(0.920f, 0.340f, scale = 0.88f), // Target Lock / Spell 2
 
     // Center Console
-    K.GUIDE to Position(0.500f, 0.130f, scale = 0.95f),
-    K.BACK  to Position(0.430f, 0.245f, scale = 0.72f),
-    K.START to Position(0.570f, 0.245f, scale = 0.72f)
+    K.GUIDE to Position(0.500f, 0.130f, scale = 1.15f),
+    K.BACK  to Position(0.440f, 0.300f, scale = 0.70f), // Map / Inventory
+    K.START to Position(0.560f, 0.300f, scale = 0.70f)  // Pause / Shop
 )
 
 /** Backward compatible alias for MOBA layout. */

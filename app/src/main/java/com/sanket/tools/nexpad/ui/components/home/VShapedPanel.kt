@@ -44,7 +44,7 @@ fun VShapedPanel(
     onProfileSelected: (LayoutProfile) -> Unit = {},
     isCompact: Boolean = false,
     modifier: Modifier = Modifier,
-    onPlayClick: () -> Unit
+    onPlayClick: (LayoutProfile) -> Unit = {}
 ) {
     val effectiveProfiles = remember(profiles) {
         if (profiles.isNotEmpty()) profiles else getDefaultLayoutProfiles()
@@ -126,6 +126,7 @@ fun VShapedPanel(
                         .padding(4.dp)
                         .clickable {
                             if (state.currentItem != index) {
+                                onProfileSelected(profile)
                                 coroutineScope.launch {
                                     isUserGesture = true
                                     try {
@@ -149,7 +150,14 @@ fun VShapedPanel(
                 PlayButton(
                     modifier = Modifier
                         .padding(bottom = if (isCompact) 10.dp else 24.dp),
-                    onClick = onPlayClick
+                    onClick = {
+                        val validIdx = state.currentItem.coerceIn(0, effectiveProfiles.lastIndex)
+                        val selected = effectiveProfiles.getOrNull(validIdx) ?: effectiveProfiles.firstOrNull()
+                        if (selected != null) {
+                            onProfileSelected(selected)
+                            onPlayClick(selected)
+                        }
+                    }
                 )
             }
         }

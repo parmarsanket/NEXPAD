@@ -42,7 +42,37 @@ class LayoutManager(private val context: Context) {
                 if (savedJson.contains("\"M1\"") || savedJson.contains("\"M2\"") ||
                     savedJson.contains("\"M3\"") || savedJson.contains("\"M4\"") ||
                     savedJson.contains("0.055") || savedJson.contains("0.080") ||
-                    savedJson.contains("0.280")
+                    savedJson.contains("0.280") ||
+                    savedJson.contains("0.265") || savedJson.contains("0.645") ||
+                    savedJson.contains("0.165") || savedJson.contains("0.335") ||
+                    savedJson.contains("0.125") || savedJson.contains("0.820") ||
+                    // Layout 2 (DualSense) old values
+                    savedJson.contains("0.300") || savedJson.contains("0.385") ||
+                    savedJson.contains("0.615") ||
+                    // Layout 3 (FPS Tactical) old values
+                    savedJson.contains("0.120") ||
+                    // Layout 4 (Retro Arcade) old values
+                    savedJson.contains("0.190") || savedJson.contains("0.640") ||
+                    savedJson.contains("0.340") || savedJson.contains("0.415") ||
+                    savedJson.contains("0.665") ||
+                    // Layout 5 (Sim Racing) old values
+                    savedJson.contains("0.095") || savedJson.contains("0.145") ||
+                    savedJson.contains("0.905") || savedJson.contains("0.350") ||
+                    savedJson.contains("0.185") || savedJson.contains("0.680") ||
+                    savedJson.contains("0.815") ||
+                    // Layout 6 (Grand MOBA) old values
+                    savedJson.contains("0.670") || savedJson.contains("0.900") ||
+                    // Fresh retune old coordinates for all 5 non-elite layouts
+                    savedJson.contains("0.770") || savedJson.contains("0.840") ||
+                    savedJson.contains("0.730") || savedJson.contains("0.850") ||
+                    savedJson.contains("0.530") || savedJson.contains("0.555") ||
+                    savedJson.contains("0.480") || savedJson.contains("0.590") ||
+                    savedJson.contains("0.890") || savedJson.contains("0.780") ||
+                    savedJson.contains("0.800") || savedJson.contains("0.660") ||
+                    savedJson.contains("0.775") || savedJson.contains("0.885") ||
+                    savedJson.contains("0.700") || savedJson.contains("0.810") ||
+                    savedJson.contains("0.230") || savedJson.contains("0.380") ||
+                    savedJson.contains("0.440")
                 ) {
                     editor.remove("profile_${defaultProfile.name}")
                     needsCommit = true

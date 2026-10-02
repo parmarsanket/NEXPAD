@@ -54,7 +54,8 @@ import com.sanket.tools.nexpad.ui.layout.adaptiveLayoutSpec
 fun HomeScreen(
     navController: AppNavigator,
     layoutManager: LayoutManager,
-    viewModel: GamepadViewModel
+    viewModel: GamepadViewModel,
+    navigationViewModel: NavigationViewModel? = null
 ) {
     val isConnected by viewModel.isConnected.collectAsState()
     val discoveredServers by viewModel.discoveredServers.collectAsState()
@@ -93,7 +94,11 @@ fun HomeScreen(
                 layoutManager.setActiveProfile(selected.name)
             }
         },
-        onPlayClick = { navController.navigate(Route.Gamepad()) },
+        onPlayClick = { selectedProfile ->
+            layoutManager.setActiveProfile(selectedProfile.name)
+            navigationViewModel?.startGamepadSession(selectedProfile.name)
+            navController.navigate(Route.Gamepad(layoutProfileName = selectedProfile.name))
+        },
         onConnectServer = { server ->
             Log.d(
                 "NEXPAD",
@@ -125,7 +130,7 @@ fun HomeScreenContent(
     profiles: List<com.sanket.tools.nexpad.model.LayoutProfile> = com.sanket.tools.nexpad.model.getDefaultLayoutProfiles(),
     activeProfileName: String = "Standard Elite",
     onProfileSelected: (com.sanket.tools.nexpad.model.LayoutProfile) -> Unit = {},
-    onPlayClick: () -> Unit = {},
+    onPlayClick: (com.sanket.tools.nexpad.model.LayoutProfile) -> Unit = {},
     onConnectServer: (com.sanket.tools.nexpad.network.DiscoveredServer) -> Unit = {},
     onConnectAoa: () -> Unit = {},
     onConnectAdb: () -> Unit = {},

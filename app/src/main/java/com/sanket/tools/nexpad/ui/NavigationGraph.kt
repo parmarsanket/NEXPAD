@@ -83,7 +83,12 @@ fun NavigationGraph(
         NavEntry(key) {
             when (key) {
                 is Route.Home -> {
-                    HomeScreen(navController = navigator, layoutManager = layoutManager, viewModel = viewModel)
+                    HomeScreen(
+                        navController = navigator,
+                        layoutManager = layoutManager,
+                        viewModel = viewModel,
+                        navigationViewModel = navigationViewModel
+                    )
                 }
                 is Route.Settings -> {
                     SettingsScreen(navController = navigator, layoutManager = layoutManager, viewModel = viewModel, sharedPref = sharedPref)

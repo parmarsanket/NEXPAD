@@ -95,4 +95,62 @@ class GamepadScreenScreenshotTest {
             )
         }
     }
+
+    @PreviewTest
+    @Preview(showBackground = true, backgroundColor = 0xFF08090C, widthDp = 840, heightDp = 390)
+    @Composable
+    fun gamepadScreenRetroArcadeFightstickPreview() {
+        val arcadeProfile = getDefaultLayoutProfiles().first { it.name.contains("Arcade", ignoreCase = true) }
+        NEXPADTheme {
+            GamepadScreenContent(
+                profile = arcadeProfile,
+                isConnected = true,
+                renderElement = { key, _ ->
+                    StaticDefaultButtonPreview(
+                        controlKey = key,
+                        labelStyle = arcadeProfile.controllerLabelStyle
+                    )
+                }
+            )
+        }
+    }
+
+    @PreviewTest
+    @Preview(showBackground = true, backgroundColor = 0xFF08090C, widthDp = 840, heightDp = 390)
+    @Composable
+    fun gamepadScreenSimRacingFlightPreview() {
+        val racingProfile = getDefaultLayoutProfiles().first { it.name.contains("Racing", ignoreCase = true) }
+        NEXPADTheme {
+            GamepadScreenContent(
+                profile = racingProfile,
+                isConnected = true,
+                renderElement = { key, _ ->
+                    StaticDefaultButtonPreview(
+                        controlKey = key,
+                        labelStyle = racingProfile.controllerLabelStyle
+                    )
+                }
+            )
+        }
+    }
+
+    @PreviewTest
+    @Preview(showBackground = true, backgroundColor = 0xFF08090C, widthDp = 840, heightDp = 390)
+    @Composable
+    fun gamepadScreenGrandMobaRpgPreview() {
+        val mobaProfile = getDefaultLayoutProfiles().first { it.name.contains("MOBA", ignoreCase = true) }
+        NEXPADTheme {
+            GamepadScreenContent(
+                profile = mobaProfile,
+                isConnected = true,
+                renderElement = { key, _ ->
+                    StaticDefaultButtonPreview(
+                        controlKey = key,
+                        labelStyle = mobaProfile.controllerLabelStyle
+                    )
+                }
+            )
+        }
+    }
 }
+
