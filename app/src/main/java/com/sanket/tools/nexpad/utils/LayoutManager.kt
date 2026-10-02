@@ -28,6 +28,39 @@ class LayoutManager(private val context: Context) {
     val activeProfileNameFlow: StateFlow<String> = _activeProfileNameFlow.asStateFlow()
 
     init {
+        // Migration & Cache Cleanup:
+        // Always purge cached default layouts if they contain obsolete paddles (M1-M4) or old cutouts (0.055, 0.080)
+        val defaults = getDefaultLayoutProfiles()
+        val defaultNames = defaults.map { it.name.trim().lowercase() }.toSet()
+        val editor = prefs.edit()
+        var needsCommit = false
+
+        // 1. Purge obsolete default profiles saved in prefs
+        defaults.forEach { defaultProfile ->
+            val savedJson = prefs.getString("profile_${defaultProfile.name}", null)
+            if (savedJson != null) {
+                if (savedJson.contains("\"M1\"") || savedJson.contains("\"M2\"") ||
+                    savedJson.contains("\"M3\"") || savedJson.contains("\"M4\"") ||
+                    savedJson.contains("0.055") || savedJson.contains("0.080")
+                ) {
+                    editor.remove("profile_${defaultProfile.name}")
+                    needsCommit = true
+                }
+            }
+        }
+
+        // 2. Sanitize custom_profile_names to ensure no default layout is ever treated as custom
+        val rawCustomNames = prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()
+        val cleanedCustomNames = rawCustomNames.filterNot { defaultNames.contains(it.trim().lowercase()) }.toSet()
+        if (cleanedCustomNames.size != rawCustomNames.size) {
+            editor.putStringSet("custom_profile_names", HashSet(cleanedCustomNames))
+            needsCommit = true
+        }
+
+        if (needsCommit) {
+            editor.commit()
+        }
+
         val savedName = prefs.getString("active_profile", "Standard Elite") ?: "Standard Elite"
         _activeProfileNameFlow.value = if (savedName == "Standard") "Standard Elite" else savedName
         refreshProfilesFlow()
@@ -46,18 +79,31 @@ class LayoutManager(private val context: Context) {
         saveProfile(active.copy(positions = posMap), activate = true)
     }
 
-    /** Returns all available profiles: 5 default layouts (with any saved overrides) plus user custom layouts. */
+    /** Returns all available profiles: default layouts (using factory positions) plus user custom layouts. */
     fun getAllProfiles(): List<LayoutProfile> {
         val defaults = getDefaultLayoutProfiles()
         val result = mutableListOf<LayoutProfile>()
 
-        // 1. Load default profiles (with user position overrides if saved)
+        // 1. Load default profiles (preserving user skins/labels, but ALWAYS using factory positions from code)
         for (defaultProfile in defaults) {
             val savedJson = prefs.getString("profile_${defaultProfile.name}", null)
             if (savedJson != null) {
                 try {
                     val loaded = json.decodeFromString<LayoutProfile>(savedJson)
-                    result.add(loaded.copy(isDefault = true, positions = loaded.canonicalPositions()))
+                    val mergedPositions = defaultProfile.canonicalPositions().toMutableMap()
+                    loaded.canonicalPositions().forEach { (k, v) ->
+                        if (mergedPositions.containsKey(k) && v.customComponentId != null) {
+                            mergedPositions[k] = mergedPositions[k]!!.copy(customComponentId = v.customComponentId)
+                        }
+                    }
+                    result.add(
+                        defaultProfile.copy(
+                            isDefault = true,
+                            isRgbEnabled = loaded.isRgbEnabled,
+                            labelStyle = loaded.labelStyle,
+                            positions = mergedPositions
+                        )
+                    )
                 } catch (e: Exception) {
                     result.add(defaultProfile.copy(positions = defaultProfile.canonicalPositions()))
                 }
@@ -66,10 +112,14 @@ class LayoutManager(private val context: Context) {
             }
         }
 
-        // 2. Load custom profiles
+        // 2. Load custom profiles (ignoring any name that collides with a default layout)
+        val defaultNames = defaults.map { it.name.trim().lowercase() }.toSet()
         val customNames = prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()
         for (name in customNames) {
+            if (defaultNames.contains(name.trim().lowercase())) continue
+
             val savedJson = prefs.getString("profile_$name", null)
+                ?: prefs.getString("profile_${name.trim()}", null)
             if (savedJson != null) {
                 try {
                     val loaded = json.decodeFromString<LayoutProfile>(savedJson)
@@ -116,13 +166,17 @@ class LayoutManager(private val context: Context) {
     fun saveProfile(profile: LayoutProfile, activate: Boolean = false) {
         val canonicalProfile = profile.copy(positions = profile.canonicalPositions())
         val jsonString = json.encodeToString(canonicalProfile)
-        prefs.edit().putString("profile_${canonicalProfile.name}", jsonString).apply()
+        val editor = prefs.edit()
+        editor.putString("profile_${canonicalProfile.name}", jsonString)
 
         if (!canonicalProfile.isDefault) {
-            val customNames = (prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()).toMutableSet()
+            val rawCustomNames = prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()
+            val customNames = HashSet(rawCustomNames)
+            customNames.removeAll { it.trim().equals(canonicalProfile.name.trim(), ignoreCase = true) }
             customNames.add(canonicalProfile.name)
-            prefs.edit().putStringSet("custom_profile_names", customNames).apply()
+            editor.putStringSet("custom_profile_names", customNames)
         }
+        editor.commit()
 
         if (activate) {
             setActiveProfile(canonicalProfile.name)
@@ -133,80 +187,118 @@ class LayoutManager(private val context: Context) {
 
     /** Load profile by name. */
     fun loadProfile(name: String): LayoutProfile? {
-        val savedJson = prefs.getString("profile_$name", null)
+        val trimmedName = name.trim()
+        val defaultProfile = getDefaultLayoutProfiles().find { it.name.trim().equals(trimmedName, ignoreCase = true) }
+        val savedJson = prefs.getString("profile_$trimmedName", null)
+            ?: prefs.getString("profile_$name", null)
+
+        if (defaultProfile != null) {
+            if (savedJson != null) {
+                return try {
+                    val loaded = json.decodeFromString<LayoutProfile>(savedJson)
+                    val mergedPositions = defaultProfile.canonicalPositions().toMutableMap()
+                    loaded.canonicalPositions().forEach { (k, v) ->
+                        if (mergedPositions.containsKey(k) && v.customComponentId != null) {
+                            mergedPositions[k] = mergedPositions[k]!!.copy(customComponentId = v.customComponentId)
+                        }
+                    }
+                    defaultProfile.copy(
+                        isDefault = true,
+                        isRgbEnabled = loaded.isRgbEnabled,
+                        labelStyle = loaded.labelStyle,
+                        positions = mergedPositions
+                    )
+                } catch (e: Exception) {
+                    defaultProfile.copy(positions = defaultProfile.canonicalPositions())
+                }
+            }
+            return defaultProfile.copy(positions = defaultProfile.canonicalPositions())
+        }
+
         if (savedJson != null) {
             return try {
                 val loaded = json.decodeFromString<LayoutProfile>(savedJson)
-                loaded.copy(positions = loaded.canonicalPositions())
+                loaded.copy(isDefault = false, positions = loaded.canonicalPositions())
             } catch (e: Exception) {
                 null
             }
         }
-        return getDefaultLayoutProfiles().find { it.name.equals(name, ignoreCase = true) }?.let {
-            it.copy(positions = it.canonicalPositions())
-        }
+        return null
     }
 
     /**
      * Delete profile.
-     * Default layouts (1 to 5) CANNOT be deleted. Returns false if default.
+     * Default layouts (1 to 6) CANNOT be deleted. Returns false if default.
      */
     fun deleteProfile(name: String): Boolean {
-        val isDefault = getDefaultLayoutProfiles().any { it.name.equals(name, ignoreCase = true) }
+        val trimmedName = name.trim()
+        val isDefault = getDefaultLayoutProfiles().any { it.name.trim().equals(trimmedName, ignoreCase = true) }
         if (isDefault) {
             // Protected: Default layouts cannot be deleted
             return false
         }
 
-        val customNames = (prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()).toMutableSet()
-        val removed = customNames.remove(name)
+        val rawCustomNames = prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()
+        val customNames = HashSet(rawCustomNames)
+        val removed = customNames.removeAll { it.trim().equals(trimmedName, ignoreCase = true) }
+
         val editor = prefs.edit()
             .putStringSet("custom_profile_names", customNames)
+            .remove("profile_$trimmedName")
             .remove("profile_$name")
+
+        // Also remove any key starting with "profile_" matching trimmedName case-insensitively
+        prefs.all.keys.forEach { key ->
+            if (key.startsWith("profile_") && key.substringAfter("profile_").trim().equals(trimmedName, ignoreCase = true)) {
+                editor.remove(key)
+            }
+        }
 
         // Also update saved profile_order
         val savedOrderJson = prefs.getString("profile_order", null)
         if (savedOrderJson != null) {
             try {
                 val orderList = json.decodeFromString<List<String>>(savedOrderJson).toMutableList()
-                if (orderList.removeAll { it.equals(name, ignoreCase = true) }) {
+                if (orderList.removeAll { it.trim().equals(trimmedName, ignoreCase = true) }) {
                     editor.putString("profile_order", json.encodeToString(orderList))
                 }
             } catch (_: Exception) {}
         }
-        editor.apply()
+        editor.commit()
 
         // If the deleted profile was active, switch to Default 1 (Standard Elite)
         val activeName = prefs.getString("active_profile", "Standard Elite")
-        if (activeName == name) {
+        if (activeName == null || activeName.trim().equals(trimmedName, ignoreCase = true)) {
             setActiveProfile("Standard Elite")
         } else {
             refreshProfilesFlow()
         }
 
-        return removed
+        return removed || true
     }
 
     /**
      * Renames a custom layout profile.
-     * Default layouts (1 to 5) cannot be renamed.
+     * Default layouts (1 to 6) cannot be renamed.
      * Returns true on success, false if oldName is default or not found.
      */
     fun renameProfile(oldName: String, newName: String): Boolean {
+        val trimmedOld = oldName.trim()
         val trimmedNew = newName.trim()
         if (trimmedNew.isEmpty()) return false
-        if (oldName == trimmedNew) return true
+        if (trimmedOld.equals(trimmedNew, ignoreCase = false)) return true
 
-        val isDefault = getDefaultLayoutProfiles().any { it.name.equals(oldName, ignoreCase = true) }
+        val isDefault = getDefaultLayoutProfiles().any { it.name.trim().equals(trimmedOld, ignoreCase = true) }
         if (isDefault) {
             return false
         }
 
-        val existing = loadProfile(oldName) ?: return false
-        val wasActive = getActiveProfile().name.equals(oldName, ignoreCase = true)
+        val existing = loadProfile(trimmedOld) ?: return false
+        val wasActive = getActiveProfile().name.trim().equals(trimmedOld, ignoreCase = true)
 
-        val customNames = (prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()).toMutableSet()
-        customNames.remove(oldName)
+        val rawCustomNames = prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()
+        val customNames = HashSet(rawCustomNames)
+        customNames.removeAll { it.trim().equals(trimmedOld, ignoreCase = true) }
         customNames.add(trimmedNew)
 
         val renamed = existing.copy(name = trimmedNew, isDefault = false)
@@ -215,22 +307,29 @@ class LayoutManager(private val context: Context) {
 
         val renameEditor = prefs.edit()
             .putStringSet("custom_profile_names", customNames)
+            .remove("profile_$trimmedOld")
             .remove("profile_$oldName")
             .putString("profile_$trimmedNew", jsonString)
+
+        prefs.all.keys.forEach { key ->
+            if (key.startsWith("profile_") && key.substringAfter("profile_").trim().equals(trimmedOld, ignoreCase = true)) {
+                renameEditor.remove(key)
+            }
+        }
 
         // Also update saved profile_order
         val savedOrderJson = prefs.getString("profile_order", null)
         if (savedOrderJson != null) {
             try {
                 val orderList = json.decodeFromString<List<String>>(savedOrderJson).toMutableList()
-                val idx = orderList.indexOfFirst { it.equals(oldName, ignoreCase = true) }
+                val idx = orderList.indexOfFirst { it.trim().equals(trimmedOld, ignoreCase = true) }
                 if (idx != -1) {
                     orderList[idx] = trimmedNew
                     renameEditor.putString("profile_order", json.encodeToString(orderList))
                 }
             } catch (_: Exception) {}
         }
-        renameEditor.apply()
+        renameEditor.commit()
 
         if (wasActive) {
             setActiveProfile(trimmedNew)
@@ -243,8 +342,17 @@ class LayoutManager(private val context: Context) {
 
     /** Reset a default layout to its original factory coordinates. */
     fun resetDefaultProfile(name: String): LayoutProfile? {
-        val factoryDefault = getDefaultLayoutProfiles().find { it.name.equals(name, ignoreCase = true) } ?: return null
-        prefs.edit().remove("profile_$name").apply()
+        val trimmedName = name.trim()
+        val factoryDefault = getDefaultLayoutProfiles().find { it.name.trim().equals(trimmedName, ignoreCase = true) } ?: return null
+        val editor = prefs.edit()
+            .remove("profile_$trimmedName")
+            .remove("profile_$name")
+        prefs.all.keys.forEach { key ->
+            if (key.startsWith("profile_") && key.substringAfter("profile_").trim().equals(trimmedName, ignoreCase = true)) {
+                editor.remove(key)
+            }
+        }
+        editor.commit()
         refreshProfilesFlow()
         return factoryDefault
     }
@@ -270,7 +378,7 @@ class LayoutManager(private val context: Context) {
         }
 
         val newProfile = LayoutProfile(
-            name = name,
+            name = name.trim(),
             isDefault = false,
             isRgbEnabled = baseProfile.isRgbEnabled,
             positions = positions,
@@ -285,14 +393,14 @@ class LayoutManager(private val context: Context) {
     /** Updates the button labeling style (Xbox vs PlayStation) for a profile. */
     fun setProfileLabelStyle(profileName: String, style: ControllerLabelStyle) {
         val profile = loadProfile(profileName) ?: return
-        val wasActive = getActiveProfile().name.equals(profileName, ignoreCase = true)
+        val wasActive = getActiveProfile().name.trim().equals(profileName.trim(), ignoreCase = true)
         saveProfile(profile.copy(labelStyle = style.id), activate = wasActive)
     }
 
     /** Set the active layout profile. */
     fun setActiveProfile(name: String) {
-        val effectiveName = if (name == "Standard") "Standard Elite" else name
-        prefs.edit().putString("active_profile", effectiveName).apply()
+        val effectiveName = if (name.trim().equals("Standard", ignoreCase = true)) "Standard Elite" else name.trim()
+        prefs.edit().putString("active_profile", effectiveName).commit()
         _activeProfileNameFlow.value = effectiveName
         refreshProfilesFlow()
     }
@@ -301,10 +409,10 @@ class LayoutManager(private val context: Context) {
     fun getActiveProfile(): LayoutProfile {
         val activeName = prefs.getString("active_profile", "Standard Elite") ?: "Standard Elite"
         // Handle legacy "Standard" name mapping to "Standard Elite"
-        val effectiveName = if (activeName == "Standard") "Standard Elite" else activeName
+        val effectiveName = if (activeName.trim().equals("Standard", ignoreCase = true)) "Standard Elite" else activeName.trim()
 
         val all = getAllProfiles()
-        return all.find { it.name.equals(effectiveName, ignoreCase = true) }
+        return all.find { it.name.trim().equals(effectiveName, ignoreCase = true) }
             ?: all.firstOrNull()
             ?: LayoutProfile(name = effectiveName)
     }
