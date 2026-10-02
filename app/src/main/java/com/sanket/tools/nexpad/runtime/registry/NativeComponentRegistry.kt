@@ -2072,6 +2072,30 @@ class RealisticSystemButtonVariant(controlKey: ControlKey, seedCode: Int) :
     }
 }
 
+object OrbitHomeVariant : BaseNativeVariant("builtin.orbit_guide", ControlKey.GUIDE, "Orbit Home", 5101) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        OrbitHomeButton(
+            key = controlKey.key,
+            isConnected = context.isConnected,
+            onVibrate = context.onVibrate,
+            viewModel = context.viewModel,
+            isRgbEnabled = context.isRgbEnabled,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticOrbitHomeButton(
+            modifier = context.modifier,
+            isRgbEnabled = true
+        )
+    }
+}
+
 class RealisticMacroButtonVariant(controlKey: ControlKey, seedCode: Int) :
     BaseNativeVariant("builtin.default_${controlKey.key.lowercase()}", controlKey, "Realistic 3D", seedCode) {
     override val isBaselineDefault: Boolean = true
@@ -2171,6 +2195,7 @@ object DefaultNativeFamily {
         register(RealisticSystemButtonVariant(ControlKey.START, 5002))
         register(RealisticSystemButtonVariant(ControlKey.BACK, 5003))
         register(RealisticSystemButtonVariant(ControlKey.SHARE, 5004))
+        register(OrbitHomeVariant)
         register(RealisticMacroButtonVariant(ControlKey.M1, 7001))
         register(RealisticMacroButtonVariant(ControlKey.M2, 7002))
         register(RealisticMacroButtonVariant(ControlKey.M3, 7003))

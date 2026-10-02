@@ -3111,6 +3111,30 @@ object DefaultComponents {
         size = NxpSize(widthDp = 60, heightDp = 60)
     )
 
+    val DEFAULT_ORBIT_HOME = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.orbit_guide",
+            name = "Orbit Home Button",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.SYSTEM.id,
+            defaultControl = ControlKey.GUIDE.key,
+            description = "Optical lens system button with 3-segment dashed orbit ring rotating 120 degrees on press and glowing core dot."
+        ),
+        geometry = NxpGeometry(type = "Circle"),
+        visual = NxpVisual(
+            fillColor = "#181818",
+            opacity = 0.95f,
+            borderColor = "#00F0FF",
+            borderWidth = 2f,
+            glowColor = "#00F0FF",
+            glowRadius = 14f
+        ),
+        pressed = NxpPressedState(scale = 0.95f, fillColor = "#00F0FF", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "ORB", color = "#00F0FF", pressedColor = "#FFFFFF", fontSize = 16f),
+        size = NxpSize(widthDp = 74, heightDp = 74)
+    )
+
     val DEFAULT_SYSTEM_VIEW = NxpComponentDef(
         manifest = NxpManifest(
             id = "builtin.default_view",
@@ -3299,6 +3323,7 @@ object DefaultComponents {
         DEFAULT_BUMPER_LB,
         DEFAULT_BUMPER_RB,
         DEFAULT_HOME_XBOX,
+        DEFAULT_ORBIT_HOME,
         DEFAULT_SYSTEM_VIEW,
         DEFAULT_SYSTEM_MENU,
         DEFAULT_SYSTEM_SHARE,

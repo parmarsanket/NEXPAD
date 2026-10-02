@@ -19,7 +19,7 @@ This blueprint is NEXPAD's **universal conversion standard**. It covers the tran
 11. [Native D-Pad Family Catalog (All 6 Implemented Variants)](#11-native-d-pad-family-catalog-all-6-implemented-variants)
 12. [Native Shoulder Bumper Family Catalog](#12-native-shoulder-bumper-family-catalog)
 13. [Native Analog Trigger Family Catalog](#13-native-analog-trigger-family-catalog)
-14. [Native System Button Family Catalog (Optical Lens Suite: Back, Guide, Start, Share)](#14-native-system-button-family-catalog-optical-lens-suite-back-guide-start-share)
+14. [Native System Button Family Catalog (Optical Lens Suite & Orbit Home)](#14-native-system-button-family-catalog-optical-lens-suite--orbit-home)
 15. [Bespoke Controller Auras & Kinetic Bloom Architecture](#15-bespoke-controller-auras--kinetic-bloom-architecture)
 
 ---
@@ -568,18 +568,19 @@ class DPadHitboxTest {
 
 ---
 
-## 14. Native System Button Family Catalog (Optical Lens Suite: Back, Guide, Start, Share)
+## 14. Native System Button Family Catalog (Optical Lens Suite & Orbit Home)
 
-The NEXPAD System Button suite translates the authentic **Optical Lens System HTML/CSS blueprint** into high-performance, resolution-independent Jetpack Compose components. While the original HTML specification demonstrated 3 buttons (`back`, `home`, `start`), NEXPAD provides complete coverage for modern 4-button console clusters (`Back/View`, `Home/Guide`, `Start/Menu`, and `Share/Capture`).
+The NEXPAD System Button suite translates the authentic **Optical Lens System HTML/CSS blueprint** into high-performance, resolution-independent Jetpack Compose components. While the original HTML specification demonstrated 3 buttons (`back`, `home`, `start`), NEXPAD provides complete coverage for modern 4-button console clusters (`Back/View`, `Home/Guide`, `Start/Menu`, and `Share/Capture`), as well as the advanced **Orbit Home** focal nexus variant.
 
-### 14.1 The 4 Canonical System Controls
+### 14.1 The Canonical System Controls & Variants
 
-| Button | Key & Seed | HTML Spec | Dimensions | Default Palette | Vector Icon Geometry ($24 \times 24$ Space) |
+| Button | Key & Seed | HTML Spec | Dimensions | Default Palette | Vector Icon / Face Geometry |
 |---|---|---|---|---|---|
 | **Back / View** | `ControlKey.BACK`<br>Seed `5003`<br>`builtin.default_view` | `.lx-sys`<br>`data-key="back"` | $60\text{dp} \times 60\text{dp}$ | `#D8DEE9`<br>(Silver-White) | **Overlapping Windows**:<br>• Front Rect: $x=4, y=8, w=12, h=12, r=2.5$<br>• Back Path: `M8 4.5h9.5A2.5 2.5 0 0 1 20 7v9.5`<br>• Stroke: $2.4\text{dp}$, `StrokeCap.Round`, `StrokeJoin.Round` |
 | **Home / Guide** | `ControlKey.GUIDE`<br>Seed `5001`<br>`builtin.default_home` | `.lx-home`<br>`data-key="home"` | $74\text{dp} \times 74\text{dp}$<br>(Focal Nexus) | `#F0F3F8`<br>(`#00E5FF` in RGB) | **Nexus Concentric Core**:<br>• Outer Circle: $c=(12, 12), r=8.5$, stroke $3.2\text{dp}$<br>• Core Solid Dot: $c=(12, 12), r=3.0$, filled<br>• Inset Telemetry Ring (`.lx-ring2`): $r = R - 12\text{dp}$ |
 | **Start / Menu** | `ControlKey.START`<br>Seed `5002`<br>`builtin.default_menu` | `.lx-sys`<br>`data-key="start"` | $60\text{dp} \times 60\text{dp}$ | `#D8DEE9`<br>(Silver-White) | **Hamburger Triple Bars**:<br>• Top Bar: $(5, 7) \to (19, 7)$<br>• Middle Bar: $(5, 12) \to (19, 12)$<br>• Bottom Bar: $(5, 17) \to (19, 17)$<br>• Stroke: $2.6\text{dp}$, `StrokeCap.Round` |
 | **Share / Capture** | `ControlKey.SHARE`<br>Seed `5004`<br>`builtin.default_share` | Extended<br>Standard | $60\text{dp} \times 60\text{dp}$ | `#D8DEE9`<br>(Silver-White) | **Console Capture Tray + Upload Arrow**:<br>• Tray: `M5 14v3.5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3.5`<br>• Shaft: $(12, 15) \to (12, 4.5)$<br>• Arrowhead: `M7.5 9L12 4.5l4.5 4.5`<br>• Stroke: $2.4\text{dp}$, `StrokeCap.Round` |
+| **Orbit Home** | `ControlKey.GUIDE`<br>Seed `5101`<br>`builtin.orbit_guide` | `.sy-orb`<br>`data-btn="home-orbit"` | $74\text{dp} \times 74\text{dp}$<br>(Focal Nexus) | `#F0F3F8`<br>(`#00E5FF` in RGB) | **Cyclic 3-Segment Orbit & Luminous Core**:<br>• 3 dashes: $93.6^\circ$ arc, $26.4^\circ$ gap ($r = 58.33\%$ radius)<br>• $120^\circ$ cyclic spring rotation with overshoot bounce<br>• Luminous central core dot ($r = 12.5\%$, 12px) with neon bloom<br>• Planetary orbital resonance aura with 3 rotating satellite pips |
 
 ---
 
@@ -592,6 +593,9 @@ The NEXPAD System Button suite translates the authentic **Optical Lens System HT
 | **Recessed Undercut**<br>`.lx-body::box-shadow` | `inset 0 -6px 9px rgba(0,0,0,0.70)` | `drawRect(Brush.verticalGradient(Transparent, Black.copy(0.70f)), startY = h * 0.62f, endY = h)` |
 | **Emissive Neon Ring**<br>`.lx-ring` | `inset: 3px; border: 2px solid var(--glow); box-shadow: 0 0 6px 1px, inset 0 0 6px` | Dual-pass Canvas circle at $r - 3\text{dp}$:<br>1. Halo Bloom: `Stroke(4.dp)`, $\alpha = 0.30 \to 0.60$<br>2. Core Line: `Stroke(2.dp)`, $\alpha = 0.70 \to 1.00$ |
 | **Guide Secondary Ring**<br>`.lx-home .lx-ring2` | `inset: 14px; border: 1px solid var(--glow); opacity: 0.3; (pressed: 0.7)` | Single Canvas circle at $r - 12\text{dp}$ with `Stroke(1.dp)`, $\alpha = 0.30 \to 0.70$ (Guide only) |
+| **3-Segment Orbit Ring**<br>`.orb-svg circle` | `r="28" pathLength="100" stroke-dasharray="26 7.33"` | Canvas `drawArc`: 3 dashes at $93.6^\circ$ arc, $26.4^\circ$ gap at radius $r \times (28/48)$, dual-pass bloom + core stroke |
+| **Orbit Spring Rotation**<br>`.sy-orb.pressed .orb-svg` | `transform: rotate(120deg); transition: cubic-bezier(.3, 1.5, .5, 1)` | `animateFloatAsState(if (pressed) 120f else 0f, spring(dampingRatio = 0.52f, stiffness = 380f))` |
+| **Luminous Center Dot**<br>`.sy-orb .dot` | `width: 12px; height: 12px; box-shadow: 0 0 10px 2px var(--glow)` | Radial glow bloom $3\times$ dot radius + solid white/glow core circle at $r \times (6/48)$ |
 | **Optical Specular Arc**<br>`.lx-lens` | `radial-gradient(circle at 70% 78%, rgba(255,255,255,0.06), transparent)` | Top 180° crescent: `drawArc(White.copy(0.16f) -> Transparent, 180f, 180f, Stroke(1.2.dp))` |
 | **Lens Sheen Reflection**<br>`.lx-lens::after` | Specular ambient highlight | `drawOval(Brush.radialGradient(White.copy(0.07f), Transparent), center = Offset(0.70f, 0.78f))` |
 
@@ -623,7 +627,7 @@ internal fun DrawScope.drawSystemIcon(
                 cornerRadius = CornerRadius(2.5f * scale, 2.5f * scale),
                 style = strokeStyle
             )
-            // Background open rectangle path
+            // Background open rectangle path (top & right edges)
             val backPath = Path().apply {
                 moveTo(left + 8f * scale, top + 4.5f * scale)
                 lineTo(left + 17.5f * scale, top + 4.5f * scale)
@@ -676,6 +680,902 @@ internal fun DrawScope.drawSystemIcon(
         }
     }
 }
+```
+
+---
+
+### 14.4 NEXPAD Orbit Home (`OrbitHomeButton`) Architectural Specification & Mathematical Decomposition
+
+The **Orbit Home** button introduces a futuristic planetary nexus design to the system button family. Instead of static vector glyphs, it features a 3-segment dashed orbital halo rotating around an energized solid plasma core.
+
+```
+                    ┌─────────────────────────┐
+                    │  ORBIT HOME ARCHITECTURE │
+                    └─────────────────────────┘
+
+                     • • • • • • • • • • • •
+                  •   ┌─────────────────┐   •    ◄── Outer Dashed Resonance Track
+                •     │  ┌───────────┐  │     •        (with 3 Satellite Pips at 120°)
+               •      │  │  ╭─────╮  │  │      •
+              •   ▲   │  │  │ (•) │  │  │   ▲   •
+              •   │   │  │  ╰─────╯  │  │   │   •    ◄── 3-Segment Dashed Orbit Ring
+              •  120° │  │  Core Dot │  │  120° •        (93.6° Arc, 26.4° Gap)
+               •  Rot │  └───────────┘  │  Rot •
+                •     │ Optical Dome Ring│    •
+                  •   └─────────────────┘   •
+                     • • • • • • • • • • • •
+```
+
+#### 1. Geometry Decomposition of the 3-Segment Orbit
+In the HTML SVG specification:
+```html
+<svg viewBox="0 0 96 96">
+  <circle cx="48" cy="48" r="28" pathLength="100" stroke-dasharray="26 7.33" />
+</svg>
+```
+- **Radius Ratio**: $r = 28$ on a $96 \times 96$ canvas $\implies \frac{28}{48} = 58.333\%$ of button half-width.
+- **Perimeter Decomposition**: With `pathLength="100"`, the total circumference is divided into segments of $26$ units stroke and $7.33$ units gap:
+  $$\text{Cycle Length} = 26 + 7.33 = 33.33 \text{ units} \implies \frac{100}{33.33} = 3.0 \text{ cycles}$$
+- **Exact Angular Coverage**:
+  $$\theta_{\text{dash}} = 26\% \times 360^\circ = 93.6^\circ$$
+  $$\theta_{\text{gap}} = 7.33\% \times 360^\circ = 26.4^\circ$$
+  $$\text{Total} = 3 \times (93.6^\circ + 26.4^\circ) = 3 \times 120.0^\circ = 360.0^\circ$$
+- **Dual-Pass Canvas Implementation**: Rendered via two `drawArc` loops:
+  1. *Halo Bloom Pass*: Stroke width $6.1\text{dp}$, $\alpha = 0.25 \to 0.50$.
+  2. *Crisp Core Pass*: Stroke width $3.6\text{dp}$, `Color.White` on press, `StrokeCap.Round`.
+
+#### 2. Damped Spring Overshoot Kinematics
+In CSS:
+```css
+transition: transform 0.4s cubic-bezier(.3, 1.5, .5, 1);
+.sy-orb.pressed .orb-svg { transform: rotate(120deg); }
+```
+Because $360^\circ / 3 = 120^\circ$, rotating $120^\circ$ cyclically translates each orbital dash into the exact resting position of the next segment.
+To achieve an identical springy overshoot bounce in native Jetpack Compose without laggy physics simulators, the property is driven by a tuned harmonic spring:
+```kotlin
+val orbitRotAnim by animateFloatAsState(
+    targetValue = if (isPressed) 120f else 0f,
+    animationSpec = spring(
+        dampingRatio = 0.52f, // Underdamped harmonic bounce matching cubic-bezier(0.3, 1.5, 0.5, 1)
+        stiffness = 380f      // Responsive snap
+    ),
+    label = "orbit_home_rot"
+)
+```
+
+#### 3. Luminous Central Plasma Core
+- **Radius Ratio**: Diameter is $12\text{px}$ in $96\text{px}$ space $\implies \frac{6}{48} = 12.5\%$ radius.
+- **Rendering Formula**: Concentric radial gradient bloom extending to $3\times$ the core radius, crowned with a crisp white/glow center circle.
+
+#### 4. Bespoke Planetary Orbital Resonance Aura
+In Layer 0 (`.drawBehind`), the Orbit Home button projects a planetary resonance field:
+- **Broad Ambient Corona**: Radial gradient falloff to `Color.Transparent` at $0.85\times$ component size.
+- **Dashed Orbital Resonance Track**: Circular stroke at $R + 6\text{dp}$ with dash effect `[4.dp, 8.dp]`.
+- **3 Orbiting Satellite Pips**: Three $2\text{dp}$ satellite pips positioned at $120^\circ$ angular intervals around the track, rotating synchronously with the inner orbital dashes via `rotate(degrees = orbitRotAnim, pivot = center)`.
+
+---
+
+### 14.5 Complete Production Compose Implementation: `OrbitHomeButton.kt`
+
+This is the complete, self-contained, and fully tested production implementation located at `app/src/main/java/com/sanket/tools/nexpad/ui/components/controller/OrbitHomeButton.kt`:
+
+```kotlin
+package com.sanket.tools.nexpad.ui.components.controller
+
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
+import kotlin.math.cos
+import kotlin.math.roundToInt
+import kotlin.math.sin
+
+/**
+ * Native Jetpack Compose implementation of NEXPAD Orbit Home (home-orbit).
+ *
+ * Faithfully translates the authentic Orbit Home HTML/CSS specification:
+ * - Oversized 74dp focal circle matching .sy-orb (96px HTML)
+ * - Shared optical lens acrylic dome (.lx-body)
+ * - 3-segment dashed orbital ring (.orb-svg: r=28 in 96x96, pathLength=100, stroke-dasharray="26 7.33")
+ * - Dynamic 120° cyclic rotation with spring overshoot bounce on press (.sy-orb.pressed: rotate(120deg))
+ * - Luminous central core dot (.dot: 12px with glowing radial bloom)
+ * - Emissive neon lens ring (.lx-ring) and top specular glass crescent highlight (.lx-lens)
+ * - Bespoke orbital resonance outer aura (.drawBehind) with rotating satellite pips
+ */
+@Composable
+fun OrbitHomeButton(
+    key: String = ControlKey.GUIDE.key,
+    isConnected: Boolean,
+    onVibrate: () -> Unit,
+    viewModel: GamepadViewModel,
+    isRgbEnabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    var isPressed by remember { mutableStateOf(false) }
+
+    // Plunging kinematics
+    val scaleAnim by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 1.0f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "orbit_home_scale"
+    )
+    val pressOffsetYAnim by animateFloatAsState(
+        targetValue = if (isPressed) 2f else 0f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "orbit_home_offset"
+    )
+
+    // Dynamic 120° cyclic rotation matching cubic-bezier(.3, 1.5, .5, 1)
+    val orbitRotAnim by animateFloatAsState(
+        targetValue = if (isPressed) 120f else 0f,
+        animationSpec = spring(dampingRatio = 0.52f, stiffness = 380f),
+        label = "orbit_home_rot"
+    )
+
+    // Bloom pulse
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (isPressed) 1.0f else 0.70f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "orbit_home_bloom"
+    )
+
+    val currentOnVibrate by rememberUpdatedState(onVibrate)
+    val currentViewModel by rememberUpdatedState(viewModel)
+
+    val glowColor = remember(isRgbEnabled) {
+        if (isRgbEnabled) Color(0xFF00E5FF) else Color(0xFFF0F3F8)
+    }
+
+    val buttonSize = 74.dp
+
+    // Multi-stop convex dome gradient: #232527 0%, #0c0d0e 75%, #000 100%
+    val domeGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(Color(0xFF232527), Color(0xFF0C0D0E), Color(0xFF000000)),
+            center = Offset(0.50f, 0.55f),
+            radius = 180f
+        )
+    }
+
+    Box(
+        modifier = modifier
+            .size(buttonSize)
+            .graphicsLayer {
+                scaleX = scaleAnim
+                scaleY = scaleAnim
+            }
+            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
+            // Bespoke Planetary Orbital Resonance Aura
+            .drawBehind {
+                if (isRgbEnabled) {
+                    val auraR = size.minDimension * 0.85f
+
+                    // 1. Broad celestial ambient corona
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.65f else 0.35f)),
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.15f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = auraR
+                        ),
+                        radius = auraR,
+                        center = center
+                    )
+
+                    // 2. Outer dashed orbital resonance track
+                    val trackR = size.minDimension * 0.5f + 6.dp.toPx()
+                    drawCircle(
+                        color = glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.45f else 0.20f)),
+                        radius = trackR,
+                        center = center,
+                        style = Stroke(
+                            width = 1.dp.toPx(),
+                            pathEffect = PathEffect.dashPathEffect(
+                                floatArrayOf(4.dp.toPx(), 8.dp.toPx()), 0f
+                            )
+                        )
+                    )
+
+                    // 3. Three satellite resonance pips rotating along orbit
+                    rotate(degrees = orbitRotAnim, pivot = center) {
+                        for (i in 0 until 3) {
+                            val angleRad = Math.toRadians(i * 120.0)
+                            val pipX = center.x + trackR * cos(angleRad).toFloat()
+                            val pipY = center.y + trackR * sin(angleRad).toFloat()
+                            drawCircle(
+                                color = glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.95f else 0.50f)),
+                                radius = 2.dp.toPx(),
+                                center = Offset(pipX, pipY)
+                            )
+                        }
+                    }
+                }
+            }
+            .shadow(
+                elevation = if (isPressed) 2.dp else 6.dp,
+                shape = CircleShape,
+                ambientColor = if (isRgbEnabled) glowColor else Color.Black,
+                spotColor = if (isRgbEnabled) glowColor else Color.Black
+            )
+            .clip(CircleShape)
+            .background(domeGradient)
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Black.copy(alpha = 0.50f),
+                        Color.Black.copy(alpha = 0.85f)
+                    )
+                ),
+                shape = CircleShape
+            )
+            .pointerInput(key) {
+                detectTapGestures(
+                    onPress = {
+                        currentOnVibrate()
+                        isPressed = true
+                        currentViewModel.updateButton(key, true)
+                        tryAwaitRelease()
+                        isPressed = false
+                        currentViewModel.updateButton(key, false)
+                    }
+                )
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val r = size.minDimension / 2f
+
+            // Layer 1: Recessed bottom undercut shadow (.lx-body::box-shadow)
+            val botShadowH = h * 0.38f
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Transparent,
+                        Color.Black.copy(alpha = if (isPressed) 0.85f else 0.70f)
+                    ),
+                    startY = h - botShadowH,
+                    endY = h
+                ),
+                topLeft = Offset(0f, h - botShadowH),
+                size = Size(w, botShadowH)
+            )
+
+            // Layer 2: Outer emissive neon ring (.lx-ring, inset 3px)
+            val ringR = r - 3.dp.toPx()
+            // Ambient halo bloom
+            drawCircle(
+                color = glowColor.copy(alpha = if (isPressed) 0.65f else 0.30f),
+                radius = ringR,
+                style = Stroke(width = 4.dp.toPx())
+            )
+            // Core sharp stroke
+            drawCircle(
+                color = glowColor.copy(alpha = rgbBloomAlpha),
+                radius = ringR,
+                style = Stroke(width = 2.dp.toPx())
+            )
+
+            // Layer 3: Dynamic 3-Segment Dashed Orbit Ring (.orb-svg: r=28 in 96x96 space)
+            // Arc = 93.6°, Gap = 26.4° (3 cycles = 360°)
+            val orbitR = r * (28f / 48f)
+            val strokeW = 3.6.dp.toPx()
+            val dashAngle = 93.6f
+            val gapAngle = 26.4f
+
+            rotate(degrees = orbitRotAnim, pivot = center) {
+                // Emissive halo pass for orbit ring
+                for (i in 0 until 3) {
+                    val startAngle = i * (dashAngle + gapAngle) + gapAngle / 2f
+                    drawArc(
+                        color = glowColor.copy(alpha = if (isPressed) 0.50f else 0.25f),
+                        startAngle = startAngle,
+                        sweepAngle = dashAngle,
+                        useCenter = false,
+                        topLeft = Offset(center.x - orbitR, center.y - orbitR),
+                        size = Size(orbitR * 2f, orbitR * 2f),
+                        style = Stroke(width = strokeW + 2.5.dp.toPx(), cap = StrokeCap.Round)
+                    )
+                }
+                // Crisp core stroke for orbit ring
+                for (i in 0 until 3) {
+                    val startAngle = i * (dashAngle + gapAngle) + gapAngle / 2f
+                    drawArc(
+                        color = if (isPressed) Color.White else glowColor,
+                        startAngle = startAngle,
+                        sweepAngle = dashAngle,
+                        useCenter = false,
+                        topLeft = Offset(center.x - orbitR, center.y - orbitR),
+                        size = Size(orbitR * 2f, orbitR * 2f),
+                        style = Stroke(width = strokeW, cap = StrokeCap.Round)
+                    )
+                }
+            }
+
+            // Layer 4: Luminous Center Core Dot (.dot: 12px in 96x96 = 12.5% diameter)
+            val dotR = r * (6f / 48f)
+            // Radial dot bloom
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        glowColor.copy(alpha = if (isPressed) 0.90f else 0.60f),
+                        glowColor.copy(alpha = 0.20f),
+                        Color.Transparent
+                    ),
+                    center = center,
+                    radius = dotR * 3f
+                ),
+                radius = dotR * 3f,
+                center = center
+            )
+            // Solid core dot
+            drawCircle(
+                color = if (isPressed) Color.White else glowColor,
+                radius = dotR,
+                center = center
+            )
+
+            // Layer 5: Top Specular Glass Crescent Arc (.lx-lens)
+            drawArc(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = if (isPressed) 0.08f else 0.16f),
+                        Color.Transparent
+                    ),
+                    startY = 0f,
+                    endY = h * 0.38f
+                ),
+                startAngle = 180f,
+                sweepAngle = 180f,
+                useCenter = false,
+                topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
+                size = Size(w - 3.dp.toPx(), h - 3.dp.toPx()),
+                style = Stroke(width = 1.2.dp.toPx())
+            )
+
+            // Layer 6: Lens Sheen Reflection Oval (radial-gradient at 70% 78%)
+            drawOval(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.07f), Color.Transparent),
+                    center = Offset(w * 0.70f, h * 0.78f),
+                    radius = w * 0.28f
+                ),
+                topLeft = Offset(w * 0.50f, h * 0.60f),
+                size = Size(w * 0.38f, h * 0.32f)
+            )
+        }
+    }
+}
+
+/**
+ * Static non-interactive preview of the OrbitHomeButton for Button Studio and catalog cards.
+ */
+@Composable
+fun StaticOrbitHomeButton(
+    modifier: Modifier = Modifier,
+    isRgbEnabled: Boolean = true
+) {
+    val glowColor = if (isRgbEnabled) Color(0xFF00E5FF) else Color(0xFFF0F3F8)
+    val buttonSize = 74.dp
+
+    val domeGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(Color(0xFF232527), Color(0xFF0C0D0E), Color(0xFF000000)),
+            center = Offset(0.50f, 0.55f),
+            radius = 180f
+        )
+    }
+
+    Box(
+        modifier = modifier
+            .size(buttonSize)
+            .drawBehind {
+                if (isRgbEnabled) {
+                    val auraR = size.minDimension * 0.85f
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                glowColor.copy(alpha = 0.35f),
+                                glowColor.copy(alpha = 0.15f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = auraR
+                        ),
+                        radius = auraR,
+                        center = center
+                    )
+                    val trackR = size.minDimension * 0.5f + 6.dp.toPx()
+                    drawCircle(
+                        color = glowColor.copy(alpha = 0.20f),
+                        radius = trackR,
+                        center = center,
+                        style = Stroke(
+                            width = 1.dp.toPx(),
+                            pathEffect = PathEffect.dashPathEffect(
+                                floatArrayOf(4.dp.toPx(), 8.dp.toPx()), 0f
+                            )
+                        )
+                    )
+                    for (i in 0 until 3) {
+                        val angleRad = Math.toRadians(i * 120.0)
+                        val pipX = center.x + trackR * cos(angleRad).toFloat()
+                        val pipY = center.y + trackR * sin(angleRad).toFloat()
+                        drawCircle(
+                            color = glowColor.copy(alpha = 0.45f),
+                            radius = 2.dp.toPx(),
+                            center = Offset(pipX, pipY)
+                        )
+                    }
+                }
+            }
+            .shadow(6.dp, CircleShape, ambientColor = glowColor, spotColor = glowColor)
+            .clip(CircleShape)
+            .background(domeGradient)
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Black.copy(alpha = 0.50f),
+                        Color.Black.copy(alpha = 0.85f)
+                    )
+                ),
+                shape = CircleShape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val r = size.minDimension / 2f
+
+            val botShadowH = h * 0.38f
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
+                    startY = h - botShadowH,
+                    endY = h
+                ),
+                topLeft = Offset(0f, h - botShadowH),
+                size = Size(w, botShadowH)
+            )
+
+            val ringR = r - 3.dp.toPx()
+            drawCircle(
+                color = glowColor.copy(alpha = 0.30f),
+                radius = ringR,
+                style = Stroke(width = 4.dp.toPx())
+            )
+            drawCircle(
+                color = glowColor.copy(alpha = 0.70f),
+                radius = ringR,
+                style = Stroke(width = 2.dp.toPx())
+            )
+
+            val orbitR = r * (28f / 48f)
+            val strokeW = 3.6.dp.toPx()
+            val dashAngle = 93.6f
+            val gapAngle = 26.4f
+
+            for (i in 0 until 3) {
+                val startAngle = i * (dashAngle + gapAngle) + gapAngle / 2f
+                drawArc(
+                    color = glowColor.copy(alpha = 0.25f),
+                    startAngle = startAngle,
+                    sweepAngle = dashAngle,
+                    useCenter = false,
+                    topLeft = Offset(center.x - orbitR, center.y - orbitR),
+                    size = Size(orbitR * 2f, orbitR * 2f),
+                    style = Stroke(width = strokeW + 2.5.dp.toPx(), cap = StrokeCap.Round)
+                )
+                drawArc(
+                    color = glowColor,
+                    startAngle = startAngle,
+                    sweepAngle = dashAngle,
+                    useCenter = false,
+                    topLeft = Offset(center.x - orbitR, center.y - orbitR),
+                    size = Size(orbitR * 2f, orbitR * 2f),
+                    style = Stroke(width = strokeW, cap = StrokeCap.Round)
+                )
+            }
+
+            val dotR = r * (6f / 48f)
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        glowColor.copy(alpha = 0.60f),
+                        glowColor.copy(alpha = 0.20f),
+                        Color.Transparent
+                    ),
+                    center = center,
+                    radius = dotR * 3f
+                ),
+                radius = dotR * 3f,
+                center = center
+            )
+            drawCircle(
+                color = glowColor,
+                radius = dotR,
+                center = center
+            )
+
+            drawArc(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.16f), Color.Transparent),
+                    startY = 0f,
+                    endY = h * 0.38f
+                ),
+                startAngle = 180f,
+                sweepAngle = 180f,
+                useCenter = false,
+                topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
+                size = Size(w - 3.dp.toPx(), h - 3.dp.toPx()),
+                style = Stroke(width = 1.2.dp.toPx())
+            )
+
+            drawOval(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.07f), Color.Transparent),
+                    center = Offset(w * 0.70f, h * 0.78f),
+                    radius = w * 0.28f
+                ),
+                topLeft = Offset(w * 0.50f, h * 0.60f),
+                size = Size(w * 0.38f, h * 0.32f)
+            )
+        }
+    }
+}
+```
+
+---
+
+### 14.6 Complete Production Compose Implementation: `RealisticSystemButton.kt`
+
+This is the canonical production implementation for the standard 4-button optical lens suite located at `app/src/main/java/com/sanket/tools/nexpad/ui/components/controller/RealisticSystemButton.kt`:
+
+```kotlin
+package com.sanket.tools.nexpad.ui.components.controller
+
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
+import kotlin.math.roundToInt
+
+@Composable
+fun RealisticSystemButton(
+    key: String,
+    isConnected: Boolean,
+    onVibrate: () -> Unit,
+    viewModel: GamepadViewModel,
+    isRgbEnabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    var isPressed by remember { mutableStateOf(false) }
+
+    val scaleAnim by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 1.0f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "sys_btn_scale"
+    )
+    val pressOffsetYAnim by animateFloatAsState(
+        targetValue = if (isPressed) 2f else 0f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "sys_btn_offset"
+    )
+
+    val currentOnVibrate by rememberUpdatedState(onVibrate)
+    val currentViewModel by rememberUpdatedState(viewModel)
+
+    val ctrl = remember(key) { ControlKey.fromIdentifier(key) }
+    val isGuide = ctrl == ControlKey.GUIDE
+
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (isPressed) 1.0f else 0.70f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "sys_btn_rgb_bloom"
+    )
+
+    val defaultGlow = if (isGuide) Color(0xFFF0F3F8) else Color(0xFFD8DEE9)
+    val auraColor = remember(isGuide, isRgbEnabled) {
+        if (isRgbEnabled) {
+            if (isGuide) Color(0xFF00E5FF) else Color(0xFFD8DEE9)
+        } else {
+            defaultGlow
+        }
+    }
+
+    val buttonSize = if (isGuide) 74.dp else 60.dp
+    val iconSize = if (isGuide) 36.dp else 24.dp
+
+    val domeGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(Color(0xFF232527), Color(0xFF0C0D0E), Color(0xFF000000)),
+            center = Offset(0.50f, 0.55f),
+            radius = 160f
+        )
+    }
+
+    Box(
+        modifier = modifier
+            .size(buttonSize)
+            .graphicsLayer {
+                scaleX = scaleAnim
+                scaleY = scaleAnim
+            }
+            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
+            .drawBehind {
+                if (isRgbEnabled) {
+                    val baseR = size.minDimension * 0.5f
+
+                    // 1. Tactical circular halo
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                auraColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.65f else 0.35f)),
+                                auraColor.copy(alpha = rgbBloomAlpha * 0.15f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 0.75f
+                        ),
+                        radius = size.minDimension * 0.75f,
+                        center = center
+                    )
+
+                    // 2. Dual Precision Telemetry Guide Rings
+                    drawCircle(
+                        color = auraColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.85f else 0.45f)),
+                        radius = baseR + 3.dp.toPx(),
+                        center = center,
+                        style = Stroke(width = 1.2.dp.toPx())
+                    )
+                    drawCircle(
+                        color = auraColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.50f else 0.20f)),
+                        radius = baseR + 7.dp.toPx(),
+                        center = center,
+                        style = Stroke(width = 1.dp.toPx())
+                    )
+
+                    // 3. 4 Cardinal Telemetry Calibration Pips
+                    val pipLen = (if (isPressed) 6.dp else 3.5.dp).toPx()
+                    val pipStart = baseR + 2.dp.toPx()
+                    val pipEnd = pipStart + pipLen
+                    val pipAlpha = rgbBloomAlpha * (if (isPressed) 0.95f else 0.55f)
+
+                    drawLine(auraColor.copy(alpha = pipAlpha), Offset(center.x, center.y - pipEnd), Offset(center.x, center.y - pipStart), strokeWidth = 2f)
+                    drawLine(auraColor.copy(alpha = pipAlpha), Offset(center.x, center.y + pipStart), Offset(center.x, center.y + pipEnd), strokeWidth = 2f)
+                    drawLine(auraColor.copy(alpha = pipAlpha), Offset(center.x - pipEnd, center.y), Offset(center.x - pipStart, center.y), strokeWidth = 2f)
+                    drawLine(auraColor.copy(alpha = pipAlpha), Offset(center.x + pipStart, center.y), Offset(center.x + pipEnd, center.y), strokeWidth = 2f)
+                }
+            }
+            .shadow(
+                elevation = if (isPressed) 2.dp else 6.dp,
+                shape = CircleShape,
+                ambientColor = if (isRgbEnabled) auraColor else Color.Black,
+                spotColor = if (isRgbEnabled) auraColor else Color.Black
+            )
+            .clip(CircleShape)
+            .background(domeGradient)
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Black.copy(alpha = 0.50f),
+                        Color.Black.copy(alpha = 0.85f)
+                    )
+                ),
+                shape = CircleShape
+            )
+            .pointerInput(key) {
+                detectTapGestures(
+                    onPress = {
+                        currentOnVibrate()
+                        isPressed = true
+                        currentViewModel.updateButton(key, true)
+                        tryAwaitRelease()
+                        isPressed = false
+                        currentViewModel.updateButton(key, false)
+                    }
+                )
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val r = size.minDimension / 2f
+
+            val botShadowH = h * 0.38f
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (isPressed) 0.85f else 0.70f)),
+                    startY = h - botShadowH,
+                    endY = h
+                ),
+                topLeft = Offset(0f, h - botShadowH),
+                size = Size(w, botShadowH)
+            )
+
+            val ringR = r - 3.dp.toPx()
+            drawCircle(
+                color = auraColor.copy(alpha = if (isPressed) 0.60f else 0.30f),
+                radius = ringR,
+                style = Stroke(width = 4.dp.toPx())
+            )
+            drawCircle(
+                color = auraColor.copy(alpha = rgbBloomAlpha),
+                radius = ringR,
+                style = Stroke(width = 2.dp.toPx())
+            )
+
+            if (isGuide) {
+                val ring2R = r - 12.dp.toPx()
+                drawCircle(
+                    color = auraColor.copy(alpha = if (isPressed) 0.70f else 0.30f),
+                    radius = ring2R,
+                    style = Stroke(width = 1.dp.toPx())
+                )
+            }
+
+            if (ctrl in listOf(ControlKey.BACK, ControlKey.GUIDE, ControlKey.START, ControlKey.SHARE)) {
+                val iconPx = iconSize.toPx()
+                drawSystemIcon(
+                    controlKey = ctrl,
+                    color = auraColor.copy(alpha = if (isPressed) 0.50f else 0.20f),
+                    iconSizePx = iconPx + 2.dp.toPx(),
+                    center = center
+                )
+                drawSystemIcon(
+                    controlKey = ctrl,
+                    color = if (isPressed) Color.White else auraColor,
+                    iconSizePx = iconPx,
+                    center = center
+                )
+            }
+
+            drawArc(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.White.copy(alpha = if (isPressed) 0.08f else 0.16f), Color.Transparent),
+                    startY = 0f,
+                    endY = h * 0.38f
+                ),
+                startAngle = 180f,
+                sweepAngle = 180f,
+                useCenter = false,
+                topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
+                size = Size(w - 3.dp.toPx(), h - 3.dp.toPx()),
+                style = Stroke(width = 1.2.dp.toPx())
+            )
+
+            drawOval(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.07f), Color.Transparent),
+                    center = Offset(w * 0.70f, h * 0.78f),
+                    radius = w * 0.28f
+                ),
+                topLeft = Offset(w * 0.50f, h * 0.60f),
+                size = Size(w * 0.38f, h * 0.32f)
+            )
+        }
+
+        if (ctrl !in listOf(ControlKey.BACK, ControlKey.GUIDE, ControlKey.START, ControlKey.SHARE)) {
+            Text(
+                text = key.take(2),
+                color = if (isPressed) Color.White else auraColor,
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp
+            )
+        }
+    }
+}
+```
+
+---
+
+### 14.7 Registry & Catalog Integration Architecture
+
+To ensure newly implemented system components are instantly discoverable and selectable across the NEXPAD platform, register the variants in both the native runtime registry and default definitions:
+
+#### 1. Runtime Element Registration (`NativeComponentRegistry.kt`)
+```kotlin
+val OrbitHomeVariant = NativeElementVariant(
+    id = "builtin.orbit_guide",
+    controlKey = ControlKey.GUIDE,
+    displayName = "Orbit Home",
+    description = "Cyclic 3-segment orbital nexus ring with spring overshoot and central core dot",
+    seed = 5101,
+    renderInteractive = { key, isConnected, onVibrate, vm, rgb, mod ->
+        OrbitHomeButton(
+            key = key,
+            isConnected = isConnected,
+            onVibrate = onVibrate,
+            viewModel = vm,
+            isRgbEnabled = rgb,
+            modifier = mod
+        )
+    },
+    renderStatic = { _, _, mod ->
+        StaticOrbitHomeButton(modifier = mod)
+    }
+)
+```
+
+#### 2. Default Preset Registration (`DefaultComponents.kt`)
+```kotlin
+val DEFAULT_ORBIT_HOME = ComponentDefinition(
+    id = "builtin.orbit_guide",
+    name = "Orbit Home",
+    category = ComponentCategory.SYSTEM,
+    supportedControls = setOf(ControlKey.GUIDE),
+    defaultWidth = 74f,
+    defaultHeight = 74f,
+    description = "Cyclic 3-segment orbital nexus ring with spring overshoot and central core dot"
+)
 ```
 
 ---
@@ -751,7 +1651,7 @@ $$\mathbf{C}(x, y) = \text{RadialGradient}\left(\text{center} = \mathbf{p}_{\tex
 
 ---
 
-### 15.3 Master Catalog: The Complete 41-Component Themed Aura Matrix
+### 15.3 Master Catalog: The Complete 42-Component Themed Aura Matrix
 
 #### Cluster 1: Face Buttons (8/8)
 
@@ -816,11 +1716,12 @@ $$\mathbf{C}(x, y) = \text{RadialGradient}\left(\text{center} = \mathbf{p}_{\tex
 | **LiquidOrbTrigger** | Analog Trigger | Surface-Tension Droplet + Swaying Meniscus | Teardrop fluid droplet aura whose center-of-mass rises with fluid level, featuring an oscillating meniscus wave. |
 | **DialTrigger** | Analog Trigger | 12-Point Radial Tick Halo + 270° Rotary Sector | 12-point graduation tick halo with 270° rotary gauge sector sweep ($135^\circ \text{ SW} \to 45^\circ \text{ SE}$) and pointer beacon. |
 
-#### Cluster 6: System, Macro & Auxiliary Controls (3/3)
+#### Cluster 6: System, Macro & Auxiliary Controls (4/4)
 
 | Component | Archetype | Visual Aura Theme | Mathematical Formulation & Kinetic Behavior |
 |---|---|---|---|
 | **RealisticSystemButton** | Optical Lens | Precision Telemetry Rings + 4 Calibration Pips | Convex acrylic lens dome aura with dual concentric telemetry guide rings, 4 cardinal calibration alignment pips, and console vector icons (Back, Guide, Start, Share). |
+| **OrbitHomeButton** | Optical Lens | Planetary Orbital Resonance + 3 Satellite Pips | Dashed orbital resonance track ($r = R + 6\text{dp}$) with 3 rotating satellite pips at $120^\circ$ phase intervals, rotating synchronously with press kinematics, and multi-tier core nebula bloom. |
 | **RealisticMacroButton** | Macro Toggle | Stadium Switch Aura + 4 Corner Bracket Reticles | Elongated stadium toggle aura with 4 corner bracket targeting reticles and central electric pulse slit. |
 | **RealisticTouchPad** | Inertial Touchpad | Ambient Boundary Glow + Capacitive Touch Ripple | Ambient glass boundary glow ($r = 36\text{dp}$) with dual concentric capacitive touch ripples expanding at active $(touchX, touchY)$. |
 
@@ -1145,6 +2046,60 @@ $$\mathbf{C}(x, y) = \text{RadialGradient}\left(\text{center} = \mathbf{p}_{\tex
                 center = touchCenter,
                 style = Stroke(width = 1.dp.toPx())
             )
+        }
+    }
+}
+```
+
+#### Recipe 6: Planetary Orbital Resonance Track with Rotating Satellite Pips
+*Used in cosmic and orbital system buttons (`OrbitHomeButton.kt`):*
+
+```kotlin
+.drawBehind {
+    if (isRgbEnabled) {
+        val auraR = size.minDimension * 0.85f
+
+        // 1. Broad celestial ambient corona
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.65f else 0.35f)),
+                    glowColor.copy(alpha = rgbBloomAlpha * 0.15f),
+                    Color.Transparent
+                ),
+                center = center,
+                radius = auraR
+            ),
+            radius = auraR,
+            center = center
+        )
+
+        // 2. Outer dashed orbital resonance track
+        val trackR = size.minDimension * 0.5f + 6.dp.toPx()
+        drawCircle(
+            color = glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.45f else 0.20f)),
+            radius = trackR,
+            center = center,
+            style = Stroke(
+                width = 1.dp.toPx(),
+                pathEffect = PathEffect.dashPathEffect(
+                    floatArrayOf(4.dp.toPx(), 8.dp.toPx()), 0f
+                )
+            )
+        )
+
+        // 3. Three satellite resonance pips rotating along orbit at 120° phase
+        rotate(degrees = orbitRotAnim, pivot = center) {
+            for (i in 0 until 3) {
+                val angleRad = Math.toRadians(i * 120.0)
+                val pipX = center.x + trackR * cos(angleRad).toFloat()
+                val pipY = center.y + trackR * sin(angleRad).toFloat()
+                drawCircle(
+                    color = glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.95f else 0.50f)),
+                    radius = 2.dp.toPx(),
+                    center = Offset(pipX, pipY)
+                )
+            }
         }
     }
 }
