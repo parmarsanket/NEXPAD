@@ -2,21 +2,21 @@
 
 **Audit Date:** 2026-10-02  
 **Target Environment:** Android Studio Rabbit 2 (2026.2.2) | AGP 9.3.1 | Kotlin 2.4.20 | Compose BOM 2026.08.00  
-**Overall Validation Status:** **PASSED (30 / 30 Tests — 100% Pixel Match)**
+**Overall Validation Status:** **PASSED (45 / 45 Tests — 100% Pixel Match)**
 
 ---
 
 ## 1. Executive Summary
 
-This audit establishes host-side visual regression testing for NEXPAD Android using Google's **Compose Preview Screenshot Testing Tool**. All visual controller components—face buttons, directional pads, analog joysticks, shoulder bumpers, analog triggers, system buttons, macro paddles, and touchpads—now have deterministic, host-rendered golden master reference images.
+This audit establishes host-side visual regression testing for NEXPAD Android using Google's **Compose Preview Screenshot Testing Tool**. All visual controller components—face buttons, directional pads, analog joysticks, shoulder bumpers, analog triggers, system buttons, macro paddles, touchpads, modal popups & dialogs, full screen UI cards, typography scaling, and adaptive layout form factors—now have deterministic, host-rendered golden master reference images.
 
 ```
-Total Test Cases:       30
+Total Test Cases:       45
 Errors:                 0
 Failures:               0
 Skipped:                0
 Success Rate:           100%
-Validation Run Time:    ~1.3 seconds
+Validation Run Time:    ~3.8 seconds
 ```
 
 ---
@@ -105,11 +105,34 @@ All screenshot tests live in the dedicated source set:
 * **`macroButtonsPreview`**: M1, M2, M3, M4 back-paddle micro-switches.
 * **`touchPadPreview`**: Dual LTP and RTP center trackpads with textured touch surface.
 
+### 3.6. PopupsAndDialogsScreenshotTest (3 Tests)
+* **`confirmDialogPreview`**: NEXPAD glassmorphism confirmation modal dialog with warning accent and destructive/confirm action buttons.
+* **`inputDialogPreview`**: Profile renaming and text input modal with outlined text field and cyber-styled buttons.
+* **`buttonPaletteDialogPreview`**: HUD layout button skin selector palette grid showcasing face button skin options.
+
+### 3.7. ScreensUiScreenshotTest (5 Tests)
+* **`deviceHeroCardSearchingPreview`**: Connection screen hero radar card in active searching state with pulsating beacon indicator.
+* **`deviceHeroCardConnectedPreview`**: Connection screen hero card in active connected state displaying transport badge, low-latency telemetry (0.4ms), and battery status.
+* **`layoutProfileCardPreview`**: Custom controller layout preset card displaying layout metadata, thumbnail container, and quick-action menu.
+* **`vShapedCarouselPanelPreview`**: 3D angled carousel panel preview showcasing depth styling and active preset indicator.
+* **`hudTopBarPreview`**: HUD layout editor header toolbar with action controls, profile dropdown, and save/exit buttons.
+
+### 3.8. FontAndTypographyScreenshotTest (3 Tests)
+* **`standardTypographyPreview`**: System typography hierarchy rendered at standard 1.0x font scaling across headings, labels, telemetry counters, and captions.
+* **`accessibilityLargeFontTypographyPreview`**: Full typography verification under high-accessibility **1.5x font scale**, ensuring zero clipping, text overlapping, or container overflow.
+* **`controllerLabelsComparisonPreview`**: Side-by-side comparison of Xbox (A, B, X, Y) and PlayStation (✕, ○, □, △) label sets and custom glyph alignments.
+
+### 3.9. AdaptiveLayoutScreenshotTest (4 Tests)
+* **`compactPhonePortraitPreview`**: Responsive layout rendered on **Compact Phone Portrait** ($360 \times 740\,\text{dp}$) verifying stacked ergonomics.
+* **`mediumPhoneLandscapePreview`**: Ultra-wide **Medium Phone Landscape** ($840 \times 390\,\text{dp}$) gamepad layout with dual thumb ergonomics and shoulder button spacing.
+* **`expandedTabletLandscapePreview`**: Large screen **Expanded Tablet Landscape** ($1200 \times 800\,\text{dp}$) split-pane layout with expanded control clusters.
+* **`foldableUnfoldedSquarePreview`**: Book-style foldable **Foldable Unfolded** ($680 \times 800\,\text{dp}$) verifying adaptive edge anchoring.
+
 ---
 
 ## 4. Storage & Output Artifacts
 
-* **Golden Reference Images:**
+* **Golden Reference Images (45 files):**
   `app/src/screenshotTestDebug/reference/com/sanket/tools/nexpad/screenshot/`
 * **Interactive HTML Validation Report:**
   `app/build/reports/screenshotTest/preview/debug/index.html`
