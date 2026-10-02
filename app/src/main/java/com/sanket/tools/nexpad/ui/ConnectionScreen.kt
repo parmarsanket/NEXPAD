@@ -74,12 +74,111 @@ fun ConnectionScreen(
         }
     }
 
+    ConnectionScreenContent(
+        isConnected = isConnected,
+        connectionStats = connectionStats,
+        discoveredServers = discoveredServers,
+        pairedDevices = pairedDevices,
+        isAoaAttached = isAoaAttached,
+        isUsbCableConnected = isUsbCableConnected,
+        isAdbAvailable = isAdbAvailable,
+        adbServerName = adbServerName,
+        isUsbDebuggingEnabled = viewModel.isUsbDebuggingEnabled(),
+        manualIp = manualIp,
+        manualPort = manualPort,
+        showManualIpCard = showManualIpCard,
+        onManualIpChange = { manualIp = it },
+        onManualPortChange = { manualPort = it },
+        onToggleManualIpCard = { showManualIpCard = !showManualIpCard },
+        onConnectServer = { ip, port, name ->
+            viewModel.connect(ip, port, name)
+        },
+        onConnectAoa = { viewModel.switchToAoaConnection() },
+        onConnectAdb = { viewModel.switchToAdbConnection() },
+        onConnectBluetooth = { address, name ->
+            viewModel.switchToBluetoothConnection(address, name)
+        },
+        onRescanNetwork = { viewModel.startDiscovery() },
+        onOpenDeveloperSettings = {
+            try {
+                val intent = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+                context.startActivity(intent)
+            } catch (_: Exception) {
+                Toast.makeText(context, "Developer settings not found", Toast.LENGTH_SHORT).show()
+            }
+        },
+        onOpenTetheringSettings = {
+            try {
+                val intent = Intent().apply {
+                    setClassName("com.android.settings", "com.android.settings.TetherSettings")
+                }
+                context.startActivity(intent)
+            } catch (_: Exception) {
+                Toast.makeText(context, "Cannot open tethering settings directly", Toast.LENGTH_SHORT).show()
+            }
+        },
+        onReloadBluetoothDevices = {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val hasPerm = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.BLUETOOTH_CONNECT
+                ) == PackageManager.PERMISSION_GRANTED
+                if (!hasPerm) {
+                    bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+                } else {
+                    pairedDevices = viewModel.getPairedBluetoothDevices()
+                }
+            } else {
+                pairedDevices = viewModel.getPairedBluetoothDevices()
+            }
+        },
+        onOpenBluetoothSettings = {
+            try {
+                context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
+            } catch (_: Exception) {}
+        },
+        onDisconnect = { viewModel.disconnect() },
+        onBack = { navController.popBackStack() }
+    )
+}
+
+@Composable
+fun ConnectionScreenContent(
+    isConnected: Boolean = false,
+    connectionStats: com.sanket.tools.nexpad.viewmodel.ConnectionStats = com.sanket.tools.nexpad.viewmodel.ConnectionStats(),
+    discoveredServers: List<com.sanket.tools.nexpad.network.DiscoveredServer> = emptyList(),
+    pairedDevices: List<android.bluetooth.BluetoothDevice> = emptyList(),
+    isAoaAttached: Boolean = false,
+    isUsbCableConnected: Boolean = false,
+    isAdbAvailable: Boolean = false,
+    adbServerName: String? = null,
+    isUsbDebuggingEnabled: Boolean = false,
+    manualIp: String = "",
+    manualPort: String = "9999",
+    showManualIpCard: Boolean = false,
+    onManualIpChange: (String) -> Unit = {},
+    onManualPortChange: (String) -> Unit = {},
+    onToggleManualIpCard: () -> Unit = {},
+    onConnectServer: (String, Int, String) -> Unit = { _, _, _ -> },
+    onConnectAoa: () -> Unit = {},
+    onConnectAdb: () -> Unit = {},
+    onConnectBluetooth: (String, String) -> Unit = { _, _ -> },
+    onRescanNetwork: () -> Unit = {},
+    onOpenDeveloperSettings: () -> Unit = {},
+    onOpenTetheringSettings: () -> Unit = {},
+    onReloadBluetoothDevices: () -> Unit = {},
+    onOpenBluetoothSettings: () -> Unit = {},
+    onDisconnect: () -> Unit = {},
+    onBack: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
     Scaffold(
+        modifier = modifier,
         topBar = {
             NexpadTopAppBar(
                 title = "Connection Hub",
                 subtitle = "Transports & Pairing Management",
-                onBack = { navController.popBackStack() },
+                onBack = onBack,
                 actions = {
                     HeaderStatusPill(
                         isConnected = isConnected,
@@ -109,57 +208,19 @@ fun ConnectionScreen(
                     isUsbCableConnected = isUsbCableConnected,
                     isAdbAvailable = isAdbAvailable,
                     adbServerName = adbServerName,
-                    isUsbDebuggingEnabled = viewModel.isUsbDebuggingEnabled(),
-                    onManualIpChange = { manualIp = it },
-                    onManualPortChange = { manualPort = it },
-                    onToggleManualIpCard = { showManualIpCard = !showManualIpCard },
-                    onConnectServer = { ip, port, name ->
-                        viewModel.connect(ip, port, name)
-                    },
-                    onConnectAoa = { viewModel.switchToAoaConnection() },
-                    onConnectAdb = { viewModel.switchToAdbConnection() },
-                    onConnectBluetooth = { address, name ->
-                        viewModel.switchToBluetoothConnection(address, name)
-                    },
-                    onRescanNetwork = { viewModel.startDiscovery() },
-                    onOpenDeveloperSettings = {
-                        try {
-                            val intent = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
-                            context.startActivity(intent)
-                        } catch (_: Exception) {
-                            Toast.makeText(context, "Developer settings not found", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    onOpenTetheringSettings = {
-                        try {
-                            val intent = Intent().apply {
-                                setClassName("com.android.settings", "com.android.settings.TetherSettings")
-                            }
-                            context.startActivity(intent)
-                        } catch (_: Exception) {
-                            Toast.makeText(context, "Cannot open tethering settings directly", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    onReloadBluetoothDevices = {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                            val hasPerm = ContextCompat.checkSelfPermission(
-                                context,
-                                Manifest.permission.BLUETOOTH_CONNECT
-                            ) == PackageManager.PERMISSION_GRANTED
-                            if (!hasPerm) {
-                                bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
-                            } else {
-                                pairedDevices = viewModel.getPairedBluetoothDevices()
-                            }
-                        } else {
-                            pairedDevices = viewModel.getPairedBluetoothDevices()
-                        }
-                    },
-                    onOpenBluetoothSettings = {
-                        try {
-                            context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
-                        } catch (_: Exception) {}
-                    }
+                    isUsbDebuggingEnabled = isUsbDebuggingEnabled,
+                    onManualIpChange = onManualIpChange,
+                    onManualPortChange = onManualPortChange,
+                    onToggleManualIpCard = onToggleManualIpCard,
+                    onConnectServer = onConnectServer,
+                    onConnectAoa = onConnectAoa,
+                    onConnectAdb = onConnectAdb,
+                    onConnectBluetooth = onConnectBluetooth,
+                    onRescanNetwork = onRescanNetwork,
+                    onOpenDeveloperSettings = onOpenDeveloperSettings,
+                    onOpenTetheringSettings = onOpenTetheringSettings,
+                    onReloadBluetoothDevices = onReloadBluetoothDevices,
+                    onOpenBluetoothSettings = onOpenBluetoothSettings
                 )
             }
 
@@ -180,19 +241,15 @@ fun ConnectionScreen(
                         if (isConnected) {
                             ActiveSessionCard(
                                 stats = connectionStats,
-                                onDisconnect = { viewModel.disconnect() }
+                                onDisconnect = onDisconnect
                             )
                         } else {
                             ConnectionHubStatusCard(
                                 isUsbCableConnected = isUsbCableConnected,
                                 isAoaAttached = isAoaAttached,
                                 isAdbAvailable = isAdbAvailable,
-                                onRescan = { viewModel.startDiscovery() },
-                                onOpenBluetoothSettings = {
-                                    try {
-                                        context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
-                                    } catch (_: Exception) {}
-                                }
+                                onRescan = onRescanNetwork,
+                                onOpenBluetoothSettings = onOpenBluetoothSettings
                             )
                         }
                     }
@@ -220,7 +277,7 @@ fun ConnectionScreen(
                     if (isConnected) {
                         ActiveSessionCard(
                             stats = connectionStats,
-                            onDisconnect = { viewModel.disconnect() }
+                            onDisconnect = onDisconnect
                         )
                     }
                     transportsComposable()

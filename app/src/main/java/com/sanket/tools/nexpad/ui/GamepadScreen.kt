@@ -272,8 +272,37 @@ fun GamepadScreen(
         }
     }
     
+    GamepadScreenContent(
+        profile = profile,
+        isConnected = isConnected,
+        onBack = onBack,
+        renderElement = { key, position ->
+            com.sanket.tools.nexpad.ui.components.controller.ControllerElementRenderer(
+                key = key,
+                isConnected = isConnected,
+                isRgbEnabled = profile.isRgbEnabled,
+                viewModel = viewModel,
+                onVibrate = safeOnVibrate,
+                customComponentId = position.customComponentId,
+                sensitivity = position.sensitivity,
+                heightScale = position.heightScale ?: 1.0f,
+                isFlipped = position.isFlipped ?: false,
+                labelStyle = profile.controllerLabelStyle
+            )
+        }
+    )
+}
+
+@Composable
+fun GamepadScreenContent(
+    profile: com.sanket.tools.nexpad.model.LayoutProfile,
+    isConnected: Boolean = false,
+    onBack: () -> Unit = {},
+    renderElement: @Composable (key: String, position: com.sanket.tools.nexpad.model.Position) -> Unit,
+    modifier: Modifier = Modifier
+) {
     BoxWithConstraints(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
@@ -316,18 +345,7 @@ fun GamepadScreen(
                     .scale(position.scale)
                     .alpha(position.opacity)
             ) {
-                com.sanket.tools.nexpad.ui.components.controller.ControllerElementRenderer(
-                    key = key,
-                    isConnected = isConnected,
-                    isRgbEnabled = profile.isRgbEnabled,
-                    viewModel = viewModel,
-                    onVibrate = safeOnVibrate,
-                    customComponentId = position.customComponentId,
-                    sensitivity = position.sensitivity,
-                    heightScale = position.heightScale ?: 1.0f,
-                    isFlipped = position.isFlipped ?: false,
-                    labelStyle = profile.controllerLabelStyle
-                )
+                renderElement(key, position)
             }
         }
     }

@@ -38,14 +38,142 @@ fun SettingsScreen(
     }
 
     var ipAddress by remember { mutableStateOf(sharedPref.getString("LAST_IP", "") ?: "") }
+    var rightStickCameraMode by remember {
+        mutableStateOf(sharedPref.getBoolean("RIGHT_STICK_CAMERA_MODE", false))
+    }
+    var cameraSensitivity by remember {
+        mutableFloatStateOf(sharedPref.getFloat("CAMERA_SENSITIVITY", 1.0f))
+    }
+    var buttonHapticsEnabled by remember {
+        mutableStateOf(sharedPref.getBoolean(HapticFeedbackHelper.PREF_BUTTON_HAPTICS_ENABLED, true))
+    }
+    var vibrateOfflineEnabled by remember {
+        mutableStateOf(sharedPref.getBoolean(HapticFeedbackHelper.PREF_HAPTICS_OFFLINE_ENABLED, false))
+    }
+    var hapticClickStrength by remember {
+        mutableFloatStateOf(sharedPref.getFloat(HapticFeedbackHelper.PREF_HAPTICS_CLICK_STRENGTH, 0.1f))
+    }
+    var hapticStyle by remember {
+        mutableStateOf(
+            sharedPref.getString(HapticFeedbackHelper.PREF_HAPTICS_STYLE, HapticFeedbackHelper.STYLE_SOFT)
+                ?: HapticFeedbackHelper.STYLE_SOFT
+        )
+    }
+    var rumbleIntensity by remember { mutableFloatStateOf(sharedPref.getFloat("RUMBLE_INTENSITY", 1.0f)) }
+    var rumbleMode by remember { mutableStateOf(sharedPref.getString("RUMBLE_MODE", "min") ?: "min") }
+
+    val context = LocalContext.current
+    val hapticHelper = remember(context) { HapticFeedbackHelper(context) }
+
+    SettingsScreenContent(
+        isConnected = isConnected,
+        diagnosticLog = diagnosticLog,
+        ipAddress = ipAddress,
+        isRgbEnabled = currentProfile.isRgbEnabled,
+        rightStickCameraMode = rightStickCameraMode,
+        cameraSensitivity = cameraSensitivity,
+        buttonHapticsEnabled = buttonHapticsEnabled,
+        vibrateOfflineEnabled = vibrateOfflineEnabled,
+        hapticClickStrength = hapticClickStrength,
+        hapticStyle = hapticStyle,
+        rumbleIntensity = rumbleIntensity,
+        rumbleMode = rumbleMode,
+        onIpAddressChange = { ipAddress = it },
+        onConnectClick = {
+            if (isConnected) {
+                viewModel.disconnect()
+            } else {
+                if (ipAddress.isNotBlank()) {
+                    sharedPref.edit().putString("LAST_IP", ipAddress).apply()
+                    viewModel.connect(ipAddress, 9999)
+                }
+            }
+        },
+        onRgbChange = {
+            layoutManager.saveProfile(currentProfile.copy(isRgbEnabled = it), activate = true)
+        },
+        onRightStickCameraModeChange = {
+            rightStickCameraMode = it
+            sharedPref.edit().putBoolean("RIGHT_STICK_CAMERA_MODE", it).apply()
+        },
+        onCameraSensitivityChange = {
+            cameraSensitivity = it
+            sharedPref.edit().putFloat("CAMERA_SENSITIVITY", it).apply()
+        },
+        onButtonHapticsChange = {
+            buttonHapticsEnabled = it
+            sharedPref.edit().putBoolean(HapticFeedbackHelper.PREF_BUTTON_HAPTICS_ENABLED, it).apply()
+            if (it) {
+                hapticHelper.performPreviewClick(style = hapticStyle, strength = hapticClickStrength)
+            }
+        },
+        onVibrateOfflineChange = {
+            vibrateOfflineEnabled = it
+            sharedPref.edit().putBoolean(HapticFeedbackHelper.PREF_HAPTICS_OFFLINE_ENABLED, it).apply()
+            hapticHelper.performPreviewClick(style = hapticStyle, strength = hapticClickStrength)
+        },
+        onHapticClickStrengthChange = {
+            hapticClickStrength = it
+            sharedPref.edit().putFloat(HapticFeedbackHelper.PREF_HAPTICS_CLICK_STRENGTH, it).apply()
+        },
+        onHapticClickStrengthFinished = {
+            hapticHelper.performPreviewClick(style = hapticStyle, strength = hapticClickStrength)
+        },
+        onHapticStyleChange = {
+            hapticStyle = it
+            sharedPref.edit().putString(HapticFeedbackHelper.PREF_HAPTICS_STYLE, it).apply()
+            hapticHelper.performPreviewClick(style = it, strength = hapticClickStrength)
+        },
+        onRumbleIntensityChange = {
+            rumbleIntensity = it
+            sharedPref.edit().putFloat("RUMBLE_INTENSITY", it).apply()
+        },
+        onRumbleModeChange = {
+            rumbleMode = it
+            sharedPref.edit().putString("RUMBLE_MODE", it).apply()
+        },
+        onBack = { navController.popBackStack() }
+    )
+}
+
+@Composable
+fun SettingsScreenContent(
+    isConnected: Boolean = false,
+    diagnosticLog: List<String> = emptyList(),
+    ipAddress: String = "",
+    isRgbEnabled: Boolean = true,
+    rightStickCameraMode: Boolean = false,
+    cameraSensitivity: Float = 1.0f,
+    buttonHapticsEnabled: Boolean = true,
+    vibrateOfflineEnabled: Boolean = false,
+    hapticClickStrength: Float = 0.5f,
+    hapticStyle: String = HapticFeedbackHelper.STYLE_CRISP,
+    rumbleIntensity: Float = 1.0f,
+    rumbleMode: String = "min",
+    onIpAddressChange: (String) -> Unit = {},
+    onConnectClick: () -> Unit = {},
+    onRgbChange: (Boolean) -> Unit = {},
+    onRightStickCameraModeChange: (Boolean) -> Unit = {},
+    onCameraSensitivityChange: (Float) -> Unit = {},
+    onButtonHapticsChange: (Boolean) -> Unit = {},
+    onVibrateOfflineChange: (Boolean) -> Unit = {},
+    onHapticClickStrengthChange: (Float) -> Unit = {},
+    onHapticClickStrengthFinished: () -> Unit = {},
+    onHapticStyleChange: (String) -> Unit = {},
+    onRumbleIntensityChange: (Float) -> Unit = {},
+    onRumbleModeChange: (String) -> Unit = {},
+    onBack: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
     val scrollState = rememberScrollState()
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             NexpadTopAppBar(
                 title = "Settings",
                 subtitle = "App & Controller Configuration",
-                onBack = { navController.popBackStack() }
+                onBack = onBack
             )
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -76,7 +204,7 @@ fun SettingsScreen(
                 ) {
                     OutlinedTextField(
                         value = ipAddress,
-                        onValueChange = { ipAddress = it },
+                        onValueChange = onIpAddressChange,
                         label = { Text("IP Address", color = Color.Gray) },
                         modifier = Modifier.weight(1f),
                         enabled = !isConnected,
@@ -89,16 +217,7 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Button(
-                        onClick = {
-                            if (isConnected) {
-                                viewModel.disconnect()
-                            } else {
-                                if (ipAddress.isNotBlank()) {
-                                    sharedPref.edit().putString("LAST_IP", ipAddress).apply()
-                                    viewModel.connect(ipAddress, 9999)
-                                }
-                            }
-                        },
+                        onClick = onConnectClick,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (isConnected) NeonPalette.Red else Color(0xFF00C853)
                         )
@@ -128,17 +247,12 @@ fun SettingsScreen(
                     Text("RGB Lighting", color = Color.White)
                     Spacer(modifier = Modifier.weight(1f))
                     Switch(
-                        checked = currentProfile.isRgbEnabled,
-                        onCheckedChange = {
-                            layoutManager.saveProfile(currentProfile.copy(isRgbEnabled = it), activate = true)
-                        },
+                        checked = isRgbEnabled,
+                        onCheckedChange = onRgbChange,
                         colors = SwitchDefaults.colors(checkedThumbColor = NeonPalette.Green, checkedTrackColor = Color.DarkGray)
                     )
                 }
 
-                var rightStickCameraMode by remember {
-                    mutableStateOf(sharedPref.getBoolean("RIGHT_STICK_CAMERA_MODE", false))
-                }
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -153,17 +267,11 @@ fun SettingsScreen(
                     }
                     Switch(
                         checked = rightStickCameraMode,
-                        onCheckedChange = {
-                            rightStickCameraMode = it
-                            sharedPref.edit().putBoolean("RIGHT_STICK_CAMERA_MODE", it).apply()
-                        },
+                        onCheckedChange = onRightStickCameraModeChange,
                         colors = SwitchDefaults.colors(checkedThumbColor = NeonPalette.Green, checkedTrackColor = Color.DarkGray)
                     )
                 }
 
-                var cameraSensitivity by remember {
-                    mutableFloatStateOf(sharedPref.getFloat("CAMERA_SENSITIVITY", 1.0f))
-                }
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -176,35 +284,13 @@ fun SettingsScreen(
                 }
                 Slider(
                     value = cameraSensitivity,
-                    onValueChange = {
-                        cameraSensitivity = it
-                        sharedPref.edit().putFloat("CAMERA_SENSITIVITY", it).apply()
-                    },
+                    onValueChange = onCameraSensitivityChange,
                     valueRange = 0.2f..3.0f,
                     steps = 27,
                     colors = SliderDefaults.colors(thumbColor = NeonPalette.Green, activeTrackColor = NeonPalette.Green)
                 )
 
                 // ── Controller Touch Haptics ──────────────────────────────────────────
-                val context = LocalContext.current
-                val hapticHelper = remember(context) { HapticFeedbackHelper(context) }
-
-                var buttonHapticsEnabled by remember {
-                    mutableStateOf(sharedPref.getBoolean(HapticFeedbackHelper.PREF_BUTTON_HAPTICS_ENABLED, true))
-                }
-                var vibrateOfflineEnabled by remember {
-                    mutableStateOf(sharedPref.getBoolean(HapticFeedbackHelper.PREF_HAPTICS_OFFLINE_ENABLED, false))
-                }
-                var hapticClickStrength by remember {
-                    mutableFloatStateOf(sharedPref.getFloat(HapticFeedbackHelper.PREF_HAPTICS_CLICK_STRENGTH, 0.1f))
-                }
-                var hapticStyle by remember {
-                    mutableStateOf(
-                        sharedPref.getString(HapticFeedbackHelper.PREF_HAPTICS_STYLE, HapticFeedbackHelper.STYLE_SOFT)
-                            ?: HapticFeedbackHelper.STYLE_SOFT
-                    )
-                }
-
                 Spacer(modifier = Modifier.height(32.dp))
 
                 Text("Controller Touch Haptics", color = Color.LightGray)
@@ -224,13 +310,7 @@ fun SettingsScreen(
                     }
                     Switch(
                         checked = buttonHapticsEnabled,
-                        onCheckedChange = {
-                            buttonHapticsEnabled = it
-                            sharedPref.edit().putBoolean(HapticFeedbackHelper.PREF_BUTTON_HAPTICS_ENABLED, it).apply()
-                            if (it) {
-                                hapticHelper.performPreviewClick(style = hapticStyle, strength = hapticClickStrength)
-                            }
-                        },
+                        onCheckedChange = onButtonHapticsChange,
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = NeonPalette.Green,
                             checkedTrackColor = Color(0xFF1E3A2B)
@@ -257,11 +337,7 @@ fun SettingsScreen(
                     Switch(
                         checked = vibrateOfflineEnabled,
                         enabled = buttonHapticsEnabled,
-                        onCheckedChange = {
-                            vibrateOfflineEnabled = it
-                            sharedPref.edit().putBoolean(HapticFeedbackHelper.PREF_HAPTICS_OFFLINE_ENABLED, it).apply()
-                            hapticHelper.performPreviewClick(style = hapticStyle, strength = hapticClickStrength)
-                        },
+                        onCheckedChange = onVibrateOfflineChange,
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = NeonPalette.Green,
                             checkedTrackColor = Color(0xFF1E3A2B)
@@ -283,13 +359,8 @@ fun SettingsScreen(
                 Slider(
                     value = hapticClickStrength,
                     enabled = buttonHapticsEnabled,
-                    onValueChange = {
-                        hapticClickStrength = it
-                        sharedPref.edit().putFloat(HapticFeedbackHelper.PREF_HAPTICS_CLICK_STRENGTH, it).apply()
-                    },
-                    onValueChangeFinished = {
-                        hapticHelper.performPreviewClick(style = hapticStyle, strength = hapticClickStrength)
-                    },
+                    onValueChange = onHapticClickStrengthChange,
+                    onValueChangeFinished = onHapticClickStrengthFinished,
                     valueRange = 0.1f..1.0f,
                     colors = SliderDefaults.colors(
                         thumbColor = NeonPalette.Green,
@@ -316,11 +387,7 @@ fun SettingsScreen(
                     styles.forEach { (id, label) ->
                         val isSelected = hapticStyle == id
                         Button(
-                            onClick = {
-                                hapticStyle = id
-                                sharedPref.edit().putString(HapticFeedbackHelper.PREF_HAPTICS_STYLE, id).apply()
-                                hapticHelper.performPreviewClick(style = id, strength = hapticClickStrength)
-                            },
+                            onClick = { onHapticStyleChange(id) },
                             enabled = buttonHapticsEnabled,
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(
@@ -334,8 +401,6 @@ fun SettingsScreen(
                 }
 
                 // ── PC Game Rumble ────────────────────────────────────────────────────
-                var rumbleIntensity by remember { mutableFloatStateOf(sharedPref.getFloat("RUMBLE_INTENSITY", 1.0f)) }
-
                 Spacer(modifier = Modifier.height(32.dp))
 
                 Text("PC Game Rumble (Motor Stream)", color = Color.LightGray)
@@ -347,17 +412,12 @@ fun SettingsScreen(
                 }
                 Slider(
                     value = rumbleIntensity,
-                    onValueChange = {
-                        rumbleIntensity = it
-                        sharedPref.edit().putFloat("RUMBLE_INTENSITY", it).apply()
-                    },
+                    onValueChange = onRumbleIntensityChange,
                     valueRange = 0f..1.0f,
                     colors = SliderDefaults.colors(thumbColor = NeonPalette.Green, activeTrackColor = NeonPalette.Green)
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
-
-                var rumbleMode by remember { mutableStateOf(sharedPref.getString("RUMBLE_MODE", "min") ?: "min") }
 
                 Text("Rumble Mode (Stereo Mix)", color = Color.LightGray)
                 Row(
@@ -374,10 +434,7 @@ fun SettingsScreen(
                     modes.forEach { (id, label) ->
                         val isSelected = rumbleMode == id
                         Button(
-                            onClick = {
-                                rumbleMode = id
-                                sharedPref.edit().putString("RUMBLE_MODE", id).apply()
-                            },
+                            onClick = { onRumbleModeChange(id) },
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (isSelected) NeonPalette.Green else Color.DarkGray,

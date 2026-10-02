@@ -56,8 +56,6 @@ fun HomeScreen(
     layoutManager: LayoutManager,
     viewModel: GamepadViewModel
 ) {
-    val scrollState = rememberScrollState()
-
     val isConnected by viewModel.isConnected.collectAsState()
     val discoveredServers by viewModel.discoveredServers.collectAsState()
     val connectionStats by viewModel.connectionStats.collectAsState()
@@ -80,7 +78,69 @@ fun HomeScreen(
         onDispose { viewModel.stopDiscovery() }
     }
 
+    HomeScreenContent(
+        isConnected = isConnected,
+        discoveredServers = discoveredServers,
+        connectionStats = connectionStats,
+        isAoaAttached = isAoaAttached && isUsbCableConnected,
+        isUsbCableConnected = isUsbCableConnected,
+        isAdbAvailable = isAdbAvailable,
+        adbServerName = adbServerName,
+        profiles = profiles,
+        activeProfileName = activeProfileName,
+        onProfileSelected = { selected ->
+            if (!selected.name.equals(activeProfileName, ignoreCase = true)) {
+                layoutManager.setActiveProfile(selected.name)
+            }
+        },
+        onPlayClick = { navController.navigate(Route.Gamepad()) },
+        onConnectServer = { server ->
+            Log.d(
+                "NEXPAD",
+                "⏱️ [BENCHMARK] User CLICKED Connect (${if (server.isUsbTethering) "USB Tethering" else "Wi-Fi"}) button for ${server.name} (${server.ipAddress}:${server.port})"
+            )
+            viewModel.connect(server.ipAddress, server.port, server.name)
+        },
+        onConnectAoa = { viewModel.switchToAoaConnection() },
+        onConnectAdb = { viewModel.switchToAdbConnection() },
+        onDisconnectClick = { viewModel.disconnect() },
+        onOpenConnectionHub = { navController.navigate(Route.Connections) },
+        onNavigateVirtualController = { navController.navigate(Route.VirtualController) },
+        onNavigateConnections = { navController.navigate(Route.Connections) },
+        onNavigateButtonStudio = { navController.navigate(Route.ButtonStudio(mode = "viewer")) },
+        onNavigateSettings = { navController.navigate(Route.Settings) }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HomeScreenContent(
+    isConnected: Boolean = false,
+    discoveredServers: List<com.sanket.tools.nexpad.network.DiscoveredServer> = emptyList(),
+    connectionStats: com.sanket.tools.nexpad.viewmodel.ConnectionStats = com.sanket.tools.nexpad.viewmodel.ConnectionStats(),
+    isAoaAttached: Boolean = false,
+    isUsbCableConnected: Boolean = false,
+    isAdbAvailable: Boolean = false,
+    adbServerName: String? = null,
+    profiles: List<com.sanket.tools.nexpad.model.LayoutProfile> = com.sanket.tools.nexpad.model.getDefaultLayoutProfiles(),
+    activeProfileName: String = "Standard Elite",
+    onProfileSelected: (com.sanket.tools.nexpad.model.LayoutProfile) -> Unit = {},
+    onPlayClick: () -> Unit = {},
+    onConnectServer: (com.sanket.tools.nexpad.network.DiscoveredServer) -> Unit = {},
+    onConnectAoa: () -> Unit = {},
+    onConnectAdb: () -> Unit = {},
+    onDisconnectClick: () -> Unit = {},
+    onOpenConnectionHub: () -> Unit = {},
+    onNavigateVirtualController: () -> Unit = {},
+    onNavigateConnections: () -> Unit = {},
+    onNavigateButtonStudio: () -> Unit = {},
+    onNavigateSettings: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    val scrollState = rememberScrollState()
+
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 title = {
@@ -149,12 +209,8 @@ fun HomeScreen(
                         VShapedPanel(
                             profiles = profiles,
                             activeProfileName = activeProfileName,
-                            onProfileSelected = { selected ->
-                                if (!selected.name.equals(activeProfileName, ignoreCase = true)) {
-                                    layoutManager.setActiveProfile(selected.name)
-                                }
-                            },
-                            onPlayClick = { navController.navigate(Route.Gamepad()) },
+                            onProfileSelected = onProfileSelected,
+                            onPlayClick = onPlayClick,
                             isCompact = layout.isShortScreen,
                             modifier = Modifier
                                 .weight(1f)
@@ -186,17 +242,11 @@ fun HomeScreen(
                                 isAoaAttached = isAoaAttached && isUsbCableConnected,
                                 isAdbAvailable = isAdbAvailable,
                                 adbServerName = adbServerName,
-                                onConnectServer = { server ->
-                                    Log.d(
-                                        "NEXPAD",
-                                        "⏱️ [BENCHMARK] User CLICKED Connect (${if (server.isUsbTethering) "USB Tethering" else "Wi-Fi"}) button for ${server.name} (${server.ipAddress}:${server.port})"
-                                    )
-                                    viewModel.connect(server.ipAddress, server.port, server.name)
-                                },
-                                onConnectAoa = { viewModel.switchToAoaConnection() },
-                                onConnectAdb = { viewModel.switchToAdbConnection() },
-                                onDisconnectClick = { viewModel.disconnect() },
-                                onOpenConnectionHub = { navController.navigate(Route.Connections) }
+                                onConnectServer = onConnectServer,
+                                onConnectAoa = onConnectAoa,
+                                onConnectAdb = onConnectAdb,
+                                onDisconnectClick = onDisconnectClick,
+                                onOpenConnectionHub = onOpenConnectionHub
                             )
                         }
 
@@ -209,7 +259,12 @@ fun HomeScreen(
                         }
 
                         item {
-                            CommandCenterButtons(navController = navController)
+                            CommandCenterButtons(
+                                onNavigateVirtualController = onNavigateVirtualController,
+                                onNavigateConnections = onNavigateConnections,
+                                onNavigateButtonStudio = onNavigateButtonStudio,
+                                onNavigateSettings = onNavigateSettings
+                            )
                         }
                     }
                 }
@@ -229,12 +284,8 @@ fun HomeScreen(
                     VShapedPanel(
                         profiles = profiles,
                         activeProfileName = activeProfileName,
-                        onProfileSelected = { selected ->
-                            if (!selected.name.equals(activeProfileName, ignoreCase = true)) {
-                                layoutManager.setActiveProfile(selected.name)
-                            }
-                        },
-                        onPlayClick = { navController.navigate(Route.Gamepad()) }
+                        onProfileSelected = onProfileSelected,
+                        onPlayClick = onPlayClick
                     )
 
                     Text(
@@ -250,17 +301,11 @@ fun HomeScreen(
                         isAoaAttached = isAoaAttached && isUsbCableConnected,
                         isAdbAvailable = isAdbAvailable,
                         adbServerName = adbServerName,
-                        onConnectServer = { server ->
-                            Log.d(
-                                "NEXPAD",
-                                "⏱️ [BENCHMARK] User CLICKED Connect (${if (server.isUsbTethering) "USB Tethering" else "Wi-Fi"}) button for ${server.name} (${server.ipAddress}:${server.port})"
-                            )
-                            viewModel.connect(server.ipAddress, server.port, server.name)
-                        },
-                        onConnectAoa = { viewModel.switchToAoaConnection() },
-                        onConnectAdb = { viewModel.switchToAdbConnection() },
-                        onDisconnectClick = { viewModel.disconnect() },
-                        onOpenConnectionHub = { navController.navigate(Route.Connections) }
+                        onConnectServer = onConnectServer,
+                        onConnectAoa = onConnectAoa,
+                        onConnectAdb = onConnectAdb,
+                        onDisconnectClick = onDisconnectClick,
+                        onOpenConnectionHub = onOpenConnectionHub
                     )
 
                     Text(
@@ -269,7 +314,12 @@ fun HomeScreen(
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
-                    CommandCenterButtons(navController = navController)
+                    CommandCenterButtons(
+                        onNavigateVirtualController = onNavigateVirtualController,
+                        onNavigateConnections = onNavigateConnections,
+                        onNavigateButtonStudio = onNavigateButtonStudio,
+                        onNavigateSettings = onNavigateSettings
+                    )
                 }
             }
         }
@@ -277,8 +327,17 @@ fun HomeScreen(
 }
 
 @Composable
-private fun CommandCenterButtons(navController: AppNavigator) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+fun CommandCenterButtons(
+    onNavigateVirtualController: () -> Unit = {},
+    onNavigateConnections: () -> Unit = {},
+    onNavigateButtonStudio: () -> Unit = {},
+    onNavigateSettings: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxWidth()
@@ -287,14 +346,14 @@ private fun CommandCenterButtons(navController: AppNavigator) {
                 label = "Virtual Controller",
                 icon = Icons.Rounded.SportsEsports,
                 iconColor = MaterialTheme.colorScheme.primary,
-                onClick = { navController.navigate(Route.VirtualController) },
+                onClick = onNavigateVirtualController,
                 modifier = Modifier.weight(1f)
             )
             CommandButton(
                 label = "Connections",
                 icon = Icons.Rounded.Hub,
                 iconColor = NeonPalette.Cyan,
-                onClick = { navController.navigate(Route.Connections) },
+                onClick = onNavigateConnections,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -306,14 +365,14 @@ private fun CommandCenterButtons(navController: AppNavigator) {
                 label = "Button Studio",
                 icon = Icons.Rounded.Palette,
                 iconColor = NeonPalette.Purple,
-                onClick = { navController.navigate(Route.ButtonStudio(mode = "viewer")) },
+                onClick = onNavigateButtonStudio,
                 modifier = Modifier.weight(1f)
             )
             CommandButton(
                 label = "Settings",
                 icon = Icons.Rounded.Settings,
                 iconColor = MaterialTheme.colorScheme.primaryContainer,
-                onClick = { navController.navigate(Route.Settings) },
+                onClick = onNavigateSettings,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -321,9 +380,12 @@ private fun CommandCenterButtons(navController: AppNavigator) {
 }
 
 @Composable
-private fun HeaderRow(isConnected: Boolean) {
+fun HeaderRow(
+    isConnected: Boolean,
+    modifier: Modifier = Modifier
+) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Bottom
     ) {
