@@ -88,21 +88,11 @@ fun standardElitePositions(): Map<String, Position> {
         // Asymmetric Right: Right Stick (Lower Secondary)
         K.RS   to Position(0.840f, 0.740f, scale = 1.00f),
 
-        // Stick Clicks
-        K.LSB  to Position(0.165f, 0.730f, scale = 0.65f),
-        K.RSB  to Position(0.840f, 0.570f, scale = 0.65f),
-
         // Center Console Cluster
         K.GUIDE to Position(0.500f, 0.130f, scale = 0.95f),
         K.BACK  to Position(0.420f, 0.245f, scale = 0.72f),
         K.START to Position(0.500f, 0.245f, scale = 0.72f),
-        K.SHARE to Position(0.580f, 0.245f, scale = 0.72f),
-
-        // Tactical Macro Paddles
-        K.M2 to Position(0.380f, 0.360f, scale = 0.75f),
-        K.M4 to Position(0.450f, 0.360f, scale = 0.75f),
-        K.M3 to Position(0.550f, 0.360f, scale = 0.75f),
-        K.M1 to Position(0.620f, 0.360f, scale = 0.75f)
+        K.SHARE to Position(0.580f, 0.245f, scale = 0.72f)
     )
 
     // Face Buttons: Upper-Right Isotropic Diamond Cluster
@@ -146,11 +136,7 @@ fun playStationDualSensePositions(): Map<String, Position> {
         // PS Center System Buttons
         K.GUIDE to Position(0.500f, 0.265f, scale = 0.90f),
         K.BACK  to Position(0.355f, 0.265f, scale = 0.70f), // Create / Share
-        K.START to Position(0.645f, 0.265f, scale = 0.70f), // Options
-
-        // Lower Macro Paddles
-        K.M1 to Position(0.420f, 0.380f, scale = 0.75f),
-        K.M2 to Position(0.580f, 0.380f, scale = 0.75f)
+        K.START to Position(0.645f, 0.265f, scale = 0.70f) // Options
     )
 
     // PlayStation Face Buttons (Cross, Circle, Square, Triangle)
@@ -188,12 +174,6 @@ fun fpsTacticalClawPositions(): Map<String, Position> {
 
         // Tactical D-Pad for inventory & callouts
         K.DPAD to Position(0.315f, 0.750f, scale = 1.00f),
-
-        // Claw Macro Paddles: Jump & Slide right next to thumb arcs
-        K.M1 to Position(0.710f, 0.420f, scale = 0.82f), // Claw Jump (Instant jump-shot)
-        K.M2 to Position(0.710f, 0.740f, scale = 0.82f), // Claw Slide / Crouch (Slide-cancel)
-        K.M3 to Position(0.290f, 0.420f, scale = 0.82f), // Quick Reload
-        K.M4 to Position(0.420f, 0.560f, scale = 0.75f), // Weapon Swap
 
         // Center Minimal System Controls
         K.GUIDE to Position(0.500f, 0.130f, scale = 0.95f),
@@ -244,9 +224,7 @@ fun retroArcadeFightstickPositions(): Map<String, Position> = mapOf(
     // Fightstick Cabinet Center Controls
     K.BACK  to Position(0.420f, 0.200f, scale = 0.72f), // Coin / Select
     K.START to Position(0.580f, 0.200f, scale = 0.72f), // 1P Start
-    K.GUIDE to Position(0.500f, 0.125f, scale = 0.95f),
-    K.M1    to Position(0.360f, 0.360f, scale = 0.75f),
-    K.M2    to Position(0.460f, 0.360f, scale = 0.75f)
+    K.GUIDE to Position(0.500f, 0.125f, scale = 0.95f)
 )
 
 /** Backward compatible alias for Retro Arcade layout. */
@@ -272,12 +250,6 @@ fun simRacingFlightPositions(): Map<String, Position> {
 
         // Pit Stop & Engine Map D-Pad
         K.DPAD to Position(0.340f, 0.750f, scale = 1.00f),
-
-        // Racing Telemetry Macros
-        K.M1 to Position(0.360f, 0.380f, scale = 0.75f), // DRS / Nitrous Boost
-        K.M2 to Position(0.450f, 0.380f, scale = 0.75f), // E-Brake / Handbrake
-        K.M3 to Position(0.550f, 0.380f, scale = 0.75f), // Rear View Camera
-        K.M4 to Position(0.640f, 0.380f, scale = 0.75f), // Pit Limiter
 
         // Center Controls
         K.GUIDE to Position(0.500f, 0.130f, scale = 0.95f),
@@ -324,12 +296,6 @@ fun grandMobaRpgPositions(): Map<String, Position> = mapOf(
     // Camera / Target Aim Stick
     K.RS to Position(0.900f, 0.740f, scale = 0.85f),
 
-    // Quick Item & Summoner Spell Macros
-    K.M4 to Position(0.360f, 0.360f, scale = 0.75f),
-    K.M1 to Position(0.450f, 0.360f, scale = 0.75f),
-    K.M2 to Position(0.550f, 0.360f, scale = 0.75f),
-    K.M3 to Position(0.640f, 0.360f, scale = 0.75f),
-
     // Center Console
     K.GUIDE to Position(0.500f, 0.130f, scale = 0.95f),
     K.BACK  to Position(0.430f, 0.245f, scale = 0.72f),
@@ -348,15 +314,19 @@ fun defaultPositions(): Map<String, Position> = standardElitePositions()
  */
 fun getControlDefaultPosition(canonicalKey: String): Position? {
     return defaultPositions()[canonicalKey] ?: when (canonicalKey) {
-        K.UP    -> Position(0.305f, 0.660f, scale = 0.85f)
-        K.DOWN  -> Position(0.305f, 0.840f, scale = 0.85f)
-        K.LEFT  -> Position(0.245f, 0.750f, scale = 0.85f)
-        K.RIGHT -> Position(0.365f, 0.750f, scale = 0.85f)
-        K.LSB   -> Position(0.165f, 0.730f, scale = 0.65f)
-        K.RSB   -> Position(0.840f, 0.570f, scale = 0.65f)
-        K.LTP   -> Position(0.435f, 0.110f, scale = 0.80f)
-        K.RTP   -> Position(0.565f, 0.110f, scale = 0.80f)
+        K.UP    -> Position(0.320f, 0.650f, scale = 0.85f)
+        K.DOWN  -> Position(0.320f, 0.830f, scale = 0.85f)
+        K.LEFT  -> Position(0.260f, 0.740f, scale = 0.85f)
+        K.RIGHT -> Position(0.380f, 0.740f, scale = 0.85f)
+        K.LSB   -> Position(0.210f, 0.540f, scale = 0.80f)
+        K.RSB   -> Position(0.790f, 0.540f, scale = 0.80f)
+        K.LTP   -> Position(0.180f, 0.680f, scale = 1.0f)
+        K.RTP   -> Position(0.820f, 0.680f, scale = 1.0f)
         K.SHARE -> Position(0.580f, 0.245f, scale = 0.72f)
+        K.M1    -> Position(0.620f, 0.360f, scale = 0.75f)
+        K.M2    -> Position(0.380f, 0.360f, scale = 0.75f)
+        K.M3    -> Position(0.550f, 0.360f, scale = 0.75f)
+        K.M4    -> Position(0.450f, 0.360f, scale = 0.75f)
         else    -> null
     }
 }
@@ -371,7 +341,7 @@ fun getDefaultLayoutProfiles(): List<LayoutProfile> = listOf(
         isDefault = true,
         labelStyle = "XBOX",
         positions = standardElitePositions(),
-        description = "Precision Xbox asymmetric layout with ergonomic thumbstick offsets, dual triggers, and tactical macro paddles."
+        description = "Precision Xbox asymmetric layout with ergonomic thumbstick offsets, dual triggers, and balanced central controls."
     ),
     LayoutProfile(
         name = "PlayStation DualSense Pro",
@@ -385,7 +355,7 @@ fun getDefaultLayoutProfiles(): List<LayoutProfile> = listOf(
         isDefault = true,
         labelStyle = "XBOX",
         positions = fpsTacticalClawPositions(),
-        description = "Competitive 6-finger claw layout with hair triggers, jump/slide macro paddles, and separated aiming arcs."
+        description = "Competitive claw layout with hair triggers, separated aiming arcs, and instant tactical response."
     ),
     LayoutProfile(
         name = "Retro Arcade Fightstick",
@@ -406,6 +376,6 @@ fun getDefaultLayoutProfiles(): List<LayoutProfile> = listOf(
         isDefault = true,
         labelStyle = "XBOX",
         positions = grandMobaRpgPositions(),
-        description = "Ergonomic radial ability sweep with primary attack anchor, directional skillshot triggers, and quick spell macros."
+        description = "Ergonomic radial ability sweep with primary attack anchor, directional skillshot triggers, and quick spell controls."
     )
 )

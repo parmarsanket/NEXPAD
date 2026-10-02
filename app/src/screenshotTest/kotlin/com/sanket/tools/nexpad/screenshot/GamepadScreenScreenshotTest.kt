@@ -12,7 +12,7 @@ import com.sanket.tools.nexpad.ui.theme.NEXPADTheme
  * Compose Preview Screenshot Tests for [GamepadScreenContent] and gamepad controls:
  * - Standard Elite Xbox Gamepad layout (Disconnected & Connected)
  * - Standard PlayStation Layout (Cross, Circle, Square, Triangle glyphs)
- * - Cyber FPS tactical layout with macro paddles
+ * - Cyber FPS tactical layout
  */
 class GamepadScreenScreenshotTest {
 

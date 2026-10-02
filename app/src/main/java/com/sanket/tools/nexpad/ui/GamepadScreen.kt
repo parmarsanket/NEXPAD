@@ -1,6 +1,7 @@
 package com.sanket.tools.nexpad.ui
 
 import android.content.pm.ActivityInfo
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -9,7 +10,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.IntOffset
@@ -18,9 +18,6 @@ import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import androidx.compose.ui.layout.layout
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import com.sanket.tools.nexpad.ui.components.badge.HeaderStatusPill
 import kotlin.math.roundToInt
 import android.os.Build
 import kotlinx.coroutines.launch
@@ -45,6 +42,7 @@ fun GamepadScreen(
     onBack: () -> Unit,
     onVibrate: () -> Unit
 ) {
+    BackHandler(onBack = onBack)
     val activeProfileName by layoutManager.activeProfileNameFlow.collectAsState()
     val profiles by layoutManager.profilesFlow.collectAsState()
     val sessionProfileName by (navigationViewModel?.sessionProfileName ?: remember { kotlinx.coroutines.flow.MutableStateFlow(null) }).collectAsState()
@@ -309,31 +307,6 @@ fun GamepadScreenContent(
     ) {
         val screenWidthPx = maxOf(constraints.maxWidth, constraints.maxHeight).toFloat()
         val screenHeightPx = minOf(constraints.maxWidth, constraints.maxHeight).toFloat()
-
-        // Back Button & Connection Status - Positioned in the safe upper corridor to avoid left shoulder trigger overlap
-        Row(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .offset(x = (-135).dp)
-                .padding(top = 10.dp)
-                .zIndex(10f),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = "Back",
-                    tint = MaterialTheme.colorScheme.onBackground
-                )
-            }
-            HeaderStatusPill(
-                isConnected = isConnected
-            )
-        }
 
         // Render mapped components with center-based placement
         profile.positions.forEach { (key, position) ->
