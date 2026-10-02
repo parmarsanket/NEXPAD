@@ -189,26 +189,6 @@ cd nexpad/NEXPAD
 .\gradlew.bat assembleRelease
 ```
 
-### 🤖 Modern Android CLI & Agent Skills Integration
-
-NEXPAD integrates with the official **Android CLI** and Google Agent Skills to maximize development productivity, accelerate testing, and enforce Play Store policy compliance:
-
-- **Installing the Android CLI**:
-  ```powershell
-  # Windows installation
-  curl -fsSL https://dl.google.com/android/cli/latest/windows_x86_64/install.cmd -o "%TEMP%\i.cmd" && "%TEMP%\i.cmd"
-  ```
-- **Equipping Official Google Agent Skills**:
-  ```powershell
-  android skills add play-policy-insights android-profiler r8-analyzer edge-to-edge testing-setup
-  ```
-- **Accelerated Development Commands**:
-  - `android run --use-delta-install`: Fast incremental delta deploy directly to a connected phone or emulator without full APK re-transfers.
-  - `android layout`: Dumps and inspects the live Jetpack Compose UI layout tree directly in JSON format to rapidly debug HUD positioning and touch bounds.
-  - `android screen capture`: Takes automated high-resolution screenshots from connected devices.
-  - `android docs search "..."`: Queries official Android knowledge base documentation and architectural patterns directly from the terminal.
-  - `play-policy-insights`: Runs an automated pre-submission audit against Google Play Store policy domains (permissions hygiene, privacy disclosure, and data safety).
-
 ---
 
 ## 🔒 Privacy, Security & Permissions Transparency
