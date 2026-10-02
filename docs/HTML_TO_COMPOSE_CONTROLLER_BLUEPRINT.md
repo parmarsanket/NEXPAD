@@ -19,7 +19,8 @@ This blueprint is NEXPAD's **universal conversion standard**. It covers the tran
 11. [Native D-Pad Family Catalog (All 6 Implemented Variants)](#11-native-d-pad-family-catalog-all-6-implemented-variants)
 12. [Native Shoulder Bumper Family Catalog](#12-native-shoulder-bumper-family-catalog)
 13. [Native Analog Trigger Family Catalog](#13-native-analog-trigger-family-catalog)
-14. [Bespoke Controller Auras & Kinetic Bloom Architecture](#14-bespoke-controller-auras--kinetic-bloom-architecture)
+14. [Native System Button Family Catalog (Optical Lens Suite: Back, Guide, Start, Share)](#14-native-system-button-family-catalog-optical-lens-suite-back-guide-start-share)
+15. [Bespoke Controller Auras & Kinetic Bloom Architecture](#15-bespoke-controller-auras--kinetic-bloom-architecture)
 
 ---
 
@@ -567,9 +568,121 @@ class DPadHitboxTest {
 
 ---
 
-## 14. Bespoke Controller Auras & Kinetic Bloom Architecture
+## 14. Native System Button Family Catalog (Optical Lens Suite: Back, Guide, Start, Share)
 
-### 14.1 Philosophy & Architectural Rationale
+The NEXPAD System Button suite translates the authentic **Optical Lens System HTML/CSS blueprint** into high-performance, resolution-independent Jetpack Compose components. While the original HTML specification demonstrated 3 buttons (`back`, `home`, `start`), NEXPAD provides complete coverage for modern 4-button console clusters (`Back/View`, `Home/Guide`, `Start/Menu`, and `Share/Capture`).
+
+### 14.1 The 4 Canonical System Controls
+
+| Button | Key & Seed | HTML Spec | Dimensions | Default Palette | Vector Icon Geometry ($24 \times 24$ Space) |
+|---|---|---|---|---|---|
+| **Back / View** | `ControlKey.BACK`<br>Seed `5003`<br>`builtin.default_view` | `.lx-sys`<br>`data-key="back"` | $60\text{dp} \times 60\text{dp}$ | `#D8DEE9`<br>(Silver-White) | **Overlapping Windows**:<br>• Front Rect: $x=4, y=8, w=12, h=12, r=2.5$<br>• Back Path: `M8 4.5h9.5A2.5 2.5 0 0 1 20 7v9.5`<br>• Stroke: $2.4\text{dp}$, `StrokeCap.Round`, `StrokeJoin.Round` |
+| **Home / Guide** | `ControlKey.GUIDE`<br>Seed `5001`<br>`builtin.default_home` | `.lx-home`<br>`data-key="home"` | $74\text{dp} \times 74\text{dp}$<br>(Focal Nexus) | `#F0F3F8`<br>(`#00E5FF` in RGB) | **Nexus Concentric Core**:<br>• Outer Circle: $c=(12, 12), r=8.5$, stroke $3.2\text{dp}$<br>• Core Solid Dot: $c=(12, 12), r=3.0$, filled<br>• Inset Telemetry Ring (`.lx-ring2`): $r = R - 12\text{dp}$ |
+| **Start / Menu** | `ControlKey.START`<br>Seed `5002`<br>`builtin.default_menu` | `.lx-sys`<br>`data-key="start"` | $60\text{dp} \times 60\text{dp}$ | `#D8DEE9`<br>(Silver-White) | **Hamburger Triple Bars**:<br>• Top Bar: $(5, 7) \to (19, 7)$<br>• Middle Bar: $(5, 12) \to (19, 12)$<br>• Bottom Bar: $(5, 17) \to (19, 17)$<br>• Stroke: $2.6\text{dp}$, `StrokeCap.Round` |
+| **Share / Capture** | `ControlKey.SHARE`<br>Seed `5004`<br>`builtin.default_share` | Extended<br>Standard | $60\text{dp} \times 60\text{dp}$ | `#D8DEE9`<br>(Silver-White) | **Console Capture Tray + Upload Arrow**:<br>• Tray: `M5 14v3.5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3.5`<br>• Shaft: $(12, 15) \to (12, 4.5)$<br>• Arrowhead: `M7.5 9L12 4.5l4.5 4.5`<br>• Stroke: $2.4\text{dp}$, `StrokeCap.Round` |
+
+---
+
+### 14.2 Universal Lens CSS-to-Compose Property Pipeline
+
+| CSS Layer & Selector | CSS Property Specification | Native Compose Implementation Formula |
+|---|---|---|
+| **Plunging Kinematics**<br>`.lx.pressed .lx-body` | `transform: translateY(2px) scale(0.95);` | `animateFloatAsState(if (pressed) 2f else 0f, spring(0.68f, 440f))` & `scale(0.95f)` |
+| **Acrylic Convex Dome**<br>`.lx-body` | `radial-gradient(circle at 50% 55%, #232527 0%, #0c0d0e 75%, #000 100%)` | `Brush.radialGradient(listOf(Color(0xFF232527), Color(0xFF0C0D0E), Color.Black), center = Offset(0.50f, 0.55f))` |
+| **Recessed Undercut**<br>`.lx-body::box-shadow` | `inset 0 -6px 9px rgba(0,0,0,0.70)` | `drawRect(Brush.verticalGradient(Transparent, Black.copy(0.70f)), startY = h * 0.62f, endY = h)` |
+| **Emissive Neon Ring**<br>`.lx-ring` | `inset: 3px; border: 2px solid var(--glow); box-shadow: 0 0 6px 1px, inset 0 0 6px` | Dual-pass Canvas circle at $r - 3\text{dp}$:<br>1. Halo Bloom: `Stroke(4.dp)`, $\alpha = 0.30 \to 0.60$<br>2. Core Line: `Stroke(2.dp)`, $\alpha = 0.70 \to 1.00$ |
+| **Guide Secondary Ring**<br>`.lx-home .lx-ring2` | `inset: 14px; border: 1px solid var(--glow); opacity: 0.3; (pressed: 0.7)` | Single Canvas circle at $r - 12\text{dp}$ with `Stroke(1.dp)`, $\alpha = 0.30 \to 0.70$ (Guide only) |
+| **Optical Specular Arc**<br>`.lx-lens` | `radial-gradient(circle at 70% 78%, rgba(255,255,255,0.06), transparent)` | Top 180° crescent: `drawArc(White.copy(0.16f) -> Transparent, 180f, 180f, Stroke(1.2.dp))` |
+| **Lens Sheen Reflection**<br>`.lx-lens::after` | Specular ambient highlight | `drawOval(Brush.radialGradient(White.copy(0.07f), Transparent), center = Offset(0.70f, 0.78f))` |
+
+---
+
+### 14.3 High-Precision Vector Icon Engine (`drawSystemIcon`)
+
+To ensure flawless resolution independence across any DPI and eradicate pixelation from static raster assets, all system button icons are rendered via native Compose `DrawScope` geometry scaled to $24 \times 24$ normalized coordinate units:
+
+```kotlin
+internal fun DrawScope.drawSystemIcon(
+    controlKey: ControlKey?,
+    color: Color,
+    iconSizePx: Float,
+    center: Offset
+) {
+    val scale = iconSizePx / 24f
+    val left = center.x - iconSizePx / 2f
+    val top = center.y - iconSizePx / 2f
+
+    when (controlKey) {
+        ControlKey.BACK -> {
+            val strokeStyle = Stroke(width = 2.4f * scale, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            // Foreground rounded rectangle
+            drawRoundRect(
+                color = color,
+                topLeft = Offset(left + 4f * scale, top + 8f * scale),
+                size = Size(12f * scale, 12f * scale),
+                cornerRadius = CornerRadius(2.5f * scale, 2.5f * scale),
+                style = strokeStyle
+            )
+            // Background open rectangle path
+            val backPath = Path().apply {
+                moveTo(left + 8f * scale, top + 4.5f * scale)
+                lineTo(left + 17.5f * scale, top + 4.5f * scale)
+                quadraticTo(left + 20f * scale, top + 4.5f * scale, left + 20f * scale, top + 7f * scale)
+                lineTo(left + 20f * scale, top + 16.5f * scale)
+            }
+            drawPath(path = backPath, color = color, style = strokeStyle)
+        }
+
+        ControlKey.GUIDE -> {
+            // Outer concentric circle ring
+            drawCircle(color = color, radius = 8.5f * scale, center = center, style = Stroke(width = 3.2f * scale))
+            // Inner solid core nexus dot
+            drawCircle(color = color, radius = 3.0f * scale, center = center)
+        }
+
+        ControlKey.START -> {
+            val strokeW = 2.6f * scale
+            val x1 = left + 5f * scale
+            val x2 = left + 19f * scale
+            drawLine(color, Offset(x1, top + 7f * scale), Offset(x2, top + 7f * scale), strokeWidth = strokeW, cap = StrokeCap.Round)
+            drawLine(color, Offset(x1, top + 12f * scale), Offset(x2, top + 12f * scale), strokeWidth = strokeW, cap = StrokeCap.Round)
+            drawLine(color, Offset(x1, top + 17f * scale), Offset(x2, top + 17f * scale), strokeWidth = strokeW, cap = StrokeCap.Round)
+        }
+
+        ControlKey.SHARE -> {
+            val strokeStyle = Stroke(width = 2.4f * scale, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            // Bottom capture tray
+            val trayPath = Path().apply {
+                moveTo(left + 5f * scale, top + 14f * scale)
+                lineTo(left + 5f * scale, top + 17.5f * scale)
+                quadraticTo(left + 5f * scale, top + 19.5f * scale, left + 7f * scale, top + 19.5f * scale)
+                lineTo(left + 17f * scale, top + 19.5f * scale)
+                quadraticTo(left + 19f * scale, top + 19.5f * scale, left + 19f * scale, top + 17.5f * scale)
+                lineTo(left + 19f * scale, top + 14f * scale)
+            }
+            drawPath(path = trayPath, color = color, style = strokeStyle)
+            // Upward arrow stem & chevron arrowhead
+            drawLine(color, Offset(center.x, top + 15f * scale), Offset(center.x, top + 4.5f * scale), 2.4f * scale, StrokeCap.Round)
+            val arrowHead = Path().apply {
+                moveTo(left + 7.5f * scale, top + 9f * scale)
+                lineTo(center.x, top + 4.5f * scale)
+                lineTo(left + 16.5f * scale, top + 9f * scale)
+            }
+            drawPath(path = arrowHead, color = color, style = strokeStyle)
+        }
+
+        else -> {
+            drawCircle(color = color, radius = 4f * scale, center = center)
+        }
+    }
+}
+```
+
+---
+
+## 15. Bespoke Controller Auras & Kinetic Bloom Architecture
+
+### 15.1 Philosophy & Architectural Rationale
 
 Prior generations of gamepad UI utilized generic drop shadows (`Modifier.shadow`) or uniform circular radial gradients. While functional, these lacked physical authenticity and failed to express the mechanical or optical theme of each unique controller component.
 
@@ -597,7 +710,7 @@ In NEXPAD's **Bespoke Aura Architecture**, every controller component features a
 
 ---
 
-### 14.2 Kinematic Modulation Mathematical Models
+### 15.2 Kinematic Modulation Mathematical Models
 
 #### Model A: Damped Harmonic Spring Alpha Modulation (Digital Press)
 Digital face buttons, D-pad arms, and tactile switches animate their baseline emissive aura using underdamped harmonic spring physics:
@@ -638,7 +751,7 @@ $$\mathbf{C}(x, y) = \text{RadialGradient}\left(\text{center} = \mathbf{p}_{\tex
 
 ---
 
-### 14.3 Master Catalog: The Complete 41-Component Themed Aura Matrix
+### 15.3 Master Catalog: The Complete 41-Component Themed Aura Matrix
 
 #### Cluster 1: Face Buttons (8/8)
 
@@ -707,13 +820,13 @@ $$\mathbf{C}(x, y) = \text{RadialGradient}\left(\text{center} = \mathbf{p}_{\tex
 
 | Component | Archetype | Visual Aura Theme | Mathematical Formulation & Kinetic Behavior |
 |---|---|---|---|
-| **RealisticSystemButton** | Tactical Pill | Precision Telemetry Rings + 4 Calibration Pips | Compact tactical pill aura with dual concentric telemetry guide rings and 4 cardinal calibration alignment pips. |
+| **RealisticSystemButton** | Optical Lens | Precision Telemetry Rings + 4 Calibration Pips | Convex acrylic lens dome aura with dual concentric telemetry guide rings, 4 cardinal calibration alignment pips, and console vector icons (Back, Guide, Start, Share). |
 | **RealisticMacroButton** | Macro Toggle | Stadium Switch Aura + 4 Corner Bracket Reticles | Elongated stadium toggle aura with 4 corner bracket targeting reticles and central electric pulse slit. |
 | **RealisticTouchPad** | Inertial Touchpad | Ambient Boundary Glow + Capacitive Touch Ripple | Ambient glass boundary glow ($r = 36\text{dp}$) with dual concentric capacitive touch ripples expanding at active $(touchX, touchY)$. |
 
 ---
 
-### 14.4 Master Implementation Recipes (Canonical Compose Snippets)
+### 15.4 Master Implementation Recipes (Canonical Compose Snippets)
 
 #### Recipe 1: Volumetric Conical Spotlight Beam & Core Laser Ray
 *Used in directional sticks (`SpotlightJoystick.kt`):*
@@ -1039,7 +1152,7 @@ $$\mathbf{C}(x, y) = \text{RadialGradient}\left(\text{center} = \mathbf{p}_{\tex
 
 ---
 
-### 14.5 Implementation Checklist for Future Controller Components
+### 15.5 Implementation Checklist for Future Controller Components
 
 When creating ANY new button or controller component variant in NEXPAD, verify each of these 6 requirements before submitting code:
 

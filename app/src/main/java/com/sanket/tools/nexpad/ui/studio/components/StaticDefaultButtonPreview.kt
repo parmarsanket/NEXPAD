@@ -45,6 +45,7 @@ import com.sanket.tools.nexpad.ui.components.controller.BottomHorizonClipShape
 import com.sanket.tools.nexpad.ui.components.controller.TopHorizonClipShape
 import com.sanket.tools.nexpad.ui.components.controller.LeftHorizonClipShape
 import com.sanket.tools.nexpad.ui.components.controller.RightHorizonClipShape
+import com.sanket.tools.nexpad.ui.components.controller.drawSystemIcon
 import androidx.compose.ui.unit.IntOffset
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import androidx.compose.ui.geometry.Rect
@@ -4502,9 +4503,28 @@ private fun StaticRealisticSystemButton(
     textColor: Color,
     modifier: Modifier = Modifier
 ) {
+    val ctrl = when (label) {
+        "⨂", "GUIDE", "HOME" -> ControlKey.GUIDE
+        "☰", "START", "MENU" -> ControlKey.START
+        "⧉", "BACK", "VIEW" -> ControlKey.BACK
+        "⇪", "SHARE", "CAPTURE" -> ControlKey.SHARE
+        else -> null
+    }
+    val isGuide = ctrl == ControlKey.GUIDE
+    val buttonSize = if (isGuide) 74.dp else 60.dp
+    val iconSize = if (isGuide) 36.dp else 24.dp
+
+    val domeGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(Color(0xFF232527), Color(0xFF0C0D0E), Color(0xFF000000)),
+            center = Offset(0.50f, 0.55f),
+            radius = 160f
+        )
+    }
+
     Box(
         modifier = modifier
-            .size(60.dp)
+            .size(buttonSize)
             .drawBehind {
                 drawCircle(
                     brush = Brush.radialGradient(
@@ -4514,22 +4534,103 @@ private fun StaticRealisticSystemButton(
                             Color.Transparent
                         ),
                         center = center,
-                        radius = size.minDimension * 0.95f
+                        radius = size.minDimension * 0.85f
                     ),
-                    radius = size.minDimension * 0.95f
+                    radius = size.minDimension * 0.85f
                 )
             }
             .shadow(4.dp, CircleShape, ambientColor = textColor, spotColor = textColor)
             .clip(CircleShape)
-            .background(Color(0xFF2B2B2B)),
+            .background(domeGradient)
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.Black.copy(alpha = 0.50f), Color.Black.copy(alpha = 0.85f))
+                ),
+                shape = CircleShape
+            ),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = label,
-            color = textColor,
-            fontWeight = FontWeight.Bold,
-            fontSize = 20.sp
-        )
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val r = size.minDimension / 2f
+
+            // Recessed undercut shadow
+            val botShadowH = h * 0.38f
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
+                    startY = h - botShadowH,
+                    endY = h
+                ),
+                topLeft = Offset(0f, h - botShadowH),
+                size = Size(w, botShadowH)
+            )
+
+            // Emissive neon ring
+            val ringR = r - 3.dp.toPx()
+            drawCircle(color = textColor.copy(alpha = 0.30f), radius = ringR, style = Stroke(width = 4.dp.toPx()))
+            drawCircle(color = textColor.copy(alpha = 0.70f), radius = ringR, style = Stroke(width = 2.dp.toPx()))
+
+            // Home secondary ring
+            if (isGuide) {
+                val ring2R = r - 12.dp.toPx()
+                drawCircle(color = textColor.copy(alpha = 0.30f), radius = ring2R, style = Stroke(width = 1.dp.toPx()))
+            }
+
+            // Vector icon
+            if (ctrl != null) {
+                val iconPx = iconSize.toPx()
+                drawSystemIcon(
+                    controlKey = ctrl,
+                    color = textColor.copy(alpha = 0.20f),
+                    iconSizePx = iconPx + 2.dp.toPx(),
+                    center = center
+                )
+                drawSystemIcon(
+                    controlKey = ctrl,
+                    color = textColor,
+                    iconSizePx = iconPx,
+                    center = center
+                )
+            }
+
+            // Top specular arc
+            drawArc(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.16f), Color.Transparent),
+                    startY = 0f,
+                    endY = h * 0.38f
+                ),
+                startAngle = 180f,
+                sweepAngle = 180f,
+                useCenter = false,
+                topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
+                size = Size(w - 3.dp.toPx(), h - 3.dp.toPx()),
+                style = Stroke(width = 1.2.dp.toPx())
+            )
+
+            // Lens reflection sheen
+            drawOval(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.07f), Color.Transparent),
+                    center = Offset(w * 0.70f, h * 0.78f),
+                    radius = w * 0.28f
+                ),
+                topLeft = Offset(w * 0.50f, h * 0.60f),
+                size = Size(w * 0.38f, h * 0.32f)
+            )
+        }
+
+        if (ctrl == null) {
+            Text(
+                text = label.take(2),
+                color = textColor,
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp
+            )
+        }
     }
 }
 
