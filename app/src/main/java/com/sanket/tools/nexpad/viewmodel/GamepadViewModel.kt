@@ -280,6 +280,22 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
         networkManager.sendImmediate()
     }
 
+    /**
+     * Updates an analog trigger with a continuous normalized float value [0.0f, 1.0f],
+     * which encodes into NexpadProtocol as [0, 255].
+     * Dispatches immediately via UDP for physical trigger clips and continuous sliders.
+     */
+    fun updateTrigger(key: String, value: Float) {
+        val ctrl = ControlKey.fromIdentifier(key)
+        val clamped = value.coerceIn(0f, 1f)
+        when (ctrl) {
+            ControlKey.LT -> inputState.triggerL2 = clamped
+            ControlKey.RT -> inputState.triggerR2 = clamped
+            else -> {}
+        }
+        networkManager.sendImmediate()
+    }
+
     private fun applyButtonState(buttonName: String, isPressed: Boolean) {
         // Canonical keys come from NexpadKeys (backed by CategoryManager).
         // Hardware alias keys (L1/L2/L3, R1/R2/R3, BACK, SELECT, HOME, XBOX, MENU, VIEW)

@@ -180,9 +180,12 @@ fun ButtonStudioScreen(
                 if (selectedCategory.id == "ALL") return@filter true
 
                 val compCtrl = ControlKey.fromIdentifier(control)
-                val matchesCategory = selectedCategory.keys.contains(control) ||
-                        (compCtrl != null && compCtrl.categoryType.id == selectedCategory.id) ||
-                        CategoryType.fromIdentifier(category)?.id == selectedCategory.id
+                val matchesCategory = if (compCtrl != null) {
+                    compCtrl.categoryType.id == selectedCategory.id || selectedCategory.keys.contains(control)
+                } else {
+                    val resolvedCat = CategoryType.fromIdentifier(category)
+                    resolvedCat?.id == selectedCategory.id || selectedCategory.keys.contains(control)
+                }
 
                 if (!matchesCategory) return@filter false
 
@@ -549,7 +552,7 @@ fun ButtonStudioScreen(
                                     },
                                     label = {
                                         Text(
-                                            filter.label,
+                                            filter.targetKey?.let { CategoryManager.getLabelForStyle(it, studioLabelStyle) } ?: filter.label,
                                             fontSize = 11.sp,
                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                         )

@@ -202,7 +202,7 @@ class HudEditorViewModel(
             transform = current.transform.copy(
                 xRatio = xRatio.coerceIn(0.0f, 1.0f),
                 yRatio = yRatio.coerceIn(0.0f, 1.0f),
-                scale = scale?.coerceIn(0.5f, 2.5f) ?: current.transform.scale,
+                scale = scale?.coerceIn(0.4f, 3.5f) ?: current.transform.scale,
                 opacity = opacity?.coerceIn(0.1f, 1.0f) ?: current.transform.opacity
             )
         )
@@ -240,6 +240,27 @@ class HudEditorViewModel(
         _elements.value = _elements.value + (key to updated)
         _hasUnsavedChanges.value = true
         layoutManager.updateTouchpadSensitivity(key, clamped)
+    }
+
+    fun setHeightScale(controlKey: String, newHeightScale: Float) {
+        val key = controlKey.uppercase()
+        val current = _elements.value[key] ?: return
+        val clamped = newHeightScale.coerceIn(0.5f, 2.5f)
+        val updated = current.copy(
+            transform = current.transform.copy(heightScale = clamped)
+        )
+        _elements.value = _elements.value + (key to updated)
+        _hasUnsavedChanges.value = true
+    }
+
+    fun toggleFlip(controlKey: String) {
+        val key = controlKey.uppercase()
+        val current = _elements.value[key] ?: return
+        val updated = current.copy(
+            transform = current.transform.copy(isFlipped = !current.transform.isFlipped)
+        )
+        _elements.value = _elements.value + (key to updated)
+        _hasUnsavedChanges.value = true
     }
 
     fun setSkin(controlKey: String, skinId: String?) {

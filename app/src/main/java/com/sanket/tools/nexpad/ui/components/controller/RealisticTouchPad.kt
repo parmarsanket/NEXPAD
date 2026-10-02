@@ -3,6 +3,7 @@ package com.sanket.tools.nexpad.ui.components.controller
 import android.content.Context
 import android.util.Log
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -20,8 +21,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -150,7 +154,8 @@ fun RealisticTouchPad(
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val accentColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
+    val auraColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFA97CF0)
+    val accentColor = auraColor
 
     // Touch tracking state
     var isDragging by remember { mutableStateOf(false) }
@@ -158,8 +163,14 @@ fun RealisticTouchPad(
     var touchY by remember { mutableFloatStateOf(0f) }
     var decayJob by remember { mutableStateOf<Job?>(null) }
 
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (isDragging) 0.95f else 0.40f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "touchpad_rgb_bloom"
+    )
+
     val activeAlpha by animateFloatAsState(
-        targetValue = if (isDragging) 1f else 0.4f,
+        targetValue = if (isDragging) 1f else 0f,
         animationSpec = tween(150),
         label = "activeAlpha"
     )
@@ -171,12 +182,6 @@ fun RealisticTouchPad(
         center = Offset(0.4f, 0.4f),
         radius = 280f
     )
-
-    val shadowModifier = if (isRgbEnabled) {
-        Modifier.shadow(16.dp, shape, ambientColor = accentColor, spotColor = accentColor)
-    } else {
-        Modifier.shadow(12.dp, shape, ambientColor = Color.Black, spotColor = Color.Black)
-    }
 
     val context = LocalContext.current
     val density = LocalDensity.current.density
@@ -205,13 +210,92 @@ fun RealisticTouchPad(
     Box(
         modifier = modifier
             .size(180.dp)
-            .then(shadowModifier)
+            .drawBehind {
+                if (isRgbEnabled) {
+                    val pad = 12.dp.toPx()
+
+                    // 1. Ambient Glass Boundary Glow
+                    drawRoundRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                auraColor.copy(alpha = rgbBloomAlpha * (if (isDragging) 0.50f else 0.30f)),
+                                auraColor.copy(alpha = rgbBloomAlpha * 0.12f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.width * 0.65f
+                        ),
+                        topLeft = Offset(-pad, -pad),
+                        size = Size(size.width + pad * 2f, size.height + pad * 2f),
+                        cornerRadius = CornerRadius(36.dp.toPx(), 36.dp.toPx())
+                    )
+
+                    // 2. 4 Corner Registration Pips
+                    val bracketAlpha = rgbBloomAlpha * (if (isDragging) 0.85f else 0.40f)
+                    val bracketLen = 10.dp.toPx()
+                    val inset = 2.dp.toPx()
+
+                    // TL
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(-inset, -inset), Offset(-inset + bracketLen, -inset), 2f)
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(-inset, -inset), Offset(-inset, -inset + bracketLen), 2f)
+                    // TR
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(size.width + inset, -inset), Offset(size.width + inset - bracketLen, -inset), 2f)
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(size.width + inset, -inset), Offset(size.width + inset + bracketLen, -inset), 2f)
+                    // BL
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(-inset, size.height + inset), Offset(-inset + bracketLen, size.height + inset), 2f)
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(-inset, size.height + inset), Offset(-inset, size.height + inset - bracketLen), 2f)
+                    // BR
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(size.width + inset, size.height + inset), Offset(size.width + inset - bracketLen, size.height + inset), 2f)
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(size.width + inset, size.height + inset), Offset(size.width + inset, size.height + inset - bracketLen), 2f)
+
+                    // 3. Capacitive Touch Ripple expanding from finger contact coordinates
+                    if (isDragging) {
+                        val touchCenter = Offset(touchX, touchY)
+                        val touchRadius = 46.dp.toPx()
+
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = rgbBloomAlpha * 0.65f),
+                                    auraColor.copy(alpha = rgbBloomAlpha * 0.50f),
+                                    auraColor.copy(alpha = rgbBloomAlpha * 0.15f),
+                                    Color.Transparent
+                                ),
+                                center = touchCenter,
+                                radius = touchRadius
+                            ),
+                            center = touchCenter,
+                            radius = touchRadius
+                        )
+
+                        // Dual concentric capacitive touch ripples
+                        drawCircle(
+                            color = auraColor.copy(alpha = rgbBloomAlpha * 0.80f),
+                            radius = 20.dp.toPx(),
+                            center = touchCenter,
+                            style = Stroke(width = 1.5.dp.toPx())
+                        )
+                        drawCircle(
+                            color = auraColor.copy(alpha = rgbBloomAlpha * 0.45f),
+                            radius = 32.dp.toPx(),
+                            center = touchCenter,
+                            style = Stroke(width = 1.dp.toPx())
+                        )
+                    }
+                }
+            }
+            .shadow(
+                elevation = if (isDragging) 4.dp else 10.dp,
+                shape = shape,
+                ambientColor = if (isRgbEnabled) auraColor else Color.Black,
+                spotColor = if (isRgbEnabled) auraColor else Color.Black
+            )
             .clip(shape)
             .background(surfaceGradient)
             .border(
                 BorderStroke(
                     2.dp,
-                    if (isRgbEnabled) accentColor else Color(0xFF353C4A)
+                    if (isRgbEnabled) auraColor else Color(0xFF353C4A)
                 ),
                 shape
             )
@@ -389,14 +473,56 @@ fun RealisticTouchPad(
                 .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)), innerShape)
         )
 
+        // Glowing touch indicator puck on active finger drag
+        if (isDragging || activeAlpha > 0.05f) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val puckCenter = Offset(touchX, touchY)
+                val puckGlowRadius = 32.dp.toPx()
+                // Outer radial bloom
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            (if (isRgbEnabled) auraColor else Color.White).copy(alpha = activeAlpha * 0.55f),
+                            (if (isRgbEnabled) auraColor else Color.White).copy(alpha = activeAlpha * 0.18f),
+                            Color.Transparent
+                        ),
+                        center = puckCenter,
+                        radius = puckGlowRadius
+                    ),
+                    center = puckCenter,
+                    radius = puckGlowRadius
+                )
+                // Crisp neon reticle ring
+                drawCircle(
+                    color = if (isRgbEnabled) auraColor.copy(alpha = activeAlpha * 0.85f) else Color.White.copy(alpha = 0.70f),
+                    radius = 12.dp.toPx(),
+                    center = puckCenter,
+                    style = Stroke(width = 2.dp.toPx())
+                )
+                // Core specular dot
+                drawCircle(
+                    color = Color.White.copy(alpha = activeAlpha * 0.95f),
+                    radius = 3.dp.toPx(),
+                    center = puckCenter
+                )
+            }
+        }
+
         // Tactile Header Label
         Text(
             text = if (isLeft) "TOUCH MOVE • LTP" else "TOUCH LOOK • RTP",
             fontSize = 10.sp,
             fontFamily = FontFamily.Monospace,
             fontWeight = FontWeight.Bold,
-            color = accentColor.copy(alpha = 0.65f),
+            color = if (isRgbEnabled) auraColor.copy(alpha = if (isDragging) 0.95f else 0.70f) else Color.White.copy(alpha = 0.70f),
             letterSpacing = 1.2.sp,
+            style = androidx.compose.ui.text.TextStyle(
+                shadow = androidx.compose.ui.graphics.Shadow(
+                    color = if (isRgbEnabled) auraColor.copy(alpha = rgbBloomAlpha * 0.75f) else Color.Black.copy(alpha = 0.8f),
+                    offset = Offset(0f, 1f),
+                    blurRadius = 3f
+                )
+            ),
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(top = 10.dp)

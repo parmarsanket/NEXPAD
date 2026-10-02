@@ -208,7 +208,8 @@ fun StudioGridCard(
                             assignedControl = control,
                             isConnected = false,
                             inputTarget = NoOpInputTarget,
-                            isInteractive = false
+                            isInteractive = false,
+                            labelStyle = labelStyle
                         )
                     }
                 } else {
@@ -236,7 +237,8 @@ fun StudioGridCard(
                         assignedControl = control,
                         isConnected = false,
                         inputTarget = NoOpInputTarget,
-                        isInteractive = false
+                        isInteractive = false,
+                        labelStyle = labelStyle
                     )
                 }
             }

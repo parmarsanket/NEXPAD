@@ -109,6 +109,13 @@ fun RealisticDPad(
     )
 
     val neonColor = if (isRgbEnabled) Color(0xFF00E5FF) else Color(0xFF4ADE80)
+    val hasActivePress = pressedDirs.isNotEmpty()
+
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (hasActivePress) 0.95f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "realistic_dpad_rgb_bloom"
+    )
 
     val surfaceGradient = remember {
         Brush.radialGradient(
@@ -130,13 +137,65 @@ fun RealisticDPad(
                 val center = Offset(size.width / 2f, size.height / 2f)
                 val socketRadius = size.minDimension / 2f + 4.dp.toPx()
 
-                // Ambient underglow bloom if RGB enabled
+                // Bespoke 4-way cardinal laser cross halo flaring along pressed directions
                 if (isRgbEnabled) {
+                    val w = size.width
+                    val h = size.height
+                    val halfArmW = 20.dp.toPx()
+                    val armLen = size.minDimension * 0.62f
+
+                    // 1. Central hub bloom
                     drawCircle(
-                        color = neonColor.copy(alpha = if (pressedDirs.isNotEmpty()) 0.35f else 0.15f),
-                        radius = socketRadius + 6.dp.toPx(),
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.50f),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.18f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 0.55f
+                        ),
+                        radius = size.minDimension * 0.55f,
                         center = center
                     )
+
+                    // 2. Cardinal laser cross arms
+                    val isUp = pressedDirs.contains(K.UP)
+                    val isDown = pressedDirs.contains(K.DOWN)
+                    val isLeft = pressedDirs.contains(K.LEFT)
+                    val isRight = pressedDirs.contains(K.RIGHT)
+
+                    fun drawCardinalBeam(dx: Float, dy: Float, isActive: Boolean) {
+                        val beamAlpha = if (isActive) rgbBloomAlpha * 0.90f else (if (hasActivePress) 0.18f else 0.38f)
+                        val endPt = Offset(center.x + dx * armLen, center.y + dy * armLen)
+                        // Diffuse beam glow
+                        drawLine(
+                            brush = Brush.linearGradient(
+                                colors = listOf(neonColor.copy(alpha = beamAlpha * 0.7f), Color.Transparent),
+                                start = center,
+                                end = endPt
+                            ),
+                            start = center,
+                            end = endPt,
+                            strokeWidth = halfArmW * (if (isActive) 1.6f else 1.0f)
+                        )
+                        // Laser core
+                        drawLine(
+                            brush = Brush.linearGradient(
+                                colors = listOf((if (isActive) Color.White else neonColor).copy(alpha = beamAlpha), Color.Transparent),
+                                start = center,
+                                end = endPt
+                            ),
+                            start = center,
+                            end = endPt,
+                            strokeWidth = if (isActive) 3.5f else 1.5f
+                        )
+                    }
+
+                    drawCardinalBeam(0f, -1f, isUp)
+                    drawCardinalBeam(0f, 1f, isDown)
+                    drawCardinalBeam(-1f, 0f, isLeft)
+                    drawCardinalBeam(1f, 0f, isRight)
                 }
 
                 // Recessed circular chassis socket
@@ -167,7 +226,7 @@ fun RealisticDPad(
                 scaleY = scaleAnim
             }
             .shadow(
-                elevation = if (pressedDirs.isNotEmpty()) 4.dp else 10.dp,
+                elevation = if (hasActivePress) 3.dp else 8.dp,
                 shape = crossShape,
                 ambientColor = if (isRgbEnabled) neonColor else Color.Black,
                 spotColor = if (isRgbEnabled) neonColor else Color.Black
@@ -415,19 +474,44 @@ fun RealisticDPadButton(
     val themeColor = if (isRgbEnabled) Color(0xFF00F0FF) else Color(0xFF4ADE80)
     val shape = RoundedCornerShape(18.dp)
 
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "dpad_btn_rgb_bloom"
+    )
+
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
 
     Box(
         modifier = modifier
             .size(72.dp)
+            .drawBehind {
+                if (isRgbEnabled) {
+                    val pad = 8.dp.toPx()
+                    drawRoundRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                themeColor.copy(alpha = rgbBloomAlpha * 0.50f),
+                                themeColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.width * 0.85f
+                        ),
+                        topLeft = Offset(-pad, -pad),
+                        size = Size(size.width + pad * 2, size.height + pad * 2),
+                        cornerRadius = CornerRadius(22.dp.toPx(), 22.dp.toPx())
+                    )
+                }
+            }
             .graphicsLayer {
                 scaleX = scaleAnim
                 scaleY = scaleAnim
             }
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .shadow(
-                elevation = if (isPressed) 3.dp else if (isRgbEnabled) 10.dp else 6.dp,
+                elevation = if (isPressed) 3.dp else 8.dp,
                 shape = shape,
                 ambientColor = if (isRgbEnabled) themeColor else Color.Black,
                 spotColor = if (isRgbEnabled) themeColor else Color.Black

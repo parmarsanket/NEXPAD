@@ -89,15 +89,83 @@ fun RealisticJoystick(
         radius = 150f
     )
 
-    val rgbShadow = if (isRgbEnabled) {
-        Modifier.shadow(15.dp, CircleShape, ambientColor = if (isLeft) Color.Cyan else Color.Magenta, spotColor = if (isLeft) Color.Blue else Color.Red)
-    } else {
-        Modifier.shadow(10.dp, CircleShape, ambientColor = Color.Black, spotColor = Color.Black)
-    }
+    val neonColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
+    val deflectionFraction = (hypot(thumbOffsetX, thumbOffsetY) / maxRadius).coerceIn(0f, 1f)
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = 0.40f + 0.55f * deflectionFraction,
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
+        label = "realistic_joystick_bloom"
+    )
+
+    val rgbShadow = Modifier.shadow(
+        elevation = 10.dp,
+        shape = CircleShape,
+        ambientColor = if (isRgbEnabled) neonColor.copy(alpha = 0.5f) else Color.Black,
+        spotColor = if (isRgbEnabled) neonColor else Color.Black
+    )
 
     Box(
         modifier = modifier
             .size(150.dp)
+            .drawBehind {
+                if (isRgbEnabled) {
+                    val capPos = Offset(center.x + thumbOffsetX, center.y + thumbOffsetY)
+                    val disp = hypot(thumbOffsetX, thumbOffsetY)
+                    val maxR = size.minDimension * 0.35f
+                    val dispFraction = (disp / maxR).coerceIn(0f, 1f)
+
+                    // 1. Base socket containment bloom
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.35f),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.12f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 0.55f
+                        ),
+                        radius = size.minDimension * 0.55f,
+                        center = center
+                    )
+
+                    // 2. Deflection comet-plume trailing wake aura
+                    val plumeCenter = Offset(
+                        center.x + thumbOffsetX * 0.65f,
+                        center.y + thumbOffsetY * 0.65f
+                    )
+                    val plumeRadius = size.minDimension * (0.40f + 0.35f * dispFraction)
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colorStops = arrayOf(
+                                0.00f to (if (dispFraction > 0.4f) Color.White else neonColor).copy(alpha = rgbBloomAlpha * (0.50f + 0.35f * dispFraction)),
+                                0.40f to neonColor.copy(alpha = rgbBloomAlpha * (0.30f + 0.25f * dispFraction)),
+                                1.00f to Color.Transparent
+                            ),
+                            center = plumeCenter,
+                            radius = plumeRadius
+                        ),
+                        radius = plumeRadius,
+                        center = plumeCenter
+                    )
+
+                    // 3. High-energy thumbstick cap beacon bloom
+                    val capBloomR = 48.dp.toPx() + (12.dp.toPx() * dispFraction)
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                (if (dispFraction > 0.6f) Color.White else neonColor).copy(alpha = rgbBloomAlpha * 0.70f),
+                                neonColor.copy(alpha = rgbBloomAlpha * 0.25f),
+                                Color.Transparent
+                            ),
+                            center = capPos,
+                            radius = capBloomR
+                        ),
+                        radius = capBloomR,
+                        center = capPos
+                    )
+                }
+            }
             .then(rgbShadow)
             .clip(CircleShape)
             .background(baseGradient)
@@ -316,7 +384,12 @@ fun RealisticJoystick(
             modifier = Modifier
                 .offset { IntOffset(thumbOffsetX.roundToInt(), thumbOffsetY.roundToInt()) }
                 .size(90.dp)
-                .shadow(12.dp, CircleShape)
+                .shadow(
+                    elevation = 12.dp,
+                    shape = CircleShape,
+                    ambientColor = if (isRgbEnabled) neonColor.copy(alpha = 0.5f) else Color.Black,
+                    spotColor = if (isRgbEnabled) neonColor else Color.Black
+                )
                 .clip(CircleShape)
                 .background(thumbGradient)
                 .border(
@@ -434,23 +507,20 @@ fun RealisticStickButton(
         )
     }
 
-    val accentColor = if (isLeft) Color.Cyan else Color(0xFFFF007F)
+    val neonColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "stick_btn_rgb_bloom"
+    )
+    val accentColor = neonColor
 
-    val rgbShadow = if (isRgbEnabled) {
-        Modifier.shadow(
-            elevation = if (isPressed) 18.dp else 10.dp,
-            shape = CircleShape,
-            ambientColor = accentColor,
-            spotColor = accentColor
-        )
-    } else {
-        Modifier.shadow(
-            elevation = if (isPressed) 3.dp else 8.dp,
-            shape = CircleShape,
-            ambientColor = Color.Black,
-            spotColor = Color.Black
-        )
-    }
+    val rgbShadow = Modifier.shadow(
+        elevation = if (isPressed) 3.dp else 8.dp,
+        shape = CircleShape,
+        ambientColor = if (isRgbEnabled) neonColor else Color.Black,
+        spotColor = if (isRgbEnabled) neonColor else Color.Black
+    )
 
     Box(
         modifier = modifier
@@ -460,6 +530,37 @@ fun RealisticStickButton(
                 scaleY = scaleAnim
             }
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
+            .drawBehind {
+                if (isRgbEnabled) {
+                    val clickBloomR = size.minDimension * (if (isPressed) 1.05f else 0.85f)
+                    // 1. Tactile click pulse bloom
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colorStops = arrayOf(
+                                0.00f to (if (isPressed) Color.White else neonColor).copy(alpha = rgbBloomAlpha * 0.65f),
+                                0.35f to neonColor.copy(alpha = rgbBloomAlpha * 0.30f),
+                                0.75f to neonColor.copy(alpha = rgbBloomAlpha * 0.10f),
+                                1.00f to Color.Transparent
+                            ),
+                            center = center,
+                            radius = clickBloomR
+                        ),
+                        radius = clickBloomR,
+                        center = center
+                    )
+
+                    // 2. Tactile knurled guide ring
+                    drawCircle(
+                        color = neonColor.copy(alpha = if (isPressed) 0.60f else 0.25f),
+                        radius = size.minDimension * 0.52f,
+                        center = center,
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(
+                            width = 2.0f,
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f), 0f)
+                        )
+                    )
+                }
+            }
             .then(rgbShadow)
             .clip(CircleShape)
             .background(baseGradient)

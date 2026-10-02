@@ -54,7 +54,9 @@ data class Position(
     val scale: Float = 1.0f,
     val opacity: Float = 1.0f,
     val customComponentId: String? = null,
-    val sensitivity: Float? = null
+    val sensitivity: Float? = null,
+    val heightScale: Float? = null,
+    val isFlipped: Boolean? = null
 )
 
 /** Default Layout 1: Standard Elite matching physical Xbox ergonomics (Aspect-Ratio Corrected). */

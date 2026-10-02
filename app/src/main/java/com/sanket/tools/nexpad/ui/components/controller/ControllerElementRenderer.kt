@@ -35,6 +35,8 @@ fun ControllerElementRenderer(
     onVibrate: () -> Unit = {},
     customComponentId: String? = null,
     sensitivity: Float? = null,
+    heightScale: Float = 1.0f,
+    isFlipped: Boolean = false,
     labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
     modifier: Modifier = Modifier
 ) {
@@ -91,6 +93,8 @@ fun ControllerElementRenderer(
             viewModel = viewModel,
             onVibrate = onVibrate,
             sensitivity = sensitivity,
+            heightScale = heightScale,
+            isFlipped = isFlipped,
             labelStyle = labelStyle,
             modifier = modifier
         )

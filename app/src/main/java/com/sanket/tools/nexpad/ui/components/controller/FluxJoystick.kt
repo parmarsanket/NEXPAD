@@ -170,23 +170,91 @@ fun FluxJoystick(
     val stickKey = remember(isLeft) { if (isLeft) "LSB" else "RSB" }
     val glyphLabel = remember(isLeft) { if (isLeft) "L" else "R" }
 
+    val deflectionFraction = (hypot(animOffsetX.value, animOffsetY.value) / maxTravelPx).coerceIn(0f, 1f)
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = 0.40f + 0.55f * deflectionFraction,
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
+        label = "flux_joystick_bloom"
+    )
+
     Box(
         modifier = modifier
             .size(150.dp)
-            // Ambient neon bloom behind housing
             .drawBehind {
                 if (isRgbEnabled) {
+                    val fluxRadius = size.minDimension * 0.52f
+                    val curX = animOffsetX.value
+                    val curY = animOffsetY.value
+                    val curDist = hypot(curX, curY)
+                    val defFraction = (curDist / maxTravelPx).coerceIn(0f, 1f)
+
+                    // 1. Ambient reactor plasma core bloom
                     drawCircle(
-                        color = glowColor.copy(alpha = ambientBloomAlpha * 0.40f),
-                        radius = size.minDimension / 2f + 8.dp.toPx()
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.40f),
+                                glowColor.copy(alpha = rgbBloomAlpha * 0.15f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 0.60f
+                        ),
+                        radius = size.minDimension * 0.60f,
+                        center = center
                     )
+
+                    // 2. 12-Point Reactor Flux Ring ticks
+                    for (i in 0 until 12) {
+                        val tickAngleRad = Math.toRadians((i * 30.0))
+                        val cosA = cos(tickAngleRad).toFloat()
+                        val sinA = sin(tickAngleRad).toFloat()
+                        val innerR = fluxRadius - 4.dp.toPx()
+                        val outerR = fluxRadius + 4.dp.toPx()
+                        drawLine(
+                            color = glowColor.copy(alpha = if (defFraction > 0.3f) 0.85f else 0.40f),
+                            start = Offset(center.x + innerR * cosA, center.y + innerR * sinA),
+                            end = Offset(center.x + outerR * cosA, center.y + outerR * sinA),
+                            strokeWidth = 2.0f
+                        )
+                    }
+
+                    // 3. Sweeping Magnetic Deflection Discharge Arc
+                    if (defFraction > 0.08f) {
+                        val defAngleDeg = Math.toDegrees(atan2(curY.toDouble(), curX.toDouble())).toFloat()
+                        val arcSweep = 50f + 20f * defFraction
+                        val arcStart = defAngleDeg - arcSweep / 2f
+
+                        // Outer diffuse magnetic flare
+                        drawArc(
+                            brush = Brush.radialGradient(
+                                colors = listOf(Color.White, glowColor, Color.Transparent),
+                                center = Offset(center.x + curX * 0.5f, center.y + curY * 0.5f),
+                                radius = size.minDimension * 0.65f
+                            ),
+                            startAngle = arcStart,
+                            sweepAngle = arcSweep,
+                            useCenter = false,
+                            topLeft = Offset(center.x - fluxRadius - 6f, center.y - fluxRadius - 6f),
+                            size = Size((fluxRadius + 6f) * 2f, (fluxRadius + 6f) * 2f),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 8.dp.toPx())
+                        )
+                        // Core electric arc line
+                        drawArc(
+                            color = Color.White.copy(alpha = 0.95f),
+                            startAngle = arcStart,
+                            sweepAngle = arcSweep,
+                            useCenter = false,
+                            topLeft = Offset(center.x - fluxRadius, center.y - fluxRadius),
+                            size = Size(fluxRadius * 2f, fluxRadius * 2f),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.5f)
+                        )
+                    }
                 }
             }
-            // Drop shadow: 0 10px 12px rgba(0, 0, 0, 0.45)
             .shadow(
                 elevation = 12.dp,
                 shape = CircleShape,
-                ambientColor = if (isRgbEnabled) glowColor.copy(alpha = 0.4f) else Color.Black,
+                ambientColor = if (isRgbEnabled) glowColor.copy(alpha = 0.5f) else Color.Black,
                 spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
             .clip(CircleShape)
@@ -481,19 +549,6 @@ fun FluxJoystick(
                 )
             }
 
-            // Outer Neon Ring (.lx-ring): inset 3px, 2px border + glow
-            val outerRingRadius = r - 3.dp.toPx()
-            drawCircle(
-                color = glowColor.copy(alpha = 0.22f),
-                radius = outerRingRadius,
-                style = Stroke(width = 6.dp.toPx())
-            )
-            drawCircle(
-                color = glowColor.copy(alpha = 0.48f),
-                radius = outerRingRadius,
-                style = Stroke(width = 2.dp.toPx())
-            )
-
             // Dynamic Opposite-Casting 3D Drop Shadow behind moving cap (.lx-cap box-shadow):
             // calc(var(--dx) * -0.32) calc(8px + var(--dy) * -0.32) 12px rgba(0,0,0,0.82)
             val capR = 48.dp.toPx()
@@ -519,6 +574,12 @@ fun FluxJoystick(
                     scaleX = capScaleAnim
                     scaleY = capScaleAnim
                 }
+                .shadow(
+                    elevation = 10.dp,
+                    shape = CircleShape,
+                    ambientColor = if (isRgbEnabled) glowColor.copy(alpha = 0.5f) else Color.Black,
+                    spotColor = if (isRgbEnabled) glowColor else Color.Black
+                )
                 .clip(CircleShape)
                 .background(capDomeGradient)
                 .border(
@@ -570,13 +631,21 @@ fun FluxJoystick(
 
                 // Cap Neon Ring (.lx-cap-ring): inset 13px, blooms brighter on touch
                 val capRingRadius = capR - 13.dp.toPx()
+                // Outer glow bloom
                 drawCircle(
                     color = glowColor.copy(alpha = capBloomAlpha * 0.35f),
                     radius = capRingRadius,
-                    style = Stroke(width = if (isDragging || isPressed) 6.dp.toPx() else 4.dp.toPx())
+                    style = Stroke(width = if (isDragging || isPressed) 7.dp.toPx() else 4.dp.toPx())
                 )
+                // Inner inset glow bloom
                 drawCircle(
-                    color = glowColor.copy(alpha = capBloomAlpha * 0.80f),
+                    color = glowColor.copy(alpha = capBloomAlpha * 0.20f),
+                    radius = capRingRadius - 2.dp.toPx(),
+                    style = Stroke(width = if (isDragging || isPressed) 5.dp.toPx() else 3.dp.toPx())
+                )
+                // Core crisp ring
+                drawCircle(
+                    color = glowColor.copy(alpha = capBloomAlpha * 0.85f),
                     radius = capRingRadius,
                     style = Stroke(width = 2.dp.toPx())
                 )
@@ -658,33 +727,69 @@ fun FluxJoystick(
                     )
                 }
 
-                // Neon Glyph (.lx-g): "L" / "R" with dual-layer neon bloom
+                // Neon Glyph (.lx-g): "L" / "R" with dual-layer neon bloom matching font-size: 40px
                 Text(
                     text = glyphLabel,
                     color = glowColor.copy(alpha = 0.35f),
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.Medium,
                     modifier = Modifier.offset(0.dp, (-0.5).dp)
                 )
                 Text(
                     text = glyphLabel,
+                    color = glowColor.copy(alpha = 0.65f),
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.offset(0.dp, (0.5).dp)
+                )
+                Text(
+                    text = glyphLabel,
                     color = glowColor,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         }
 
-        // Outer Glass Lens Rim (.lx-lens): Top-lit specular chamfer
+        // Top Overlay Canvas: Outer Neon Ring (.lx-ring, z-index: 10) & Glass Lens (.lx-lens, z-index: 20)
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
+            val r = size.minDimension / 2f
 
-            // Top-lit 1px chamfer rim
+            // Outer Neon Ring (.lx-ring, z-index: 10): inset 3px, 2px border + outer/inner glow
+            val outerRingRadius = r - 3.dp.toPx()
+            drawCircle(
+                color = glowColor.copy(alpha = 0.22f),
+                radius = outerRingRadius,
+                style = Stroke(width = 6.dp.toPx())
+            )
+            drawCircle(
+                color = glowColor.copy(alpha = 0.18f),
+                radius = outerRingRadius - 2.dp.toPx(),
+                style = Stroke(width = 3.dp.toPx())
+            )
+            drawCircle(
+                color = glowColor.copy(alpha = 0.48f),
+                radius = outerRingRadius,
+                style = Stroke(width = 2.dp.toPx())
+            )
+
+            // Outer Glass Lens (.lx-lens, z-index: 20): Top-lit specular chamfer
             drawArc(
                 color = Color.White.copy(alpha = 0.11f),
                 startAngle = 180f,
                 sweepAngle = 180f,
+                useCenter = false,
+                topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
+                size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
+                style = Stroke(width = 1.dp.toPx())
+            )
+            // Left subtle reflection
+            drawArc(
+                color = Color.White.copy(alpha = 0.055f),
+                startAngle = 90f,
+                sweepAngle = 90f,
                 useCenter = false,
                 topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
                 size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
@@ -699,6 +804,16 @@ fun FluxJoystick(
                 topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
                 size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
                 style = Stroke(width = 1.dp.toPx())
+            )
+            // Lower-right glass specular sheen: at 70% 78%
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.055f), Color.Transparent),
+                    center = Offset(w * 0.70f, h * 0.78f),
+                    radius = w * 0.20f
+                ),
+                center = Offset(w * 0.70f, h * 0.78f),
+                radius = w * 0.20f
             )
         }
     }
@@ -772,6 +887,12 @@ fun FluxStickButton(
         )
     }
 
+    val rgbBloomAlpha by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "flux_stick_btn_bloom"
+    )
+
     Box(
         modifier = modifier
             .size(70.dp)
@@ -780,10 +901,46 @@ fun FluxStickButton(
                 scaleY = scaleAnim
             }
             .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
+            .drawBehind {
+                if (isRgbEnabled) {
+                    val coreR = size.minDimension * (if (isPressed) 1.05f else 0.85f)
+                    // 1. Turbine core halo
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colorStops = arrayOf(
+                                0.00f to (if (isPressed) Color.White else glowColor).copy(alpha = rgbBloomAlpha * 0.65f),
+                                0.35f to glowColor.copy(alpha = rgbBloomAlpha * 0.30f),
+                                0.75f to glowColor.copy(alpha = rgbBloomAlpha * 0.10f),
+                                1.00f to Color.Transparent
+                            ),
+                            center = center,
+                            radius = coreR
+                        ),
+                        radius = coreR,
+                        center = center
+                    )
+
+                    // 2. Radiating turbine vanes
+                    val vaneR1 = size.minDimension * 0.44f
+                    val vaneR2 = size.minDimension * 0.54f
+                    val vaneColor = glowColor.copy(alpha = if (isPressed) 0.85f else 0.35f)
+                    for (i in 0 until 8) {
+                        val angle = Math.toRadians(i * 45.0)
+                        val cosA = cos(angle).toFloat()
+                        val sinA = sin(angle).toFloat()
+                        drawLine(
+                            color = vaneColor,
+                            start = Offset(center.x + vaneR1 * cosA, center.y + vaneR1 * sinA),
+                            end = Offset(center.x + vaneR2 * cosA, center.y + vaneR2 * sinA),
+                            strokeWidth = if (isPressed) 2.5f else 1.5f
+                        )
+                    }
+                }
+            }
             .shadow(
                 elevation = if (isPressed) 2.dp else 8.dp,
                 shape = CircleShape,
-                ambientColor = if (isRgbEnabled) glowColor.copy(alpha = 0.5f) else Color.Black,
+                ambientColor = if (isRgbEnabled) glowColor else Color.Black,
                 spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
             .clip(CircleShape)

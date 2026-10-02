@@ -1,0 +1,27 @@
+NEXPAD (Android Virtual Gamepad & HUD Engine)
+Copyright 2026 Sanket Parmar
+
+This product is licensed under the Apache License, Version 2.0.
+See the LICENSE file for more information.
+
+=========================================================================
+Third-Party Software Acknowledgments & Licenses
+=========================================================================
+
+This project incorporates components from the following open-source projects:
+
+1. Android Open Source Project (AOSP) & AndroidX Libraries
+   Copyright (c) The Android Open Source Project
+   License: Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+
+2. Jetpack Compose
+   Copyright (c) The Android Open Source Project
+   License: Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+
+3. Kotlin & Kotlinx Libraries (Coroutines, Serialization)
+   Copyright (c) 2010-2026 JetBrains s.r.o. and Kotlin Programming Language contributors
+   License: Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+
+4. Ktor
+   Copyright (c) 2018-2026 JetBrains s.r.o. and Ktor contributors
+   License: Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)

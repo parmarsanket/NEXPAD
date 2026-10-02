@@ -146,11 +146,11 @@ val RightHorizonClipShape = GenericShape { size, _ ->
  */
 @Composable
 fun RealisticButton(
-    key: String, 
+    key: String,
     buttonColor: Color,
-    isConnected: Boolean, 
-    onVibrate: () -> Unit, 
-    viewModel: GamepadViewModel, 
+    isConnected: Boolean,
+    onVibrate: () -> Unit,
+    viewModel: GamepadViewModel,
     isRgbEnabled: Boolean,
     modifier: Modifier = Modifier,
     displayLabel: String? = null
@@ -409,11 +409,11 @@ fun RealisticButton(
                 style = Stroke(width = 2.dp.toPx())
             )
 
-            // Layer #6: Socket Bevel Rim — 1px rgba(255, 255, 255, 0.12) outside neon ring
+            // Layer #6: Socket Bevel Rim — outside neon ring
             drawCircle(
-                color = buttonColor.copy(alpha = 0.12f),
+                color = buttonColor.copy(alpha = if (isPressed) 0.35f else 0.12f),
                 radius = ringRadius + 1.5.dp.toPx(),
-                style = if (isPressed)  Stroke(width = 20 .dp.toPx()) else  Stroke(width = 2.dp.toPx())
+                style = Stroke(width = if (isPressed) 3.5.dp.toPx() else 2.dp.toPx())
             )
 
             // .lens: Acrylic Glass Lens Specular Reflections

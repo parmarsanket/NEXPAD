@@ -86,6 +86,8 @@ fun HudCanvas(
                         onVibrate = {},
                         customComponentId = element.skinId,
                         sensitivity = element.transform.sensitivity,
+                        heightScale = element.transform.heightScale,
+                        isFlipped = element.transform.isFlipped,
                         labelStyle = labelStyle
                     )
 
