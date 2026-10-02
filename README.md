@@ -3,7 +3,7 @@
 [![Platform](https://img.shields.io/badge/Platform-Android%208.0%2B%20(API%2026--35)-brightgreen.svg)](https://developer.android.com)
 [![UI Framework](https://img.shields.io/badge/UI-100%25%20Jetpack%20Compose-4285F4.svg)](https://developer.android.com/jetpack/compose)
 [![Refresh Rate](https://img.shields.io/badge/Display-120Hz%20%2F%2090Hz%20ProMotion-00E5FF.svg)](#-procedural-vector-engine--120-fps-rendering)
-[![Polling Rate](https://img.shields.io/badge/Input%20Rate-1000Hz%20(Sub--millisecond)-3FD25A.svg)](#-multi-transport-connectivity)
+[![Response Time](https://img.shields.io/badge/Response%20Time-%3C1ms%20(Instant%20Event%20Bypass)-00E5FF.svg)](#-key-features)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
 [![Zero Telemetry](https://img.shields.io/badge/Privacy-100%25%20Offline%20%7C%200%20Telemetry-success.svg)](./PRIVACY_POLICY.md)
 [![Code Quality](https://img.shields.io/badge/Code%20Standard-Zero%20%40Suppress%20Guarantee-purple.svg)](#-developer--contributor-guide)
@@ -43,9 +43,10 @@ Built completely from scratch using **100% native Jetpack Compose** and hardware
 ### 1. ⚡ Ultra-Low Latency Multi-Transport Engine
 NEXPAD features an asynchronous, non-blocking I/O pipeline supporting four high-speed transports:
 - **Zero-Driver USB (AOA - Android Open Accessory)**: Connect directly via a standard USB-C cable. Provides sub-millisecond ($<1\,\text{ms}$) hardware transmission without enabling USB Debugging, ADB, or Root.
-- **1000Hz Binary UDP (5GHz Wi-Fi)**: Transmits compact 44-byte binary Xbox controller reports over local Wi-Fi with sub-frame precision.
+- **Instant Event-Driven Dispatch**: Button taps, releases, and analog triggers bypass periodic loops and dispatch immediately with **zero delay ($<1\,\text{ms}$)**.
+- **200Hz Continuous Stream Pipeline**: Transmits compact 44-byte binary Xbox controller reports at a sustained 200Hz ($5\,\text{ms}$) over local 5GHz Wi-Fi or USB with sub-frame precision.
 - **ADB Reverse TCP Bridge**: High-reliability fallback over standard Android Debug Bridge (`adb reverse tcp:9999 tcp:9999`).
-- **Bluetooth RFCOMM (Serial Port Profile)**: Wireless direct connection when local Wi-Fi infrastructure is unavailable.
+- **Bluetooth RFCOMM (125Hz / 8ms)**: Optimal ACL slot-aligned wireless direct connection when local Wi-Fi infrastructure is unavailable.
 
 ### 2. 🎨 100% Procedural Vector Engine & 120 FPS Rendering
 - **Zero Bitmaps**: All controls are rendered mathematically using Jetpack Compose `Canvas` and `DrawScope` paths, arcs, and gradients.
@@ -198,7 +199,7 @@ NEXPAD is engineered with total respect for user privacy:
 - **Permissions Breakdown**:
   - `INTERNET` & `ACCESS_NETWORK_STATE`: Required strictly for local peer-to-peer UDP packet transmission to your PC.
   - `VIBRATE`: Required for tactile haptic feedback in response to game rumble.
-  - `HIGH_SAMPLING_RATE_SENSORS`: Required to read the gyroscope at 1000Hz for steering and motion controls.
+  - `HIGH_SAMPLING_RATE_SENSORS`: Required to sample the gyroscope at 200Hz (5ms) for steering and motion controls.
   - `WAKE_LOCK`: Prevents the screen from dimming or sleeping while you are actively playing games.
 
 For full legal disclosures, read [`PRIVACY_POLICY.md`](./PRIVACY_POLICY.md).
