@@ -76,9 +76,9 @@ data class Position(
 fun standardElitePositions(): Map<String, Position> {
     val positions = mutableMapOf(
         // Triggers and Bumpers (Top Corners)
-        K.LT to Position(0.080f, 0.055f, scale = 1.18f),
+        K.LT to Position(0.080f, 0.130f, scale = 1.18f),
         K.LB to Position(0.080f, 0.375f, scale = 0.95f),
-        K.RT to Position(0.920f, 0.055f, scale = 1.18f),
+        K.RT to Position(0.920f, 0.130f, scale = 1.18f),
         K.RB to Position(0.920f, 0.375f, scale = 0.95f),
 
         // Left Stick & D-Pad (Integrated 4-Way Cross Pad)
