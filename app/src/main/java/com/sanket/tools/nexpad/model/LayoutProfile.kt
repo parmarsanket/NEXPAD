@@ -89,10 +89,10 @@ fun standardElitePositions(): Map<String, Position> {
         K.RS to Position(0.895f, 0.740f, scale = 1.05f),
 
         // Center System Cluster
-        K.GUIDE to Position(0.500f, 0.080f, scale = 1.15f),
-        K.BACK  to Position(0.430f, 0.230f, scale = 0.70f),
-        K.START to Position(0.500f, 0.230f, scale = 0.70f),
-        K.SHARE to Position(0.570f, 0.230f, scale = 0.70f)
+        K.GUIDE to Position(0.500f, 0.130f, scale = 1.15f),
+        K.BACK  to Position(0.430f, 0.310f, scale = 0.70f),
+        K.START to Position(0.500f, 0.310f, scale = 0.70f),
+        K.SHARE to Position(0.570f, 0.310f, scale = 0.70f)
     )
 
     // Face Buttons: Aspect-ratio corrected isotropic diamond cluster
