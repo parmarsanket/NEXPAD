@@ -500,7 +500,7 @@ private fun StaticRealisticJoystick(
 @Preview
 @Composable
 internal fun StaticFluxJoystick(
-    isLeft: Boolean,
+    isLeft: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val glowColor = if (isLeft) Color(0xFF2FD4B6) else Color(0xFFFF3185)
@@ -677,7 +677,7 @@ internal fun StaticFluxJoystick(
 @Preview
 @Composable
 internal fun StaticFluxStickButton(
-    isLeft: Boolean,
+    isLeft: Boolean = true,
     modifier: Modifier = Modifier,
     label: String? = null
 ) {
@@ -793,7 +793,7 @@ internal fun StaticFluxStickButton(
 @Preview
 @Composable
 internal fun StaticOrbJoystick(
-    isLeft: Boolean,
+    isLeft: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val glowColor = if (isLeft) Color(0xFF2FD4B6) else Color(0xFFFF3185)
@@ -997,7 +997,7 @@ internal fun StaticOrbJoystick(
 @Preview
 @Composable
 internal fun StaticOrbStickButton(
-    isLeft: Boolean,
+    isLeft: Boolean = true,
     modifier: Modifier = Modifier,
     label: String? = null
 ) {
@@ -1128,7 +1128,7 @@ internal fun StaticOrbStickButton(
 @Preview
 @Composable
 internal fun StaticCompassJoystick(
-    isLeft: Boolean,
+    isLeft: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val glowColor = if (isLeft) Color(0xFF5AA8FF) else Color(0xFFFF5A88)
@@ -1346,7 +1346,7 @@ internal fun StaticCompassJoystick(
 @Preview
 @Composable
 internal fun StaticCompassStickButton(
-    isLeft: Boolean,
+    isLeft: Boolean = true,
     modifier: Modifier = Modifier,
     label: String? = null
 ) {
@@ -1467,7 +1467,7 @@ internal fun StaticCompassStickButton(
 @Preview
 @Composable
 internal fun StaticGyroJoystick(
-    isLeft: Boolean,
+    isLeft: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val glowColor = if (isLeft) Color(0xFF3FD2FF) else Color(0xFFFF3F85)
@@ -1644,7 +1644,7 @@ internal fun StaticGyroJoystick(
 @Preview
 @Composable
 internal fun StaticGyroStickButton(
-    isLeft: Boolean,
+    isLeft: Boolean = true,
     modifier: Modifier = Modifier,
     label: String? = null
 ) {
@@ -1754,7 +1754,7 @@ internal fun StaticGyroStickButton(
 @Preview
 @Composable
 internal fun StaticSpotlightJoystick(
-    isLeft: Boolean,
+    isLeft: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val glowColor = if (isLeft) Color(0xFFFFD23F) else Color(0xFFFF3F85)
@@ -1958,7 +1958,7 @@ internal fun StaticSpotlightJoystick(
 @Preview
 @Composable
 internal fun StaticSpotlightStickButton(
-    isLeft: Boolean,
+    isLeft: Boolean = true,
     modifier: Modifier = Modifier,
     label: String? = null
 ) {
