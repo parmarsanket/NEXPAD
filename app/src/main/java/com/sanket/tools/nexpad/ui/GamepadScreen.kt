@@ -331,10 +331,36 @@ fun GamepadScreenContent(
         val screenWidthPx = maxOf(constraints.maxWidth, constraints.maxHeight).toFloat()
         val screenHeightPx = minOf(constraints.maxWidth, constraints.maxHeight).toFloat()
 
-        // 1. Floating Joystick Touch Layer (Background layer behind controls)
         val lsEntry = profile.positions.entries.firstOrNull { it.key.equals("LS", ignoreCase = true) }
         val rsEntry = profile.positions.entries.firstOrNull { it.key.equals("RS", ignoreCase = true) }
 
+        // 1. Render mapped components with center-based placement + floating offsets
+        profile.positions.forEach { (key, position) ->
+            val isLs = key.equals("LS", ignoreCase = true)
+            val isRs = key.equals("RS", ignoreCase = true)
+
+            Box(
+                modifier = Modifier
+                    .layout { measurable, childConstraints ->
+                        val placeable = measurable.measure(childConstraints)
+                        val extraX = if (isLs) lsFloatX.value else if (isRs) rsFloatX.value else 0f
+                        val extraY = if (isLs) lsFloatY.value else if (isRs) rsFloatY.value else 0f
+                        val x = (position.xRatio * screenWidthPx - placeable.width / 2f + extraX).roundToInt()
+                        val y = (position.yRatio * screenHeightPx - placeable.height / 2f + extraY).roundToInt()
+                        layout(placeable.width, placeable.height) {
+                            placeable.placeRelative(x, y)
+                        }
+                    }
+                    .scale(position.scale)
+                    .alpha(position.opacity)
+            ) {
+                renderElement(key, position)
+            }
+        }
+
+        // 2. Floating Joystick Touch Layers — rendered LAST (highest Z-order) so they receive
+        //    pointer events before the joystick UI widget's pointerInput. The zone gate inside
+        //    each layer ensures only the correct half/box region is claimed.
         if (lsEntry != null) {
             val lsPos = lsEntry.value
             val lsMode = lsPos.joystickMode ?: if (lsPos.isLocked == false) "FULL" else "LOCKED"
@@ -370,30 +396,6 @@ fun GamepadScreenContent(
                     viewModel = viewModel,
                     isConnected = isConnected
                 )
-            }
-        }
-
-        // 2. Render mapped components with center-based placement + floating offsets
-        profile.positions.forEach { (key, position) ->
-            val isLs = key.equals("LS", ignoreCase = true)
-            val isRs = key.equals("RS", ignoreCase = true)
-
-            Box(
-                modifier = Modifier
-                    .layout { measurable, childConstraints ->
-                        val placeable = measurable.measure(childConstraints)
-                        val extraX = if (isLs) lsFloatX.value else if (isRs) rsFloatX.value else 0f
-                        val extraY = if (isLs) lsFloatY.value else if (isRs) rsFloatY.value else 0f
-                        val x = (position.xRatio * screenWidthPx - placeable.width / 2f + extraX).roundToInt()
-                        val y = (position.yRatio * screenHeightPx - placeable.height / 2f + extraY).roundToInt()
-                        layout(placeable.width, placeable.height) {
-                            placeable.placeRelative(x, y)
-                        }
-                    }
-                    .scale(position.scale)
-                    .alpha(position.opacity)
-            ) {
-                renderElement(key, position)
             }
         }
     }
@@ -442,9 +444,6 @@ private fun BoxScope.FloatingJoystickTouchLayer(
                     // which participates in hit-testing and causes requireUnconsumed=true to
                     // silently skip touches near the joystick center — the core bug fixed here.
                     val down = awaitFirstDown(requireUnconsumed = false)
-
-                    // Skip if a button / control explicitly claimed this touch
-                    if (down.isConsumed) return@awaitEachGesture
 
                     // Local coords == screen coords because the Box is full-screen
                     val tx = down.position.x
