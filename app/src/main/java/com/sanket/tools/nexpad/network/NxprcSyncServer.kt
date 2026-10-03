@@ -10,7 +10,9 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.IOException
 import java.net.ServerSocket
+import java.net.Socket
 import java.net.SocketException
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Lightweight background TCP server listening on SYNC_TCP_PORT (9995)
@@ -18,7 +20,9 @@ import java.net.SocketException
  *
  * Gamepad UDP streaming (port 9999) continues simultaneously with zero disruption or jitter.
  */
-class NxprcSyncServer(private val context: Context) {
+class NxprcSyncServer(context: Context) {
+
+    private val appContext = context.applicationContext
 
     companion object {
         private const val TAG = "NxprcSyncServer"
@@ -26,6 +30,7 @@ class NxprcSyncServer(private val context: Context) {
 
     private var serverSocket: ServerSocket? = null
     private var serverJob: Job? = null
+    private val activeClientSockets = ConcurrentHashMap.newKeySet<Socket>()
 
     @Synchronized
     fun start(scope: CoroutineScope) {
@@ -47,13 +52,14 @@ class NxprcSyncServer(private val context: Context) {
                         break
                     }
 
+                    activeClientSockets.add(socket)
                     launch(Dispatchers.IO) {
                         try {
                             socket.soTimeout = 10000 // 10s timeout
                             val input = socket.getInputStream()
                             val output = socket.getOutputStream()
 
-                            val result = NxprcSyncReceiver.receiveFromStream(context, input)
+                            val result = NxprcSyncReceiver.receiveFromStream(appContext, input)
                             if (result.isSuccess) {
                                 output.write(NexpadProtocol.FILE_SYNC_ACK.toInt())
                                 output.flush()
@@ -66,6 +72,7 @@ class NxprcSyncServer(private val context: Context) {
                         } catch (e: Exception) {
                             Log.w(TAG, "Sync connection error: ${e.message}")
                         } finally {
+                            activeClientSockets.remove(socket)
                             try { socket.close() } catch (_: Exception) {}
                         }
                     }
@@ -86,6 +93,12 @@ class NxprcSyncServer(private val context: Context) {
             serverSocket?.close()
         } catch (_: Exception) {}
         serverSocket = null
+
+        activeClientSockets.forEach { socket ->
+            try { socket.close() } catch (_: Exception) {}
+        }
+        activeClientSockets.clear()
+
         serverJob?.cancel()
         serverJob = null
     }

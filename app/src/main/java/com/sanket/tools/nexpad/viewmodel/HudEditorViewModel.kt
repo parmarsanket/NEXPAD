@@ -555,8 +555,9 @@ class HudEditorViewModel(
      */
     fun saveProfile(onSaved: () -> Unit = {}) {
         val profile = _currentProfile.value
+        val elementsSnapshot = elements.values.toList()
         val positionMap = mutableMapOf<String, Position>()
-        elements.values.forEach { element ->
+        elementsSnapshot.forEach { element ->
             val canonical = ControlKey.fromIdentifier(element.controlKey)?.key ?: element.controlKey.uppercase()
             if (!positionMap.containsKey(canonical)) {
                 positionMap[canonical] = element.toPosition()

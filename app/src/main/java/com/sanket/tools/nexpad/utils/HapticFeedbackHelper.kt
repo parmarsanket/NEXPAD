@@ -21,18 +21,20 @@ import android.os.VibratorManager
  * - HAPTICS_CLICK_STRENGTH (Float, default: 0.8f, range: 0.1f..1.0f)
  * - HAPTICS_STYLE (String: "crisp", "heavy", "soft", default: "crisp")
  */
-class HapticFeedbackHelper(private val context: Context) {
+class HapticFeedbackHelper(context: Context) {
+
+    private val appContext = context.applicationContext
 
     private val sharedPref: SharedPreferences by lazy {
-        context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+        appContext.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
     }
 
     private val vibrator: Vibrator by lazy {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val vibratorManager = context.getSystemService(VibratorManager::class.java)
-            vibratorManager?.defaultVibrator ?: context.getSystemService(Vibrator::class.java)!!
+            val vibratorManager = appContext.getSystemService(VibratorManager::class.java)
+            vibratorManager?.defaultVibrator ?: appContext.getSystemService(Vibrator::class.java)!!
         } else {
-            context.getSystemService(Vibrator::class.java)!!
+            appContext.getSystemService(Vibrator::class.java)!!
         }
     }
 

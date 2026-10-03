@@ -91,10 +91,11 @@ class NetworkClient : IGamepadConnection {
         }
         
         val myChannel = channel
-        connectionScope = kotlinx.coroutines.CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        val scope = kotlinx.coroutines.CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        connectionScope = scope
         
         // Watchdog Coroutine to detect PC disconnection
-        connectionScope!!.launch {
+        scope.launch {
             while (isActive) {
                 kotlinx.coroutines.delay(1000)
                 if (isHandshakeComplete) {
@@ -108,7 +109,7 @@ class NetworkClient : IGamepadConnection {
             }
         }
         
-        connectionScope!!.launch {
+        scope.launch {
             val deviceName = android.os.Build.MODEL
             val nameBytes = deviceName.toByteArray(Charsets.UTF_8)
             val safeLength = nameBytes.size.coerceAtMost(255)
@@ -152,7 +153,7 @@ class NetworkClient : IGamepadConnection {
         }
         
         // Launch receive job in a separate scope so connect() can return immediately
-        receiveJob = connectionScope!!.launch {
+        receiveJob = scope.launch {
             val receiveBuffer = ByteBuffer.allocateDirect(1024)
             android.util.Log.d("NEXPAD", "receiveJob started. Waiting for packets at t=${android.os.SystemClock.elapsedRealtime() - benchmarkStartTimeMs}ms...")
             
@@ -276,9 +277,6 @@ class NetworkClient : IGamepadConnection {
     private var packetsSent = 0
     private val sendMutex = Mutex()
     
-    // DEBUG: Chaos Monkey - Set to true to artificially drop and scramble UDP packets for testing.
-    private val ENABLE_CHAOS_MONKEY = false
-    
     override suspend fun sendInput(input: GamepadInput) {
         if (!isHandshakeComplete) return
         
@@ -300,27 +298,6 @@ class NetworkClient : IGamepadConnection {
                 sendBuffer.clear()
                 sendBuffer.put(sendByteArray)
                 sendBuffer.flip()
-                
-                if (ENABLE_CHAOS_MONKEY) {
-                    val rand = Math.random()
-                    if (rand < 0.1) {
-                        // 10% chance to drop the packet entirely — exercises packet-loss counter
-                        return@withLock
-                    }
-                    if (rand < 0.3) {
-                        // 20% chance to delay the packet.
-                        // Use 1500ms to reproduce RTT staleness bug (128 slots ÷ 120Hz ≈ 1.07s threshold).
-                        // Revert delay to 30ms after staleness testing is confirmed.
-                        val CHAOS_DELAY_MS = 1500L
-                        val delayedBuffer = ByteBuffer.allocateDirect(NexpadProtocol.INPUT_PACKET_SIZE)
-                        delayedBuffer.put(sendByteArray).flip()
-                        kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
-                            kotlinx.coroutines.delay(CHAOS_DELAY_MS)
-                            try { currentChannel.send(delayedBuffer, target) } catch (e: Exception) {}
-                        }
-                        return@withLock
-                    }
-                }
                 
                 // Send the pre-allocated packet
                 currentChannel.send(sendBuffer, target)

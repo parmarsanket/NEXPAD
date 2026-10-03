@@ -13,8 +13,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-class LayoutManager(private val context: Context) {
-    private val prefs = context.getSharedPreferences("NEXPAD_LAYOUTS_V3", Context.MODE_PRIVATE)
+class LayoutManager(context: Context) {
+    private val appContext = context.applicationContext
+    private val prefs = appContext.getSharedPreferences("NEXPAD_LAYOUTS_V3", Context.MODE_PRIVATE)
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     private val _profilesFlow = MutableStateFlow<List<LayoutProfile>>(emptyList())
@@ -89,7 +90,7 @@ class LayoutManager(private val context: Context) {
         }
 
         if (needsCommit) {
-            editor.commit()
+            editor.apply()
         }
 
         val savedName = prefs.getString("active_profile", "Standard Elite") ?: "Standard Elite"
@@ -207,7 +208,7 @@ class LayoutManager(private val context: Context) {
             customNames.add(canonicalProfile.name)
             editor.putStringSet("custom_profile_names", customNames)
         }
-        editor.commit()
+        editor.apply()
 
         if (activate) {
             setActiveProfile(canonicalProfile.name)
@@ -295,7 +296,7 @@ class LayoutManager(private val context: Context) {
                 }
             } catch (_: Exception) {}
         }
-        editor.commit()
+        editor.apply()
 
         // If the deleted profile was active, switch to Default 1 (Standard Elite)
         val activeName = prefs.getString("active_profile", "Standard Elite")
@@ -360,7 +361,7 @@ class LayoutManager(private val context: Context) {
                 }
             } catch (_: Exception) {}
         }
-        renameEditor.commit()
+        renameEditor.apply()
 
         if (wasActive) {
             setActiveProfile(trimmedNew)
@@ -383,7 +384,7 @@ class LayoutManager(private val context: Context) {
                 editor.remove(key)
             }
         }
-        editor.commit()
+        editor.apply()
         refreshProfilesFlow()
         return factoryDefault
     }
@@ -450,7 +451,7 @@ class LayoutManager(private val context: Context) {
 
     /** Updates touchpad sensitivity preferences in nexpad_prefs. */
     fun updateTouchpadSensitivity(key: String, sens: Float) {
-        val sp = context.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
+        val sp = appContext.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
         val upperKey = key.uppercase()
         sp.edit()
             .putFloat("TOUCHPAD_SENSITIVITY_$upperKey", sens)
