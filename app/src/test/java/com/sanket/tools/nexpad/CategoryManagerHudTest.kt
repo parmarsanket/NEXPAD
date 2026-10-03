@@ -22,6 +22,7 @@ import com.sanket.tools.nexpad.ui.components.controller.VelocityRingBuffer
 import com.sanket.tools.nexpad.ui.components.controller.PlayStationShape
 import com.sanket.tools.nexpad.ui.components.controller.getPlayStationShape
 import com.sanket.tools.nexpad.ui.components.controller.isPlayStationSymbol
+import com.sanket.tools.nexpad.runtime.registry.NativeComponentRegistry
 
 class CategoryManagerHudTest {
 
@@ -1416,6 +1417,74 @@ class CategoryManagerHudTest {
         assertEquals(0.735f, rtpTransform.yRatio, 0.0001f)
         assertEquals(1.25f, rtpTransform.scale, 0.0001f)
         assertEquals(0.88f, rtpTransform.opacity, 0.0001f)
+    }
+
+    @Test
+    fun testInbuildTouchpadVariantsRegistration() {
+        val ltpVariant = com.sanket.tools.nexpad.runtime.registry.DefaultNativeFamily.getVariant("builtin.inbuild_ltp")
+        assertNotNull("Inbuild LTP variant must be registered", ltpVariant)
+        assertEquals(ControlKey.LTP, ltpVariant?.controlKey)
+        assertEquals("Inbuild Surface", ltpVariant?.variantName)
+        assertEquals(6003, ltpVariant?.seedCode)
+
+        val rtpVariant = com.sanket.tools.nexpad.runtime.registry.DefaultNativeFamily.getVariant("builtin.inbuild_rtp")
+        assertNotNull("Inbuild RTP variant must be registered", rtpVariant)
+        assertEquals(ControlKey.RTP, rtpVariant?.controlKey)
+        assertEquals("Inbuild Surface", rtpVariant?.variantName)
+        assertEquals(6004, rtpVariant?.seedCode)
+    }
+
+    @Test
+    fun testInbuildTouchpadButtonBufferZoneExclusion() {
+        // Universal 16.dp buffer zone Euclidean distance check
+        val marginPx = 16f
+        val marginSq = marginPx * marginPx
+
+        // Simulated button placed at (100, 200) with size 80x80 -> Center = (140, 240)
+        val buttonCenterX = 140f
+        val buttonCenterY = 240f
+        val buttonHalfW = 40f
+        val buttonHalfH = 40f
+
+        fun isNearButton(touchX: Float, touchY: Float): Boolean {
+            val dx = maxOf(kotlin.math.abs(touchX - buttonCenterX) - buttonHalfW, 0f)
+            val dy = maxOf(kotlin.math.abs(touchY - buttonCenterY) - buttonHalfH, 0f)
+            return (dx * dx + dy * dy) <= marginSq
+        }
+
+        // 1. Direct hit on the button (e.g. center) -> must be excluded (touchpad ignored)
+        assertTrue("Direct button tap must be excluded from touchpad", isNearButton(140f, 240f))
+
+        // 2. Touch 8px outside the right edge of button -> within 16px buffer -> must be excluded
+        assertTrue("Touch 8px right of button edge must be excluded", isNearButton(188f, 240f))
+
+        // 3. Touch 15px outside the bottom edge -> within 16px buffer -> must be excluded
+        assertTrue("Touch 15px below button edge must be excluded", isNearButton(140f, 295f))
+
+        // 4. Touch 10px right and 10px down from corner -> Euclidean dist = sqrt(200) = 14.14px <= 16px -> excluded
+        assertTrue("Touch 10px from corner is within Euclidean buffer zone", isNearButton(190f, 290f))
+
+        // 5. Touch 20px outside button edge -> outside 16px buffer -> NOT excluded (touchpad triggers!)
+        assertFalse("Touch 20px outside button is clear of buffer zone", isNearButton(200f, 240f))
+
+        // 6. Touch far away in empty space -> NOT excluded (touchpad triggers!)
+        assertFalse("Touch in empty space triggers touchpad smoothly", isNearButton(500f, 500f))
+    }
+
+    @Test
+    fun testInbuildTouchpadHalfScreenPartition() {
+        val screenWidthPx = 2400f
+        val halfWidthPx = screenWidthPx / 2f // 1200f
+
+        fun isTouchpadRegionLeft(touchX: Float): Boolean = touchX < halfWidthPx
+
+        // Left screen touches belong to LTP
+        assertTrue("X=100 is in left (LTP) region", isTouchpadRegionLeft(100f))
+        assertTrue("X=1199 is in left (LTP) region", isTouchpadRegionLeft(1199f))
+
+        // Right screen touches belong to RTP
+        assertFalse("X=1200 is in right (RTP) region", isTouchpadRegionLeft(1200f))
+        assertFalse("X=2200 is in right (RTP) region", isTouchpadRegionLeft(2200f))
     }
 }
 

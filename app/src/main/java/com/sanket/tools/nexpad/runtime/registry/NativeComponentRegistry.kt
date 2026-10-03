@@ -2059,6 +2059,58 @@ object RealisticRightTouchPadVariant : BaseNativeVariant("builtin.default_rtp", 
     }
 }
 
+object InbuildLeftTouchPadVariant : BaseNativeVariant("builtin.inbuild_ltp", ControlKey.LTP, "Inbuild Surface", 6003) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        InbuildTouchpad(
+            isLeft = true,
+            isConnected = context.isConnected,
+            viewModel = context.viewModel,
+            onVibrate = context.onVibrate,
+            isRgbEnabled = context.isRgbEnabled,
+            sensitivity = context.sensitivity,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticInbuildTouchpad(
+            isLeft = true,
+            isRgbEnabled = context.isRgbEnabled,
+            modifier = context.modifier
+        )
+    }
+}
+
+object InbuildRightTouchPadVariant : BaseNativeVariant("builtin.inbuild_rtp", ControlKey.RTP, "Inbuild Surface", 6004) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        InbuildTouchpad(
+            isLeft = false,
+            isConnected = context.isConnected,
+            viewModel = context.viewModel,
+            onVibrate = context.onVibrate,
+            isRgbEnabled = context.isRgbEnabled,
+            sensitivity = context.sensitivity,
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        StaticInbuildTouchpad(
+            isLeft = false,
+            isRgbEnabled = context.isRgbEnabled,
+            modifier = context.modifier
+        )
+    }
+}
+
 class RealisticSystemButtonVariant(controlKey: ControlKey, seedCode: Int) :
     BaseNativeVariant("builtin.default_${controlKey.key.lowercase()}", controlKey, "Realistic 3D", seedCode) {
     override val isBaselineDefault: Boolean = true
@@ -2163,6 +2215,8 @@ object DefaultNativeFamily {
         register(RealisticRightStickButtonVariant)
         register(RealisticLeftTouchPadVariant)
         register(RealisticRightTouchPadVariant)
+        register(InbuildLeftTouchPadVariant)
+        register(InbuildRightTouchPadVariant)
         register(RealisticDPadVariant)
         register(RealisticDPadButtonVariant(ControlKey.UP, 4002))
         register(RealisticDPadButtonVariant(ControlKey.DOWN, 4003))

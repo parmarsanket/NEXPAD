@@ -47,6 +47,7 @@ import com.sanket.tools.nexpad.ui.components.controller.RealisticJoystick
 import com.sanket.tools.nexpad.ui.components.controller.RealisticMacroButton
 import com.sanket.tools.nexpad.ui.components.controller.RealisticSystemButton
 import com.sanket.tools.nexpad.ui.components.controller.RealisticTrigger
+import com.sanket.tools.nexpad.ui.components.controller.InbuildTouchpadHalf
 import com.sanket.tools.nexpad.utils.LockScreenOrientation
 import kotlin.math.pow
 
@@ -341,25 +342,105 @@ fun GamepadScreenContent(
 
         val lsEntry = profile.positions.entries.firstOrNull { it.key.equals("LS", ignoreCase = true) }
         val rsEntry = profile.positions.entries.firstOrNull { it.key.equals("RS", ignoreCase = true) }
+        val ltpEntry = profile.positions.entries.firstOrNull { it.key.equals("LTP", ignoreCase = true) }
+        val rtpEntry = profile.positions.entries.firstOrNull { it.key.equals("RTP", ignoreCase = true) }
 
+        val touchpadEntries = remember(profile.positions) {
+            profile.positions.entries.filter { (key, _) ->
+                key.equals("LTP", ignoreCase = true) || key.equals("RTP", ignoreCase = true)
+            }
+        }
         val joystickEntries = remember(profile.positions) {
             profile.positions.entries.filter { (key, _) ->
                 key.equals("LS", ignoreCase = true) || key.equals("RS", ignoreCase = true)
             }
         }
-        val nonJoystickEntries = remember(profile.positions) {
+        val interactiveButtonEntries = remember(profile.positions) {
             profile.positions.entries.filter { (key, _) ->
-                !key.equals("LS", ignoreCase = true) && !key.equals("RS", ignoreCase = true)
+                !key.equals("LS", ignoreCase = true) &&
+                !key.equals("RS", ignoreCase = true) &&
+                !key.equals("LTP", ignoreCase = true) &&
+                !key.equals("RTP", ignoreCase = true)
             }
         }
 
-        // Dynamically track exact runtime bounding boxes of all non-joystick buttons in container coords
+        // Dynamically track exact runtime bounding boxes of all interactive buttons in container coords
         val buttonBoundsMap = remember { mutableStateMapOf<String, Rect>() }
         LaunchedEffect(profile.positions) {
             buttonBoundsMap.clear()
         }
 
-        // 1. Render joystick UI elements (LS, RS) — placed at bottom Z-order (visual base & knob)
+        val halfWidthDp = with(density) { (screenWidthPx / 2f).toDp() }
+
+        // 1. INBUILD TOUCHPAD FULL-SURFACE AMBIENT LAYER (LOWEST Z-INDEX)
+        // Consumes all empty space: Center-to-Left for LTP, Center-to-Right for RTP.
+        // Protected by 16.dp button exclusion buffer zone so interactive buttons have absolute priority.
+        if (ltpEntry != null) {
+            val leftExclusions = remember(buttonBoundsMap.toMap(), screenWidthPx) {
+                buttonBoundsMap.values.filter { it.center.x < screenWidthPx / 2f }
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(halfWidthDp)
+                    .align(Alignment.CenterStart)
+            ) {
+                InbuildTouchpadHalf(
+                    isLeft = true,
+                    screenWidthPx = screenWidthPx,
+                    screenHeightPx = screenHeightPx,
+                    exclusionRects = leftExclusions,
+                    isConnected = isConnected,
+                    isRgbEnabled = profile.isRgbEnabled,
+                    viewModel = viewModel,
+                    sensitivity = ltpEntry.value.sensitivity
+                )
+            }
+        }
+
+        if (rtpEntry != null) {
+            val rightExclusions = remember(buttonBoundsMap.toMap(), screenWidthPx) {
+                buttonBoundsMap.values.filter { it.center.x >= screenWidthPx / 2f }
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(halfWidthDp)
+                    .align(Alignment.CenterEnd)
+            ) {
+                InbuildTouchpadHalf(
+                    isLeft = false,
+                    screenWidthPx = screenWidthPx,
+                    screenHeightPx = screenHeightPx,
+                    exclusionRects = rightExclusions,
+                    isConnected = isConnected,
+                    isRgbEnabled = profile.isRgbEnabled,
+                    viewModel = viewModel,
+                    sensitivity = rtpEntry.value.sensitivity
+                )
+            }
+        }
+
+        // Discrete Touchpad UI elements (LTP, RTP) — Placed at lowest Z-order so user can place buttons over them
+        touchpadEntries.forEach { (key, position) ->
+            Box(
+                modifier = Modifier
+                    .layout { measurable, childConstraints ->
+                        val placeable = measurable.measure(childConstraints)
+                        val x = (position.xRatio * screenWidthPx - placeable.width / 2f).roundToInt()
+                        val y = (position.yRatio * screenHeightPx - placeable.height / 2f).roundToInt()
+                        layout(placeable.width, placeable.height) {
+                            placeable.placeRelative(x, y)
+                        }
+                    }
+                    .scale(position.scale)
+                    .alpha(position.opacity)
+            ) {
+                renderElement(key, position)
+            }
+        }
+
+        // 2. Render joystick UI elements (LS, RS) — Middle Z-order (visual base & knob)
         joystickEntries.forEach { (key, position) ->
             val isLs = key.equals("LS", ignoreCase = true)
             val isRs = key.equals("RS", ignoreCase = true)
@@ -383,12 +464,9 @@ fun GamepadScreenContent(
             }
         }
 
-        // 2. Independent Half-Screen Joystick Touch Layers (Center-to-Left for LS, Center-to-Right for RS)
+        // Independent Half-Screen Joystick Touch Layers (Center-to-Left for LS, Center-to-Right for RS)
         // Floating joystick is ONLY active for BOX and FULL modes.
         // When LOCKED, the joystick is locked at its home position and handles touches directly without floating.
-        val halfWidthDp = with(density) { (screenWidthPx / 2f).toDp() }
-
-        // Left Stick: handles center to left (x < screenWidth / 2)
         if (lsEntry != null) {
             val lsPos = lsEntry.value
             val lsMode = lsPos.joystickMode ?: if (lsPos.isLocked == false) "FULL" else "LOCKED"
@@ -452,7 +530,7 @@ fun GamepadScreenContent(
 
         // 3. Render all interactive buttons, D-pad, triggers, bumpers, menu buttons — HIGHEST Z-order.
         // Direct button taps are captured by the buttons with absolute priority.
-        nonJoystickEntries.forEach { (key, position) ->
+        interactiveButtonEntries.forEach { (key, position) ->
             Box(
                 modifier = Modifier
                     .layout { measurable, childConstraints ->
