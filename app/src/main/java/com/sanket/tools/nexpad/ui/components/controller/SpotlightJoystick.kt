@@ -1,4 +1,4 @@
-package com.sanket.tools.nexpad.ui.components.controller
+﻿package com.sanket.tools.nexpad.ui.components.controller
 
 import android.content.Context
 import androidx.compose.animation.core.Animatable
@@ -262,7 +262,7 @@ fun SpotlightJoystick(
                 shape = CircleShape
             )
             .pointerInput(isConnected, isLocked, isLeft, isCameraMode, cameraSensitivity, density, maxTravelPx) {
-                if (!isConnected || !isLocked) return@pointerInput
+                if (!isLocked) return@pointerInput
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     val centerX = size.width / 2f
