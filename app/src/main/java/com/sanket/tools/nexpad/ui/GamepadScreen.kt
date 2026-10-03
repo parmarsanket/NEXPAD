@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpad.ui
+package com.sanket.tools.nexpad.ui
 
 import android.content.pm.ActivityInfo
 import androidx.activity.compose.BackHandler
@@ -415,122 +415,132 @@ private fun BoxScope.FloatingJoystickTouchLayer(
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
 
-    // Joystick home position in screen coordinates (center of the element at rest)
-    val homeCenter = remember(position, screenWidthPx, screenHeightPx) {
-        Offset(position.xRatio * screenWidthPx, position.yRatio * screenHeightPx)
+    // Joystick home center in screen/layout pixels
+    val homeX = remember(position, screenWidthPx) { position.xRatio * screenWidthPx }
+    val homeY = remember(position, screenHeightPx) { position.yRatio * screenHeightPx }
+
+    // Maximum knob travel before the base starts sliding (PUBG/CoD maxRadius)
+    val maxThrowPx = remember(density) { with(density) { 60.dp.toPx() } }
+
+    // BOX mode: half-size of the square activation region (centered on home)
+    val boxHalfPx = remember(mode, hitboxScale, position, density) {
+        if (mode == "BOX") {
+            val joystickDiamPx = with(density) { 150.dp.toPx() } * position.scale
+            (joystickDiamPx * hitboxScale) / 2f
+        } else 0f
     }
 
-    // Maximum throw distance before the base starts dragging behind the finger
-    val maxThrowPx = with(density) { 45.dp.toPx() }
-
-    // boxOriginX/Y: top-left of the touch zone Box in SCREEN coordinates.
-    // We add these to every local pointer position to convert to screen space (done ONCE per event).
-    val (boxModifier, boxOriginX, boxOriginY) = remember(mode, hitboxScale, position, screenWidthPx, screenHeightPx) {
-        if (mode == "FULL") {
-            // Full mode: left half-screen or right half-screen
-            val halfWidth = screenWidthPx / 2f
-            val originX = if (isLeft) 0f else halfWidth
-            val originY = 0f
-            val mod = Modifier
-                .fillMaxHeight()
-                .width(with(density) { halfWidth.toDp() })
-                .then(if (isLeft) Modifier.align(Alignment.CenterStart) else Modifier.align(Alignment.CenterEnd))
-            Triple(mod, originX, originY)
-        } else {
-            // BOX mode: square zone centered on the joystick home position
-            val diameterPx = with(density) { 150.dp.toPx() } * position.scale
-            val boxSizePx = diameterPx * hitboxScale
-            val originX = homeCenter.x - boxSizePx / 2f
-            val originY = homeCenter.y - boxSizePx / 2f
-            val mod = Modifier
-                .offset { IntOffset(originX.roundToInt(), originY.roundToInt()) }
-                .size(with(density) { boxSizePx.toDp() })
-            Triple(mod, originX, originY)
-        }
-    }
-
+    // Full-screen transparent overlay. Local coords == screen coords (no conversion needed).
+    // Zone gating is done inside the gesture handler so LS and RS layers co-exist cleanly.
     Box(
-        modifier = boxModifier
-            .pointerInput(mode, boxOriginX, boxOriginY, homeCenter) {
-                // isConnected is NOT checked here intentionally — the floating layer should
-                // process touch for visual feedback even when no physical controller is attached.
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(mode, homeX, homeY, boxHalfPx, screenWidthPx, isLeft) {
                 awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = true)
+                    // requireUnconsumed = false: we see ALL touch-downs. The joystick widget
+                    // itself has pointerInput that exits immediately (isLocked=false guard),
+                    // which participates in hit-testing and causes requireUnconsumed=true to
+                    // silently skip touches near the joystick center — the core bug fixed here.
+                    val down = awaitFirstDown(requireUnconsumed = false)
+
+                    // Skip if a button / control explicitly claimed this touch
+                    if (down.isConsumed) return@awaitEachGesture
+
+                    // Local coords == screen coords because the Box is full-screen
+                    val tx = down.position.x
+                    val ty = down.position.y
+
+                    // Activation zone gate
+                    val inZone = when (mode) {
+                        "FULL" -> if (isLeft) tx < screenWidthPx / 2f
+                                  else        tx >= screenWidthPx / 2f
+                        "BOX"  -> abs(tx - homeX) <= boxHalfPx &&
+                                  abs(ty - homeY) <= boxHalfPx
+                        else   -> false
+                    }
+                    if (!inZone) return@awaitEachGesture
+
+                    // Claim touch; base snaps to finger
                     down.consume()
 
-                    // ── Local → Screen coordinate conversion ──────────────────────────────
-                    // down.position is in the LOCAL space of this Box (origin = Box top-left).
-                    // boxOriginX/Y is that Box's top-left in SCREEN coords.
-                    // Adding once converts to screen coords — no double-translation.
-                    var curScreenX = down.position.x + boxOriginX
-                    var curScreenY = down.position.y + boxOriginY
+                    // baseX/Y = current joystick origin (drifts with PUBG-style base drag)
+                    var baseX = tx
+                    var baseY = ty
 
-                    // Instantly snap joystick base to where the finger touched
                     coroutineScope.launch {
-                        floatX.snapTo(curScreenX - homeCenter.x)
-                        floatY.snapTo(curScreenY - homeCenter.y)
+                        // Cancel any ongoing spring before snapping to prevent race condition
+                        floatX.stop()
+                        floatY.stop()
+                        floatX.snapTo(baseX - homeX)
+                        floatY.snapTo(baseY - homeY)
                     }
 
-                    // Zero stick deflection at touch start; base is under finger
+                    // Zero stick deflection at touch-down (knob centred on new base)
                     if (isLeft) viewModel?.updateLeftStick(0f, 0f)
-                    else viewModel?.updateRightStick(0f, 0f)
+                    else        viewModel?.updateRightStick(0f, 0f)
 
+                    // Drag loop
                     while (true) {
                         val event = awaitPointerEvent()
                         val change = event.changes.firstOrNull { it.id == down.id }
                         if (change == null || !change.pressed) break
                         change.consume()
 
-                        // Apply same local→screen conversion on every drag event
-                        val fingerScreenX = change.position.x + boxOriginX
-                        val fingerScreenY = change.position.y + boxOriginY
+                        val fx = change.position.x   // finger X (local = screen for full-screen Box)
+                        val fy = change.position.y
 
-                        val deltaX = fingerScreenX - curScreenX
-                        val deltaY = fingerScreenY - curScreenY
-                        val dist = hypot(deltaX, deltaY)
+                        // Vector from current base origin to finger
+                        val deltaX = fx - baseX
+                        val deltaY = fy - baseY
+                        val dist   = hypot(deltaX, deltaY)
 
-                        val (stickX, stickY) = if (dist <= maxThrowPx) {
-                            // Inside throw radius → knob deflects, base stays
-                            val nx = if (dist < 4f) 0f else (deltaX / maxThrowPx).coerceIn(-1f, 1f)
-                            val ny = if (dist < 4f) 0f else (-deltaY / maxThrowPx).coerceIn(-1f, 1f)
-                            Pair(nx, ny)
+                        val knobX: Float
+                        val knobY: Float
+
+                        if (dist <= maxThrowPx) {
+                            // Inside throw radius: knob tracks finger exactly, base stays fixed
+                            knobX = deltaX
+                            knobY = deltaY
                         } else {
-                            // Outside throw radius → drag base behind finger (PUBG/CoD style)
-                            val angle = atan2(deltaY, deltaX)
-                            val cosA = cos(angle)
-                            val sinA = sin(angle)
+                            // Outside throw radius: clamp knob to rim, slide base toward finger
+                            val invDist = 1f / dist          // inverse distance (avoids div twice)
+                            val dirX    = deltaX * invDist   // normalized direction X
+                            val dirY    = deltaY * invDist   // normalized direction Y
+                            val excess  = dist - maxThrowPx
 
-                            // New base position: exactly maxThrow behind the finger
-                            curScreenX = fingerScreenX - cosA * maxThrowPx
-                            curScreenY = fingerScreenY - sinA * maxThrowPx
+                            // Base slides so knob stays exactly at maxThrowPx from base
+                            baseX += dirX * excess
+                            baseY += dirY * excess
 
                             coroutineScope.launch {
-                                floatX.snapTo(curScreenX - homeCenter.x)
-                                floatY.snapTo(curScreenY - homeCenter.y)
+                                floatX.snapTo(baseX - homeX)
+                                floatY.snapTo(baseY - homeY)
                             }
 
-                            // Knob is fully deflected in the drag direction
-                            Pair(cosA, -sinA)
+                            // Knob is at max deflection in the drag direction
+                            knobX = dirX * maxThrowPx
+                            knobY = dirY * maxThrowPx
                         }
 
-                        if (isLeft) viewModel?.updateLeftStick(stickX, stickY)
-                        else viewModel?.updateRightStick(stickX, stickY)
+                        // Normalize to gamepad [-1, 1] convention.
+                        // Y negated: screen-down (positive screenY) → gamepad-down (negative Y).
+                        val deadPx = maxThrowPx * 0.05f
+                        val normX  = if (dist < deadPx) 0f else (knobX / maxThrowPx).coerceIn(-1f, 1f)
+                        val normY  = if (dist < deadPx) 0f else (-knobY / maxThrowPx).coerceIn(-1f, 1f)
+
+                        if (isLeft) viewModel?.updateLeftStick(normX, normY)
+                        else        viewModel?.updateRightStick(normX, normY)
                     }
 
-                    // Finger lifted → zero out stick and spring base back to home
+                    // Release — zero output, spring base back to home
                     if (isLeft) viewModel?.updateLeftStick(0f, 0f)
-                    else viewModel?.updateRightStick(0f, 0f)
+                    else        viewModel?.updateRightStick(0f, 0f)
 
                     coroutineScope.launch {
-                        launch {
-                            floatX.animateTo(0f, spring(dampingRatio = 0.70f, stiffness = 400f))
-                        }
-                        launch {
-                            floatY.animateTo(0f, spring(dampingRatio = 0.70f, stiffness = 400f))
-                        }
+                        launch { floatX.animateTo(0f, spring(dampingRatio = 0.70f, stiffness = 400f)) }
+                        launch { floatY.animateTo(0f, spring(dampingRatio = 0.70f, stiffness = 400f)) }
                     }
                 }
             }
     )
 }
-
