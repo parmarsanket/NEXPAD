@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpad.ui.components.controller
+package com.sanket.tools.nexpad.ui.components.controller
 
 import android.content.Context
 import androidx.compose.animation.core.Animatable
@@ -171,9 +171,10 @@ fun FluxJoystick(
     val stickKey = remember(isLeft) { if (isLeft) "LSB" else "RSB" }
     val glyphLabel = remember(isLeft) { if (isLeft) "L" else "R" }
 
-    val stickState = if (isLeft) viewModel.leftStickState else viewModel.rightStickState
-    val effOffsetX = if (isLocked) animOffsetX.value else stickState.first * maxTravelPx
-    val effOffsetY = if (isLocked) animOffsetY.value else -stickState.second * maxTravelPx
+    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+    val effOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
+    val effOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
 
     val deflectionFraction = (hypot(effOffsetX, effOffsetY) / maxTravelPx).coerceIn(0f, 1f)
     val rgbBloomAlpha by animateFloatAsState(

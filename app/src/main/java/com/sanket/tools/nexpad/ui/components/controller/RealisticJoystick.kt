@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpad.ui.components.controller
+package com.sanket.tools.nexpad.ui.components.controller
 
 import android.content.Context
 import android.util.Log
@@ -91,9 +91,10 @@ fun RealisticJoystick(
     )
 
     val neonColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
-    val stickState = if (isLeft) viewModel.leftStickState else viewModel.rightStickState
-    val effX = if (isLocked) thumbOffsetX else stickState.first * maxRadius
-    val effY = if (isLocked) thumbOffsetY else -stickState.second * maxRadius
+    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+    val effX = if (isLocked) thumbOffsetX else stickX * maxRadius
+    val effY = if (isLocked) thumbOffsetY else -stickY * maxRadius
     val deflectionFraction = (hypot(effX, effY) / maxRadius).coerceIn(0f, 1f)
     val rgbBloomAlpha by animateFloatAsState(
         targetValue = 0.40f + 0.55f * deflectionFraction,

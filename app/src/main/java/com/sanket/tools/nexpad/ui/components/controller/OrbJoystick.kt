@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpad.ui.components.controller
+package com.sanket.tools.nexpad.ui.components.controller
 
 import android.content.Context
 import androidx.compose.animation.core.Animatable
@@ -165,9 +165,10 @@ fun OrbJoystick(
     // Floating liquid core inertial lag offset (-dxn * 13px, -dyn * 13px)
     // CSS specification: transition: transform 0.14s ease-out, opacity 0.15s ease;
     // CubicBezierEasing(0f, 0f, 0.2f, 1f) precisely mirrors CSS ease-out
-    val stickState = if (isLeft) viewModel.leftStickState else viewModel.rightStickState
-    val effOffsetX = if (isLocked) animOffsetX.value else stickState.first * maxTravelPx
-    val effOffsetY = if (isLocked) animOffsetY.value else -stickState.second * maxTravelPx
+    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+    val effOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
+    val effOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
 
     val curNormX = (effOffsetX / maxTravelPx).coerceIn(-1f, 1f)
     val curNormY = (effOffsetY / maxTravelPx).coerceIn(-1f, 1f)

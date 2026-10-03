@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
+import com.sanket.tools.nexpad.category.SubCategoryDefinition
 import com.sanket.tools.nexpad.model.HudElement
 import com.sanket.tools.nexpad.model.LayoutProfile
 import com.sanket.tools.nexpad.model.LayoutSkin
@@ -16,11 +17,14 @@ import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
 import com.sanket.tools.nexpad.utils.LayoutManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -58,10 +62,8 @@ class HudEditorViewModel(
         componentDefaultControl: String,
         componentCategory: String,
         componentId: String,
-        targetControlKey: String
+        targetSpec: SubCategoryDefinition
     ): Boolean {
-        val targetSpec = CategoryManager.getControl(targetControlKey) ?: return false
-
         // 1. Primary: Match via component defaultControl (resolves keys, aliases, and labels)
         if (componentDefaultControl.isNotBlank()) {
             val resolved = CategoryManager.resolveControl(componentDefaultControl)
@@ -89,6 +91,16 @@ class HudEditorViewModel(
         return false
     }
 
+    fun isSkinCompatible(
+        componentDefaultControl: String,
+        componentCategory: String,
+        componentId: String,
+        targetControlKey: String
+    ): Boolean {
+        val targetSpec = CategoryManager.getControl(targetControlKey) ?: return false
+        return isSkinCompatible(componentDefaultControl, componentCategory, componentId, targetSpec)
+    }
+
     /**
      * Dynamically retrieves all compatible skins for a specific control without duplicates.
      * Adapts in real-time as users import or delete skins.
@@ -99,6 +111,7 @@ class HudEditorViewModel(
      * - Each custom/remote skin appears exactly once.
      */
     fun getCompatibleSkins(controlKey: String): List<LayoutSkin> {
+        val targetSpec = CategoryManager.getControl(controlKey) ?: return emptyList()
         val skins = mutableListOf<LayoutSkin>(LayoutSkin.NativeDefault)
         val seenIds = mutableSetOf<String>()
 
@@ -107,7 +120,7 @@ class HudEditorViewModel(
 
         // 1. Tier 2: User-imported or remote .nxprc skins
         remoteDocs.forEach { doc ->
-            if (isSkinCompatible(doc.manifest.defaultControl, doc.manifest.category, doc.manifest.id, controlKey)) {
+            if (isSkinCompatible(doc.manifest.defaultControl, doc.manifest.category, doc.manifest.id, targetSpec)) {
                 if (seenIds.add(doc.manifest.id)) {
                     skins.add(LayoutSkin.RemoteComponent(doc))
                 }
@@ -121,7 +134,7 @@ class HudEditorViewModel(
             if (id.startsWith("builtin.default_")) return@forEach
             if (seenIds.contains(id)) return@forEach
 
-            if (isSkinCompatible(def.manifest.defaultControl, def.manifest.category, id, controlKey)) {
+            if (isSkinCompatible(def.manifest.defaultControl, def.manifest.category, id, targetSpec)) {
                 if (seenIds.add(id)) {
                     skins.add(LayoutSkin.CustomComponent(def))
                 }
@@ -131,13 +144,18 @@ class HudEditorViewModel(
         return skins
     }
 
-    val compatibleSkins: StateFlow<List<LayoutSkin>> = combine(
-        _selectedControl,
-        componentRegistry.installedComponents,
-        remoteComponentRegistry?.loadedComponents ?: MutableStateFlow(emptyList())
-    ) { selected, _, _ ->
-        if (selected == null) emptyList()
-        else getCompatibleSkins(selected)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val compatibleSkins: StateFlow<List<LayoutSkin>> = _selectedControl.flatMapLatest { selected ->
+        if (selected == null) {
+            flowOf(emptyList())
+        } else {
+            combine(
+                componentRegistry.installedComponents,
+                remoteComponentRegistry?.loadedComponents ?: MutableStateFlow(emptyList())
+            ) { _, _ ->
+                getCompatibleSkins(selected)
+            }
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {

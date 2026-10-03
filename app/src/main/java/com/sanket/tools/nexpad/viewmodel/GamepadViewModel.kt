@@ -7,8 +7,10 @@ import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.net.Network
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import java.util.concurrent.ConcurrentHashMap
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.sanket.tools.nexpad.model.GamepadInput
@@ -289,7 +291,7 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
      * Dispatches immediately via UDP for physical trigger clips and continuous sliders.
      */
     fun updateTrigger(key: String, value: Float) {
-        val ctrl = ControlKey.fromIdentifier(key)
+        val ctrl = resolveControlKey(key)
         val clamped = value.coerceIn(0f, 1f)
         when (ctrl) {
             ControlKey.LT -> inputState.triggerL2 = clamped
@@ -304,7 +306,7 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
         // Hardware alias keys (L1/L2/L3, R1/R2/R3, BACK, SELECT, HOME, XBOX, MENU, VIEW)
         // Dispatches through ControlKey single source of truth; all aliases, synonyms
         // (L1, R1, L2, R2, L3, R3, MENU, VIEW, XBOX, CAPTURE, etc.) resolve automatically.
-        val ctrl = ControlKey.fromIdentifier(buttonName)
+        val ctrl = resolveControlKey(buttonName)
         when (ctrl) {
             ControlKey.A       -> inputState.btnA = isPressed
             ControlKey.B       -> inputState.btnB = isPressed
@@ -335,21 +337,39 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    var leftStickState by mutableStateOf(Pair(0f, 0f))
+    var leftStickX by mutableFloatStateOf(0f)
         private set
-    var rightStickState by mutableStateOf(Pair(0f, 0f))
+    var leftStickY by mutableFloatStateOf(0f)
         private set
+    var rightStickX by mutableFloatStateOf(0f)
+        private set
+    var rightStickY by mutableFloatStateOf(0f)
+        private set
+
+    val leftStickState: Pair<Float, Float>
+        get() = Pair(leftStickX, leftStickY)
+    val rightStickState: Pair<Float, Float>
+        get() = Pair(rightStickX, rightStickY)
 
     fun updateLeftStick(x: Float, y: Float) {
         inputState.leftStickX = x
         inputState.leftStickY = y
-        leftStickState = Pair(x, y)
+        leftStickX = x
+        leftStickY = y
     }
 
     fun updateRightStick(x: Float, y: Float) {
         inputState.rightStickX = x
         inputState.rightStickY = y
-        rightStickState = Pair(x, y)
+        rightStickX = x
+        rightStickY = y
+    }
+
+    companion object {
+        private val controlKeyCache = ConcurrentHashMap<String, ControlKey?>()
+        fun resolveControlKey(identifier: String): ControlKey? {
+            return controlKeyCache.computeIfAbsent(identifier) { ControlKey.fromIdentifier(it) }
+        }
     }
 
     override fun onCleared() {
