@@ -84,17 +84,35 @@ object NetworkInterfaceHelper {
 
     /**
      * Checks if any active Wi-Fi or Ethernet network connection is currently available.
+     * Uses modern ConnectivityManager activeNetwork capabilities with a physical interface fallback.
      */
     fun hasActiveWifiOrEthernet(context: android.content.Context): Boolean {
         return try {
             val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
-            cm?.allNetworks?.any { net ->
-                val caps = cm.getNetworkCapabilities(net)
-                caps != null && (
+            val activeNet = cm?.activeNetwork
+            if (activeNet != null) {
+                val caps = cm.getNetworkCapabilities(activeNet)
+                if (caps != null && (
                     caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ||
                     caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET)
-                )
-            } ?: false
+                )) {
+                    return true
+                }
+            }
+
+            // Fallback for offline LAN or unmetered local routing where activeNetwork may differ:
+            // scan network interfaces for an UP Wi-Fi (wlan) or Ethernet (eth) adapter with an assigned IPv4 address.
+            val interfaces = NetworkInterface.getNetworkInterfaces() ?: return false
+            while (interfaces.hasMoreElements()) {
+                val iface = interfaces.nextElement()
+                if (!iface.isUp || iface.isLoopback) continue
+                val name = iface.name.lowercase()
+                val isWifiOrEth = name.startsWith("wlan") || name.startsWith("eth")
+                if (isWifiOrEth && iface.interfaceAddresses.any { it.address is Inet4Address }) {
+                    return true
+                }
+            }
+            false
         } catch (_: Exception) {
             false
         }

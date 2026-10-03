@@ -331,8 +331,10 @@ class GamepadNetworkManager(
             while (isActive) {
                 if (_connectionStats.value.transport == ConnectionType.WIFI) {
                     try {
-                        val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
-                        val wifiInfo = wifiManager?.connectionInfo
+                        val cm = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+                        val activeNet = cm?.activeNetwork
+                        val caps = activeNet?.let { cm.getNetworkCapabilities(it) }
+                        val wifiInfo = caps?.transportInfo as? android.net.wifi.WifiInfo
                         val rssi = wifiInfo?.rssi ?: -127
                         
                         if (rssi > -100 && rssi != -127) { // Valid hardware RSSI
