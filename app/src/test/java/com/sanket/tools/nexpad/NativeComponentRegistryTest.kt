@@ -952,6 +952,11 @@ class NativeComponentRegistryTest {
         assertTrue("DEFAULT_GYRO_TOGGLE must be present in ALL_PRESETS", DefaultComponents.ALL_PRESETS.contains(gyroDef))
         assertTrue("builtin.gyro_btn_default must be recognized as native builtin", NativeComponentRegistry.isNativeBuiltin("builtin.gyro_btn_default"))
         assertTrue("builtin.gyro_btn must be recognized as native builtin", NativeComponentRegistry.isNativeBuiltin("builtin.gyro_btn"))
+
+        val standardElite = com.sanket.tools.nexpad.model.standardElitePositions()
+        assertTrue("Standard Elite must contain GYRO control", standardElite.containsKey("GYRO"))
+        assertEquals(0.500f, standardElite["GYRO"]!!.xRatio, 0.001f)
+        assertEquals(0.500f, standardElite["GYRO"]!!.yRatio, 0.001f)
     }
 }
 

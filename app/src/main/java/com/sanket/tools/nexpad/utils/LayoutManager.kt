@@ -40,7 +40,8 @@ class LayoutManager(context: Context) {
         defaults.forEach { defaultProfile ->
             val savedJson = prefs.getString("profile_${defaultProfile.name}", null)
             if (savedJson != null) {
-                if (savedJson.contains("\"M1\"") || savedJson.contains("\"M2\"") ||
+                if ((defaultProfile.name == "Standard Elite" && !savedJson.contains("\"GYRO\"")) ||
+                    savedJson.contains("\"M1\"") || savedJson.contains("\"M2\"") ||
                     savedJson.contains("\"M3\"") || savedJson.contains("\"M4\"") ||
                     savedJson.contains("0.055") || savedJson.contains("0.080") ||
                     savedJson.contains("0.280") ||

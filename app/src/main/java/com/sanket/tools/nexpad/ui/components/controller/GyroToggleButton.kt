@@ -167,8 +167,7 @@ fun GyroToggleButton(
                     ),
                     shape = CircleShape
                 )
-                .pointerInput(isConnected) {
-                    if (!isConnected) return@pointerInput
+                .pointerInput(Unit) {
                     detectTapGestures(
                         onPress = {
                             isPressed = true
