@@ -274,6 +274,7 @@ fun HudEditorScreen(
                 },
                 onResetPos = { viewModel.resetControlToDefault(selectedControl!!) },
                 onRemove = { viewModel.removeControl(selectedControl!!) },
+                onSwapStickTouchpad = { viewModel.swapStickAndTouchpad(selectedControl!!) },
                 isDragging = autoDodgeCoordinator.isDraggingInspector,
                 onDragStart = { autoDodgeCoordinator.isDraggingInspector = true },
                 onDragEnd = { autoDodgeCoordinator.onInspectorDragEnd() },

@@ -54,6 +54,7 @@ fun HudDockedInspector(
     onOpenStudio: () -> Unit,
     onResetPos: () -> Unit,
     onRemove: () -> Unit,
+    onSwapStickTouchpad: (() -> Unit)? = null,
     isDragging: Boolean = false,
     onDragStart: () -> Unit = {},
     onDragEnd: () -> Unit = {},
@@ -643,6 +644,39 @@ fun HudDockedInspector(
 
                         Text("Studio",fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
 
+                    }
+
+                    // Stick / Touchpad Mutual Exclusivity Quick-Switch
+                    val swapTargetLabel = when (element.controlKey.uppercase()) {
+                        "LS" -> "Switch to Touchpad (LTP)"
+                        "LTP" -> "Switch to Stick (LS)"
+                        "RS" -> "Switch to Touchpad (RTP)"
+                        "RTP" -> "Switch to Stick (RS)"
+                        else -> null
+                    }
+                    if (swapTargetLabel != null && onSwapStickTouchpad != null) {
+                        OutlinedButton(
+                            onClick = onSwapStickTouchpad,
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = NeonPalette.Cyan
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                NeonPalette.Cyan.copy(alpha = 0.6f)
+                            ),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            modifier = Modifier.height(30.dp)
+                        ) {
+                            Icon(
+                                Icons.Rounded.SwapHoriz,
+                                contentDescription = swapTargetLabel,
+                                tint = NeonPalette.Cyan,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(swapTargetLabel, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                        }
                     }
                 }
 

@@ -1309,7 +1309,116 @@ class CategoryManagerHudTest {
         assertEquals("Xbox Style", xboxLabel)
         assertEquals("PlayStation Style", psLabel)
     }
+
+    @Test
+    fun testStickTouchpadMutualExclusivityAndCenterPositionInheritance() {
+        // 1. Verify LayoutProfile.canonicalPositions() self-healing mutual exclusivity
+        val conflictingProfile = LayoutProfile(
+            name = "Test Conflict",
+            positions = mapOf(
+                ControlKey.LS.key to Position(xRatio = 0.18f, yRatio = 0.72f, scale = 1.2f, opacity = 0.9f),
+                ControlKey.LTP.key to Position(xRatio = 0.20f, yRatio = 0.70f, scale = 1.0f, opacity = 1.0f),
+                ControlKey.RS.key to Position(xRatio = 0.82f, yRatio = 0.75f, scale = 1.2f, opacity = 0.9f),
+                ControlKey.RTP.key to Position(xRatio = 0.80f, yRatio = 0.70f, scale = 1.0f, opacity = 1.0f),
+                ControlKey.A.key to Position(xRatio = 0.85f, yRatio = 0.65f, scale = 1.0f, opacity = 1.0f)
+            )
+        )
+
+        val healedPositions = conflictingProfile.canonicalPositions()
+        assertTrue("LS must be kept in healed profile", healedPositions.containsKey(ControlKey.LS.key))
+        assertFalse("LTP must be removed when LS is present", healedPositions.containsKey(ControlKey.LTP.key))
+        assertTrue("RS must be kept in healed profile", healedPositions.containsKey(ControlKey.RS.key))
+        assertFalse("RTP must be removed when RS is present", healedPositions.containsKey(ControlKey.RTP.key))
+        assertTrue("A must remain unaffected", healedPositions.containsKey(ControlKey.A.key))
+
+        // 2. Profile with only Touchpads retains both without removal
+        val touchpadOnlyProfile = LayoutProfile(
+            name = "Touchpad Layout",
+            positions = mapOf(
+                ControlKey.LTP.key to Position(xRatio = 0.18f, yRatio = 0.72f, scale = 1.1f, opacity = 0.95f),
+                ControlKey.RTP.key to Position(xRatio = 0.82f, yRatio = 0.75f, scale = 1.1f, opacity = 0.95f)
+            )
+        )
+        val touchpadHealed = touchpadOnlyProfile.canonicalPositions()
+        assertTrue("LTP is retained when LS is absent", touchpadHealed.containsKey(ControlKey.LTP.key))
+        assertTrue("RTP is retained when RS is absent", touchpadHealed.containsKey(ControlKey.RTP.key))
+
+        // 3. Test Position Inheritance Simulation
+        fun simulateAddControl(
+            currentMap: Map<String, LayoutTransform>,
+            newKey: String
+        ): Map<String, LayoutTransform> {
+            val canonicalKey = ControlKey.fromIdentifier(newKey)?.key ?: newKey.uppercase()
+            var elements = currentMap
+            var inheritedTransform: LayoutTransform? = null
+
+            if (canonicalKey == ControlKey.LTP.key) {
+                val lsEntry = elements.entries.firstOrNull { it.key == ControlKey.LS.key }
+                if (lsEntry != null) {
+                    inheritedTransform = lsEntry.value
+                    elements = elements - lsEntry.key
+                }
+            } else if (canonicalKey == ControlKey.LS.key) {
+                val ltpEntry = elements.entries.firstOrNull { it.key == ControlKey.LTP.key }
+                if (ltpEntry != null) {
+                    inheritedTransform = ltpEntry.value
+                    elements = elements - ltpEntry.key
+                }
+            } else if (canonicalKey == ControlKey.RTP.key) {
+                val rsEntry = elements.entries.firstOrNull { it.key == ControlKey.RS.key }
+                if (rsEntry != null) {
+                    inheritedTransform = rsEntry.value
+                    elements = elements - rsEntry.key
+                }
+            } else if (canonicalKey == ControlKey.RS.key) {
+                val rtpEntry = elements.entries.firstOrNull { it.key == ControlKey.RTP.key }
+                if (rtpEntry != null) {
+                    inheritedTransform = rtpEntry.value
+                    elements = elements - rtpEntry.key
+                }
+            }
+
+            val finalTransform = inheritedTransform?.copy() ?: LayoutTransform(0.5f, 0.5f, 1f, 1f)
+            return elements + (canonicalKey to finalTransform)
+        }
+
+        // LS replaced with LTP inherits exact position
+        val initialLayout = mapOf(
+            ControlKey.LS.key to LayoutTransform(xRatio = 0.165f, yRatio = 0.735f, scale = 1.25f, opacity = 0.88f),
+            ControlKey.RS.key to LayoutTransform(xRatio = 0.835f, yRatio = 0.735f, scale = 1.25f, opacity = 0.88f)
+        )
+
+        val afterAddingLtp = simulateAddControl(initialLayout, "LTP")
+        assertFalse("LS must be removed", afterAddingLtp.containsKey("LS"))
+        assertTrue("LTP must be present", afterAddingLtp.containsKey("LTP"))
+        val ltpTransform = afterAddingLtp["LTP"]!!
+        assertEquals(0.165f, ltpTransform.xRatio, 0.0001f)
+        assertEquals(0.735f, ltpTransform.yRatio, 0.0001f)
+        assertEquals(1.25f, ltpTransform.scale, 0.0001f)
+        assertEquals(0.88f, ltpTransform.opacity, 0.0001f)
+
+        // Switching back from LTP to LS inherits exact position
+        val afterSwitchingBackToLs = simulateAddControl(afterAddingLtp, "LS")
+        assertFalse("LTP must be removed", afterSwitchingBackToLs.containsKey("LTP"))
+        assertTrue("LS must be present", afterSwitchingBackToLs.containsKey("LS"))
+        val lsRestoredTransform = afterSwitchingBackToLs["LS"]!!
+        assertEquals(0.165f, lsRestoredTransform.xRatio, 0.0001f)
+        assertEquals(0.735f, lsRestoredTransform.yRatio, 0.0001f)
+        assertEquals(1.25f, lsRestoredTransform.scale, 0.0001f)
+        assertEquals(0.88f, lsRestoredTransform.opacity, 0.0001f)
+
+        // RS replaced with RTP inherits exact position
+        val afterAddingRtp = simulateAddControl(afterSwitchingBackToLs, "RTP")
+        assertFalse("RS must be removed", afterAddingRtp.containsKey("RS"))
+        assertTrue("RTP must be present", afterAddingRtp.containsKey("RTP"))
+        val rtpTransform = afterAddingRtp["RTP"]!!
+        assertEquals(0.835f, rtpTransform.xRatio, 0.0001f)
+        assertEquals(0.735f, rtpTransform.yRatio, 0.0001f)
+        assertEquals(1.25f, rtpTransform.scale, 0.0001f)
+        assertEquals(0.88f, rtpTransform.opacity, 0.0001f)
+    }
 }
+
 
 
 

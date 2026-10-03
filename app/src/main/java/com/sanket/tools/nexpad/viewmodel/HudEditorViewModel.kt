@@ -370,9 +370,11 @@ class HudEditorViewModel(
         }
 
         // Industry-standard mutual exclusivity:
-        // Integrated 4-Way D-Pad (DPAD) and discrete directional buttons (UP, DOWN, LEFT, RIGHT)
+        // 1. Integrated 4-Way D-Pad (DPAD) and discrete directional buttons (UP, DOWN, LEFT, RIGHT)
         // cannot coexist on the same gamepad HUD layout.
         var updatedElements = _elements.value
+        var inheritedTransform: LayoutTransform? = null
+
         if (targetCtrl?.isDpadComposite == true) {
             // Adding composite 4-way D-Pad cross removes any discrete directional buttons
             updatedElements = updatedElements.filterKeys { k ->
@@ -385,17 +387,81 @@ class HudEditorViewModel(
             }
         }
 
-        val defPos = getControlDefaultPosition(canonicalKey) ?: defaultPositions()[controlKey]
-        val transform = LayoutTransform(
-            xRatio = defPos?.xRatio ?: 0.5f,
-            yRatio = defPos?.yRatio ?: 0.5f,
-            scale = defPos?.scale ?: 1.0f,
-            opacity = defPos?.opacity ?: 1.0f
-        )
+        // 2. Left Stick (LS) & Left Touchpad (LTP) Mutual Exclusivity:
+        // When replacing LS with LTP (or vice-versa), inherit the exact center position, scale,
+        // and opacity so the user does not have to manually reposition it.
+        if (canonicalKey == ControlKey.LTP.key || targetCtrl == ControlKey.LTP) {
+            val lsEntry = updatedElements.entries.firstOrNull {
+                ControlKey.fromIdentifier(it.key) == ControlKey.LS || it.key.equals(ControlKey.LS.key, ignoreCase = true)
+            }
+            if (lsEntry != null) {
+                inheritedTransform = lsEntry.value.transform
+                updatedElements = updatedElements - lsEntry.key
+            }
+        } else if (canonicalKey == ControlKey.LS.key || targetCtrl == ControlKey.LS) {
+            val ltpEntry = updatedElements.entries.firstOrNull {
+                ControlKey.fromIdentifier(it.key) == ControlKey.LTP || it.key.equals(ControlKey.LTP.key, ignoreCase = true)
+            }
+            if (ltpEntry != null) {
+                inheritedTransform = ltpEntry.value.transform
+                updatedElements = updatedElements - ltpEntry.key
+            }
+        }
+
+        // 3. Right Stick (RS) & Right Touchpad (RTP) Mutual Exclusivity:
+        // When replacing RS with RTP (or vice-versa), inherit the exact center position, scale,
+        // and opacity so the user does not have to manually reposition it.
+        if (canonicalKey == ControlKey.RTP.key || targetCtrl == ControlKey.RTP) {
+            val rsEntry = updatedElements.entries.firstOrNull {
+                ControlKey.fromIdentifier(it.key) == ControlKey.RS || it.key.equals(ControlKey.RS.key, ignoreCase = true)
+            }
+            if (rsEntry != null) {
+                inheritedTransform = rsEntry.value.transform
+                updatedElements = updatedElements - rsEntry.key
+            }
+        } else if (canonicalKey == ControlKey.RS.key || targetCtrl == ControlKey.RS) {
+            val rtpEntry = updatedElements.entries.firstOrNull {
+                ControlKey.fromIdentifier(it.key) == ControlKey.RTP || it.key.equals(ControlKey.RTP.key, ignoreCase = true)
+            }
+            if (rtpEntry != null) {
+                inheritedTransform = rtpEntry.value.transform
+                updatedElements = updatedElements - rtpEntry.key
+            }
+        }
+
+        val transform = if (inheritedTransform != null) {
+            inheritedTransform.copy()
+        } else {
+            val defPos = getControlDefaultPosition(canonicalKey) ?: defaultPositions()[controlKey]
+            LayoutTransform(
+                xRatio = defPos?.xRatio ?: 0.5f,
+                yRatio = defPos?.yRatio ?: 0.5f,
+                scale = defPos?.scale ?: 1.0f,
+                opacity = defPos?.opacity ?: 1.0f
+            )
+        }
+
         val element = HudElement(controlKey = canonicalKey, transform = transform, skinId = skinId)
         _elements.value = updatedElements + (canonicalKey to element)
         _selectedControl.value = canonicalKey
         _hasUnsavedChanges.value = true
+    }
+
+    /**
+     * Swaps Left Stick (LS) with Left Touchpad (LTP), or Right Stick (RS) with Right Touchpad (RTP),
+     * preserving the exact center position, scale, and opacity without manual repositioning.
+     */
+    fun swapStickAndTouchpad(controlKey: String) {
+        val targetCtrl = ControlKey.fromIdentifier(controlKey)
+        val canonicalKey = targetCtrl?.key ?: controlKey.uppercase()
+        val targetSwapKey = when (canonicalKey) {
+            ControlKey.LS.key -> ControlKey.LTP.key
+            ControlKey.LTP.key -> ControlKey.LS.key
+            ControlKey.RS.key -> ControlKey.RTP.key
+            ControlKey.RTP.key -> ControlKey.RS.key
+            else -> return
+        }
+        addControl(targetSwapKey)
     }
 
     fun removeControl(controlKey: String) {

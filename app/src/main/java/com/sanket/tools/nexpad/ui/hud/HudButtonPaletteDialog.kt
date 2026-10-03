@@ -111,6 +111,15 @@ fun HudButtonPaletteDialog(
                         )
                     }
 
+                    if (category.type == CategoryType.STICKS) {
+                        Text(
+                            "💡 Joysticks and Touchpads on the same side (LS ↔ LTP, RS ↔ RTP) are mutually exclusive and swap automatically.",
+                            fontSize = 11.sp,
+                            color = NeonPalette.Cyan.copy(alpha = 0.8f),
+                            modifier = Modifier.padding(bottom = 2.dp)
+                        )
+                    }
+
                     Surface(
                         shape = RoundedCornerShape(12.dp),
                         color = Color.White.copy(alpha = 0.04f),

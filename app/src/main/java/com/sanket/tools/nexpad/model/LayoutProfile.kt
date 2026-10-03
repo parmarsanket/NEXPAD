@@ -32,6 +32,14 @@ data class LayoutProfile(
             val discreteKeys = ControlKey.DISCRETE_DPAD_KEYS.map { it.key }
             discreteKeys.forEach { normalized.remove(it) }
         }
+        // Self-heal: Left Stick (LS) and Left Touchpad (LTP) cannot coexist simultaneously
+        if (normalized.containsKey(ControlKey.LS.key) && normalized.containsKey(ControlKey.LTP.key)) {
+            normalized.remove(ControlKey.LTP.key)
+        }
+        // Self-heal: Right Stick (RS) and Right Touchpad (RTP) cannot coexist simultaneously
+        if (normalized.containsKey(ControlKey.RS.key) && normalized.containsKey(ControlKey.RTP.key)) {
+            normalized.remove(ControlKey.RTP.key)
+        }
         return normalized
     }
 
