@@ -343,7 +343,7 @@ fun NxprcCanvasRenderer(
     val gestureModifier = if (!isInteractive) {
         Modifier
     } else when {
-        isStick && stick != null -> {
+        isStick -> {
             Modifier.pointerInput(document.manifest.id, assignedControl, isCameraMode, cameraSensitivity, density) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -1644,24 +1644,22 @@ internal fun buildScaledPath(svgData: String, targetRect: Rect): Path {
     // 1. Android core graphics PathParser with exact Matrix transformation
     try {
         val androidPath = androidx.core.graphics.PathParser.createPathFromPathData(trimmed)
-        if (androidPath != null) {
-            val bounds = android.graphics.RectF()
-            androidPath.computeBounds(bounds, true)
-            if (bounds.width() > 0.001f && bounds.height() > 0.001f) {
-                val isNormalized100 = bounds.left >= -5f && bounds.top >= -5f && bounds.right <= 105f && bounds.bottom <= 105f
-                val matrix = android.graphics.Matrix().apply {
-                    if (isNormalized100) {
-                        postScale(targetRect.width / 100f, targetRect.height / 100f)
-                        postTranslate(targetRect.left, targetRect.top)
-                    } else {
-                        postTranslate(-bounds.left, -bounds.top)
-                        postScale(targetRect.width / bounds.width(), targetRect.height / bounds.height())
-                        postTranslate(targetRect.left, targetRect.top)
-                    }
+        val bounds = android.graphics.RectF()
+        androidPath.computeBounds(bounds, true)
+        if (bounds.width() > 0.001f && bounds.height() > 0.001f) {
+            val isNormalized100 = bounds.left >= -5f && bounds.top >= -5f && bounds.right <= 105f && bounds.bottom <= 105f
+            val matrix = android.graphics.Matrix().apply {
+                if (isNormalized100) {
+                    postScale(targetRect.width / 100f, targetRect.height / 100f)
+                    postTranslate(targetRect.left, targetRect.top)
+                } else {
+                    postTranslate(-bounds.left, -bounds.top)
+                    postScale(targetRect.width / bounds.width(), targetRect.height / bounds.height())
+                    postTranslate(targetRect.left, targetRect.top)
                 }
-                androidPath.transform(matrix)
-                return androidPath.asComposePath()
             }
+            androidPath.transform(matrix)
+            return androidPath.asComposePath()
         }
     } catch (_: Throwable) {
         // Fall back to manual token parser below

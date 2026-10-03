@@ -49,7 +49,7 @@ data class MotionPacket(
 )
 
 class MotionSensorManager(
-    private val context: Context,
+    context: Context,
     private val onMotionPacket: (MotionPacket) -> Unit
 ) : SensorEventListener {
 
@@ -58,19 +58,12 @@ class MotionSensorManager(
         private const val SENSOR_DELAY_MICROS = 5000
     }
 
-    private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+    private val sensorManager = context.applicationContext.getSystemService(Context.SENSOR_SERVICE) as SensorManager
 
     private val gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY)
     private val accelSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
     private val gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
     private val uncalibratedGyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE_UNCALIBRATED)
-    private val gameRotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR)
-
-    // Reused arrays (zero allocations during sensor updates)
-    private val rotationMatrix = FloatArray(9)
-    private val remappedMatrix = FloatArray(9)
-    private val orientation = FloatArray(3)
-    private val quaternion = FloatArray(4)
 
     // Single synchronized packet
     private val motion = MotionPacket()
@@ -185,44 +178,6 @@ class MotionSensorManager(
                     motion.biasY = -hwBiasX       // Y' = -X (landscape remap)
                     motion.biasZ = event.values[5] // Z unchanged
                 }
-            }
-            Sensor.TYPE_GAME_ROTATION_VECTOR -> {
-                SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
-
-                // The correct way to handle display rotation for Rotation Vectors
-                when (displayRotation) {
-                    Surface.ROTATION_90 -> SensorManager.remapCoordinateSystem(
-                        rotationMatrix,
-                        SensorManager.AXIS_Y,
-                        SensorManager.AXIS_MINUS_X,
-                        remappedMatrix
-                    )
-                    Surface.ROTATION_270 -> SensorManager.remapCoordinateSystem(
-                        rotationMatrix,
-                        SensorManager.AXIS_MINUS_Y,
-                        SensorManager.AXIS_X,
-                        remappedMatrix
-                    )
-                    Surface.ROTATION_180 -> SensorManager.remapCoordinateSystem(
-                        rotationMatrix,
-                        SensorManager.AXIS_MINUS_X,
-                        SensorManager.AXIS_MINUS_Y,
-                        remappedMatrix
-                    )
-                    else -> System.arraycopy(rotationMatrix, 0, remappedMatrix, 0, 9)
-                }
-
-                SensorManager.getOrientation(remappedMatrix, orientation)
-
-                motion.yaw = Math.toDegrees(orientation[0].toDouble()).toFloat()
-                motion.pitch = Math.toDegrees(orientation[1].toDouble()).toFloat()
-                motion.roll = Math.toDegrees(orientation[2].toDouble()).toFloat()
-                
-                SensorManager.getQuaternionFromVector(quaternion, event.values)
-                motion.qW = quaternion[0]
-                motion.qX = quaternion[1]
-                motion.qY = quaternion[2]
-                motion.qZ = quaternion[3]
             }
         }
 

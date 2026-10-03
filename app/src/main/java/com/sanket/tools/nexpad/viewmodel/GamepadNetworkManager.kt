@@ -132,8 +132,8 @@ class GamepadNetworkManager(
         if (androidx.core.content.ContextCompat.checkSelfPermission(context, permission) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             return emptyList()
         }
-        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? android.bluetooth.BluetoothManager
-        val adapter = bluetoothManager?.adapter ?: android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+        val bluetoothManager = context.getSystemService(android.bluetooth.BluetoothManager::class.java)
+        val adapter = bluetoothManager?.adapter
         return if (adapter != null && adapter.isEnabled) {
             adapter.bondedDevices?.toList() ?: emptyList()
         } else {

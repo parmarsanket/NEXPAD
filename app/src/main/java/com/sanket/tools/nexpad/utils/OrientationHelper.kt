@@ -11,16 +11,12 @@ fun LockScreenOrientation(orientation: Int) {
     val activity = LocalActivity.current ?: return
 
     DisposableEffect(orientation) {
-        val previousOrientation = activity?.requestedOrientation
+        val previousOrientation = activity.requestedOrientation
 
-        activity?.requestedOrientation = orientation
+        activity.requestedOrientation = orientation
 
         onDispose {
-            previousOrientation?.let {
-                activity.requestedOrientation = it
-            } ?: run {
-                activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-            }
+            activity.requestedOrientation = previousOrientation
         }
     }
 }

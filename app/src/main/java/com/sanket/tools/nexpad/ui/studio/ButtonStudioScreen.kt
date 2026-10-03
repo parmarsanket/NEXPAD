@@ -71,7 +71,6 @@ fun ButtonStudioScreen(
     gamepadViewModel: GamepadViewModel? = null
 ) {
     val context = LocalContext.current
-    val clipboard = LocalClipboard.current
     val registry = remember { ComponentRegistry.getInstance(context) }
     val components by registry.installedComponents.collectAsState()
 
@@ -698,7 +697,9 @@ fun ButtonStudioScreen(
             onExportJson = {
                 val json = registry.exportToJson(target.manifest.id)
                 if (json != null) {
-                    clipboard.nativeClipboard.setPrimaryClip(android.content.ClipData.newPlainText("NXP JSON", json))
+                    context.getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(
+                        android.content.ClipData.newPlainText("NXP JSON", json)
+                    )
                     Toast.makeText(context, "JSON copied to clipboard!", Toast.LENGTH_SHORT).show()
                 }
             },
