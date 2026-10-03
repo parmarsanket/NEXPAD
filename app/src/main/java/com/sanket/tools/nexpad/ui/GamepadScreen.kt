@@ -1,4 +1,4 @@
-package com.sanket.tools.nexpad.ui
+﻿package com.sanket.tools.nexpad.ui
 
 import android.content.pm.ActivityInfo
 import androidx.activity.compose.BackHandler
@@ -415,115 +415,118 @@ private fun BoxScope.FloatingJoystickTouchLayer(
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
 
+    // Joystick home position in screen coordinates (center of the element at rest)
     val homeCenter = remember(position, screenWidthPx, screenHeightPx) {
         Offset(position.xRatio * screenWidthPx, position.yRatio * screenHeightPx)
     }
 
+    // Maximum throw distance before the base starts dragging behind the finger
     val maxThrowPx = with(density) { 45.dp.toPx() }
 
-    val (boxModifier, boxLeft, boxTop) = remember(mode, hitboxScale, position, screenWidthPx, screenHeightPx) {
+    // boxOriginX/Y: top-left of the touch zone Box in SCREEN coordinates.
+    // We add these to every local pointer position to convert to screen space (done ONCE per event).
+    val (boxModifier, boxOriginX, boxOriginY) = remember(mode, hitboxScale, position, screenWidthPx, screenHeightPx) {
         if (mode == "FULL") {
+            // Full mode: left half-screen or right half-screen
             val halfWidth = screenWidthPx / 2f
-            val bLeft = if (isLeft) 0f else halfWidth
-            val bTop = 0f
+            val originX = if (isLeft) 0f else halfWidth
+            val originY = 0f
             val mod = Modifier
                 .fillMaxHeight()
                 .width(with(density) { halfWidth.toDp() })
                 .then(if (isLeft) Modifier.align(Alignment.CenterStart) else Modifier.align(Alignment.CenterEnd))
-            Triple(mod, bLeft, bTop)
+            Triple(mod, originX, originY)
         } else {
+            // BOX mode: square zone centered on the joystick home position
             val diameterPx = with(density) { 150.dp.toPx() } * position.scale
             val boxSizePx = diameterPx * hitboxScale
-            val bLeft = homeCenter.x - boxSizePx / 2f
-            val bTop = homeCenter.y - boxSizePx / 2f
+            val originX = homeCenter.x - boxSizePx / 2f
+            val originY = homeCenter.y - boxSizePx / 2f
             val mod = Modifier
-                .offset { IntOffset(bLeft.roundToInt(), bTop.roundToInt()) }
+                .offset { IntOffset(originX.roundToInt(), originY.roundToInt()) }
                 .size(with(density) { boxSizePx.toDp() })
-            Triple(mod, bLeft, bTop)
+            Triple(mod, originX, originY)
         }
     }
 
     Box(
         modifier = boxModifier
-            .pointerInput(isConnected, mode, boxLeft, boxTop, homeCenter) {
-                if (!isConnected) return@pointerInput
+            .pointerInput(mode, boxOriginX, boxOriginY, homeCenter) {
+                // isConnected is NOT checked here intentionally — the floating layer should
+                // process touch for visual feedback even when no physical controller is attached.
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = true)
                     down.consume()
 
-                    val initialFingerPos = Offset(down.position.x + boxLeft, down.position.y + boxTop)
-                    var curCenter = initialFingerPos
+                    // ── Local → Screen coordinate conversion ──────────────────────────────
+                    // down.position is in the LOCAL space of this Box (origin = Box top-left).
+                    // boxOriginX/Y is that Box's top-left in SCREEN coords.
+                    // Adding once converts to screen coords — no double-translation.
+                    var curScreenX = down.position.x + boxOriginX
+                    var curScreenY = down.position.y + boxOriginY
 
-                    val initialOffsetX = curCenter.x - homeCenter.x
-                    val initialOffsetY = curCenter.y - homeCenter.y
-
+                    // Instantly snap joystick base to where the finger touched
                     coroutineScope.launch {
-                        floatX.snapTo(initialOffsetX)
-                        floatY.snapTo(initialOffsetY)
+                        floatX.snapTo(curScreenX - homeCenter.x)
+                        floatY.snapTo(curScreenY - homeCenter.y)
                     }
 
-                    if (isLeft) {
-                        viewModel?.updateLeftStick(0f, 0f)
-                    } else {
-                        viewModel?.updateRightStick(0f, 0f)
-                    }
+                    // Zero stick deflection at touch start; base is under finger
+                    if (isLeft) viewModel?.updateLeftStick(0f, 0f)
+                    else viewModel?.updateRightStick(0f, 0f)
 
                     while (true) {
                         val event = awaitPointerEvent()
                         val change = event.changes.firstOrNull { it.id == down.id }
                         if (change == null || !change.pressed) break
-
-                        val curFingerPos = Offset(change.position.x + boxLeft, change.position.y + boxTop)
                         change.consume()
 
-                        val delta = curFingerPos - curCenter
-                        val dist = hypot(delta.x, delta.y)
+                        // Apply same local→screen conversion on every drag event
+                        val fingerScreenX = change.position.x + boxOriginX
+                        val fingerScreenY = change.position.y + boxOriginY
+
+                        val deltaX = fingerScreenX - curScreenX
+                        val deltaY = fingerScreenY - curScreenY
+                        val dist = hypot(deltaX, deltaY)
 
                         val (stickX, stickY) = if (dist <= maxThrowPx) {
-                            val nx = if (dist < 4f) 0f else (delta.x / maxThrowPx).coerceIn(-1f, 1f)
-                            val ny = if (dist < 4f) 0f else (-delta.y / maxThrowPx).coerceIn(-1f, 1f)
+                            // Inside throw radius → knob deflects, base stays
+                            val nx = if (dist < 4f) 0f else (deltaX / maxThrowPx).coerceIn(-1f, 1f)
+                            val ny = if (dist < 4f) 0f else (-deltaY / maxThrowPx).coerceIn(-1f, 1f)
                             Pair(nx, ny)
                         } else {
-                            val angle = atan2(delta.y, delta.x)
+                            // Outside throw radius → drag base behind finger (PUBG/CoD style)
+                            val angle = atan2(deltaY, deltaX)
                             val cosA = cos(angle)
                             val sinA = sin(angle)
-                            curCenter = curFingerPos - Offset(cosA * maxThrowPx, sinA * maxThrowPx)
 
-                            val fx = curCenter.x - homeCenter.x
-                            val fy = curCenter.y - homeCenter.y
+                            // New base position: exactly maxThrow behind the finger
+                            curScreenX = fingerScreenX - cosA * maxThrowPx
+                            curScreenY = fingerScreenY - sinA * maxThrowPx
+
                             coroutineScope.launch {
-                                floatX.snapTo(fx)
-                                floatY.snapTo(fy)
+                                floatX.snapTo(curScreenX - homeCenter.x)
+                                floatY.snapTo(curScreenY - homeCenter.y)
                             }
 
+                            // Knob is fully deflected in the drag direction
                             Pair(cosA, -sinA)
                         }
 
-                        if (isLeft) {
-                            viewModel?.updateLeftStick(stickX, stickY)
-                        } else {
-                            viewModel?.updateRightStick(stickX, stickY)
-                        }
+                        if (isLeft) viewModel?.updateLeftStick(stickX, stickY)
+                        else viewModel?.updateRightStick(stickX, stickY)
                     }
 
-                    if (isLeft) {
-                        viewModel?.updateLeftStick(0f, 0f)
-                    } else {
-                        viewModel?.updateRightStick(0f, 0f)
-                    }
+                    // Finger lifted → zero out stick and spring base back to home
+                    if (isLeft) viewModel?.updateLeftStick(0f, 0f)
+                    else viewModel?.updateRightStick(0f, 0f)
 
                     coroutineScope.launch {
                         launch {
-                            floatX.animateTo(
-                                0f,
-                                spring(dampingRatio = 0.70f, stiffness = 400f)
-                            )
+                            floatX.animateTo(0f, spring(dampingRatio = 0.70f, stiffness = 400f))
                         }
                         launch {
-                            floatY.animateTo(
-                                0f,
-                                spring(dampingRatio = 0.70f, stiffness = 400f)
-                            )
+                            floatY.animateTo(0f, spring(dampingRatio = 0.70f, stiffness = 400f))
                         }
                     }
                 }
