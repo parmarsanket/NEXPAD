@@ -335,8 +335,20 @@ fun GamepadScreenContent(
         val lsEntry = profile.positions.entries.firstOrNull { it.key.equals("LS", ignoreCase = true) }
         val rsEntry = profile.positions.entries.firstOrNull { it.key.equals("RS", ignoreCase = true) }
 
-        // 1. Render mapped components with center-based placement + floating offsets
-        profile.positions.forEach { (key, position) ->
+        val joystickEntries = remember(profile.positions) {
+            profile.positions.entries.filter { (key, _) ->
+                key.equals("LS", ignoreCase = true) || key.equals("RS", ignoreCase = true)
+            }
+        }
+        val nonJoystickEntries = remember(profile.positions) {
+            profile.positions.entries.filter { (key, _) ->
+                !key.equals("LS", ignoreCase = true) && !key.equals("RS", ignoreCase = true)
+            }
+        }
+
+        // 1. Render joystick UI elements (LS, RS) — placed at bottom Z-order so floating touch
+        //    layers can capture touches directly on the joystick circle when floating.
+        joystickEntries.forEach { (key, position) ->
             val isLs = key.equals("LS", ignoreCase = true)
             val isRs = key.equals("RS", ignoreCase = true)
 
@@ -359,28 +371,8 @@ fun GamepadScreenContent(
             }
         }
 
-        // 2. Floating Joystick Touch Layers — rendered LAST (highest Z-order) so they receive
-        //    pointer events before the joystick UI widget's pointerInput. The zone gate inside
-        //    each layer ensures only the correct half/box region is claimed.
-
-        // Build exclusion zones for every non-joystick element so the floating layer
-        // never hijacks touches intended for ABXY / triggers / bumpers / D-pad etc.
-        // Exclusion radius = 40dp × element scale (buttons are ~80dp circles).
-        val buttonExclusionZones = remember(profile.positions, screenWidthPx, screenHeightPx, density) {
-            val radiusPx = with(density) { 40.dp.toPx() }
-            profile.positions.entries
-                .filter { (k, _) ->
-                    !k.equals("LS", ignoreCase = true) && !k.equals("RS", ignoreCase = true)
-                }
-                .map { (_, pos) ->
-                    Triple(
-                        pos.xRatio * screenWidthPx,
-                        pos.yRatio * screenHeightPx,
-                        radiusPx * pos.scale
-                    )
-                }
-        }
-
+        // 2. Floating Joystick Touch Layers — placed ABOVE joystick UI (so touches on the joystick UI circle
+        //    activate the floating layer), but BELOW all interactive buttons (so buttons always get top touch priority).
         if (lsEntry != null) {
             val lsPos = lsEntry.value
             val lsMode = lsPos.joystickMode ?: if (lsPos.isLocked == false) "FULL" else "LOCKED"
@@ -395,8 +387,7 @@ fun GamepadScreenContent(
                     floatX = lsFloatX,
                     floatY = lsFloatY,
                     viewModel = viewModel,
-                    isConnected = isConnected,
-                    buttonExclusionZones = buttonExclusionZones
+                    isConnected = isConnected
                 )
             }
         }
@@ -415,9 +406,29 @@ fun GamepadScreenContent(
                     floatX = rsFloatX,
                     floatY = rsFloatY,
                     viewModel = viewModel,
-                    isConnected = isConnected,
-                    buttonExclusionZones = buttonExclusionZones
+                    isConnected = isConnected
                 )
+            }
+        }
+
+        // 3. Render all interactive buttons, D-pad, triggers, bumpers, menu buttons — HIGHEST Z-order.
+        //    Rendered on top so they receive pointer events first and consume their own touches without
+        //    any interference from floating joystick layers.
+        nonJoystickEntries.forEach { (key, position) ->
+            Box(
+                modifier = Modifier
+                    .layout { measurable, childConstraints ->
+                        val placeable = measurable.measure(childConstraints)
+                        val x = (position.xRatio * screenWidthPx - placeable.width / 2f).roundToInt()
+                        val y = (position.yRatio * screenHeightPx - placeable.height / 2f).roundToInt()
+                        layout(placeable.width, placeable.height) {
+                            placeable.placeRelative(x, y)
+                        }
+                    }
+                    .scale(position.scale)
+                    .alpha(position.opacity)
+            ) {
+                renderElement(key, position)
             }
         }
     }
@@ -434,8 +445,7 @@ private fun BoxScope.FloatingJoystickTouchLayer(
     floatX: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>,
     floatY: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>,
     viewModel: GamepadViewModel?,
-    isConnected: Boolean,
-    buttonExclusionZones: List<Triple<Float, Float, Float>>
+    isConnected: Boolean
 ) {
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
@@ -468,6 +478,9 @@ private fun BoxScope.FloatingJoystickTouchLayer(
                     // silently skip touches near the joystick center — the core bug fixed here.
                     val down = awaitFirstDown(requireUnconsumed = false)
 
+                    // Skip if a higher Z-order control (e.g. any interactive button) already claimed this touch
+                    if (down.isConsumed) return@awaitEachGesture
+
                     // Local coords == screen coords because the Box is full-screen
                     val tx = down.position.x
                     val ty = down.position.y
@@ -481,15 +494,6 @@ private fun BoxScope.FloatingJoystickTouchLayer(
                         else   -> false
                     }
                     if (!inZone) return@awaitEachGesture
-
-                    // Exclusion gate: reject touches that land inside any non-joystick button's
-                    // hitbox so ABXY / triggers / bumpers / D-pad all get their own events.
-                    val hitButton = buttonExclusionZones.any { (cx, cy, radius) ->
-                        val dx = tx - cx
-                        val dy = ty - cy
-                        (dx * dx + dy * dy) <= (radius * radius)
-                    }
-                    if (hitButton) return@awaitEachGesture
 
                     // Claim touch; base snaps to finger
                     down.consume()
