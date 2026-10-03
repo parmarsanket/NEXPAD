@@ -53,18 +53,17 @@ import kotlin.time.Duration.Companion.milliseconds
 
 private fun DrawScope.drawInbuildTouchpadGrid(
     isLeft: Boolean,
-    auraColor: Color,
-    isRgbEnabled: Boolean
+    auraColor: Color
 ) {
     val w = size.width
     val h = size.height
     val gridStep = 24.dp.toPx()
-    // Tactical square grid base opacity decreased into half (halved from 0.080f/0.045f)
-    val baseLineAlpha = if (isRgbEnabled) 0.040f else 0.022f
+    // Tactical square grid base opacity: static 0.022f regardless of RGB setting
+    val baseLineAlpha = 0.022f
     val fadeZoneWidth = 56.dp.toPx()
 
     // 1. "Barely Visible Gradient" (Ultra-subtle ambient cyber background aura)
-    val gradAlpha = if (isRgbEnabled) 0.040f else 0.020f
+    val gradAlpha = 0.020f
     val centerX = if (isLeft) w * 0.40f else w * 0.60f
     val centerY = h * 0.65f
     val radius = maxOf(w, h) * 0.85f
@@ -133,9 +132,9 @@ private fun DrawScope.drawInbuildTouchpadGrid(
         y += gridStep
     }
 
-    // 3. Precision Crosshair Ticks '+' at major Grid Intersections (halved from 0.14f/0.08f)
+    // 3. Precision Crosshair Ticks '+' at major Grid Intersections: static 0.040f regardless of RGB setting
     val tickLen = 2.5.dp.toPx()
-    val tickBaseAlpha = if (isRgbEnabled) 0.070f else 0.040f
+    val tickBaseAlpha = 0.040f
     val majorStep = gridStep * 2
 
     var px = if (isLeft) gridStep else (w % majorStep)
@@ -365,8 +364,7 @@ fun InbuildTouchpadHalf(
             // Gaming small square grid lines covering the entire half-screen
             drawInbuildTouchpadGrid(
                 isLeft = isLeft,
-                auraColor = auraColor,
-                isRgbEnabled = isRgbEnabled
+                auraColor = auraColor
             )
         }
     }
@@ -408,8 +406,7 @@ fun InbuildTouchpad(
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawInbuildTouchpadGrid(
                 isLeft = isLeft,
-                auraColor = auraColor,
-                isRgbEnabled = isRgbEnabled
+                auraColor = auraColor
             )
         }
     }
@@ -443,8 +440,7 @@ fun StaticInbuildTouchpad(
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawInbuildTouchpadGrid(
                 isLeft = isLeft,
-                auraColor = auraColor,
-                isRgbEnabled = isRgbEnabled
+                auraColor = auraColor
             )
         }
     }
