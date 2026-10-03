@@ -521,19 +521,15 @@ private fun BoxScope.JoystickTouchLayer(
                     val screenX = if (isLeft) down.position.x else down.position.x + screenWidthPx / 2f
                     val screenY = down.position.y
 
-                    // 2. Button safety exclusion check:
-                    // Inside the button and its snug surrounding aura (the red area), joysticks must NOT trigger.
+                    // 2. Universal element boundary exclusion check:
+                    // Computes exact 2D Euclidean distance from touch to element boundary.
+                    // Dilates any shape (native, .nxprc vector, custom skin) uniformly by marginPx
+                    // with smooth rounded corners, completely agnostic to element type or aspect ratio.
+                    val marginSq = marginPx * marginPx
                     val nearButton = currentExclusionRects.any { rect ->
-                        val isRound = abs(rect.width - rect.height) < 8f
-                        if (isRound) {
-                            val r = (maxOf(rect.width, rect.height) / 2f) + marginPx
-                            val dx = screenX - rect.center.x
-                            val dy = screenY - rect.center.y
-                            (dx * dx + dy * dy) <= (r * r)
-                        } else {
-                            screenX >= (rect.left - marginPx) && screenX <= (rect.right + marginPx) &&
-                            screenY >= (rect.top - marginPx) && screenY <= (rect.bottom + marginPx)
-                        }
+                        val dx = maxOf(abs(screenX - rect.center.x) - rect.width / 2f, 0f)
+                        val dy = maxOf(abs(screenY - rect.center.y) - rect.height / 2f, 0f)
+                        (dx * dx + dy * dy) <= marginSq
                     }
                     if (nearButton) return@awaitEachGesture
 
