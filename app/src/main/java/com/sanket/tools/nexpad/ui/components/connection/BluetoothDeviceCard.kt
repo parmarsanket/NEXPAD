@@ -10,24 +10,24 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bluetooth
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 @Composable
@@ -37,11 +37,20 @@ fun BluetoothDeviceCard(
     onConnect: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    Surface(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = NeonPalette.DarkCard),
-        shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.3f))
+        shape = RoundedCornerShape(16.dp),
+        color = Color(0xFF0F1523).copy(alpha = 0.85f),
+        border = BorderStroke(
+            1.dp,
+            Brush.horizontalGradient(
+                listOf(
+                    NeonPalette.Purple.copy(alpha = 0.45f),
+                    NeonPalette.Purple.copy(alpha = 0.15f),
+                    Color.White.copy(alpha = 0.04f)
+                )
+            )
+        )
     ) {
         Row(
             modifier = Modifier
@@ -57,30 +66,46 @@ fun BluetoothDeviceCard(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(NeonPalette.Cyan.copy(alpha = 0.12f))
-                        .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.4f), CircleShape),
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(NeonPalette.Purple.copy(alpha = 0.12f))
+                        .border(1.dp, NeonPalette.Purple.copy(alpha = 0.4f), RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Bluetooth,
                         contentDescription = null,
-                        tint = NeonPalette.Cyan,
-                        modifier = Modifier.size(20.dp)
+                        tint = NeonPalette.Purple,
+                        modifier = Modifier.size(22.dp)
                     )
                 }
                 Column {
-                    Text(name, style = MaterialTheme.typography.titleMedium, color = Color.White)
-                    Text(address, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        text = name,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = Color.White
+                    )
+                    Text(
+                        text = address,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 11.5.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
                 }
             }
             Button(
                 onClick = onConnect,
                 shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan)
+                colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Purple)
             ) {
-                Text("Connect (BT)", color = Color.Black, fontWeight = FontWeight.Bold)
+                Text(
+                    text = "CONNECT (BT)",
+                    color = Color.White,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 0.8.sp,
+                    fontSize = 11.5.sp
+                )
             }
         }
     }

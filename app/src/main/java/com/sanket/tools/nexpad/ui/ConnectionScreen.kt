@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -24,6 +25,8 @@ import com.sanket.tools.nexpad.ui.components.common.NexpadTopAppBar
 import com.sanket.tools.nexpad.ui.components.connection.ActiveSessionCard
 import com.sanket.tools.nexpad.ui.components.connection.ConnectionHubStatusCard
 import com.sanket.tools.nexpad.ui.components.connection.ConnectionTransportsContent
+import com.sanket.tools.nexpad.ui.components.effects.CyberGrid
+import com.sanket.tools.nexpad.ui.components.effects.ScanLine
 import com.sanket.tools.nexpad.ui.layout.adaptiveLayoutSpec
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
@@ -42,9 +45,6 @@ fun ConnectionScreen(
     val adbServerName by viewModel.adbServerName.collectAsState()
 
     var pairedDevices by remember { mutableStateOf<List<android.bluetooth.BluetoothDevice>>(emptyList()) }
-    var manualIp by remember { mutableStateOf("") }
-    var manualPort by remember { mutableStateOf("9999") }
-    var showManualIpCard by remember { mutableStateOf(false) }
 
     val bluetoothPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -84,12 +84,6 @@ fun ConnectionScreen(
         isAdbAvailable = isAdbAvailable,
         adbServerName = adbServerName,
         isUsbDebuggingEnabled = viewModel.isUsbDebuggingEnabled(),
-        manualIp = manualIp,
-        manualPort = manualPort,
-        showManualIpCard = showManualIpCard,
-        onManualIpChange = { manualIp = it },
-        onManualPortChange = { manualPort = it },
-        onToggleManualIpCard = { showManualIpCard = !showManualIpCard },
         onConnectServer = { ip, port, name ->
             viewModel.connect(ip, port, name)
         },
@@ -153,12 +147,6 @@ fun ConnectionScreenContent(
     isAdbAvailable: Boolean = false,
     adbServerName: String? = null,
     isUsbDebuggingEnabled: Boolean = false,
-    manualIp: String = "",
-    manualPort: String = "9999",
-    showManualIpCard: Boolean = false,
-    onManualIpChange: (String) -> Unit = {},
-    onManualPortChange: (String) -> Unit = {},
-    onToggleManualIpCard: () -> Unit = {},
     onConnectServer: (String, Int, String) -> Unit = { _, _, _ -> },
     onConnectAoa: () -> Unit = {},
     onConnectAdb: () -> Unit = {},
@@ -170,19 +158,26 @@ fun ConnectionScreenContent(
     onOpenBluetoothSettings: () -> Unit = {},
     onDisconnect: () -> Unit = {},
     onBack: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // Optional compatibility parameters
+    manualIp: String = "",
+    manualPort: String = "9999",
+    showManualIpCard: Boolean = false,
+    onManualIpChange: (String) -> Unit = {},
+    onManualPortChange: (String) -> Unit = {},
+    onToggleManualIpCard: () -> Unit = {}
 ) {
     Scaffold(
         modifier = modifier,
         topBar = {
             NexpadTopAppBar(
-                title = "Connection Hub",
-                subtitle = "Transports & Pairing Management",
+                title = "CONNECTION HUB",
+                subtitle = "Hardware Transports & Link Engine",
                 onBack = onBack,
                 actions = {
                     HeaderStatusPill(
                         isConnected = isConnected,
-                        disconnectedText = "Idle",
+                        disconnectedText = "Standby",
                         modifier = Modifier.padding(end = 16.dp)
                     )
                 }
@@ -193,25 +188,23 @@ fun ConnectionScreenContent(
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(innerPadding),
+            contentAlignment = Alignment.TopCenter
         ) {
+            CyberGrid(modifier = Modifier.matchParentSize())
+            ScanLine(modifier = Modifier.matchParentSize())
+
             val layout = adaptiveLayoutSpec(maxWidth, maxHeight)
 
             val transportsComposable = @Composable {
                 ConnectionTransportsContent(
                     discoveredServers = discoveredServers,
                     pairedDevices = pairedDevices,
-                    manualIp = manualIp,
-                    manualPort = manualPort,
-                    showManualIpCard = showManualIpCard,
                     isAoaAttached = isAoaAttached,
                     isUsbCableConnected = isUsbCableConnected,
                     isAdbAvailable = isAdbAvailable,
                     adbServerName = adbServerName,
                     isUsbDebuggingEnabled = isUsbDebuggingEnabled,
-                    onManualIpChange = onManualIpChange,
-                    onManualPortChange = onManualPortChange,
-                    onToggleManualIpCard = onToggleManualIpCard,
                     onConnectServer = onConnectServer,
                     onConnectAoa = onConnectAoa,
                     onConnectAdb = onConnectAdb,
@@ -269,7 +262,8 @@ fun ConnectionScreenContent(
                 // Single Column (Portrait)
                 Column(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .widthIn(max = layout.formMaxWidth)
+                        .fillMaxWidth()
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = layout.horizontalPadding, vertical = layout.verticalPadding),
                     verticalArrangement = Arrangement.spacedBy(layout.contentSpacing)
@@ -278,6 +272,14 @@ fun ConnectionScreenContent(
                         ActiveSessionCard(
                             stats = connectionStats,
                             onDisconnect = onDisconnect
+                        )
+                    } else {
+                        ConnectionHubStatusCard(
+                            isUsbCableConnected = isUsbCableConnected,
+                            isAoaAttached = isAoaAttached,
+                            isAdbAvailable = isAdbAvailable,
+                            onRescan = onRescanNetwork,
+                            onOpenBluetoothSettings = onOpenBluetoothSettings
                         )
                     }
                     transportsComposable()

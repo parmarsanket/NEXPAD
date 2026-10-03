@@ -3,21 +3,34 @@ package com.sanket.tools.nexpad.ui.components.connection
 import android.bluetooth.BluetoothDevice
 import android.util.Log
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bluetooth
-import androidx.compose.material.icons.rounded.ExpandLess
-import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Usb
 import androidx.compose.material.icons.rounded.Wifi
-import androidx.compose.material3.*
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.network.DiscoveredServer
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
@@ -30,17 +43,11 @@ import com.sanket.tools.nexpad.ui.theme.NeonPalette
 fun ConnectionTransportsContent(
     discoveredServers: List<DiscoveredServer>,
     pairedDevices: List<BluetoothDevice>,
-    manualIp: String,
-    manualPort: String,
-    showManualIpCard: Boolean,
     isAoaAttached: Boolean,
     isUsbCableConnected: Boolean,
     isAdbAvailable: Boolean,
     adbServerName: String? = null,
     isUsbDebuggingEnabled: Boolean,
-    onManualIpChange: (String) -> Unit,
-    onManualPortChange: (String) -> Unit,
-    onToggleManualIpCard: () -> Unit,
     onConnectServer: (ip: String, port: Int, name: String) -> Unit,
     onConnectAoa: () -> Unit,
     onConnectAdb: () -> Unit,
@@ -50,7 +57,14 @@ fun ConnectionTransportsContent(
     onOpenTetheringSettings: () -> Unit,
     onReloadBluetoothDevices: () -> Unit,
     onOpenBluetoothSettings: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // Optional compatibility parameters (kept with default values)
+    manualIp: String = "",
+    manualPort: String = "9999",
+    showManualIpCard: Boolean = false,
+    onManualIpChange: (String) -> Unit = {},
+    onManualPortChange: (String) -> Unit = {},
+    onToggleManualIpCard: () -> Unit = {}
 ) {
     Column(
         modifier = modifier,
@@ -62,39 +76,43 @@ fun ConnectionTransportsContent(
         ConnectionSection(
             icon = Icons.Rounded.Wifi,
             title = "Network Discovery (Wi-Fi / Tethering)",
-            subtitle = "Automatic broadcast discovery on local network"
+            subtitle = "Automatic broadcast discovery on local network",
+            accentColor = NeonPalette.Cyan
         ) {
             val wifiServers = discoveredServers.filter { !it.isUsbTethering }
             val tetherServers = discoveredServers.filter { it.isUsbTethering }
 
             if (discoveredServers.isEmpty()) {
-                Card(
+                Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = NeonPalette.DarkCard),
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color(0xFF0F1523).copy(alpha = 0.85f),
                     border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(18.dp),
+                            .padding(20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text(
-                            "No computers discovered on LAN yet",
+                            text = "No computers discovered on LAN yet",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         OutlinedButton(
                             onClick = onRescanNetwork,
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Cyan),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = NeonPalette.Cyan,
+                                containerColor = NeonPalette.Cyan.copy(alpha = 0.06f)
+                            ),
                             border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f)),
                             shape = RoundedCornerShape(10.dp)
                         ) {
                             Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("Rescan Network", style = MaterialTheme.typography.labelMedium)
+                            Text("Rescan Network", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
                         }
                     }
                 }
@@ -122,40 +140,6 @@ fun ConnectionTransportsContent(
                     )
                 }
             }
-
-            // Manual IP Toggle Button
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = onToggleManualIpCard) {
-                    Icon(
-                        if (showManualIpCard) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                        contentDescription = null,
-                        tint = NeonPalette.Cyan,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        if (showManualIpCard) "Hide Manual IP" else "Manual IP Connect",
-                        color = NeonPalette.Cyan,
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                }
-            }
-
-            if (showManualIpCard) {
-                ManualIpCard(
-                    manualIp = manualIp,
-                    manualPort = manualPort,
-                    onIpChange = onManualIpChange,
-                    onPortChange = onManualPortChange,
-                    onConnect = {
-                        val port = manualPort.toIntOrNull() ?: 9999
-                        onConnectServer(manualIp.trim(), port, "Manual PC")
-                    }
-                )
-            }
         }
 
         // -------------------------------------------------------------
@@ -164,7 +148,8 @@ fun ConnectionTransportsContent(
         ConnectionSection(
             icon = Icons.Rounded.Usb,
             title = "USB Hardware Links",
-            subtitle = "Zero-latency physical cable connections"
+            subtitle = "Zero-latency physical cable connections",
+            accentColor = NeonPalette.Green
         ) {
             UsbAoaCard(
                 isAoaAttached = isAoaAttached,
@@ -192,46 +177,53 @@ fun ConnectionTransportsContent(
         ConnectionSection(
             icon = Icons.Rounded.Bluetooth,
             title = "Bluetooth Classic",
-            subtitle = "RFCOMM serial wireless link"
+            subtitle = "RFCOMM serial wireless link",
+            accentColor = NeonPalette.Purple
         ) {
             if (pairedDevices.isEmpty()) {
-                Card(
+                Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = NeonPalette.DarkCard),
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color(0xFF0F1523).copy(alpha = 0.85f),
                     border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
+                            .padding(18.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text(
-                            "No paired Bluetooth computers found.",
+                            text = "No paired Bluetooth computers found.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             OutlinedButton(
                                 onClick = onReloadBluetoothDevices,
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Cyan),
-                                border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f)),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = NeonPalette.Purple,
+                                    containerColor = NeonPalette.Purple.copy(alpha = 0.06f)
+                                ),
+                                border = BorderStroke(1.dp, NeonPalette.Purple.copy(alpha = 0.5f)),
                                 shape = RoundedCornerShape(10.dp)
                             ) {
                                 Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(6.dp))
-                                Text("Reload Paired", style = MaterialTheme.typography.labelMedium)
+                                Text("Reload Paired", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
                             }
 
                             OutlinedButton(
                                 onClick = onOpenBluetoothSettings,
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = Color.White,
+                                    containerColor = Color.White.copy(alpha = 0.04f)
+                                ),
                                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)),
                                 shape = RoundedCornerShape(10.dp)
                             ) {
-                                Text("Pair in Settings", style = MaterialTheme.typography.labelMedium)
+                                Text("Pair in Settings", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
                             }
                         }
                     }
