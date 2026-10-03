@@ -346,6 +346,38 @@ fun GamepadScreenContent(
             }
         }
 
+        // Build exclusion zones with safety spacing around each non-joystick button so that
+        // near-miss touches around buttons never accidentally trigger or jump the floating joystick.
+        val buttonExclusionZones = remember(nonJoystickEntries, screenWidthPx, screenHeightPx, density) {
+            val marginDp = 14f
+            nonJoystickEntries.map { (key, pos) ->
+                val upper = key.uppercase()
+                val (baseWDp, baseHDp) = when {
+                    upper in listOf("LB", "RB", "L1", "R1") -> Pair(154f, 48f)
+                    upper in listOf("LT", "RT", "L2", "R2") -> Pair(100f, 92f)
+                    upper in listOf("DPAD", "UP", "DOWN", "LEFT", "RIGHT") -> Pair(140f, 140f)
+                    upper in listOf("LTP", "RTP", "TOUCHPAD_L", "TOUCHPAD_R", "MOVE_PAD", "CAMERA_PAD") -> Pair(180f, 180f)
+                    upper in listOf("M1", "M2", "M3", "M4") -> Pair(80f, 40f)
+                    upper in listOf("START", "BACK", "GUIDE", "SHARE", "SELECT", "MENU", "HOME") -> Pair(60f, 60f)
+                    else -> Pair(80f, 80f)
+                }
+                val scale = pos.scale
+                val heightScale = pos.heightScale ?: 1.0f
+                val isCircle = (baseWDp == baseHDp) && !upper.startsWith("M") &&
+                        !upper.startsWith("L2") && !upper.startsWith("R2") &&
+                        !upper.startsWith("LT") && !upper.startsWith("RT")
+                val hw = with(density) { ((baseWDp * scale) / 2f + marginDp).dp.toPx() }
+                val hh = with(density) { ((baseHDp * scale * heightScale) / 2f + marginDp).dp.toPx() }
+                ButtonExclusionZone(
+                    centerX = pos.xRatio * screenWidthPx,
+                    centerY = pos.yRatio * screenHeightPx,
+                    halfWidth = hw,
+                    halfHeight = hh,
+                    isCircle = isCircle
+                )
+            }
+        }
+
         // 1. Render joystick UI elements (LS, RS) — placed at bottom Z-order so floating touch
         //    layers can capture touches directly on the joystick circle when floating.
         joystickEntries.forEach { (key, position) ->
@@ -387,7 +419,8 @@ fun GamepadScreenContent(
                     floatX = lsFloatX,
                     floatY = lsFloatY,
                     viewModel = viewModel,
-                    isConnected = isConnected
+                    isConnected = isConnected,
+                    exclusionZones = buttonExclusionZones
                 )
             }
         }
@@ -406,7 +439,8 @@ fun GamepadScreenContent(
                     floatX = rsFloatX,
                     floatY = rsFloatY,
                     viewModel = viewModel,
-                    isConnected = isConnected
+                    isConnected = isConnected,
+                    exclusionZones = buttonExclusionZones
                 )
             }
         }
@@ -434,6 +468,24 @@ fun GamepadScreenContent(
     }
 }
 
+private data class ButtonExclusionZone(
+    val centerX: Float,
+    val centerY: Float,
+    val halfWidth: Float,
+    val halfHeight: Float,
+    val isCircle: Boolean
+) {
+    fun contains(x: Float, y: Float): Boolean {
+        val dx = x - centerX
+        val dy = y - centerY
+        return if (isCircle) {
+            (dx * dx + dy * dy) <= (halfWidth * halfWidth)
+        } else {
+            abs(dx) <= halfWidth && abs(dy) <= halfHeight
+        }
+    }
+}
+
 @Composable
 private fun BoxScope.FloatingJoystickTouchLayer(
     isLeft: Boolean,
@@ -445,7 +497,8 @@ private fun BoxScope.FloatingJoystickTouchLayer(
     floatX: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>,
     floatY: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>,
     viewModel: GamepadViewModel?,
-    isConnected: Boolean
+    isConnected: Boolean,
+    exclusionZones: List<ButtonExclusionZone>
 ) {
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
@@ -470,7 +523,7 @@ private fun BoxScope.FloatingJoystickTouchLayer(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .pointerInput(mode, homeX, homeY, boxHalfPx, screenWidthPx, isLeft) {
+            .pointerInput(mode, homeX, homeY, boxHalfPx, screenWidthPx, isLeft, exclusionZones) {
                 awaitEachGesture {
                     // requireUnconsumed = false: we see ALL touch-downs. The joystick widget
                     // itself has pointerInput that exits immediately (isLocked=false guard),
@@ -478,14 +531,14 @@ private fun BoxScope.FloatingJoystickTouchLayer(
                     // silently skip touches near the joystick center — the core bug fixed here.
                     val down = awaitFirstDown(requireUnconsumed = false)
 
-                    // Skip if a higher Z-order control (e.g. any interactive button) already claimed this touch
+                    // 1. Skip if a higher Z-order control (e.g. any interactive button) already claimed this touch
                     if (down.isConsumed) return@awaitEachGesture
 
                     // Local coords == screen coords because the Box is full-screen
                     val tx = down.position.x
                     val ty = down.position.y
 
-                    // Activation zone gate
+                    // 2. Activation zone gate
                     val inZone = when (mode) {
                         "FULL" -> if (isLeft) tx < screenWidthPx / 2f
                                   else        tx >= screenWidthPx / 2f
@@ -494,6 +547,10 @@ private fun BoxScope.FloatingJoystickTouchLayer(
                         else   -> false
                     }
                     if (!inZone) return@awaitEachGesture
+
+                    // 3. Spacing exclusion: do NOT trigger joystick if touch falls within the buffer zone around any button
+                    val nearButton = exclusionZones.any { it.contains(tx, ty) }
+                    if (nearButton) return@awaitEachGesture
 
                     // Claim touch; base snaps to finger
                     down.consume()
