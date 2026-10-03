@@ -23,7 +23,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Shield
-import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -104,7 +103,6 @@ fun SettingsScreen(
         hapticClickStrength = hapticClickStrength,
         hapticStyle = hapticStyle,
         rumbleMode = rumbleMode,
-        onActiveProfileChange = { layoutManager.setActiveProfile(it) },
         onRgbChange = {
             layoutManager.saveProfile(currentProfile.copy(isRgbEnabled = it), activate = true)
         },
@@ -150,7 +148,6 @@ fun SettingsScreenContent(
     hapticClickStrength: Float = 0.3f,
     hapticStyle: String = HapticFeedbackHelper.STYLE_CRISP,
     rumbleMode: String = "min",
-    onActiveProfileChange: (String) -> Unit = {},
     onRgbChange: (Boolean) -> Unit = {},
     onButtonHapticsChange: (Boolean) -> Unit = {},
     onVibrateOfflineChange: (Boolean) -> Unit = {},
@@ -193,31 +190,13 @@ fun SettingsScreenContent(
                     .verticalScroll(scrollState),
                 verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
-                // ── Card 1: Controller Profile & Lighting ────────────────────────
+                // ── Card 1: Visual & Controller Aesthetics ────────────────────────
                 SettingsSectionCard(
                     accentColor = NeonPalette.Cyan,
-                    title = "CONTROLLER PROFILE & LIGHTING",
-                    subtitle = "Active layout architecture & RGB aura bloom",
-                    icon = Icons.Rounded.SportsEsports
+                    title = "VISUAL & CONTROLLER LIGHTING",
+                    subtitle = "RGB aura bloom & dynamic illumination",
+                    icon = Icons.Rounded.Palette
                 ) {
-                    SettingsSegmentedSelector(
-                        title = "Active Layout Profile",
-                        description = "Switch primary controller architecture between Xbox and PlayStation ergonomics",
-                        options = listOf(
-                            Triple("Standard Elite", "Xbox Style", "Asymmetric Sticks • A/B/X/Y"),
-                            Triple("PlayStation DualSense Pro", "PlayStation Style", "Symmetric Sticks • △/◯/✕/□")
-                        ),
-                        selectedValue = if (activeProfileName.contains("PlayStation", ignoreCase = true)) {
-                            "PlayStation DualSense Pro"
-                        } else if (activeProfileName.contains("Standard", ignoreCase = true)) {
-                            "Standard Elite"
-                        } else {
-                            ""
-                        },
-                        onSelect = onActiveProfileChange,
-                        accentColor = NeonPalette.Cyan
-                    )
-
                     SettingsToggleRow(
                         title = "RGB Aura & Glow",
                         description = "Dynamic neon bloom and outer lighting radiating behind controller buttons, d-pads, and joysticks",
