@@ -1,6 +1,8 @@
 package com.sanket.tools.nexpad.ui.components.controller
 
 import android.content.Context
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -34,6 +37,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.hypot
+import kotlin.math.sqrt
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
@@ -42,8 +46,9 @@ import kotlin.time.Duration.Companion.milliseconds
  * Implements the Full-Mode touch architecture:
  * - Operates at the lowest Z-index (drawn behind all buttons/controls).
  * - 16.dp Universal Button Buffer Zone: touches within 16dp of any interactive button are completely ignored.
- * - Displays a barely visible, subtle ambient cyber gradient with halved tactical square grid lines.
- * - Zero touch animation UI on touch: no puck, no outer corona bloom, no tactile rings, no aim vector, and no localized touch glow.
+ * - Static baseline: baseLineAlpha = 0.022f, tickBaseAlpha = 0.040f, gradAlpha = 0.020f.
+ * - Dynamic touch aura: Touching creates a surrounding cyber aura that doubles/triples line, tick, and glow opacity,
+ *   fading smoothly back to static baseline values as distance from touch increases or touch ends.
  * - Uses calibrated 5-zone velocity transfer curve and trackball momentum coasting on release.
  */
 
@@ -53,7 +58,10 @@ import kotlin.time.Duration.Companion.milliseconds
 
 private fun DrawScope.drawInbuildTouchpadGrid(
     isLeft: Boolean,
-    auraColor: Color
+    auraColor: Color,
+    touchX: Float = -1f,
+    touchY: Float = -1f,
+    touchAuraAlpha: Float = 0f
 ) {
     val w = size.width
     val h = size.height
@@ -166,6 +174,133 @@ private fun DrawScope.drawInbuildTouchpadGrid(
         }
         px += majorStep
     }
+
+    // 4. Interactive Surrounding Touch Aura
+    // Smoothly doubles/triples baseline opacity (baseLineAlpha -> 0.066f, tickBaseAlpha -> 0.120f, gradAlpha -> 0.045f)
+    // within the surround radius, falling back smoothly to static baseline as distance increases or finger lifts.
+    if (touchAuraAlpha > 0.005f && touchX >= 0f && touchY >= 0f) {
+        val auraRadius = 120.dp.toPx()
+
+        // 4a. Ambient surrounding cyber glow aura (doubled/tripled gradAlpha around touch)
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    auraColor.copy(alpha = 0.045f * touchAuraAlpha),
+                    auraColor.copy(alpha = 0.015f * touchAuraAlpha),
+                    Color.Transparent
+                ),
+                center = Offset(touchX, touchY),
+                radius = auraRadius
+            ),
+            radius = auraRadius,
+            center = Offset(touchX, touchY)
+        )
+
+        // 4b. Surrounding vertical grid lines boost (triples baseLineAlpha up to 0.066f at center)
+        val maxExtraLineAlpha = 0.044f * touchAuraAlpha
+        val minX = (touchX - auraRadius).coerceAtLeast(0f)
+        val maxX = (touchX + auraRadius).coerceAtMost(w)
+        val startGridX = if (isLeft) 0f else (w % gridStep)
+        val firstX = startGridX + (kotlin.math.floor((minX - startGridX) / gridStep).coerceAtLeast(0f) * gridStep)
+        var ax = firstX
+        while (ax <= maxX) {
+            val dx = abs(ax - touchX)
+            if (dx < auraRadius) {
+                val centerDist = if (isLeft) (w - ax) else ax
+                val fadeFactor = (centerDist / fadeZoneWidth).coerceIn(0f, 1f)
+                val dy = sqrt(auraRadius * auraRadius - dx * dx)
+                val peakAlpha = maxExtraLineAlpha * (1f - dx / auraRadius) * fadeFactor
+                if (peakAlpha > 0.002f) {
+                    val startY = (touchY - dy).coerceAtLeast(0f)
+                    val endY = (touchY + dy).coerceAtMost(h)
+                    if (endY > startY) {
+                        drawLine(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    auraColor.copy(alpha = peakAlpha),
+                                    Color.Transparent
+                                ),
+                                startY = touchY - dy,
+                                endY = touchY + dy
+                            ),
+                            start = Offset(ax, startY),
+                            end = Offset(ax, endY),
+                            strokeWidth = 1.dp.toPx()
+                        )
+                    }
+                }
+            }
+            ax += gridStep
+        }
+
+        // 4c. Surrounding horizontal grid lines boost (triples baseLineAlpha up to 0.066f at center)
+        val minY = (touchY - auraRadius).coerceAtLeast(0f)
+        val maxY = (touchY + auraRadius).coerceAtMost(h)
+        val firstY = kotlin.math.floor(minY / gridStep).coerceAtLeast(0f) * gridStep
+        var ay = firstY
+        while (ay <= maxY) {
+            val dy = abs(ay - touchY)
+            if (dy < auraRadius) {
+                val dx = sqrt(auraRadius * auraRadius - dy * dy)
+                val peakAlpha = maxExtraLineAlpha * (1f - dy / auraRadius)
+                val startX = (touchX - dx).coerceAtLeast(0f)
+                val endX = (touchX + dx).coerceAtMost(w)
+                if (peakAlpha > 0.002f && endX > startX) {
+                    drawLine(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                auraColor.copy(alpha = peakAlpha),
+                                Color.Transparent
+                            ),
+                            startX = touchX - dx,
+                            endX = touchX + dx
+                        ),
+                        start = Offset(startX, ay),
+                        end = Offset(endX, ay),
+                        strokeWidth = 1.dp.toPx()
+                    )
+                }
+            }
+            ay += gridStep
+        }
+
+        // 4d. Surrounding precision ticks '+' boost (triples tickBaseAlpha up to 0.120f at center)
+        val maxExtraTickAlpha = 0.080f * touchAuraAlpha
+        val startTickX = if (isLeft) gridStep else (w % majorStep)
+        val firstTickX = startTickX + (kotlin.math.floor((minX - startTickX) / majorStep).coerceAtLeast(0f) * majorStep)
+        var tpx = firstTickX
+        while (tpx <= maxX) {
+            val centerDist = if (isLeft) (w - tpx) else tpx
+            val fadeFactor = (centerDist / fadeZoneWidth).coerceIn(0f, 1f)
+            val firstTickY = gridStep + (kotlin.math.floor((minY - gridStep) / majorStep).coerceAtLeast(0f) * majorStep)
+            var tpy = firstTickY
+            while (tpy <= maxY) {
+                val dist = hypot(tpx - touchX, tpy - touchY)
+                if (dist < auraRadius) {
+                    val extraAlpha = maxExtraTickAlpha * (1f - dist / auraRadius) * fadeFactor
+                    if (extraAlpha > 0.003f) {
+                        val extraColor = auraColor.copy(alpha = extraAlpha)
+                        drawLine(
+                            color = extraColor,
+                            start = Offset(tpx - tickLen, tpy),
+                            end = Offset(tpx + tickLen, tpy),
+                            strokeWidth = 1.2.dp.toPx()
+                        )
+                        drawLine(
+                            color = extraColor,
+                            start = Offset(tpx, tpy - tickLen),
+                            end = Offset(tpx, tpy + tickLen),
+                            strokeWidth = 1.2.dp.toPx()
+                        )
+                    }
+                }
+                tpy += majorStep
+            }
+            tpx += majorStep
+        }
+    }
 }
 
 // =========================================================================
@@ -192,7 +327,16 @@ fun InbuildTouchpadHalf(
     val coroutineScope = rememberCoroutineScope()
     val auraColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
 
+    var isTouching by remember { mutableStateOf(false) }
+    var touchX by remember { mutableFloatStateOf(-1f) }
+    var touchY by remember { mutableFloatStateOf(-1f) }
     var decayJob by remember { mutableStateOf<Job?>(null) }
+
+    val touchAuraAlpha by animateFloatAsState(
+        targetValue = if (isTouching) 1f else 0f,
+        animationSpec = tween(durationMillis = 180),
+        label = "inbuild_touch_aura"
+    )
 
     val context = LocalContext.current
     val density = LocalDensity.current.density
@@ -247,6 +391,10 @@ fun InbuildTouchpadHalf(
                     down.consume()
                     onVibrate()
 
+                    isTouching = true
+                    touchX = down.position.x
+                    touchY = down.position.y
+
                     var previousTouchX = down.position.x
                     var previousTouchY = down.position.y
                     var previousTimeMs = System.currentTimeMillis()
@@ -274,6 +422,9 @@ fun InbuildTouchpadHalf(
                         previousTouchX = currentTouchX
                         previousTouchY = currentTouchY
                         change.consume()
+
+                        touchX = currentTouchX
+                        touchY = currentTouchY
 
                         // Directional axis stabilization: suppress minor diagonal cross-talk
                         var finalDeltaX = deltaX
@@ -348,6 +499,7 @@ fun InbuildTouchpadHalf(
                     }
 
                     // Gesture released
+                    isTouching = false
                     val peakReleaseSpeed = velocityBuffer.peakSpeed()
                     if (peakReleaseSpeed < 80f) {
                         decayJob?.cancel()
@@ -364,7 +516,10 @@ fun InbuildTouchpadHalf(
             // Gaming small square grid lines covering the entire half-screen
             drawInbuildTouchpadGrid(
                 isLeft = isLeft,
-                auraColor = auraColor
+                auraColor = auraColor,
+                touchX = touchX,
+                touchY = touchY,
+                touchAuraAlpha = touchAuraAlpha
             )
         }
     }
