@@ -1521,6 +1521,29 @@ class CategoryManagerHudTest {
         assertFalse("X=1200 is in right (RTP) region", isTouchpadRegionLeft(1200f))
         assertFalse("X=2200 is in right (RTP) region", isTouchpadRegionLeft(2200f))
     }
+
+    @Test
+    fun testInbuildTouchpadExcludesDiscreteBoxWidget() {
+        // Layout positions with LTP and RTP using inbuild touchpads or default skins
+        val positions = mapOf(
+            "LTP" to Position(xRatio = 0.10f, yRatio = 0.75f, customComponentId = "builtin.inbuild_ltp"),
+            "RTP" to Position(xRatio = 0.90f, yRatio = 0.75f, customComponentId = "builtin.inbuild_rtp"),
+            "A" to Position(xRatio = 0.75f, yRatio = 0.75f)
+        )
+
+        val touchpadEntries = positions.entries.filter { (key, _) ->
+            key.equals("LTP", ignoreCase = true) || key.equals("RTP", ignoreCase = true)
+        }
+        assertEquals(2, touchpadEntries.size)
+
+        // Filter for discrete touchpad elements: inbuild and default touchpads are ambient full-surface layers,
+        // so no discrete box UI widget should be rendered
+        val discreteTouchpadEntries = touchpadEntries.filter { (_, pos) ->
+            val id = pos.customComponentId
+            id != null && !id.startsWith("builtin.inbuild_") && !id.startsWith("builtin.default_")
+        }
+        assertTrue("Discrete box UI must be empty for inbuild touchpads", discreteTouchpadEntries.isEmpty())
+    }
 }
 
 

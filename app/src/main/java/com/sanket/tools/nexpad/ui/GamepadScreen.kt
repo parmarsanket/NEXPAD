@@ -421,8 +421,17 @@ fun GamepadScreenContent(
             }
         }
 
-        // Discrete Touchpad UI elements (LTP, RTP) — Placed at lowest Z-order so user can place buttons over them
-        touchpadEntries.forEach { (key, position) ->
+        // Discrete Touchpad UI elements (only non-inbuild custom/vector skins, if any).
+        // Inbuild touchpads are ambient full-surface layers covering half the screen with gaming grid lines,
+        // so no discrete box UI is rendered on screen for inbuild / default touchpads.
+        val discreteTouchpadEntries = remember(touchpadEntries) {
+            touchpadEntries.filter { (_, pos) ->
+                val id = pos.customComponentId
+                id != null && !id.startsWith("builtin.inbuild_") && !id.startsWith("builtin.default_")
+            }
+        }
+
+        discreteTouchpadEntries.forEach { (key, position) ->
             Box(
                 modifier = Modifier
                     .layout { measurable, childConstraints ->

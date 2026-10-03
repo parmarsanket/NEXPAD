@@ -59,15 +59,21 @@ import kotlin.time.Duration.Companion.milliseconds
 // SHARED CANVAS DRAWING PRIMITIVES FOR INBUILD TOUCHPAD
 // =========================================================================
 
-private fun DrawScope.drawInbuildTouchpadAesthetics(
+private fun DrawScope.drawInbuildTouchpadGrid(
     isLeft: Boolean,
     auraColor: Color,
-    isRgbEnabled: Boolean
+    isRgbEnabled: Boolean,
+    touchX: Float = -1f,
+    touchY: Float = -1f,
+    activeAlpha: Float = 0f
 ) {
     val w = size.width
     val h = size.height
+    val gridStep = 24.dp.toPx()
+    val baseLineAlpha = if (isRgbEnabled) 0.080f else 0.045f
+    val fadeZoneWidth = 56.dp.toPx()
 
-    // 1. "Barely Visible Gradient" (Ultra-subtle ambient cyber aura)
+    // 1. "Barely Visible Gradient" (Ultra-subtle ambient cyber background aura)
     val gradAlpha = if (isRgbEnabled) 0.040f else 0.020f
     val centerX = if (isLeft) w * 0.40f else w * 0.60f
     val centerY = h * 0.65f
@@ -86,47 +92,109 @@ private fun DrawScope.drawInbuildTouchpadAesthetics(
         size = size
     )
 
-    // 2. Subtle Precision Corner Registration L-Brackets
-    val bracketAlpha = if (isRgbEnabled) 0.12f else 0.06f
-    val bracketLen = 14.dp.toPx()
-    val inset = 8.dp.toPx()
-    val strokeWidth = 1.5.dp.toPx()
+    // 2. Interactive Localized Grid Illumination
+    if (activeAlpha > 0.01f && touchX >= 0f && touchY >= 0f) {
+        val touchGlowRadius = 120.dp.toPx()
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    auraColor.copy(alpha = activeAlpha * 0.16f),
+                    auraColor.copy(alpha = activeAlpha * 0.05f),
+                    Color.Transparent
+                ),
+                center = Offset(touchX, touchY),
+                radius = touchGlowRadius
+            ),
+            radius = touchGlowRadius,
+            center = Offset(touchX, touchY)
+        )
+    }
 
-    // Top-Left
-    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(inset, inset), Offset(inset + bracketLen, inset), strokeWidth, StrokeCap.Square)
-    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(inset, inset), Offset(inset, inset + bracketLen), strokeWidth, StrokeCap.Square)
+    // 3. Small Square Grid Lines
+    // Vertical lines
+    var x = if (isLeft) 0f else (w % gridStep)
+    while (x <= w) {
+        // Fade lines near the center screen boundary
+        val centerDist = if (isLeft) (w - x) else x
+        val fadeFactor = (centerDist / fadeZoneWidth).coerceIn(0f, 1f)
+        val lineAlpha = baseLineAlpha * fadeFactor
 
-    // Top-Right
-    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(w - inset, inset), Offset(w - inset - bracketLen, inset), strokeWidth, StrokeCap.Square)
-    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(w - inset, inset), Offset(w - inset, inset + bracketLen), strokeWidth, StrokeCap.Square)
+        if (lineAlpha > 0.005f) {
+            drawLine(
+                color = auraColor.copy(alpha = lineAlpha),
+                start = Offset(x, 0f),
+                end = Offset(x, h),
+                strokeWidth = 1.dp.toPx()
+            )
+        }
+        x += gridStep
+    }
 
-    // Bottom-Left
-    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(inset, h - inset), Offset(inset + bracketLen, h - inset), strokeWidth, StrokeCap.Square)
-    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(inset, h - inset), Offset(inset, h - inset - bracketLen), strokeWidth, StrokeCap.Square)
+    // Horizontal lines
+    var y = 0f
+    while (y <= h) {
+        val lineAlpha = baseLineAlpha
+        val brush = Brush.horizontalGradient(
+            colors = if (isLeft) {
+                listOf(
+                    auraColor.copy(alpha = lineAlpha),
+                    auraColor.copy(alpha = lineAlpha * 0.8f),
+                    Color.Transparent
+                )
+            } else {
+                listOf(
+                    Color.Transparent,
+                    auraColor.copy(alpha = lineAlpha * 0.8f),
+                    auraColor.copy(alpha = lineAlpha)
+                )
+            },
+            startX = 0f,
+            endX = w
+        )
 
-    // Bottom-Right
-    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(w - inset, h - inset), Offset(w - inset - bracketLen, h - inset), strokeWidth, StrokeCap.Square)
-    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(w - inset, h - inset), Offset(w - inset, h - inset - bracketLen), strokeWidth, StrokeCap.Square)
+        drawLine(
+            brush = brush,
+            start = Offset(0f, y),
+            end = Offset(w, y),
+            strokeWidth = 1.dp.toPx()
+        )
+        y += gridStep
+    }
 
-    // 3. Subtle Ergonomic Thumb Arc Guide (Dashed Range Sweep)
-    val thumbPivot = Offset(if (isLeft) 0f else w, h)
-    val arcRadius1 = minOf(w, h) * 0.60f
-    val arcRadius2 = minOf(w, h) * 0.90f
-    val arcAlpha = if (isRgbEnabled) 0.035f else 0.018f
-    val dashEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 6.dp.toPx()), 0f)
+    // 4. Precision Crosshair Ticks '+' at major Grid Intersections
+    val tickLen = 2.5.dp.toPx()
+    val tickBaseAlpha = if (isRgbEnabled) 0.14f else 0.08f
+    val majorStep = gridStep * 2
 
-    drawCircle(
-        color = auraColor.copy(alpha = arcAlpha),
-        radius = arcRadius1,
-        center = thumbPivot,
-        style = Stroke(width = 1.dp.toPx(), pathEffect = dashEffect)
-    )
-    drawCircle(
-        color = auraColor.copy(alpha = arcAlpha * 0.7f),
-        radius = arcRadius2,
-        center = thumbPivot,
-        style = Stroke(width = 1.dp.toPx(), pathEffect = dashEffect)
-    )
+    var px = if (isLeft) gridStep else (w % majorStep)
+    while (px < w) {
+        val centerDist = if (isLeft) (w - px) else px
+        val fadeFactor = (centerDist / fadeZoneWidth).coerceIn(0f, 1f)
+        val tickAlpha = tickBaseAlpha * fadeFactor
+
+        if (tickAlpha > 0.01f) {
+            var py = gridStep
+            while (py < h) {
+                val tickColor = auraColor.copy(alpha = tickAlpha)
+                // Horizontal bar of tick
+                drawLine(
+                    color = tickColor,
+                    start = Offset(px - tickLen, py),
+                    end = Offset(px + tickLen, py),
+                    strokeWidth = 1.2.dp.toPx()
+                )
+                // Vertical bar of tick
+                drawLine(
+                    color = tickColor,
+                    start = Offset(px, py - tickLen),
+                    end = Offset(px, py + tickLen),
+                    strokeWidth = 1.2.dp.toPx()
+                )
+                py += majorStep
+            }
+        }
+        px += majorStep
+    }
 }
 
 private fun DrawScope.drawInbuildActiveCapacitiveTouch(
@@ -419,11 +487,14 @@ fun InbuildTouchpadHalf(
             }
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            // Background subtle gradient & cyber telemetry
-            drawInbuildTouchpadAesthetics(
+            // Gaming small square grid lines covering the entire half-screen
+            drawInbuildTouchpadGrid(
                 isLeft = isLeft,
                 auraColor = auraColor,
-                isRgbEnabled = isRgbEnabled
+                isRgbEnabled = isRgbEnabled,
+                touchX = touchX,
+                touchY = touchY,
+                activeAlpha = activeAlpha
             )
 
             // Dynamic capacitive touch puck & aim vector
@@ -447,6 +518,7 @@ fun InbuildTouchpadHalf(
 
 /**
  * Discrete Inbuild Touchpad variant (180.dp) for Button Studio previews or placed instances.
+ * Displays the gaming small square grid lines.
  */
 @Composable
 fun InbuildTouchpad(
@@ -459,32 +531,22 @@ fun InbuildTouchpad(
     modifier: Modifier = Modifier
 ) {
     val auraColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
-    val shape = RoundedCornerShape(26.dp)
+    val shape = RoundedCornerShape(16.dp)
 
     Box(
         modifier = modifier
             .size(180.dp)
             .clip(shape)
-            .background(
-                Brush.radialGradient(
-                    colors = listOf(
-                        Color(0xFF1E2127),
-                        Color(0xFF101216),
-                        Color(0xFF07080A)
-                    ),
-                    center = Offset(0.4f, 0.4f),
-                    radius = 280f
-                )
-            )
+            .background(Color(0xFF06080C))
             .border(
                 width = 1.dp,
-                color = if (isRgbEnabled) auraColor.copy(alpha = 0.40f) else Color.White.copy(alpha = 0.15f),
+                color = if (isRgbEnabled) auraColor.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.08f),
                 shape = shape
             ),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            drawInbuildTouchpadAesthetics(
+            drawInbuildTouchpadGrid(
                 isLeft = isLeft,
                 auraColor = auraColor,
                 isRgbEnabled = isRgbEnabled
@@ -495,6 +557,7 @@ fun InbuildTouchpad(
 
 /**
  * Static non-interactive preview of the Inbuild Touchpad for Button Studio card grids.
+ * Displays the gaming small square grid lines with central capacitive puck bloom.
  */
 @Composable
 fun StaticInbuildTouchpad(
@@ -503,32 +566,22 @@ fun StaticInbuildTouchpad(
     modifier: Modifier = Modifier
 ) {
     val auraColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
-    val shape = RoundedCornerShape(26.dp)
+    val shape = RoundedCornerShape(16.dp)
 
     Box(
         modifier = modifier
             .size(180.dp)
             .clip(shape)
-            .background(
-                Brush.radialGradient(
-                    colors = listOf(
-                        Color(0xFF1E2127),
-                        Color(0xFF101216),
-                        Color(0xFF07080A)
-                    ),
-                    center = Offset(0.4f, 0.4f),
-                    radius = 280f
-                )
-            )
+            .background(Color(0xFF06080C))
             .border(
                 width = 1.dp,
-                color = if (isRgbEnabled) auraColor.copy(alpha = 0.40f) else Color.White.copy(alpha = 0.15f),
+                color = if (isRgbEnabled) auraColor.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.08f),
                 shape = shape
             ),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            drawInbuildTouchpadAesthetics(
+            drawInbuildTouchpadGrid(
                 isLeft = isLeft,
                 auraColor = auraColor,
                 isRgbEnabled = isRgbEnabled
