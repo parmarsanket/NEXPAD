@@ -13,10 +13,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bluetooth
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -94,15 +94,18 @@ fun BluetoothDeviceCard(
                     )
                 }
             }
-            Button(
+            OutlinedButton(
                 onClick = onConnect,
                 shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Purple)
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = NeonPalette.Purple.copy(alpha = 0.08f),
+                    contentColor = NeonPalette.Purple
+                ),
+                border = BorderStroke(1.5.dp, NeonPalette.Purple.copy(alpha = 0.7f))
             ) {
                 Text(
                     text = "CONNECT (BT)",
-                    color = Color.White,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.Bold,
                     letterSpacing = 0.8.sp,
                     fontSize = 11.5.sp
                 )

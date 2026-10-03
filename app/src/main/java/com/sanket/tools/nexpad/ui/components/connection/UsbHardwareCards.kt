@@ -16,7 +16,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Cable
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Usb
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -119,18 +118,21 @@ fun UsbAoaCard(
             }
 
             if (isAoaReady) {
-                Button(
+                OutlinedButton(
                     onClick = onConnectAoa,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(42.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan)
+                        .height(44.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = NeonPalette.Cyan.copy(alpha = 0.08f),
+                        contentColor = NeonPalette.Cyan
+                    ),
+                    border = BorderStroke(1.5.dp, NeonPalette.Cyan.copy(alpha = 0.7f))
                 ) {
                     Text(
                         text = "CONNECT (USB AOA)",
-                        color = Color.Black,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.Bold,
                         letterSpacing = 0.8.sp,
                         fontSize = 12.sp
                     )
@@ -258,18 +260,21 @@ fun UsbAdbCard(
                     }
                 }
                 isAdbAvailable -> {
-                    Button(
+                    OutlinedButton(
                         onClick = onConnectAdb,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(42.dp),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Green)
+                            .height(44.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = NeonPalette.Green.copy(alpha = 0.08f),
+                            contentColor = NeonPalette.Green
+                        ),
+                        border = BorderStroke(1.5.dp, NeonPalette.Green.copy(alpha = 0.7f))
                     ) {
                         Text(
                             text = "CONNECT (USB ADB)",
-                            color = Color.Black,
-                            fontWeight = FontWeight.Black,
+                            fontWeight = FontWeight.Bold,
                             letterSpacing = 0.8.sp,
                             fontSize = 12.sp
                         )

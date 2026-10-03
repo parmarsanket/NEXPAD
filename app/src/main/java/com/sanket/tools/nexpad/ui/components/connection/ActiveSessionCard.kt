@@ -15,10 +15,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Computer
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -122,17 +122,17 @@ fun ActiveSessionCard(
                     }
                 }
 
-                Button(
+                OutlinedButton(
                     onClick = onDisconnect,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = NeonPalette.Red.copy(alpha = 0.15f)
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = NeonPalette.Red.copy(alpha = 0.08f),
+                        contentColor = NeonPalette.Red
                     ),
-                    border = BorderStroke(1.dp, NeonPalette.Red.copy(alpha = 0.7f)),
+                    border = BorderStroke(1.2.dp, NeonPalette.Red.copy(alpha = 0.7f)),
                     shape = RoundedCornerShape(10.dp)
                 ) {
                     Text(
                         text = "Disconnect",
-                        color = NeonPalette.Red,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp
                     )

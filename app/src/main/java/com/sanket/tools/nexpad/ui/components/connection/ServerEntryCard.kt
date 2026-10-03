@@ -15,10 +15,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Computer
 import androidx.compose.material.icons.rounded.Link
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -113,18 +113,21 @@ fun ServerEntryCard(
                 )
             }
 
-            Button(
+            OutlinedButton(
                 onClick = onConnect,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(42.dp),
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = accentColor)
+                    .height(44.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = accentColor.copy(alpha = 0.08f),
+                    contentColor = accentColor
+                ),
+                border = BorderStroke(1.5.dp, accentColor.copy(alpha = 0.7f))
             ) {
                 Text(
                     text = if (isTethering) "CONNECT (USB TETHERING)" else "CONNECT (WI-FI)",
-                    color = Color.Black,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.Bold,
                     letterSpacing = 0.8.sp,
                     fontSize = 12.sp
                 )
