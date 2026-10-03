@@ -28,18 +28,7 @@ object LayoutMetrics {
      * Position: index 0 = top (Y), 1 = left (X), 2 = right (B), 3 = bottom (A).
      * This matches the physical Xbox diamond layout: Y top, X left, B right, A bottom.
      */
-    private val abxyKeys: List<String>
-        get() {
-            val controls = CategoryManager.getControlsForCategory("ABXY")
-            // CategoryManager ABXY order: A(0), B(1), X(2), Y(3)
-            // Diamond order: Y=top, X=left, B=right, A=bottom
-            return listOf(
-                controls.firstOrNull { it.key == "Y" }?.key ?: "Y",
-                controls.firstOrNull { it.key == "X" }?.key ?: "X",
-                controls.firstOrNull { it.key == "B" }?.key ?: "B",
-                controls.firstOrNull { it.key == "A" }?.key ?: "A"
-            )
-        }
+    private val abxyKeys: List<String> = listOf("Y", "X", "B", "A")
 
     /**
      * Converts a physical distance in DP to normalized (xRatio, yRatio) offsets.

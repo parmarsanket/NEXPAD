@@ -55,6 +55,9 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
+import java.util.concurrent.ConcurrentHashMap
+
+private val svgPathCache = ConcurrentHashMap<String, Path>()
 
 /**
  * High-performance Jetpack Compose interpreter for .nxpcomponent definitions.
@@ -720,14 +723,18 @@ private fun DrawScope.drawNxpGeometry(
             val svgData = geometry.pathData
             if (!svgData.isNullOrBlank()) {
                 try {
-                    val nodes = PathParser().parsePathString(svgData).toNodes()
-                    val path = Path()
-                    PathParser().addPathNodes(nodes).toPath(path)
+                    val path = svgPathCache.computeIfAbsent(svgData) {
+                        val p = Path()
+                        val nodes = PathParser().parsePathString(it).toNodes()
+                        PathParser().addPathNodes(nodes).toPath(p)
+                        p
+                    }
                     drawPath(path, fillColor)
                     if (borderWidth > 0f) {
                         drawPath(path, borderColor, style = Stroke(width = borderWidth))
                     }
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    android.util.Log.e("NxpComposeInterpreter", "Malformed SVG path data: $svgData", e)
                     drawCircle(fillColor)
                 }
             } else {

@@ -349,47 +349,51 @@ fun getControlDefaultPosition(canonicalKey: String): Position? {
  * Returns the non-deletable default layout profiles.
  * Provides 6 distinct, genre-optimized controller layouts with guaranteed zero cutout.
  */
-fun getDefaultLayoutProfiles(): List<LayoutProfile> = listOf(
-    LayoutProfile(
-        name = "Standard Elite",
-        isDefault = true,
-        labelStyle = "XBOX",
-        positions = standardElitePositions(),
-        description = "Precision Xbox asymmetric layout with ergonomic thumbstick offsets, dual triggers, and balanced central controls."
-    ),
-    LayoutProfile(
-        name = "PlayStation DualSense Pro",
-        isDefault = true,
-        labelStyle = "PLAYSTATION",
-        positions = playStationDualSensePositions(),
-        description = "Authentic PlayStation symmetric layout with DualSense thumbsticks, d-pad primacy, and iconic geometric glyphs."
-    ),
-    LayoutProfile(
-        name = "FPS Tactical Claw",
-        isDefault = true,
-        labelStyle = "XBOX",
-        positions = fpsTacticalClawPositions(),
-        description = "Competitive claw layout with hair triggers, separated aiming arcs, and instant tactical response."
-    ),
-    LayoutProfile(
-        name = "Retro Arcade Fightstick",
-        isDefault = true,
-        labelStyle = "XBOX",
-        positions = retroArcadeFightstickPositions(),
-        description = "Authentic Japanese 6-button arcade cabinet fightstick grid with heavy punch/kick buttons and 8-way D-Pad."
-    ),
-    LayoutProfile(
-        name = "Sim Racing & Flight",
-        isDefault = true,
-        labelStyle = "XBOX",
-        positions = simRacingFlightPositions(),
-        description = "Analog throttle & brake primacy with paddle shifters, steering telemetry stick, and pit-stop controls."
-    ),
-    LayoutProfile(
-        name = "Grand MOBA & RPG",
-        isDefault = true,
-        labelStyle = "XBOX",
-        positions = grandMobaRpgPositions(),
-        description = "Ergonomic radial ability sweep with primary attack anchor, directional skillshot triggers, and quick spell controls."
+private val DEFAULT_LAYOUT_PROFILES: List<LayoutProfile> by lazy {
+    listOf(
+        LayoutProfile(
+            name = "Standard Elite",
+            isDefault = true,
+            labelStyle = "XBOX",
+            positions = standardElitePositions(),
+            description = "Precision Xbox asymmetric layout with ergonomic thumbstick offsets, dual triggers, and balanced central controls."
+        ),
+        LayoutProfile(
+            name = "PlayStation DualSense Pro",
+            isDefault = true,
+            labelStyle = "PLAYSTATION",
+            positions = playStationDualSensePositions(),
+            description = "Authentic PlayStation symmetric layout with DualSense thumbsticks, d-pad primacy, and iconic geometric glyphs."
+        ),
+        LayoutProfile(
+            name = "FPS Tactical Claw",
+            isDefault = true,
+            labelStyle = "XBOX",
+            positions = fpsTacticalClawPositions(),
+            description = "Competitive claw layout with hair triggers, separated aiming arcs, and instant tactical response."
+        ),
+        LayoutProfile(
+            name = "Retro Arcade Fightstick",
+            isDefault = true,
+            labelStyle = "XBOX",
+            positions = retroArcadeFightstickPositions(),
+            description = "Authentic Japanese 6-button arcade cabinet fightstick grid with heavy punch/kick buttons and 8-way D-Pad."
+        ),
+        LayoutProfile(
+            name = "Sim Racing & Flight",
+            isDefault = true,
+            labelStyle = "XBOX",
+            positions = simRacingFlightPositions(),
+            description = "Analog throttle & brake primacy with paddle shifters, steering telemetry stick, and pit-stop controls."
+        ),
+        LayoutProfile(
+            name = "Grand MOBA & RPG",
+            isDefault = true,
+            labelStyle = "XBOX",
+            positions = grandMobaRpgPositions(),
+            description = "Ergonomic radial ability sweep with primary attack anchor, directional skillshot triggers, and quick spell controls."
+        )
     )
-)
+}
+
+fun getDefaultLayoutProfiles(): List<LayoutProfile> = DEFAULT_LAYOUT_PROFILES

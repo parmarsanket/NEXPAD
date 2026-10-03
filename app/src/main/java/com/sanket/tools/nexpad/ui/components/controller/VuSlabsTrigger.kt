@@ -42,6 +42,8 @@ import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.roundToInt
 
+private val SLAB_WIDTHS_DP = floatArrayOf(54f, 58f, 62f, 65f, 68f, 70f, 72f)
+
 /**
  * Native Jetpack Compose implementation of the NEXPAD VU Slabs Trigger (Trigger D — VU Slabs).
  *
@@ -263,6 +265,8 @@ fun VuSlabsTrigger(
             },
         contentAlignment = Alignment.TopCenter
     ) {
+        val ringPath = remember { Path() }
+
         // LAYER STACK CANVAS: Undercut Shadow + Neon Ring + 7 VU Meter Slabs + Lens Reflections
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
@@ -284,20 +288,19 @@ fun VuSlabsTrigger(
             val ringInset = 2.5.dp.toPx()
             val ringTopR = 19.5.dp.toPx()
             val ringBotR = 31.5.dp.toPx()
-            val ringPath = Path().apply {
-                addRoundRect(
-                    RoundRect(
-                        left = ringInset,
-                        top = ringInset,
-                        right = w - ringInset,
-                        bottom = h - ringInset,
-                        topLeftCornerRadius = CornerRadius(ringTopR, ringTopR),
-                        topRightCornerRadius = CornerRadius(ringTopR, ringTopR),
-                        bottomLeftCornerRadius = CornerRadius(ringBotR, ringBotR),
-                        bottomRightCornerRadius = CornerRadius(ringBotR, ringBotR)
-                    )
+            ringPath.reset()
+            ringPath.addRoundRect(
+                RoundRect(
+                    left = ringInset,
+                    top = ringInset,
+                    right = w - ringInset,
+                    bottom = h - ringInset,
+                    topLeftCornerRadius = CornerRadius(ringTopR, ringTopR),
+                    topRightCornerRadius = CornerRadius(ringTopR, ringTopR),
+                    bottomLeftCornerRadius = CornerRadius(ringBotR, ringBotR),
+                    bottomRightCornerRadius = CornerRadius(ringBotR, ringBotR)
                 )
-            }
+            )
 
             // Outer atmospheric bloom stroke
             drawPath(
@@ -315,22 +318,13 @@ fun VuSlabsTrigger(
             // =========================================================================
             // SEVEN AUDIO METER VU SLABS (HTML .vu i Translation)
             // =========================================================================
-            // Graceful taper widths following the balanced 34dp bottom pedal hull
-            val slabWidths = floatArrayOf(
-                54.dp.toPx(), // i = 0 (bottom-most)
-                58.dp.toPx(), // i = 1
-                62.dp.toPx(), // i = 2
-                65.dp.toPx(), // i = 3
-                68.dp.toPx(), // i = 4
-                70.dp.toPx(), // i = 5 (Amber Overdrive)
-                72.dp.toPx()  // i = 6 (Red Peak Overdrive)
-            )
             val slabHeight = 4.dp.toPx()
             val slabGap = 2.5.dp.toPx()
             val slabRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx())
             val bottomMargin = 10.dp.toPx()
 
             for (i in 0..6) {
+                val slabW = SLAB_WIDTHS_DP[i].dp.toPx()
                 val slabColor = when (i) {
                     5 -> orangeOverdrive
                     6 -> redOverdrive
@@ -342,7 +336,6 @@ fun VuSlabsTrigger(
                 val rawOpacity = (fillProgress - i * 0.143f) * 16f
                 val slabOpacity = rawOpacity.coerceIn(0.13f, 1.0f)
 
-                val slabW = slabWidths[i]
                 val slabLeft = (w - slabW) / 2f
                 val slabTop = (h - bottomMargin - slabHeight) - i * (slabHeight + slabGap)
 
