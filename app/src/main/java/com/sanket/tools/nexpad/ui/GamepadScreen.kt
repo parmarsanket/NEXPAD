@@ -137,6 +137,7 @@ fun GamepadScreen(
 
     var isRumbling by remember { mutableStateOf(false) }
     var rumbleResetJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    var rumbleStopJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     val hapticHelper = remember(context) { com.sanket.tools.nexpad.utils.HapticFeedbackHelper(context) }
     
     val safeOnVibrate: () -> Unit = {
@@ -168,29 +169,30 @@ fun GamepadScreen(
         
         var lastAppliedBand = -1
         var lastUpdateTimeMs = 0L
+        var motorOnStartTimeMs = 0L
         
         viewModel.feedbackFlow.collect { feedback ->
-            val intensityScalar = sharedPref.getFloat("RUMBLE_INTENSITY", 1.0f)
-            val rumbleMode = sharedPref.getString("RUMBLE_MODE", "min") ?: "min"
+            val rumbleMode = sharedPref.getString("RUMBLE_MODE", "max") ?: "max"
             
             // ── Stage 1: Stereo-to-Mono Downmix ─────────────────────────
             // Controller has 2 motors (heavy left, light right).
-            // Phone has 1 motor. Combine intelligently.
+            // Phone has 1 motor. Peak Force (max) preserves full game designer intent.
             val left = feedback.leftMotorSpeed
             val right = feedback.rightMotorSpeed
             
             val combinedSpeed = when (rumbleMode) {
-                "min"   -> minOf(left, right)
-                "max"   -> maxOf(left, right)
-                "avg"   -> (left + right) / 2
-                else    -> {
-                    // "smart": Weighted downmix — dominant motor drives feel,
-                    // weaker motor adds texture. Preserves game designer intent.
-                    ((0.7f * maxOf(left, right) + 0.3f * minOf(left, right))).roundToInt()
+                "smart" -> {
+                    // Smart blend: never attenuate single-motor transient spikes
+                    if (left == 0 || right == 0) maxOf(left, right)
+                    else (0.7f * maxOf(left, right) + 0.3f * minOf(left, right)).roundToInt()
                 }
+                "avg"   -> (left + right) / 2
+                "min"   -> minOf(left, right)
+                else    -> maxOf(left, right) // "max" default: 1:1 Peak Impact without channel muting
             }
             
-            val scaledSpeed = (combinedSpeed * intensityScalar).roundToInt().coerceIn(0, 255)
+            // Direct 1:1 game engine force translation [0..255] (In-game settings decide volume)
+            val scaledSpeed = combinedSpeed.coerceIn(0, 255)
             
             // ── Stage 2: Hardware Dead Zone ──────────────────────────────
             // Phone motors can't physically produce vibration below a threshold.
@@ -226,23 +228,22 @@ fun GamepadScreen(
             val now = System.currentTimeMillis()
             val gap = now - lastUpdateTimeMs
             
-            val shouldUpdate = when {
-                band == 0 && lastAppliedBand != 0 -> true  // OFF: always instant
-                band != 0 && lastAppliedBand == 0 -> true  // ON: always instant
-                band != lastAppliedBand && gap >= minGapMs -> true  // Band changed + motor ready
-                else -> false
-            }
-            
-            if (shouldUpdate) {
-                // android.util.Log.d("NEXPAD_RUMBLE", 
-                //     if (band > 0) "T${motorProfile.tier} APPLY -> band=$band (raw=$totalSpeed) gap=${gap}ms"
-                //     else "T${motorProfile.tier} OFF")
+            if (band > 0) {
+                rumbleStopJob?.cancel()
+                val shouldUpdate = when {
+                    lastAppliedBand <= 0 -> true // ON: always instant
+                    band != lastAppliedBand && gap >= minGapMs -> true // Band changed + motor ready
+                    else -> false
+                }
                 
-                lastAppliedBand = band
-                lastUpdateTimeMs = now
-                
-                if (band > 0) {
+                if (shouldUpdate) {
+                    if (lastAppliedBand <= 0) {
+                        motorOnStartTimeMs = now
+                    }
+                    lastAppliedBand = band
+                    lastUpdateTimeMs = now
                     isRumbling = true
+                    
                     when (motorProfile.tier) {
                         1 -> {
                             // Tier 1: No amplitude control. Binary vibration only.
@@ -259,9 +260,27 @@ fun GamepadScreen(
                             )
                         }
                     }
-                } else {
-                    isRumbling = false
-                    vibrator.cancel()
+                }
+            } else {
+                // OFF: Enforce minimum burst duration (40-50ms) so fast game transients
+                // (e.g. single gunshot/punch) aren't prematurely killed before motor spins up
+                if (lastAppliedBand > 0) {
+                    val minBurstMs = if (motorProfile.tier == 3) 35L else 50L
+                    val elapsed = now - motorOnStartTimeMs
+                    if (elapsed < minBurstMs) {
+                        rumbleStopJob?.cancel()
+                        rumbleStopJob = launch {
+                            delay(minBurstMs - elapsed)
+                            lastAppliedBand = 0
+                            isRumbling = false
+                            vibrator.cancel()
+                        }
+                    } else {
+                        rumbleStopJob?.cancel()
+                        lastAppliedBand = 0
+                        isRumbling = false
+                        vibrator.cancel()
+                    }
                 }
             }
 
@@ -271,7 +290,7 @@ fun GamepadScreen(
                 rumbleResetJob = launch {
                     delay(250)
                     if (lastAppliedBand != 0) {
-                        // android.util.Log.d("NEXPAD_RUMBLE", "WATCHDOG -> No packets for 250ms, motor killed")
+                        rumbleStopJob?.cancel()
                         lastAppliedBand = 0
                         isRumbling = false
                         vibrator.cancel()
@@ -283,6 +302,7 @@ fun GamepadScreen(
 
     DisposableEffect(Unit) {
         onDispose {
+            rumbleStopJob?.cancel()
             rumbleResetJob?.cancel()
             vibrator.cancel()
             navigationViewModel?.clearGamepadSession()

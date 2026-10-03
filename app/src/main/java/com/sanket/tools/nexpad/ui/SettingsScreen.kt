@@ -82,16 +82,15 @@ fun SettingsScreen(
         mutableStateOf(sharedPref.getBoolean(HapticFeedbackHelper.PREF_HAPTICS_OFFLINE_ENABLED, false))
     }
     var hapticClickStrength by remember {
-        mutableFloatStateOf(sharedPref.getFloat(HapticFeedbackHelper.PREF_HAPTICS_CLICK_STRENGTH, 0.1f))
+        mutableFloatStateOf(sharedPref.getFloat(HapticFeedbackHelper.PREF_HAPTICS_CLICK_STRENGTH, 0.3f))
     }
     var hapticStyle by remember {
         mutableStateOf(
-            sharedPref.getString(HapticFeedbackHelper.PREF_HAPTICS_STYLE, HapticFeedbackHelper.STYLE_SOFT)
-                ?: HapticFeedbackHelper.STYLE_SOFT
+            sharedPref.getString(HapticFeedbackHelper.PREF_HAPTICS_STYLE, HapticFeedbackHelper.STYLE_CRISP)
+                ?: HapticFeedbackHelper.STYLE_CRISP
         )
     }
-    var rumbleIntensity by remember { mutableFloatStateOf(sharedPref.getFloat("RUMBLE_INTENSITY", 1.0f)) }
-    var rumbleMode by remember { mutableStateOf(sharedPref.getString("RUMBLE_MODE", "min") ?: "min") }
+    var rumbleMode by remember { mutableStateOf(sharedPref.getString("RUMBLE_MODE", "max") ?: "max") }
 
     val context = LocalContext.current
     val hapticHelper = remember(context) { HapticFeedbackHelper(context) }
@@ -104,8 +103,8 @@ fun SettingsScreen(
         vibrateOfflineEnabled = vibrateOfflineEnabled,
         hapticClickStrength = hapticClickStrength,
         hapticStyle = hapticStyle,
-        rumbleIntensity = rumbleIntensity,
         rumbleMode = rumbleMode,
+        onActiveProfileChange = { layoutManager.setActiveProfile(it) },
         onRgbChange = {
             layoutManager.saveProfile(currentProfile.copy(isRgbEnabled = it), activate = true)
         },
@@ -133,10 +132,6 @@ fun SettingsScreen(
             sharedPref.edit().putString(HapticFeedbackHelper.PREF_HAPTICS_STYLE, it).apply()
             hapticHelper.performPreviewClick(style = it, strength = hapticClickStrength)
         },
-        onRumbleIntensityChange = {
-            rumbleIntensity = it
-            sharedPref.edit().putFloat("RUMBLE_INTENSITY", it).apply()
-        },
         onRumbleModeChange = {
             rumbleMode = it
             sharedPref.edit().putString("RUMBLE_MODE", it).apply()
@@ -152,17 +147,16 @@ fun SettingsScreenContent(
     isRgbEnabled: Boolean = true,
     buttonHapticsEnabled: Boolean = true,
     vibrateOfflineEnabled: Boolean = false,
-    hapticClickStrength: Float = 0.5f,
+    hapticClickStrength: Float = 0.3f,
     hapticStyle: String = HapticFeedbackHelper.STYLE_CRISP,
-    rumbleIntensity: Float = 1.0f,
-    rumbleMode: String = "min",
+    rumbleMode: String = "max",
+    onActiveProfileChange: (String) -> Unit = {},
     onRgbChange: (Boolean) -> Unit = {},
     onButtonHapticsChange: (Boolean) -> Unit = {},
     onVibrateOfflineChange: (Boolean) -> Unit = {},
     onHapticClickStrengthChange: (Float) -> Unit = {},
     onHapticClickStrengthFinished: () -> Unit = {},
     onHapticStyleChange: (String) -> Unit = {},
-    onRumbleIntensityChange: (Float) -> Unit = {},
     onRumbleModeChange: (String) -> Unit = {},
     onBack: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -199,13 +193,31 @@ fun SettingsScreenContent(
                     .verticalScroll(scrollState),
                 verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
-                // ── Card 1: Visual & Controller Aesthetics ────────────────────────
+                // ── Card 1: Controller Profile & Lighting ────────────────────────
                 SettingsSectionCard(
                     accentColor = NeonPalette.Cyan,
-                    title = "VISUAL & CONTROLLER LIGHTING",
-                    subtitle = "RGB aura bloom & dynamic illumination",
-                    icon = Icons.Rounded.Palette
+                    title = "CONTROLLER PROFILE & LIGHTING",
+                    subtitle = "Active layout architecture & RGB aura bloom",
+                    icon = Icons.Rounded.SportsEsports
                 ) {
+                    SettingsSegmentedSelector(
+                        title = "Active Layout Profile",
+                        description = "Switch primary controller architecture between Xbox and PlayStation ergonomics",
+                        options = listOf(
+                            Triple("Standard Elite", "Xbox Style", "Asymmetric Sticks • A/B/X/Y"),
+                            Triple("PlayStation DualSense Pro", "PlayStation Style", "Symmetric Sticks • △/◯/✕/□")
+                        ),
+                        selectedValue = if (activeProfileName.contains("PlayStation", ignoreCase = true)) {
+                            "PlayStation DualSense Pro"
+                        } else if (activeProfileName.contains("Standard", ignoreCase = true)) {
+                            "Standard Elite"
+                        } else {
+                            ""
+                        },
+                        onSelect = onActiveProfileChange,
+                        accentColor = NeonPalette.Cyan
+                    )
+
                     SettingsToggleRow(
                         title = "RGB Aura & Glow",
                         description = "Dynamic neon bloom and outer lighting radiating behind controller buttons, d-pads, and joysticks",
@@ -271,29 +283,24 @@ fun SettingsScreenContent(
                     accentColor = NeonPalette.Magenta,
                     title = "PC GAME RUMBLE FEEDBACK",
                     subtitle = "Dual-motor force telemetry streaming from PC game engine",
-                    icon = Icons.Rounded.SportsEsports
+                    icon = Icons.Rounded.Vibration
                 ) {
-                    SettingsSliderRow(
-                        title = "Master Rumble Volume",
-                        description = "Global multiplier applied to PC game motor vibrations downsampled to phone haptics",
-                        value = rumbleIntensity,
-                        valueText = "${(rumbleIntensity * 100).toInt()}%",
-                        valueRange = 0f..1.0f,
-                        onValueChange = onRumbleIntensityChange,
-                        accentColor = NeonPalette.Magenta
-                    )
-
                     SettingsSegmentedSelector(
                         title = "Stereo Mix Routing",
                         description = "Blends Left (low frequency / heavy) and Right (high frequency / sharp) motor channels",
                         options = listOf(
-                            Triple("smart", "Smart", "Dynamic Blend"),
-                            Triple("max", "Max", "Peak Impact"),
-                            Triple("avg", "Avg", "50/50 Balance"),
-                            Triple("min", "Min", "Battery Saver")
+                            Triple("max", "Peak Force", "1:1 Peak Impact (Default)"),
+                            Triple("smart", "Smart Intent", "Dynamic Stereo Blend"),
+                            Triple("avg", "Balanced Average", "50/50 Channel Mean")
                         ),
                         selectedValue = rumbleMode,
                         onSelect = onRumbleModeChange,
+                        accentColor = NeonPalette.Magenta
+                    )
+
+                    SettingsInfoRow(
+                        label = "In-Game Rumble Volume",
+                        value = "Controlled by PC Game (0–255 UInt8)",
                         accentColor = NeonPalette.Magenta
                     )
                 }

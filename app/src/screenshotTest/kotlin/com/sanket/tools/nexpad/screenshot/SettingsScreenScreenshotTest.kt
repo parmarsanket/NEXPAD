@@ -26,10 +26,9 @@ class SettingsScreenScreenshotTest {
                 isRgbEnabled = true,
                 buttonHapticsEnabled = true,
                 vibrateOfflineEnabled = false,
-                hapticClickStrength = 0.5f,
+                hapticClickStrength = 0.3f,
                 hapticStyle = HapticFeedbackHelper.STYLE_CRISP,
-                rumbleIntensity = 1.0f,
-                rumbleMode = "min"
+                rumbleMode = "max"
             )
         }
     }
@@ -47,7 +46,6 @@ class SettingsScreenScreenshotTest {
                 vibrateOfflineEnabled = true,
                 hapticClickStrength = 0.8f,
                 hapticStyle = HapticFeedbackHelper.STYLE_HEAVY,
-                rumbleIntensity = 0.75f,
                 rumbleMode = "smart"
             )
         }
@@ -66,7 +64,6 @@ class SettingsScreenScreenshotTest {
                 vibrateOfflineEnabled = true,
                 hapticClickStrength = 0.6f,
                 hapticStyle = HapticFeedbackHelper.STYLE_SOFT,
-                rumbleIntensity = 0.9f,
                 rumbleMode = "max"
             )
         }

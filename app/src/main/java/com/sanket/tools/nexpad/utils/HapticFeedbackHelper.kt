@@ -18,7 +18,7 @@ import android.os.VibratorManager
  * Backed by "nexpad_prefs" shared preferences:
  * - BUTTON_HAPTICS_ENABLED (Boolean, default: true)
  * - HAPTICS_OFFLINE_ENABLED (Boolean, default: true)
- * - HAPTICS_CLICK_STRENGTH (Float, default: 0.8f, range: 0.1f..1.0f)
+ * - HAPTICS_CLICK_STRENGTH (Float, default: 0.3f, range: 0.1f..1.0f)
  * - HAPTICS_STYLE (String: "crisp", "heavy", "soft", default: "crisp")
  */
 class HapticFeedbackHelper(context: Context) {
@@ -45,10 +45,10 @@ class HapticFeedbackHelper(context: Context) {
         get() = sharedPref.getBoolean(PREF_HAPTICS_OFFLINE_ENABLED, false)
 
     val clickStrength: Float
-        get() = sharedPref.getFloat(PREF_HAPTICS_CLICK_STRENGTH, 0.1f).coerceIn(0.1f, 1.0f)
+        get() = sharedPref.getFloat(PREF_HAPTICS_CLICK_STRENGTH, 0.3f).coerceIn(0.1f, 1.0f)
 
     val hapticStyle: String
-        get() = sharedPref.getString(PREF_HAPTICS_STYLE, STYLE_SOFT) ?: STYLE_SOFT
+        get() = sharedPref.getString(PREF_HAPTICS_STYLE, STYLE_CRISP) ?: STYLE_CRISP
 
     /**
      * Checks whether button vibration should fire given the current connection and rumble state.
