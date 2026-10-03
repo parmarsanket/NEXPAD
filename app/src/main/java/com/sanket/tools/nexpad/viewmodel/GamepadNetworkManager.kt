@@ -67,7 +67,10 @@ class GamepadNetworkManager(
     private val context: Context,
     private val inputState: GamepadInput
 ) {
+    @Volatile
     private var connection: IGamepadConnection = NetworkClient()
+    @Volatile
+    private var transmitThread: Thread? = null
     private val syncServer = NxprcSyncServer(context)
 
     init {
@@ -120,8 +123,15 @@ class GamepadNetworkManager(
         setupConnectionCallbacks()
     }
 
-    @android.annotation.SuppressLint("MissingPermission")
     fun getPairedBluetoothDevices(): List<android.bluetooth.BluetoothDevice> {
+        val permission = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            android.Manifest.permission.BLUETOOTH_CONNECT
+        } else {
+            android.Manifest.permission.BLUETOOTH
+        }
+        if (androidx.core.content.ContextCompat.checkSelfPermission(context, permission) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            return emptyList()
+        }
         val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? android.bluetooth.BluetoothManager
         val adapter = bluetoothManager?.adapter ?: android.bluetooth.BluetoothAdapter.getDefaultAdapter()
         return if (adapter != null && adapter.isEnabled) {
@@ -234,14 +244,12 @@ class GamepadNetworkManager(
 
     fun connect(address: String, port: Int, serverName: String? = null) {
         val t0 = android.os.SystemClock.elapsedRealtime()
-        android.util.Log.d("NEXPAD", "⏱️ [BENCHMARK] Step 0: GamepadNetworkManager.connect CALLED for $address:$port ($serverName) on thread ${Thread.currentThread().name}")
         if (serverName != null) {
             _connectedServerName.value = serverName
         }
 
         // IMMEDIATELY acquire WifiLock & WakeLock so the Wi-Fi radio does not enter 802.11 power-save sleep
         acquireWifiLock()
-        android.util.Log.d("NEXPAD", "⏱️ [BENCHMARK] WifiLock & WakeLock acquired immediately at t=${android.os.SystemClock.elapsedRealtime() - t0}ms")
 
         val isTethering = com.sanket.tools.nexpad.network.NetworkInterfaceHelper.isUsbTetheringAddress(address)
         val initialType = if (isTethering) ConnectionType.USB_TETHERING else ConnectionType.WIFI
@@ -258,9 +266,7 @@ class GamepadNetworkManager(
 
         scope.launch {
             try {
-                android.util.Log.d("NEXPAD", "⏱️ [BENCHMARK] Calling connection.connect($address, $port) at t=${android.os.SystemClock.elapsedRealtime() - t0}ms")
                 connection.connect(address, port)
-                android.util.Log.d("NEXPAD", "⏱️ [BENCHMARK] connection.connect($address, $port) returned at t=${android.os.SystemClock.elapsedRealtime() - t0}ms")
             } catch (e: Exception) {
                 e.printStackTrace()
                 releaseWifiLock()
@@ -273,6 +279,7 @@ class GamepadNetworkManager(
     fun disconnect() {
         transmitJob?.cancel()
         transmitJob = null
+        transmitThread = null
         signalPollJob?.cancel()
         signalPollJob = null
         releaseWifiLock()
@@ -285,6 +292,7 @@ class GamepadNetworkManager(
     fun close() {
         transmitJob?.cancel()
         transmitJob = null
+        transmitThread = null
         signalPollJob?.cancel()
         signalPollJob = null
         releaseWifiLock()
@@ -296,11 +304,16 @@ class GamepadNetworkManager(
 
     fun sendImmediate() {
         if (_isConnected.value) {
-            scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                try {
-                    connection.sendInput(inputState)
-                } catch (e: Exception) {
-                    // Ignore silent drops
+            val thread = transmitThread
+            if (thread != null) {
+                java.util.concurrent.locks.LockSupport.unpark(thread)
+            } else {
+                scope.launch(gamepadDispatcher) {
+                    try {
+                        connection.sendInput(inputState)
+                    } catch (_: Exception) {
+                        // Ignore silent drops
+                    }
                 }
             }
         }
@@ -384,24 +397,29 @@ class GamepadNetworkManager(
     private fun startTransmitting() {
         transmitJob?.cancel()
         transmitJob = scope.launch(gamepadDispatcher) {
-            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO)
-            
-            // Bluetooth Classic ACL 6-slot timing aligns optimally at 125 Hz (8ms).
-            // USB (ADB/AOA) and Wi-Fi run at full 200 Hz (5ms).
-            val intervalNanos = if (connection is com.sanket.tools.nexpad.network.BluetoothRfcommConnection) 8_000_000L else 5_000_000L
-            var nextTick = System.nanoTime()
-            
-            while (isActive) {
-                connection.sendInput(inputState)
+            transmitThread = Thread.currentThread()
+            try {
+                android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO)
                 
-                nextTick += intervalNanos
-                val sleepNanos = nextTick - System.nanoTime()
+                // Bluetooth Classic ACL 6-slot timing aligns optimally at 125 Hz (8ms).
+                // USB (ADB/AOA) and Wi-Fi run at full 200 Hz (5ms).
+                val intervalNanos = if (connection is com.sanket.tools.nexpad.network.BluetoothRfcommConnection) 8_000_000L else 5_000_000L
+                var nextTick = System.nanoTime()
                 
-                if (sleepNanos > 0) {
-                    java.util.concurrent.locks.LockSupport.parkNanos(sleepNanos)
-                } else {
-                    nextTick = System.nanoTime() // fell behind — resync, don't stack debt
+                while (isActive) {
+                    connection.sendInput(inputState)
+                    
+                    nextTick += intervalNanos
+                    val sleepNanos = nextTick - System.nanoTime()
+                    
+                    if (sleepNanos > 0) {
+                        java.util.concurrent.locks.LockSupport.parkNanos(sleepNanos)
+                    } else {
+                        nextTick = System.nanoTime() // fell behind — resync, don't stack debt
+                    }
                 }
+            } finally {
+                transmitThread = null
             }
         }
     }
