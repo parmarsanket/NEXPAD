@@ -181,12 +181,12 @@ private fun DrawScope.drawInbuildTouchpadGrid(
     if (touchAuraAlpha > 0.005f && touchX >= 0f && touchY >= 0f) {
         val auraRadius = 120.dp.toPx()
 
-        // 4a. Ambient surrounding cyber glow aura (doubled/tripled gradAlpha around touch)
+        // 4a. Ambient surrounding cyber glow aura (+20% intensity boost around touch)
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(
-                    auraColor.copy(alpha = 0.045f * touchAuraAlpha),
-                    auraColor.copy(alpha = 0.015f * touchAuraAlpha),
+                    auraColor.copy(alpha = 0.054f * touchAuraAlpha),
+                    auraColor.copy(alpha = 0.018f * touchAuraAlpha),
                     Color.Transparent
                 ),
                 center = Offset(touchX, touchY),
@@ -196,8 +196,8 @@ private fun DrawScope.drawInbuildTouchpadGrid(
             center = Offset(touchX, touchY)
         )
 
-        // 4b. Surrounding vertical grid lines boost (triples baseLineAlpha up to 0.066f at center)
-        val maxExtraLineAlpha = 0.044f * touchAuraAlpha
+        // 4b. Surrounding vertical grid lines boost (+20% intensity boost: maxExtraLineAlpha 0.053f)
+        val maxExtraLineAlpha = 0.053f * touchAuraAlpha
         val minX = (touchX - auraRadius).coerceAtLeast(0f)
         val maxX = (touchX + auraRadius).coerceAtMost(w)
         val startGridX = if (isLeft) 0f else (w % gridStep)
@@ -234,7 +234,7 @@ private fun DrawScope.drawInbuildTouchpadGrid(
             ax += gridStep
         }
 
-        // 4c. Surrounding horizontal grid lines boost (triples baseLineAlpha up to 0.066f at center)
+        // 4c. Surrounding horizontal grid lines boost (+20% intensity boost: maxExtraLineAlpha 0.053f)
         val minY = (touchY - auraRadius).coerceAtLeast(0f)
         val maxY = (touchY + auraRadius).coerceAtMost(h)
         val firstY = kotlin.math.floor(minY / gridStep).coerceAtLeast(0f) * gridStep
@@ -266,8 +266,8 @@ private fun DrawScope.drawInbuildTouchpadGrid(
             ay += gridStep
         }
 
-        // 4d. Surrounding precision ticks '+' boost (triples tickBaseAlpha up to 0.120f at center)
-        val maxExtraTickAlpha = 0.080f * touchAuraAlpha
+        // 4d. Surrounding precision ticks '+' boost (+20% intensity boost: maxExtraTickAlpha 0.096f)
+        val maxExtraTickAlpha = 0.096f * touchAuraAlpha
         val startTickX = if (isLeft) gridStep else (w % majorStep)
         val firstTickX = startTickX + (kotlin.math.floor((minX - startTickX) / majorStep).coerceAtLeast(0f) * majorStep)
         var tpx = firstTickX
