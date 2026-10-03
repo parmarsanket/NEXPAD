@@ -505,7 +505,7 @@ private fun BoxScope.JoystickTouchLayer(
     }
 
     // Snug button aura safety margin (red area in diagram)
-    val marginPx = remember(density) { with(density) { 8.dp.toPx() } }
+    val marginPx = remember(density) { with(density) { 16.dp.toPx() } }
 
     Box(
         modifier = Modifier
