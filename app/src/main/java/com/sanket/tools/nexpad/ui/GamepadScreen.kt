@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -293,8 +294,11 @@ fun GamepadScreen(
         viewModel = viewModel,
         onBack = onBack,
         renderElement = { key, position ->
-            val mode = position.joystickMode ?: if (position.isLocked == false) "FULL" else "LOCKED"
-            val isLocked = (mode == "LOCKED")
+            val isStick = key.equals("LS", ignoreCase = true) || key.equals("RS", ignoreCase = true)
+            // On GamepadScreen, joysticks are rendered with isLocked = false so RealisticJoystick
+            // purely animates visual deflection from viewModel stick states while JoystickTouchLayer
+            // handles the robust half-screen touch events.
+            val isLocked = if (isStick) false else (position.isLocked ?: true)
             com.sanket.tools.nexpad.ui.components.controller.ControllerElementRenderer(
                 key = key,
                 isConnected = isConnected,
@@ -349,16 +353,13 @@ fun GamepadScreenContent(
             }
         }
 
-        // Dynamically track the exact runtime bounding boxes of all non-joystick buttons on screen
-        // via onGloballyPositioned. Works universally for all buttons: native Compose, .nxprc remote
-        // components, custom JSON skins, D-Pad, triggers, bumpers, and user-scaled layouts.
+        // Dynamically track exact runtime bounding boxes of all non-joystick buttons in container coords
         val buttonBoundsMap = remember { mutableStateMapOf<String, Rect>() }
         LaunchedEffect(profile.positions) {
             buttonBoundsMap.clear()
         }
 
-        // 1. Render joystick UI elements (LS, RS) — placed at bottom Z-order so floating touch
-        //    layers can capture touches directly on the joystick circle when floating.
+        // 1. Render joystick UI elements (LS, RS) — placed at bottom Z-order (visual base & knob)
         joystickEntries.forEach { (key, position) ->
             val isLs = key.equals("LS", ignoreCase = true)
             val isRs = key.equals("RS", ignoreCase = true)
@@ -382,15 +383,24 @@ fun GamepadScreenContent(
             }
         }
 
-        val exclusionRects = buttonBoundsMap.values.toList()
+        // 2. Independent Half-Screen Joystick Touch Layers (Center-to-Left for LS, Center-to-Right for RS)
+        // Both joysticks are independently free in their Z-index; they occupy mutually exclusive screen halves.
+        val halfWidthDp = with(density) { (screenWidthPx / 2f).toDp() }
 
-        // 2. Floating Joystick Touch Layers — placed ABOVE joystick UI (so touches on the joystick UI circle
-        //    activate the floating layer), but BELOW all interactive buttons (so buttons always get top touch priority).
+        // Left Stick: handles center to left (x < screenWidth / 2)
         if (lsEntry != null) {
             val lsPos = lsEntry.value
-            val lsMode = lsPos.joystickMode ?: if (lsPos.isLocked == false) "FULL" else "LOCKED"
-            if (lsMode != "LOCKED") {
-                FloatingJoystickTouchLayer(
+            val lsMode = lsPos.joystickMode ?: if (lsPos.isLocked == true) "LOCKED" else "FULL"
+            val leftExclusions = remember(buttonBoundsMap.toMap(), screenWidthPx) {
+                buttonBoundsMap.values.filter { it.center.x < screenWidthPx / 2f }
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(halfWidthDp)
+                    .align(Alignment.CenterStart)
+            ) {
+                JoystickTouchLayer(
                     isLeft = true,
                     mode = lsMode,
                     hitboxScale = lsPos.hitboxScale ?: 1.5f,
@@ -401,16 +411,25 @@ fun GamepadScreenContent(
                     floatY = lsFloatY,
                     viewModel = viewModel,
                     isConnected = isConnected,
-                    exclusionRects = exclusionRects
+                    exclusionRects = leftExclusions
                 )
             }
         }
 
+        // Right Stick: handles center to right (x >= screenWidth / 2)
         if (rsEntry != null) {
             val rsPos = rsEntry.value
-            val rsMode = rsPos.joystickMode ?: if (rsPos.isLocked == false) "FULL" else "LOCKED"
-            if (rsMode != "LOCKED") {
-                FloatingJoystickTouchLayer(
+            val rsMode = rsPos.joystickMode ?: if (rsPos.isLocked == true) "LOCKED" else "FULL"
+            val rightExclusions = remember(buttonBoundsMap.toMap(), screenWidthPx) {
+                buttonBoundsMap.values.filter { it.center.x >= screenWidthPx / 2f }
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(halfWidthDp)
+                    .align(Alignment.CenterEnd)
+            ) {
+                JoystickTouchLayer(
                     isLeft = false,
                     mode = rsMode,
                     hitboxScale = rsPos.hitboxScale ?: 1.5f,
@@ -421,15 +440,13 @@ fun GamepadScreenContent(
                     floatY = rsFloatY,
                     viewModel = viewModel,
                     isConnected = isConnected,
-                    exclusionRects = exclusionRects
+                    exclusionRects = rightExclusions
                 )
             }
         }
 
         // 3. Render all interactive buttons, D-pad, triggers, bumpers, menu buttons — HIGHEST Z-order.
-        //    Rendered on top so they receive pointer events first and consume their own touches without
-        //    any interference from floating joystick layers.
-        //    Also captures exact runtime bounding boxes via onGloballyPositioned for dynamic exclusion spacing.
+        // Direct button taps are captured by the buttons with absolute priority.
         nonJoystickEntries.forEach { (key, position) ->
             Box(
                 modifier = Modifier
@@ -444,7 +461,7 @@ fun GamepadScreenContent(
                     .scale(position.scale)
                     .alpha(position.opacity)
                     .onGloballyPositioned { coordinates ->
-                        buttonBoundsMap[key] = coordinates.boundsInRoot()
+                        buttonBoundsMap[key] = coordinates.boundsInParent()
                     }
             ) {
                 renderElement(key, position)
@@ -454,7 +471,7 @@ fun GamepadScreenContent(
 }
 
 @Composable
-private fun BoxScope.FloatingJoystickTouchLayer(
+private fun BoxScope.JoystickTouchLayer(
     isLeft: Boolean,
     mode: String,
     hitboxScale: Float,
@@ -469,13 +486,15 @@ private fun BoxScope.FloatingJoystickTouchLayer(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
+    val currentExclusionRects by rememberUpdatedState(exclusionRects)
 
-    // Joystick home center in screen/layout pixels
+    // Joystick home center in screen coordinates
     val homeX = remember(position, screenWidthPx) { position.xRatio * screenWidthPx }
     val homeY = remember(position, screenHeightPx) { position.yRatio * screenHeightPx }
 
-    // Maximum knob travel before the base starts sliding (PUBG/CoD maxRadius)
+    // Maximum knob travel (PUBG/CoD maxRadius)
     val maxThrowPx = remember(density) { with(density) { 60.dp.toPx() } }
+    val joystickRadiusPx = remember(position.scale, density) { with(density) { 75.dp.toPx() } * position.scale }
 
     // BOX mode: half-size of the square activation region (centered on home)
     val boxHalfPx = remember(mode, hitboxScale, position, density) {
@@ -485,72 +504,84 @@ private fun BoxScope.FloatingJoystickTouchLayer(
         } else 0f
     }
 
-    val marginPx = remember(density) { with(density) { 14.dp.toPx() } }
+    // Snug button aura safety margin (red area in diagram)
+    val marginPx = remember(density) { with(density) { 8.dp.toPx() } }
 
-    // Full-screen transparent overlay. Local coords == screen coords (no conversion needed).
-    // Zone gating is done inside the gesture handler so LS and RS layers co-exist cleanly.
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .pointerInput(mode, homeX, homeY, boxHalfPx, screenWidthPx, isLeft, exclusionRects) {
+            .pointerInput(mode, homeX, homeY, boxHalfPx, screenWidthPx, isLeft) {
                 awaitEachGesture {
-                    // requireUnconsumed = false: we see ALL touch-downs. The joystick widget
-                    // itself has pointerInput that exits immediately (isLocked=false guard),
-                    // which participates in hit-testing and causes requireUnconsumed=true to
-                    // silently skip touches near the joystick center — the core bug fixed here.
                     val down = awaitFirstDown(requireUnconsumed = false)
 
                     // 1. Skip if a higher Z-order control (e.g. any interactive button) already claimed this touch
                     if (down.isConsumed) return@awaitEachGesture
 
-                    // Local coords == screen coords because the Box is full-screen
-                    val tx = down.position.x
-                    val ty = down.position.y
+                    // Convert local half-box coords (0 .. screenWidth/2) to full screen coords
+                    val screenX = if (isLeft) down.position.x else down.position.x + screenWidthPx / 2f
+                    val screenY = down.position.y
 
-                    // 2. Activation zone gate
-                    val inZone = when (mode) {
-                        "FULL" -> if (isLeft) tx < screenWidthPx / 2f
-                                  else        tx >= screenWidthPx / 2f
-                        "BOX"  -> abs(tx - homeX) <= boxHalfPx &&
-                                  abs(ty - homeY) <= boxHalfPx
-                        else   -> false
-                    }
-                    if (!inZone) return@awaitEachGesture
-
-                    // 3. Dynamic spacing exclusion: do NOT trigger joystick if touch falls within the buffer zone around any button.
-                    // Works dynamically for any button: native 3D, .nxprc remote components, custom skins, D-Pad, triggers, bumpers, etc.
-                    val nearButton = exclusionRects.any { rect ->
-                        val isRound = abs(rect.width - rect.height) < 4f
+                    // 2. Button safety exclusion check:
+                    // Inside the button and its snug surrounding aura (the red area), joysticks must NOT trigger.
+                    val nearButton = currentExclusionRects.any { rect ->
+                        val isRound = abs(rect.width - rect.height) < 8f
                         if (isRound) {
-                            val r = rect.width / 2f + marginPx
-                            val dx = tx - rect.center.x
-                            val dy = ty - rect.center.y
+                            val r = (maxOf(rect.width, rect.height) / 2f) + marginPx
+                            val dx = screenX - rect.center.x
+                            val dy = screenY - rect.center.y
                             (dx * dx + dy * dy) <= (r * r)
                         } else {
-                            tx >= (rect.left - marginPx) && tx <= (rect.right + marginPx) &&
-                            ty >= (rect.top - marginPx) && ty <= (rect.bottom + marginPx)
+                            screenX >= (rect.left - marginPx) && screenX <= (rect.right + marginPx) &&
+                            screenY >= (rect.top - marginPx) && screenY <= (rect.bottom + marginPx)
                         }
                     }
                     if (nearButton) return@awaitEachGesture
 
-                    // Claim touch; base snaps to finger
+                    // 3. Activation zone gate
+                    val inZone = when (mode) {
+                        "FULL" -> true
+                        "BOX"  -> abs(screenX - homeX) <= boxHalfPx &&
+                                  abs(screenY - homeY) <= boxHalfPx
+                        "LOCKED" -> hypot(screenX - homeX, screenY - homeY) <= joystickRadiusPx
+                        else   -> true
+                    }
+                    if (!inZone) return@awaitEachGesture
+
+                    // Claim touch
                     down.consume()
 
-                    // baseX/Y = current joystick origin (drifts with PUBG-style base drag)
-                    var baseX = tx
-                    var baseY = ty
+                    // In floating modes, base snaps to finger; in LOCKED mode, base stays at home
+                    val baseX = screenX
+                    val baseY = screenY
 
-                    coroutineScope.launch {
-                        // Cancel any ongoing spring before snapping to prevent race condition
-                        floatX.stop()
-                        floatY.stop()
-                        floatX.snapTo(baseX - homeX)
-                        floatY.snapTo(baseY - homeY)
+                    if (mode != "LOCKED") {
+                        coroutineScope.launch {
+                            floatX.stop()
+                            floatY.stop()
+                            floatX.snapTo(baseX - homeX)
+                            floatY.snapTo(baseY - homeY)
+                        }
                     }
 
-                    // Zero stick deflection at touch-down (knob centred on new base)
-                    if (isLeft) viewModel?.updateLeftStick(0f, 0f)
-                    else        viewModel?.updateRightStick(0f, 0f)
+                    // Compute initial deflection
+                    val originX = if (mode == "LOCKED") homeX else baseX
+                    val originY = if (mode == "LOCKED") homeY else baseY
+
+                    val initDist = hypot(screenX - originX, screenY - originY)
+                    val deadPx = maxThrowPx * 0.05f
+                    if (initDist < deadPx) {
+                        if (isLeft) viewModel?.updateLeftStick(0f, 0f)
+                        else        viewModel?.updateRightStick(0f, 0f)
+                    } else {
+                        val clampedDist = initDist.coerceAtMost(maxThrowPx)
+                        val invDist = 1f / initDist
+                        val knobX = (screenX - originX) * invDist * clampedDist
+                        val knobY = (screenY - originY) * invDist * clampedDist
+                        val normX = (knobX / maxThrowPx).coerceIn(-1f, 1f)
+                        val normY = (-knobY / maxThrowPx).coerceIn(-1f, 1f)
+                        if (isLeft) viewModel?.updateLeftStick(normX, normY)
+                        else        viewModel?.updateRightStick(normX, normY)
+                    }
 
                     // Drag loop
                     while (true) {
@@ -559,16 +590,16 @@ private fun BoxScope.FloatingJoystickTouchLayer(
                         if (change == null || !change.pressed) break
                         change.consume()
 
-                        val fx = change.position.x   // finger X (local = screen for full-screen Box)
-                        val fy = change.position.y
+                        val currentScreenX = if (isLeft) change.position.x else change.position.x + screenWidthPx / 2f
+                        val currentScreenY = change.position.y
 
-                        // Vector from fixed base origin to finger
-                        val deltaX = fx - baseX
-                        val deltaY = fy - baseY
+                        // Vector from origin (fixed base or home) to finger
+                        val deltaX = currentScreenX - originX
+                        val deltaY = currentScreenY - originY
                         val dist   = hypot(deltaX, deltaY)
 
-                        // Base is LOCKED at touch-down point — never slides.
-                        // Knob tracks finger up to maxThrowPx, then clamps to the rim.
+                        // Base is LOCKED at touch-down point in floating mode (never drifts during drag)
+                        // Knob tracks finger up to maxThrowPx, then clamps to the rim
                         val clampedDist = dist.coerceAtMost(maxThrowPx)
                         val knobX: Float
                         val knobY: Float
@@ -581,11 +612,8 @@ private fun BoxScope.FloatingJoystickTouchLayer(
                             knobY = deltaY * invDist * clampedDist
                         }
 
-                        // Normalize to gamepad [-1, 1] convention.
-                        // Y negated: screen-down (positive screenY) → gamepad-down (negative Y).
-                        val deadPx = maxThrowPx * 0.05f
-                        val normX  = if (dist < deadPx) 0f else (knobX / maxThrowPx).coerceIn(-1f, 1f)
-                        val normY  = if (dist < deadPx) 0f else (-knobY / maxThrowPx).coerceIn(-1f, 1f)
+                        val normX = if (dist < deadPx) 0f else (knobX / maxThrowPx).coerceIn(-1f, 1f)
+                        val normY = if (dist < deadPx) 0f else (-knobY / maxThrowPx).coerceIn(-1f, 1f)
 
                         if (isLeft) viewModel?.updateLeftStick(normX, normY)
                         else        viewModel?.updateRightStick(normX, normY)
@@ -595,9 +623,11 @@ private fun BoxScope.FloatingJoystickTouchLayer(
                     if (isLeft) viewModel?.updateLeftStick(0f, 0f)
                     else        viewModel?.updateRightStick(0f, 0f)
 
-                    coroutineScope.launch {
-                        launch { floatX.animateTo(0f, spring(dampingRatio = 0.70f, stiffness = 400f)) }
-                        launch { floatY.animateTo(0f, spring(dampingRatio = 0.70f, stiffness = 400f)) }
+                    if (mode != "LOCKED") {
+                        coroutineScope.launch {
+                            launch { floatX.animateTo(0f, spring(dampingRatio = 0.70f, stiffness = 400f)) }
+                            launch { floatY.animateTo(0f, spring(dampingRatio = 0.70f, stiffness = 400f)) }
+                        }
                     }
                 }
             }
