@@ -565,12 +565,16 @@ class HudEditorViewModel(
         val updatedProfile = profile.copy(positions = positionMap)
 
         viewModelScope.launch(Dispatchers.IO) {
-            val wasActive = layoutManager.getActiveProfile().name.equals(updatedProfile.name, ignoreCase = true)
-            layoutManager.saveProfile(updatedProfile, activate = wasActive)
-            _currentProfile.value = updatedProfile
-            _hasUnsavedChanges.value = false
-            launch(Dispatchers.Main) {
-                onSaved()
+            try {
+                val wasActive = layoutManager.getActiveProfile().name.equals(updatedProfile.name, ignoreCase = true)
+                layoutManager.saveProfile(updatedProfile, activate = wasActive)
+                _currentProfile.value = updatedProfile
+                _hasUnsavedChanges.value = false
+                launch(Dispatchers.Main) {
+                    onSaved()
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("HudEditorViewModel", "Failed to save profile: ${e.message}", e)
             }
         }
     }
