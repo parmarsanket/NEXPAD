@@ -1994,6 +1994,54 @@ object DefaultComponents {
         size = NxpSize(widthDp = 180, heightDp = 180)
     )
 
+    val INBUILD_STICK_LTP = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.inbuild_ltp",
+            name = "Inbuild Surface Left Touchpad (LTP)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.JOYSTICK.id,
+            defaultControl = ControlKey.LTP.key,
+            description = "Ambient full-surface movement touchpad consuming all empty space with 16dp button exclusion."
+        ),
+        geometry = NxpGeometry(type = "RoundedRectangle", cornerRadius = 26f),
+        visual = NxpVisual(
+            fillColor = "#131418",
+            opacity = 0.92f,
+            borderColor = "#00E5FF",
+            borderWidth = 2f,
+            glowColor = "#00E5FF",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(scale = 0.98f, fillColor = "#181A20", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "LTP", color = "#00E5FF", pressedColor = "#FFFFFF", fontSize = 16f),
+        size = NxpSize(widthDp = 180, heightDp = 180)
+    )
+
+    val INBUILD_STICK_RTP = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.inbuild_rtp",
+            name = "Inbuild Surface Right Touchpad (RTP)",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = NxprcCategory.JOYSTICK.id,
+            defaultControl = ControlKey.RTP.key,
+            description = "Ambient full-surface camera look touchpad consuming all empty space with 16dp button exclusion."
+        ),
+        geometry = NxpGeometry(type = "RoundedRectangle", cornerRadius = 26f),
+        visual = NxpVisual(
+            fillColor = "#131418",
+            opacity = 0.92f,
+            borderColor = "#FF007F",
+            borderWidth = 2f,
+            glowColor = "#FF007F",
+            glowRadius = 12f
+        ),
+        pressed = NxpPressedState(scale = 0.98f, fillColor = "#181A20", borderColor = "#FFFFFF"),
+        label = NxpLabel(text = "RTP", color = "#FF007F", pressedColor = "#FFFFFF", fontSize = 16f),
+        size = NxpSize(widthDp = 180, heightDp = 180)
+    )
+
     val DEFAULT_DPAD = NxpComponentDef(
         manifest = NxpManifest(
             id = "builtin.default_dpad",
@@ -3313,6 +3361,8 @@ object DefaultComponents {
         DEFAULT_STICK_RSB,
         DEFAULT_STICK_LTP,
         DEFAULT_STICK_RTP,
+        INBUILD_STICK_LTP,
+        INBUILD_STICK_RTP,
         DEFAULT_DPAD,
         DEFAULT_DPAD_UP,
         DEFAULT_DPAD_DOWN,

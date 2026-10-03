@@ -2442,10 +2442,23 @@ object NativeComponentRegistry {
             id.startsWith("builtin.liq_") || id.startsWith("builtin.facet_") ||
             id.startsWith("builtin.flipbtn_") || id.startsWith("builtin.ripple_") ||
             id.startsWith("builtin.orbit_") ||
-            id.startsWith("builtin.caps_") || id.startsWith("builtin.ecl_")
+            id.startsWith("builtin.caps_") || id.startsWith("builtin.ecl_") ||
+            id.startsWith("builtin.inbuild_")
         ) return true
         return DefaultNativeFamily.getVariant(id) != null
     }
+
+    /**
+     * Retrieves all native element variants registered for a specific control key.
+     */
+    fun getVariantsFor(controlKey: ControlKey): List<NativeElementVariant> =
+        DefaultNativeFamily.getVariantsFor(controlKey)
+
+    /**
+     * Retrieves a native element variant by its unique ID.
+     */
+    fun getVariant(id: String?): NativeElementVariant? =
+        DefaultNativeFamily.getVariant(id)
 
     /**
      * Resolves the active variant for a given control key and optional custom component ID.

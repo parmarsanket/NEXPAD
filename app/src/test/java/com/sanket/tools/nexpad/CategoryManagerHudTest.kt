@@ -23,6 +23,7 @@ import com.sanket.tools.nexpad.ui.components.controller.PlayStationShape
 import com.sanket.tools.nexpad.ui.components.controller.getPlayStationShape
 import com.sanket.tools.nexpad.ui.components.controller.isPlayStationSymbol
 import com.sanket.tools.nexpad.runtime.registry.NativeComponentRegistry
+import com.sanket.tools.nexpad.runtime.registry.DefaultComponents
 
 class CategoryManagerHudTest {
 
@@ -1421,17 +1422,51 @@ class CategoryManagerHudTest {
 
     @Test
     fun testInbuildTouchpadVariantsRegistration() {
-        val ltpVariant = com.sanket.tools.nexpad.runtime.registry.DefaultNativeFamily.getVariant("builtin.inbuild_ltp")
-        assertNotNull("Inbuild LTP variant must be registered", ltpVariant)
+        val ltpVariant = NativeComponentRegistry.getVariant("builtin.inbuild_ltp")
+        assertNotNull("Inbuild LTP variant must be registered in NativeComponentRegistry", ltpVariant)
         assertEquals(ControlKey.LTP, ltpVariant?.controlKey)
         assertEquals("Inbuild Surface", ltpVariant?.variantName)
         assertEquals(6003, ltpVariant?.seedCode)
 
-        val rtpVariant = com.sanket.tools.nexpad.runtime.registry.DefaultNativeFamily.getVariant("builtin.inbuild_rtp")
-        assertNotNull("Inbuild RTP variant must be registered", rtpVariant)
+        val rtpVariant = NativeComponentRegistry.getVariant("builtin.inbuild_rtp")
+        assertNotNull("Inbuild RTP variant must be registered in NativeComponentRegistry", rtpVariant)
         assertEquals(ControlKey.RTP, rtpVariant?.controlKey)
         assertEquals("Inbuild Surface", rtpVariant?.variantName)
         assertEquals(6004, rtpVariant?.seedCode)
+
+        // Verify presets exist in DefaultComponents.ALL_PRESETS for Button Studio
+        val ltpPreset = DefaultComponents.ALL_PRESETS.find { it.manifest.id == "builtin.inbuild_ltp" }
+        assertNotNull("Inbuild LTP preset must be in DefaultComponents.ALL_PRESETS for Button Studio", ltpPreset)
+        assertEquals(ControlKey.LTP.key, ltpPreset?.manifest?.defaultControl)
+
+        val rtpPreset = DefaultComponents.ALL_PRESETS.find { it.manifest.id == "builtin.inbuild_rtp" }
+        assertNotNull("Inbuild RTP preset must be in DefaultComponents.ALL_PRESETS for Button Studio", rtpPreset)
+        assertEquals(ControlKey.RTP.key, rtpPreset?.manifest?.defaultControl)
+
+        // Verify isNativeBuiltin recognizes inbuild prefix
+        assertTrue(NativeComponentRegistry.isNativeBuiltin("builtin.inbuild_ltp"))
+        assertTrue(NativeComponentRegistry.isNativeBuiltin("builtin.inbuild_rtp"))
+
+        // Verify resolution of intrinsic dimensions
+        val ltpDim = CategoryManager.resolveIntrinsicMaxDim(ControlKey.LTP.key)
+        assertTrue("Intrinsic max dim for LTP must be positive", ltpDim > 0f)
+
+        // Verify Button Studio category filtering:
+        // LTP belongs to STICKS category
+        val ltpSpec = CategoryManager.getControl("LTP")
+        assertNotNull("LTP spec must be present", ltpSpec)
+        val ltpCategory = CategoryManager.findCategoryForControl("LTP")
+        assertNotNull("Category for LTP must be found", ltpCategory)
+        assertEquals(ltpSpec?.categoryType?.id, ltpCategory?.id)
+
+        // When viewing the category containing LTP, inbuild_ltp must be matched
+        assertNotNull(ltpPreset)
+        val compCtrl = ControlKey.fromIdentifier(ltpPreset!!.manifest.defaultControl.uppercase())
+        assertNotNull(compCtrl)
+        assertTrue(
+            "Preset must match category ID or keys",
+            compCtrl?.categoryType?.id == ltpCategory?.id || ltpCategory?.keys?.contains("LTP") == true
+        )
     }
 
     @Test

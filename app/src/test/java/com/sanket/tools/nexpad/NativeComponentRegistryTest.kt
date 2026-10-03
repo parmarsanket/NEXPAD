@@ -921,6 +921,25 @@ class NativeComponentRegistryTest {
         assertEquals(1804, eclY.seedCode)
         assertTrue(NativeComponentRegistry.isNativeBuiltin("builtin.ecl_y"))
     }
+
+    @Test
+    fun testInbuildTouchPadVariantsRegistered() {
+        val ltpVariant = DefaultNativeFamily.getVariant("builtin.inbuild_ltp")
+        assertNotNull("Inbuild Surface LTP must be registered", ltpVariant)
+        assertEquals(ControlKey.LTP, ltpVariant!!.controlKey)
+        assertEquals(6003, ltpVariant.seedCode)
+        assertFalse(ltpVariant.isBaselineDefault)
+        assertEquals("Inbuild Surface", ltpVariant.variantName)
+        assertTrue("builtin.inbuild_ltp must be recognized as native builtin", NativeComponentRegistry.isNativeBuiltin("builtin.inbuild_ltp"))
+
+        val rtpVariant = DefaultNativeFamily.getVariant("builtin.inbuild_rtp")
+        assertNotNull("Inbuild Surface RTP must be registered", rtpVariant)
+        assertEquals(ControlKey.RTP, rtpVariant!!.controlKey)
+        assertEquals(6004, rtpVariant.seedCode)
+        assertFalse(rtpVariant.isBaselineDefault)
+        assertEquals("Inbuild Surface", rtpVariant.variantName)
+        assertTrue("builtin.inbuild_rtp must be recognized as native builtin", NativeComponentRegistry.isNativeBuiltin("builtin.inbuild_rtp"))
+    }
 }
 
 
