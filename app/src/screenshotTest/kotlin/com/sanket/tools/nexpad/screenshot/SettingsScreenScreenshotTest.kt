@@ -10,8 +10,7 @@ import com.sanket.tools.nexpad.utils.HapticFeedbackHelper
 /**
  * Compose Preview Screenshot Tests for [SettingsScreenContent] and its configuration controls:
  * - Default settings in Portrait
- * - Settings with active Network Diagnostics
- * - Custom tuned configuration (Camera mode, mechanical click, rumble modes)
+ * - Custom tuned configuration in Portrait
  * - Adaptive layout centering in Landscape
  */
 class SettingsScreenScreenshotTest {
@@ -23,7 +22,7 @@ class SettingsScreenScreenshotTest {
         NEXPADTheme {
             SettingsScreenContent(
                 isConnected = false,
-                ipAddress = "192.168.1.50",
+                activeProfileName = "Standard Elite",
                 isRgbEnabled = true,
                 rightStickCameraMode = false,
                 cameraSensitivity = 1.0f,
@@ -41,20 +40,10 @@ class SettingsScreenScreenshotTest {
     @Preview(showBackground = true, backgroundColor = 0xFF08090C, widthDp = 390, heightDp = 844)
     @Composable
     fun settingsScreenWithDiagnosticsPreview() {
-        val diagnostics = listOf(
-            "[UDP] Socket bound to 0.0.0.0:9999",
-            "[AOA] Accessory handshake successful (Google WinUSB)",
-            "[SYNC] Clock drift: 0.04ms | Jitter: 0.12ms",
-            "[POLL] Input polling rate locked at 1000Hz",
-            "[HAPTIC] LRA actuator initialized with 25 perceptual bands",
-            "[NET] Ping round-trip: 0.42ms"
-        )
-
         NEXPADTheme {
             SettingsScreenContent(
                 isConnected = true,
-                diagnosticLog = diagnostics,
-                ipAddress = "192.168.1.100",
+                activeProfileName = "Cyber FPS",
                 isRgbEnabled = true,
                 rightStickCameraMode = true,
                 cameraSensitivity = 1.8f,
@@ -75,7 +64,7 @@ class SettingsScreenScreenshotTest {
         NEXPADTheme {
             SettingsScreenContent(
                 isConnected = true,
-                ipAddress = "192.168.1.100",
+                activeProfileName = "Sim Racing",
                 isRgbEnabled = true,
                 rightStickCameraMode = true,
                 cameraSensitivity = 2.0f,
