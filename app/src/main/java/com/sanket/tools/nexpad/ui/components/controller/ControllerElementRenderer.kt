@@ -42,7 +42,7 @@ fun ControllerElementRenderer(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val isNative = NativeComponentRegistry.isNativeBuiltin(customComponentId)
+    val isNative = remember(customComponentId) { NativeComponentRegistry.isNativeBuiltin(customComponentId) }
 
     val feedback by viewModel.feedbackFlow.collectAsState(initial = null)
     val rumbleIntensity = remember(feedback) {
@@ -59,18 +59,20 @@ fun ControllerElementRenderer(
         val remoteDoc = remember(customComponentId, loadedDocs) { remoteRegistry.getComponent(customComponentId) }
         val K = com.sanket.tools.nexpad.model.NexpadKeys
         if (remoteDoc != null) {
-            val targetControl = when {
-                key.equals(K.LSB, ignoreCase = true) || key.equals(K.RSB, ignoreCase = true) || key.equals("L3", ignoreCase = true) || key.equals("R3", ignoreCase = true) -> NexPadControl.Button(key)
-                key.equals(K.LS, ignoreCase = true) || key.equals(K.LTP, ignoreCase = true) -> NexPadControl.Stick(isLeft = true)
-                key.equals(K.RS, ignoreCase = true) || key.equals(K.RTP, ignoreCase = true) -> NexPadControl.Stick(isLeft = false)
-                key.equals(K.LT, ignoreCase = true) || key.equals(K.RT, ignoreCase = true) -> NexPadControl.Trigger(key.uppercase())
-                key.uppercase() in listOf(K.UP, K.DOWN, K.LEFT, K.RIGHT) -> NexPadControl.DPad(key.uppercase())
-                remoteDoc.manifest.category.equals("JOYSTICK", ignoreCase = true) || remoteDoc.manifest.category.equals("TOUCHPAD", ignoreCase = true) -> {
-                    val defCtrl = remoteDoc.manifest.defaultControl.uppercase()
-                    val isRight = defCtrl == K.RS || defCtrl == "R3" || defCtrl == K.RSB || defCtrl == K.RTP || defCtrl.contains("RIGHT") || remoteDoc.manifest.id.contains("rtp", ignoreCase = true)
-                    NexPadControl.Stick(isLeft = !isRight)
+            val targetControl = remember(key, remoteDoc) {
+                when {
+                    key.equals(K.LSB, ignoreCase = true) || key.equals(K.RSB, ignoreCase = true) || key.equals("L3", ignoreCase = true) || key.equals("R3", ignoreCase = true) -> NexPadControl.Button(key)
+                    key.equals(K.LS, ignoreCase = true) || key.equals(K.LTP, ignoreCase = true) -> NexPadControl.Stick(isLeft = true)
+                    key.equals(K.RS, ignoreCase = true) || key.equals(K.RTP, ignoreCase = true) -> NexPadControl.Stick(isLeft = false)
+                    key.equals(K.LT, ignoreCase = true) || key.equals(K.RT, ignoreCase = true) -> NexPadControl.Trigger(key.uppercase())
+                    key.uppercase() in listOf(K.UP, K.DOWN, K.LEFT, K.RIGHT) -> NexPadControl.DPad(key.uppercase())
+                    remoteDoc.manifest.category.equals("JOYSTICK", ignoreCase = true) || remoteDoc.manifest.category.equals("TOUCHPAD", ignoreCase = true) -> {
+                        val defCtrl = remoteDoc.manifest.defaultControl.uppercase()
+                        val isRight = defCtrl == K.RS || defCtrl == "R3" || defCtrl == K.RSB || defCtrl == K.RTP || defCtrl.contains("RIGHT") || remoteDoc.manifest.id.contains("rtp", ignoreCase = true)
+                        NexPadControl.Stick(isLeft = !isRight)
+                    }
+                    else -> NexPadControl.Button(key)
                 }
-                else -> NexPadControl.Button(key)
             }
             NxprcCanvasRenderer(
                 document = remoteDoc,
@@ -112,13 +114,15 @@ fun ControllerElementRenderer(
 
     val K = com.sanket.tools.nexpad.model.NexpadKeys
     if (customDef != null) {
-        val targetControl = when {
-            key == K.LSB || key == K.RSB -> NexPadControl.Button(key)
-            key == K.LS || key == K.LTP -> NexPadControl.Stick(isLeft = true)
-            key == K.RS || key == K.RTP -> NexPadControl.Stick(isLeft = false)
-            key == K.LT || key == K.RT -> NexPadControl.Trigger(key)
-            key in listOf(K.UP, K.DOWN, K.LEFT, K.RIGHT) -> NexPadControl.DPad(key)
-            else -> NexPadControl.Button(key)
+        val targetControl = remember(key, customDef) {
+            when {
+                key == K.LSB || key == K.RSB -> NexPadControl.Button(key)
+                key == K.LS || key == K.LTP -> NexPadControl.Stick(isLeft = true)
+                key == K.RS || key == K.RTP -> NexPadControl.Stick(isLeft = false)
+                key == K.LT || key == K.RT -> NexPadControl.Trigger(key)
+                key in listOf(K.UP, K.DOWN, K.LEFT, K.RIGHT) -> NexPadControl.DPad(key)
+                else -> NexPadControl.Button(key)
+            }
         }
         NxpComposeInterpreter(
             definition = customDef,

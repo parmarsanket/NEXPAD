@@ -75,7 +75,7 @@ fun HudEditorScreen(
 ) {
     val context = LocalContext.current
     val profile by viewModel.currentProfile.collectAsState()
-    val elements by viewModel.elements.collectAsState()
+    val elements = viewModel.elements
     val selectedControl by viewModel.selectedControl.collectAsState()
     val compatibleSkins by viewModel.compatibleSkins.collectAsState()
     val hasUnsavedChanges by viewModel.hasUnsavedChanges.collectAsState()
