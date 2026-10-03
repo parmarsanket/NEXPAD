@@ -28,7 +28,7 @@ class SettingsScreenScreenshotTest {
                 vibrateOfflineEnabled = false,
                 hapticClickStrength = 0.3f,
                 hapticStyle = HapticFeedbackHelper.STYLE_CRISP,
-                rumbleMode = "max"
+                rumbleMode = "min"
             )
         }
     }

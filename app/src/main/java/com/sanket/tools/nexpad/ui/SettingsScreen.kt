@@ -90,7 +90,7 @@ fun SettingsScreen(
                 ?: HapticFeedbackHelper.STYLE_CRISP
         )
     }
-    var rumbleMode by remember { mutableStateOf(sharedPref.getString("RUMBLE_MODE", "max") ?: "max") }
+    var rumbleMode by remember { mutableStateOf(sharedPref.getString("RUMBLE_MODE", "min") ?: "min") }
 
     val context = LocalContext.current
     val hapticHelper = remember(context) { HapticFeedbackHelper(context) }
@@ -149,7 +149,7 @@ fun SettingsScreenContent(
     vibrateOfflineEnabled: Boolean = false,
     hapticClickStrength: Float = 0.3f,
     hapticStyle: String = HapticFeedbackHelper.STYLE_CRISP,
-    rumbleMode: String = "max",
+    rumbleMode: String = "min",
     onActiveProfileChange: (String) -> Unit = {},
     onRgbChange: (Boolean) -> Unit = {},
     onButtonHapticsChange: (Boolean) -> Unit = {},
@@ -289,7 +289,8 @@ fun SettingsScreenContent(
                         title = "Stereo Mix Routing",
                         description = "Blends Left (low frequency / heavy) and Right (high frequency / sharp) motor channels",
                         options = listOf(
-                            Triple("max", "Peak Force", "1:1 Peak Impact (Default)"),
+                            Triple("min", "Soft Min", "Subtle Floor (Default)"),
+                            Triple("max", "Peak Force", "1:1 Peak Impact"),
                             Triple("smart", "Smart Intent", "Dynamic Stereo Blend"),
                             Triple("avg", "Balanced Average", "50/50 Channel Mean")
                         ),

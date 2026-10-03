@@ -172,23 +172,23 @@ fun GamepadScreen(
         var motorOnStartTimeMs = 0L
         
         viewModel.feedbackFlow.collect { feedback ->
-            val rumbleMode = sharedPref.getString("RUMBLE_MODE", "max") ?: "max"
+            val rumbleMode = sharedPref.getString("RUMBLE_MODE", "min") ?: "min"
             
             // ── Stage 1: Stereo-to-Mono Downmix ─────────────────────────
             // Controller has 2 motors (heavy left, light right).
-            // Phone has 1 motor. Peak Force (max) preserves full game designer intent.
+            // Phone has 1 motor. "min" takes the subtle floor signal when downmixing to single phone motor.
             val left = feedback.leftMotorSpeed
             val right = feedback.rightMotorSpeed
             
             val combinedSpeed = when (rumbleMode) {
+                "max"   -> maxOf(left, right)
                 "smart" -> {
-                    // Smart blend: never attenuate single-motor transient spikes
                     if (left == 0 || right == 0) maxOf(left, right)
                     else (0.7f * maxOf(left, right) + 0.3f * minOf(left, right)).roundToInt()
                 }
                 "avg"   -> (left + right) / 2
                 "min"   -> minOf(left, right)
-                else    -> maxOf(left, right) // "max" default: 1:1 Peak Impact without channel muting
+                else    -> minOf(left, right) // "min" default
             }
             
             // Direct 1:1 game engine force translation [0..255] (In-game settings decide volume)
