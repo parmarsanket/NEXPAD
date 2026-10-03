@@ -2200,81 +2200,11 @@ private fun StaticRealisticTouchPad(
     isLeft: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val accentColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
-    val shape = RoundedCornerShape(26.dp)
-    val innerShape = RoundedCornerShape(18.dp)
-
-    val surfaceGradient = Brush.radialGradient(
-        colors = listOf(Color(0xFF23252B), Color(0xFF131418), Color(0xFF0B0C0E)),
-        center = Offset(0.4f, 0.4f),
-        radius = 280f
-    )
-
-    Box(
+    com.sanket.tools.nexpad.ui.components.controller.StaticRealisticTouchPad(
+        isLeft = isLeft,
+        isRgbEnabled = true,
         modifier = modifier
-            .size(180.dp)
-            .drawBehind {
-                val pad = 12.dp.toPx()
-                drawRoundRect(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            accentColor.copy(alpha = 0.40f * 0.45f),
-                            accentColor.copy(alpha = 0.40f * 0.18f),
-                            Color.Transparent
-                        ),
-                        center = center,
-                        radius = size.width * 0.70f
-                    ),
-                    topLeft = Offset(-pad, -pad),
-                    size = Size(size.width + pad * 2, size.height + pad * 2),
-                    cornerRadius = CornerRadius(26.dp.toPx() + pad, 26.dp.toPx() + pad)
-                )
-            }
-            .shadow(6.dp, shape, ambientColor = accentColor, spotColor = accentColor)
-            .clip(shape)
-            .background(surfaceGradient)
-            .border(BorderStroke(2.dp, Color(0xFF353C4A)), shape)
-            .padding(14.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        // Flat stationary trackpad surface
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(innerShape)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(Color.White.copy(alpha = 0.03f), Color.Transparent),
-                        radius = 200f
-                    )
-                )
-                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)), innerShape)
-        )
-
-        Text(
-            text = if (isLeft) "TOUCH MOVE • LTP" else "TOUCH LOOK • RTP",
-            fontSize = 10.sp,
-            fontFamily = FontFamily.Monospace,
-            fontWeight = FontWeight.Bold,
-            color = accentColor.copy(alpha = 0.65f),
-            letterSpacing = 1.2.sp,
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 4.dp)
-        )
-
-        Text(
-            text = "2.0X BALLISTICS",
-            fontSize = 9.sp,
-            fontFamily = FontFamily.Monospace,
-            fontWeight = FontWeight.Normal,
-            color = Color.White.copy(alpha = 0.35f),
-            letterSpacing = 0.8.sp,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 4.dp)
-        )
-    }
+    )
 }
 
 /**

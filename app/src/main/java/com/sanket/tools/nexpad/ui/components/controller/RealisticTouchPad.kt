@@ -1,7 +1,6 @@
 package com.sanket.tools.nexpad.ui.components.controller
 
 import android.content.Context
-import android.util.Log
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -16,8 +15,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,30 +32,27 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.atan2
-import kotlin.math.cos
+import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.pow
-import kotlin.math.sin
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Console-grade, ergonomic Virtual Touchpad for Twin-Stick & Touch Look gaming schemes.
  *
- * Implements the industry standard control model popularized by Genshin Impact, Call of Duty: Mobile,
+ * Implements the industry-standard control model popularized by Genshin Impact, Call of Duty: Mobile,
  * and Steam Deck:
  * - [isLeft] = true (LTP / Left Touchpad): Floating dynamic-center movement surface. Touching down anywhere
  *   establishes a virtual pivot; dragging deflects Left Stick (LS X/Y) with sliding-anchor tracking.
@@ -59,8 +60,14 @@ import kotlin.time.Duration.Companion.milliseconds
  *   swipe velocity/deltas into Right Stick (RS X/Y) camera deflection, with immediate stop when stationary
  *   and gentle trackball decay on release.
  *
- * Dedicated standalone buttons (LSB/RSB) handle stick click (L3/R3), keeping touchpad input
- * pure and free of accidental center click triggers.
+ * Clean, text-free tactile cyber-surface built according to the NEXPAD 7-Layer Display List Pipeline:
+ * - Layer 0: Bespoke Kinetic Outer Aura (.drawBehind) with ambient corona, corner brackets & tick notches.
+ * - Layer 1: Component Chassis with multi-stop radial gradient & chamfered border.
+ * - Layer 2: Tactile Knurling & Precision Laser Radar Range Rings.
+ * - Layer 3: Dynamic Capacitive Touch Layer (touch puck bloom, concentric ripples, aiming vector).
+ * - Layer 4: Recessed Optical Sensor Well.
+ * - Layer 5: Precision Reticle Dot & Ring (pure vector graphics, zero text).
+ * - Layer 6: Specular Glass Lens Reflection Arc.
  */
 
 /**
@@ -68,10 +75,6 @@ import kotlin.time.Duration.Companion.milliseconds
  * velocity estimation. Eliminates frame-timing jitter that causes flickering
  * on Android capacitive touchscreens where touch events arrive at inconsistent
  * intervals (4ms, 8ms, 16ms, 20ms).
- *
- * Instead of single-frame `dist / dt` (which spikes on short frames and dips on long frames),
- * this computes `totalDist / totalTime` over the window — exactly how Synaptics, ELAN,
- * and Apple trackpad firmware smooth velocity.
  */
 internal class VelocityRingBuffer(private val capacity: Int = 8) {
     private val distances = FloatArray(capacity)
@@ -143,6 +146,227 @@ internal fun calculateGamingStickMagnitude(speedDpPerSec: Float, sensitivity: Fl
     }
 }
 
+// =========================================================================
+// LAYER 0 & LAYER 2/6 SHARED CANVAS DRAWING PRIMITIVES
+// =========================================================================
+
+private fun DrawScope.drawTouchPadAura(
+    auraColor: Color,
+    rgbBloomAlpha: Float,
+    isDragging: Boolean
+) {
+    val pad = 14.dp.toPx()
+
+    // 1. Broad Ambient Glass Boundary Corona Glow
+    drawRoundRect(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                auraColor.copy(alpha = rgbBloomAlpha * (if (isDragging) 0.55f else 0.32f)),
+                auraColor.copy(alpha = rgbBloomAlpha * 0.12f),
+                Color.Transparent
+            ),
+            center = center,
+            radius = size.width * 0.70f
+        ),
+        topLeft = Offset(-pad, -pad),
+        size = Size(size.width + pad * 2f, size.height + pad * 2f),
+        cornerRadius = CornerRadius(38.dp.toPx(), 38.dp.toPx())
+    )
+
+    // 2. 4 Precision Corner Registration L-Brackets (Cyber Pips)
+    val bracketAlpha = rgbBloomAlpha * (if (isDragging) 0.90f else 0.55f)
+    val bracketLen = 12.dp.toPx()
+    val inset = 3.dp.toPx()
+    val strokeWidth = 2.dp.toPx()
+
+    // Top-Left Bracket
+    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(-inset, -inset), Offset(-inset + bracketLen, -inset), strokeWidth, StrokeCap.Square)
+    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(-inset, -inset), Offset(-inset, -inset + bracketLen), strokeWidth, StrokeCap.Square)
+
+    // Top-Right Bracket
+    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(size.width + inset, -inset), Offset(size.width + inset - bracketLen, -inset), strokeWidth, StrokeCap.Square)
+    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(size.width + inset, -inset), Offset(size.width + inset, -inset + bracketLen), strokeWidth, StrokeCap.Square)
+
+    // Bottom-Left Bracket
+    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(-inset, size.height + inset), Offset(-inset + bracketLen, size.height + inset), strokeWidth, StrokeCap.Square)
+    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(-inset, size.height + inset), Offset(-inset, size.height + inset - bracketLen), strokeWidth, StrokeCap.Square)
+
+    // Bottom-Right Bracket
+    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(size.width + inset, size.height + inset), Offset(size.width + inset - bracketLen, size.height + inset), strokeWidth, StrokeCap.Square)
+    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(size.width + inset, size.height + inset), Offset(size.width + inset, size.height + inset - bracketLen), strokeWidth, StrokeCap.Square)
+
+    // 3. Cardinal Edge Telemetry Alignment Notches (subtle laser ticks)
+    val tickLen = 5.dp.toPx()
+    val midX = size.width / 2f
+    val midY = size.height / 2f
+    val notchAlpha = rgbBloomAlpha * 0.40f
+    drawLine(auraColor.copy(alpha = notchAlpha), Offset(midX, -inset - tickLen), Offset(midX, -inset), strokeWidth)
+    drawLine(auraColor.copy(alpha = notchAlpha), Offset(midX, size.height + inset), Offset(midX, size.height + inset + tickLen), strokeWidth)
+    drawLine(auraColor.copy(alpha = notchAlpha), Offset(-inset - tickLen, midY), Offset(-inset, midY), strokeWidth)
+    drawLine(auraColor.copy(alpha = notchAlpha), Offset(size.width + inset, midY), Offset(size.width + inset + tickLen, midY), strokeWidth)
+}
+
+private fun DrawScope.drawTouchPadBackgroundMatrix(
+    auraColor: Color,
+    isRgbEnabled: Boolean
+) {
+    val cx = size.width / 2f
+    val cy = size.height / 2f
+    val r = size.minDimension / 2f
+
+    val gridColor = if (isRgbEnabled) auraColor else Color.White
+
+    // Concentric Precision Radar Range Rings (28%, 55%, 80%)
+    drawCircle(
+        color = gridColor.copy(alpha = 0.08f),
+        radius = r * 0.28f,
+        center = Offset(cx, cy),
+        style = Stroke(width = 1.dp.toPx())
+    )
+    drawCircle(
+        color = gridColor.copy(alpha = 0.06f),
+        radius = r * 0.55f,
+        center = Offset(cx, cy),
+        style = Stroke(
+            width = 1.dp.toPx(),
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx()), 0f)
+        )
+    )
+    drawCircle(
+        color = gridColor.copy(alpha = 0.05f),
+        radius = r * 0.80f,
+        center = Offset(cx, cy),
+        style = Stroke(width = 1.dp.toPx())
+    )
+
+    // Fine Cardinal Crosshairs with Central Clearance Gap
+    val gap = 16.dp.toPx()
+    val marginH = 22.dp.toPx()
+    val marginV = 22.dp.toPx()
+    val crosshairAlpha = 0.07f
+
+    // Horizontal axis
+    drawLine(gridColor.copy(alpha = crosshairAlpha), Offset(marginH, cy), Offset(cx - gap, cy), 1.dp.toPx())
+    drawLine(gridColor.copy(alpha = crosshairAlpha), Offset(cx + gap, cy), Offset(size.width - marginH, cy), 1.dp.toPx())
+
+    // Vertical axis
+    drawLine(gridColor.copy(alpha = crosshairAlpha), Offset(cx, marginV), Offset(cx, cy - gap), 1.dp.toPx())
+    drawLine(gridColor.copy(alpha = crosshairAlpha), Offset(cx, cy + gap), Offset(cx, size.height - marginV), 1.dp.toPx())
+
+    // Sub-millimeter graduation ticks along inner perimeter
+    val tickSize = 3.dp.toPx()
+    val tickAlpha = 0.05f
+    val stroke1Px = 1.dp.toPx()
+    for (i in 1..3) {
+        val frac = i * 0.25f
+        val xPos = size.width * frac
+        val yPos = size.height * frac
+        drawLine(gridColor.copy(alpha = tickAlpha), Offset(xPos, marginV - 4.dp.toPx()), Offset(xPos, marginV - 4.dp.toPx() + tickSize), stroke1Px)
+        drawLine(gridColor.copy(alpha = tickAlpha), Offset(xPos, size.height - marginV + 4.dp.toPx() - tickSize), Offset(xPos, size.height - marginV + 4.dp.toPx()), stroke1Px)
+        drawLine(gridColor.copy(alpha = tickAlpha), Offset(marginH - 4.dp.toPx(), yPos), Offset(marginH - 4.dp.toPx() + tickSize, yPos), stroke1Px)
+        drawLine(gridColor.copy(alpha = tickAlpha), Offset(size.width - marginH + 4.dp.toPx() - tickSize, yPos), Offset(size.width - marginH + 4.dp.toPx(), yPos), stroke1Px)
+    }
+
+    // Top Specular Glass Crescent / Lens Sheen Arc (Layer 6)
+    drawArc(
+        brush = Brush.verticalGradient(
+            colors = listOf(Color.White.copy(alpha = 0.12f), Color.Transparent),
+            startY = 0f,
+            endY = size.height * 0.35f
+        ),
+        startAngle = 180f,
+        sweepAngle = 180f,
+        useCenter = false,
+        topLeft = Offset(3.dp.toPx(), 3.dp.toPx()),
+        size = Size(size.width - 6.dp.toPx(), size.height * 0.50f),
+        style = Stroke(width = 1.dp.toPx())
+    )
+}
+
+private fun DrawScope.drawActiveCapacitiveTouch(
+    touchX: Float,
+    touchY: Float,
+    anchorX: Float,
+    anchorY: Float,
+    activeAlpha: Float,
+    rgbBloomAlpha: Float,
+    auraColor: Color,
+    isRgbEnabled: Boolean
+) {
+    if (activeAlpha <= 0.01f) return
+
+    val puckCenter = Offset(touchX, touchY)
+    val glowColor = if (isRgbEnabled) auraColor else Color.White
+
+    // 1. Dynamic Aim / Deflection Laser Guide Line from Anchor to Touch
+    val anchor = Offset(anchorX, anchorY)
+    val distAnchor = hypot(touchX - anchorX, touchY - anchorY)
+    if (distAnchor > 6.dp.toPx()) {
+        drawLine(
+            brush = Brush.linearGradient(
+                colors = listOf(
+                    glowColor.copy(alpha = activeAlpha * 0.15f),
+                    glowColor.copy(alpha = activeAlpha * 0.60f)
+                ),
+                start = anchor,
+                end = puckCenter
+            ),
+            start = anchor,
+            end = puckCenter,
+            strokeWidth = 1.5.dp.toPx(),
+            cap = StrokeCap.Round
+        )
+        // Anchor origin dot
+        drawCircle(
+            color = glowColor.copy(alpha = activeAlpha * 0.40f),
+            radius = 3.dp.toPx(),
+            center = anchor
+        )
+    }
+
+    // 2. Multi-tier Capacitive Touch Bloom
+    val puckRadius = 44.dp.toPx()
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                Color.White.copy(alpha = activeAlpha * 0.60f),
+                glowColor.copy(alpha = activeAlpha * rgbBloomAlpha * 0.50f),
+                glowColor.copy(alpha = activeAlpha * rgbBloomAlpha * 0.15f),
+                Color.Transparent
+            ),
+            center = puckCenter,
+            radius = puckRadius
+        ),
+        center = puckCenter,
+        radius = puckRadius
+    )
+
+    // 3. Dual Concentric Capacitive Touch Ripples
+    drawCircle(
+        color = glowColor.copy(alpha = activeAlpha * 0.85f),
+        radius = 16.dp.toPx(),
+        center = puckCenter,
+        style = Stroke(width = 2.dp.toPx())
+    )
+    drawCircle(
+        color = glowColor.copy(alpha = activeAlpha * 0.45f),
+        radius = 28.dp.toPx(),
+        center = puckCenter,
+        style = Stroke(width = 1.2.dp.toPx())
+    )
+
+    // 4. Specular Core Contact Dot
+    drawCircle(
+        color = Color.White.copy(alpha = activeAlpha * 0.95f),
+        radius = 3.5.dp.toPx(),
+        center = puckCenter
+    )
+}
+
+// =========================================================================
+// INTERACTIVE COMPOSABLE (CLEAN, TEXT-FREE TACTILE SURFACE)
+// =========================================================================
+
 @Composable
 fun RealisticTouchPad(
     isLeft: Boolean,
@@ -154,13 +378,14 @@ fun RealisticTouchPad(
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val auraColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFA97CF0)
-    val accentColor = auraColor
+    val auraColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
 
     // Touch tracking state
     var isDragging by remember { mutableStateOf(false) }
     var touchX by remember { mutableFloatStateOf(0f) }
     var touchY by remember { mutableFloatStateOf(0f) }
+    var anchorX by remember { mutableFloatStateOf(0f) }
+    var anchorY by remember { mutableFloatStateOf(0f) }
     var decayJob by remember { mutableStateOf<Job?>(null) }
 
     val rgbBloomAlpha by animateFloatAsState(
@@ -170,12 +395,13 @@ fun RealisticTouchPad(
     )
 
     val activeAlpha by animateFloatAsState(
-        targetValue = if (isDragging) 1f else 0f,
+        targetValue = if (isDragging) 1.0f else 0.0f,
         animationSpec = tween(150),
-        label = "activeAlpha"
+        label = "touchpad_active_alpha"
     )
 
     val shape = RoundedCornerShape(26.dp)
+    val innerShape = RoundedCornerShape(18.dp)
 
     val surfaceGradient = Brush.radialGradient(
         colors = listOf(Color(0xFF23252B), Color(0xFF131418), Color(0xFF0B0C0E)),
@@ -199,7 +425,6 @@ fun RealisticTouchPad(
                 if (globalPadSens > 0f) {
                     globalPadSens
                 } else {
-                    // Default base sensitivity: 2.0f (2x default sensitivity)
                     val camSens = sp.getFloat("CAMERA_SENSITIVITY", 1.0f)
                     camSens * 2.0f
                 }
@@ -210,78 +435,14 @@ fun RealisticTouchPad(
     Box(
         modifier = modifier
             .size(180.dp)
+            // Layer 0: Bespoke Kinetic Outer Aura
             .drawBehind {
                 if (isRgbEnabled) {
-                    val pad = 12.dp.toPx()
-
-                    // 1. Ambient Glass Boundary Glow
-                    drawRoundRect(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                auraColor.copy(alpha = rgbBloomAlpha * (if (isDragging) 0.50f else 0.30f)),
-                                auraColor.copy(alpha = rgbBloomAlpha * 0.12f),
-                                Color.Transparent
-                            ),
-                            center = center,
-                            radius = size.width * 0.65f
-                        ),
-                        topLeft = Offset(-pad, -pad),
-                        size = Size(size.width + pad * 2f, size.height + pad * 2f),
-                        cornerRadius = CornerRadius(36.dp.toPx(), 36.dp.toPx())
+                    drawTouchPadAura(
+                        auraColor = auraColor,
+                        rgbBloomAlpha = rgbBloomAlpha,
+                        isDragging = isDragging
                     )
-
-                    // 2. 4 Corner Registration Pips
-                    val bracketAlpha = rgbBloomAlpha * (if (isDragging) 0.85f else 0.40f)
-                    val bracketLen = 10.dp.toPx()
-                    val inset = 2.dp.toPx()
-
-                    // TL
-                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(-inset, -inset), Offset(-inset + bracketLen, -inset), 2f)
-                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(-inset, -inset), Offset(-inset, -inset + bracketLen), 2f)
-                    // TR
-                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(size.width + inset, -inset), Offset(size.width + inset - bracketLen, -inset), 2f)
-                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(size.width + inset, -inset), Offset(size.width + inset + bracketLen, -inset), 2f)
-                    // BL
-                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(-inset, size.height + inset), Offset(-inset + bracketLen, size.height + inset), 2f)
-                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(-inset, size.height + inset), Offset(-inset, size.height + inset - bracketLen), 2f)
-                    // BR
-                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(size.width + inset, size.height + inset), Offset(size.width + inset - bracketLen, size.height + inset), 2f)
-                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(size.width + inset, size.height + inset), Offset(size.width + inset, size.height + inset - bracketLen), 2f)
-
-                    // 3. Capacitive Touch Ripple expanding from finger contact coordinates
-                    if (isDragging) {
-                        val touchCenter = Offset(touchX, touchY)
-                        val touchRadius = 46.dp.toPx()
-
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = rgbBloomAlpha * 0.65f),
-                                    auraColor.copy(alpha = rgbBloomAlpha * 0.50f),
-                                    auraColor.copy(alpha = rgbBloomAlpha * 0.15f),
-                                    Color.Transparent
-                                ),
-                                center = touchCenter,
-                                radius = touchRadius
-                            ),
-                            center = touchCenter,
-                            radius = touchRadius
-                        )
-
-                        // Dual concentric capacitive touch ripples
-                        drawCircle(
-                            color = auraColor.copy(alpha = rgbBloomAlpha * 0.80f),
-                            radius = 20.dp.toPx(),
-                            center = touchCenter,
-                            style = Stroke(width = 1.5.dp.toPx())
-                        )
-                        drawCircle(
-                            color = auraColor.copy(alpha = rgbBloomAlpha * 0.45f),
-                            radius = 32.dp.toPx(),
-                            center = touchCenter,
-                            style = Stroke(width = 1.dp.toPx())
-                        )
-                    }
                 }
             }
             .shadow(
@@ -295,7 +456,7 @@ fun RealisticTouchPad(
             .border(
                 BorderStroke(
                     2.dp,
-                    if (isRgbEnabled) auraColor else Color(0xFF353C4A)
+                    if (isRgbEnabled) auraColor.copy(alpha = if (isDragging) 0.90f else 0.65f) else Color(0xFF353C4A)
                 ),
                 shape
             )
@@ -308,12 +469,14 @@ fun RealisticTouchPad(
                     var previousTimeMs = System.currentTimeMillis()
                     var currentStickX = 0f
                     var currentStickY = 0f
-                    var lastSpeed = 0f
                     val velocityBuffer = VelocityRingBuffer(8)
 
                     isDragging = true
                     touchX = down.position.x
                     touchY = down.position.y
+                    anchorX = down.position.x
+                    anchorY = down.position.y
+
                     if (isLeft) {
                         viewModel.updateLeftStick(0f, 0f)
                     } else {
@@ -324,7 +487,6 @@ fun RealisticTouchPad(
                         val event = awaitPointerEvent()
                         val change = event.changes.firstOrNull { it.id == down.id }
                         if (change == null || !change.pressed) {
-                            // Finger lifted up
                             break
                         }
 
@@ -337,19 +499,18 @@ fun RealisticTouchPad(
                         previousTouchY = currentTouchY
                         change.consume()
 
-                        // ── Both LTP and RTP: Density-Independent Gaming Speed-to-Distance ──
                         touchX = currentTouchX
                         touchY = currentTouchY
 
                         // Directional axis stabilization: suppress minor diagonal cross-talk
                         var finalDeltaX = deltaX
                         var finalDeltaY = deltaY
-                        val absX = kotlin.math.abs(deltaX)
-                        val absY = kotlin.math.abs(deltaY)
+                        val absX = abs(deltaX)
+                        val absY = abs(deltaY)
                         if (absX > 3.0f * absY) {
-                            finalDeltaY *= 0.5f // Suppress vertical wobble during horizontal turns
+                            finalDeltaY *= 0.5f
                         } else if (absY > 3.0f * absX) {
-                            finalDeltaX *= 0.5f // Suppress horizontal wobble during vertical looks/walks
+                            finalDeltaX *= 0.5f
                         }
 
                         val distPx = hypot(finalDeltaX, finalDeltaY)
@@ -360,10 +521,8 @@ fun RealisticTouchPad(
                             val dtSec = ((currentTimeMs - previousTimeMs).coerceAtLeast(1L)) / 1000f
                             previousTimeMs = currentTimeMs
 
-                            // Push sample into ring buffer for windowed average (eliminates frame-timing jitter)
                             velocityBuffer.push(distDp, dtSec)
                             val smoothedSpeed = velocityBuffer.averageSpeed()
-                            lastSpeed = smoothedSpeed
 
                             val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, effectiveSensitivity)
 
@@ -374,7 +533,6 @@ fun RealisticTouchPad(
                                 val targetStickX = (dirX * stickMagnitude).coerceIn(-1f, 1f)
                                 val targetStickY = (-dirY * stickMagnitude).coerceIn(-1f, 1f) // Up is positive Y
 
-                                // Smooth response (EMA) — heavier smoothing absorbs remaining per-frame noise
                                 currentStickX = 0.55f * targetStickX + 0.45f * currentStickX
                                 currentStickY = 0.55f * targetStickY + 0.45f * currentStickY
 
@@ -384,13 +542,10 @@ fun RealisticTouchPad(
                                     viewModel.updateRightStick(currentStickX, currentStickY)
                                 }
 
-                                // Adaptive stationary watchdog: timeout scales with speed so fast
-                                // dragging never races against the decay timer
                                 val decayTimeoutMs = (120L - (smoothedSpeed / 20f).toLong()).coerceIn(50L, 120L)
                                 decayJob?.cancel()
                                 decayJob = coroutineScope.launch {
                                     delay(decayTimeoutMs)
-                                    // 3-stage gentle decay (prevents harsh snap-to-zero flicker)
                                     currentStickX *= 0.5f
                                     currentStickY *= 0.5f
                                     if (isLeft) {
@@ -414,7 +569,6 @@ fun RealisticTouchPad(
                                     } else {
                                         viewModel.updateRightStick(0f, 0f)
                                     }
-                                    lastSpeed = 0f
                                 }
                             }
                         }
@@ -425,7 +579,6 @@ fun RealisticTouchPad(
                     decayJob?.cancel()
                     val releaseSpeed = velocityBuffer.peakSpeed()
                     if (releaseSpeed > 400f) {
-                        // Dynamic momentum coasting: faster flick gives longer, smoother coast
                         val coastSteps = ((releaseSpeed / 200f).toInt()).coerceIn(3, 7)
                         coroutineScope.launch {
                             var coastX = currentStickX
@@ -457,8 +610,7 @@ fun RealisticTouchPad(
             },
         contentAlignment = Alignment.Center
     ) {
-        // Flat stationary trackpad surface
-        val innerShape = RoundedCornerShape(18.dp)
+        // Layer 4: Recessed Optical Sensor Well
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -473,72 +625,140 @@ fun RealisticTouchPad(
                 .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)), innerShape)
         )
 
-        // Glowing touch indicator puck on active finger drag
-        if (isDragging || activeAlpha > 0.05f) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val puckCenter = Offset(touchX, touchY)
-                val puckGlowRadius = 32.dp.toPx()
-                // Outer radial bloom
+        // Layer 2 & 6: Background Precision Radar Matrix & Top Specular Lens
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawTouchPadBackgroundMatrix(
+                auraColor = auraColor,
+                isRgbEnabled = isRgbEnabled
+            )
+
+            // Layer 3: Dynamic Capacitive Touch Puck & Ripples
+            drawActiveCapacitiveTouch(
+                touchX = touchX,
+                touchY = touchY,
+                anchorX = anchorX,
+                anchorY = anchorY,
+                activeAlpha = activeAlpha,
+                rgbBloomAlpha = rgbBloomAlpha,
+                auraColor = auraColor,
+                isRgbEnabled = isRgbEnabled
+            )
+        }
+
+        // Layer 5: Clean Precision Aiming Reticle Dot & Ring (visible when idle or subtle drag)
+        if (!isDragging || activeAlpha < 0.2f) {
+            Canvas(modifier = Modifier.size(16.dp)) {
+                val centerPt = Offset(size.width / 2f, size.height / 2f)
+                val dotColor = if (isRgbEnabled) auraColor else Color.White
                 drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            (if (isRgbEnabled) auraColor else Color.White).copy(alpha = activeAlpha * 0.55f),
-                            (if (isRgbEnabled) auraColor else Color.White).copy(alpha = activeAlpha * 0.18f),
-                            Color.Transparent
-                        ),
-                        center = puckCenter,
-                        radius = puckGlowRadius
-                    ),
-                    center = puckCenter,
-                    radius = puckGlowRadius
+                    color = dotColor.copy(alpha = 0.25f),
+                    radius = 6.dp.toPx(),
+                    center = centerPt,
+                    style = Stroke(width = 1.dp.toPx())
                 )
-                // Crisp neon reticle ring
                 drawCircle(
-                    color = if (isRgbEnabled) auraColor.copy(alpha = activeAlpha * 0.85f) else Color.White.copy(alpha = 0.70f),
-                    radius = 12.dp.toPx(),
-                    center = puckCenter,
-                    style = Stroke(width = 2.dp.toPx())
-                )
-                // Core specular dot
-                drawCircle(
-                    color = Color.White.copy(alpha = activeAlpha * 0.95f),
-                    radius = 3.dp.toPx(),
-                    center = puckCenter
+                    color = dotColor.copy(alpha = 0.50f),
+                    radius = 2.dp.toPx(),
+                    center = centerPt
                 )
             }
         }
+    }
+}
 
-        // Tactile Header Label
-        Text(
-            text = if (isLeft) "TOUCH MOVE • LTP" else "TOUCH LOOK • RTP",
-            fontSize = 10.sp,
-            fontFamily = FontFamily.Monospace,
-            fontWeight = FontWeight.Bold,
-            color = if (isRgbEnabled) auraColor.copy(alpha = if (isDragging) 0.95f else 0.70f) else Color.White.copy(alpha = 0.70f),
-            letterSpacing = 1.2.sp,
-            style = androidx.compose.ui.text.TextStyle(
-                shadow = androidx.compose.ui.graphics.Shadow(
-                    color = if (isRgbEnabled) auraColor.copy(alpha = rgbBloomAlpha * 0.75f) else Color.Black.copy(alpha = 0.8f),
-                    offset = Offset(0f, 1f),
-                    blurRadius = 3f
-                )
+// =========================================================================
+// STATIC STUDIO PREVIEW COMPOSABLE (CLEAN, TEXT-FREE, ZERO TOUCH OVERHEAD)
+// =========================================================================
+
+/**
+ * High-performance static preview thumbnail for Button Studio and layout grids.
+ * 100% visual parity with the idle state of [RealisticTouchPad].
+ * Zero mutable state, zero pointer listeners, zero coroutines.
+ */
+@Composable
+fun StaticRealisticTouchPad(
+    isLeft: Boolean,
+    isRgbEnabled: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    val auraColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
+    val shape = RoundedCornerShape(26.dp)
+    val innerShape = RoundedCornerShape(18.dp)
+
+    val surfaceGradient = Brush.radialGradient(
+        colors = listOf(Color(0xFF23252B), Color(0xFF131418), Color(0xFF0B0C0E)),
+        center = Offset(0.4f, 0.4f),
+        radius = 280f
+    )
+
+    Box(
+        modifier = modifier
+            .size(180.dp)
+            // Layer 0: Bespoke Kinetic Outer Aura
+            .drawBehind {
+                if (isRgbEnabled) {
+                    drawTouchPadAura(
+                        auraColor = auraColor,
+                        rgbBloomAlpha = 0.45f,
+                        isDragging = false
+                    )
+                }
+            }
+            .shadow(
+                elevation = 8.dp,
+                shape = shape,
+                ambientColor = if (isRgbEnabled) auraColor else Color.Black,
+                spotColor = if (isRgbEnabled) auraColor else Color.Black
+            )
+            .clip(shape)
+            .background(surfaceGradient)
+            .border(
+                BorderStroke(
+                    2.dp,
+                    if (isRgbEnabled) auraColor.copy(alpha = 0.65f) else Color(0xFF353C4A)
+                ),
+                shape
             ),
+        contentAlignment = Alignment.Center
+    ) {
+        // Layer 4: Recessed Optical Sensor Well
+        Box(
             modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 10.dp)
+                .fillMaxSize()
+                .padding(14.dp)
+                .clip(innerShape)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(Color.White.copy(alpha = 0.03f), Color.Transparent),
+                        radius = 200f
+                    )
+                )
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)), innerShape)
         )
 
-        // Tactile Footer
-        Text(
-            text = "2.0X BALLISTICS",
-            fontSize = 9.sp,
-            fontFamily = FontFamily.Monospace,
-            fontWeight = FontWeight.Normal,
-            color = Color.White.copy(alpha = 0.35f),
-            letterSpacing = 0.8.sp,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 10.dp)
-        )
+        // Layer 2 & 6: Background Precision Radar Matrix & Top Specular Lens
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawTouchPadBackgroundMatrix(
+                auraColor = auraColor,
+                isRgbEnabled = isRgbEnabled
+            )
+        }
+
+        // Layer 5: Clean Precision Aiming Reticle Dot & Ring
+        Canvas(modifier = Modifier.size(16.dp)) {
+            val centerPt = Offset(size.width / 2f, size.height / 2f)
+            val dotColor = if (isRgbEnabled) auraColor else Color.White
+            drawCircle(
+                color = dotColor.copy(alpha = 0.25f),
+                radius = 6.dp.toPx(),
+                center = centerPt,
+                style = Stroke(width = 1.dp.toPx())
+            )
+            drawCircle(
+                color = dotColor.copy(alpha = 0.50f),
+                radius = 2.dp.toPx(),
+                center = centerPt
+            )
+        }
     }
 }

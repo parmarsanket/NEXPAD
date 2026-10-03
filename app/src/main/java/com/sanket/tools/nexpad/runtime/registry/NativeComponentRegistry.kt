@@ -2025,9 +2025,9 @@ object RealisticLeftTouchPadVariant : BaseNativeVariant("builtin.default_ltp", C
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = K.LTP,
-            labelStyle = context.labelStyle,
+        StaticRealisticTouchPad(
+            isLeft = true,
+            isRgbEnabled = context.isRgbEnabled,
             modifier = context.modifier
         )
     }
@@ -2051,9 +2051,9 @@ object RealisticRightTouchPadVariant : BaseNativeVariant("builtin.default_rtp", 
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = K.RTP,
-            labelStyle = context.labelStyle,
+        StaticRealisticTouchPad(
+            isLeft = false,
+            isRgbEnabled = context.isRgbEnabled,
             modifier = context.modifier
         )
     }
