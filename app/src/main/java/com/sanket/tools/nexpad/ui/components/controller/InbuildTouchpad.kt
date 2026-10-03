@@ -1,9 +1,6 @@
 package com.sanket.tools.nexpad.ui.components.controller
 
 import android.content.Context
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -15,7 +12,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -25,13 +21,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -50,8 +42,8 @@ import kotlin.time.Duration.Companion.milliseconds
  * Implements the Full-Mode touch architecture:
  * - Operates at the lowest Z-index (drawn behind all buttons/controls).
  * - 16.dp Universal Button Buffer Zone: touches within 16dp of any interactive button are completely ignored.
- * - Displays a barely visible, subtle ambient cyber gradient so the user can easily recognize active touchpad coverage.
- * - Dynamic capacitive touch puck with outer corona bloom, ripple ring, and aim vector following finger gestures.
+ * - Displays a barely visible, subtle ambient cyber gradient with halved tactical square grid lines.
+ * - Zero touch animation UI on touch: no puck, no outer corona bloom, no tactile rings, no aim vector, and no localized touch glow.
  * - Uses calibrated 5-zone velocity transfer curve and trackball momentum coasting on release.
  */
 
@@ -62,15 +54,13 @@ import kotlin.time.Duration.Companion.milliseconds
 private fun DrawScope.drawInbuildTouchpadGrid(
     isLeft: Boolean,
     auraColor: Color,
-    isRgbEnabled: Boolean,
-    touchX: Float = -1f,
-    touchY: Float = -1f,
-    activeAlpha: Float = 0f
+    isRgbEnabled: Boolean
 ) {
     val w = size.width
     val h = size.height
     val gridStep = 24.dp.toPx()
-    val baseLineAlpha = if (isRgbEnabled) 0.080f else 0.045f
+    // Tactical square grid base opacity decreased into half (halved from 0.080f/0.045f)
+    val baseLineAlpha = if (isRgbEnabled) 0.040f else 0.022f
     val fadeZoneWidth = 56.dp.toPx()
 
     // 1. "Barely Visible Gradient" (Ultra-subtle ambient cyber background aura)
@@ -92,25 +82,7 @@ private fun DrawScope.drawInbuildTouchpadGrid(
         size = size
     )
 
-    // 2. Interactive Localized Grid Illumination
-    if (activeAlpha > 0.01f && touchX >= 0f && touchY >= 0f) {
-        val touchGlowRadius = 120.dp.toPx()
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(
-                    auraColor.copy(alpha = activeAlpha * 0.16f),
-                    auraColor.copy(alpha = activeAlpha * 0.05f),
-                    Color.Transparent
-                ),
-                center = Offset(touchX, touchY),
-                radius = touchGlowRadius
-            ),
-            radius = touchGlowRadius,
-            center = Offset(touchX, touchY)
-        )
-    }
-
-    // 3. Small Square Grid Lines
+    // 2. Small Square Grid Lines
     // Vertical lines
     var x = if (isLeft) 0f else (w % gridStep)
     while (x <= w) {
@@ -119,7 +91,7 @@ private fun DrawScope.drawInbuildTouchpadGrid(
         val fadeFactor = (centerDist / fadeZoneWidth).coerceIn(0f, 1f)
         val lineAlpha = baseLineAlpha * fadeFactor
 
-        if (lineAlpha > 0.005f) {
+        if (lineAlpha > 0.002f) {
             drawLine(
                 color = auraColor.copy(alpha = lineAlpha),
                 start = Offset(x, 0f),
@@ -161,9 +133,9 @@ private fun DrawScope.drawInbuildTouchpadGrid(
         y += gridStep
     }
 
-    // 4. Precision Crosshair Ticks '+' at major Grid Intersections
+    // 3. Precision Crosshair Ticks '+' at major Grid Intersections (halved from 0.14f/0.08f)
     val tickLen = 2.5.dp.toPx()
-    val tickBaseAlpha = if (isRgbEnabled) 0.14f else 0.08f
+    val tickBaseAlpha = if (isRgbEnabled) 0.070f else 0.040f
     val majorStep = gridStep * 2
 
     var px = if (isLeft) gridStep else (w % majorStep)
@@ -172,7 +144,7 @@ private fun DrawScope.drawInbuildTouchpadGrid(
         val fadeFactor = (centerDist / fadeZoneWidth).coerceIn(0f, 1f)
         val tickAlpha = tickBaseAlpha * fadeFactor
 
-        if (tickAlpha > 0.01f) {
+        if (tickAlpha > 0.005f) {
             var py = gridStep
             while (py < h) {
                 val tickColor = auraColor.copy(alpha = tickAlpha)
@@ -195,76 +167,6 @@ private fun DrawScope.drawInbuildTouchpadGrid(
         }
         px += majorStep
     }
-}
-
-private fun DrawScope.drawInbuildActiveCapacitiveTouch(
-    touchX: Float,
-    touchY: Float,
-    anchorX: Float,
-    anchorY: Float,
-    activeAlpha: Float,
-    rgbBloomAlpha: Float,
-    auraColor: Color,
-    isRgbEnabled: Boolean
-) {
-    if (activeAlpha <= 0.01f) return
-
-    val puckCenter = Offset(touchX, touchY)
-    val anchorCenter = Offset(anchorX, anchorY)
-    val glowColor = if (isRgbEnabled) auraColor else Color.White
-
-    // 1. Aiming / Motion Vector Line (Connecting anchor to touch point)
-    val vectorDist = hypot(touchX - anchorX, touchY - anchorY)
-    if (vectorDist > 6.dp.toPx()) {
-        drawLine(
-            color = glowColor.copy(alpha = activeAlpha * 0.35f),
-            start = anchorCenter,
-            end = puckCenter,
-            strokeWidth = 1.5.dp.toPx(),
-            cap = StrokeCap.Round
-        )
-        drawCircle(
-            color = glowColor.copy(alpha = activeAlpha * 0.30f),
-            radius = 3.dp.toPx(),
-            center = anchorCenter
-        )
-    }
-
-    // 2. Outer Corona Touch Bloom Glow
-    drawCircle(
-        brush = Brush.radialGradient(
-            colors = listOf(
-                glowColor.copy(alpha = activeAlpha * rgbBloomAlpha * 0.40f),
-                glowColor.copy(alpha = activeAlpha * 0.12f),
-                Color.Transparent
-            ),
-            center = puckCenter,
-            radius = 42.dp.toPx()
-        ),
-        radius = 42.dp.toPx(),
-        center = puckCenter
-    )
-
-    // 3. Concentric Tactile Puck Rings
-    drawCircle(
-        color = glowColor.copy(alpha = activeAlpha * 0.85f),
-        radius = 18.dp.toPx(),
-        center = puckCenter,
-        style = Stroke(width = 2.dp.toPx())
-    )
-    drawCircle(
-        color = glowColor.copy(alpha = activeAlpha * 0.40f),
-        radius = 28.dp.toPx(),
-        center = puckCenter,
-        style = Stroke(width = 1.2.dp.toPx())
-    )
-
-    // 4. Specular Core Contact Dot
-    drawCircle(
-        color = Color.White.copy(alpha = activeAlpha * 0.95f),
-        radius = 3.5.dp.toPx(),
-        center = puckCenter
-    )
 }
 
 // =========================================================================
@@ -291,24 +193,7 @@ fun InbuildTouchpadHalf(
     val coroutineScope = rememberCoroutineScope()
     val auraColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
 
-    var isDragging by remember { mutableStateOf(false) }
-    var touchX by remember { mutableFloatStateOf(0f) }
-    var touchY by remember { mutableFloatStateOf(0f) }
-    var anchorX by remember { mutableFloatStateOf(0f) }
-    var anchorY by remember { mutableFloatStateOf(0f) }
     var decayJob by remember { mutableStateOf<Job?>(null) }
-
-    val rgbBloomAlpha by animateFloatAsState(
-        targetValue = if (isDragging) 0.95f else 0.40f,
-        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
-        label = "inbuild_tp_rgb_bloom"
-    )
-
-    val activeAlpha by animateFloatAsState(
-        targetValue = if (isDragging) 1.0f else 0.0f,
-        animationSpec = tween(150),
-        label = "inbuild_tp_active_alpha"
-    )
 
     val context = LocalContext.current
     val density = LocalDensity.current.density
@@ -370,12 +255,6 @@ fun InbuildTouchpadHalf(
                     var currentStickY = 0f
                     val velocityBuffer = VelocityRingBuffer(8)
 
-                    isDragging = true
-                    touchX = down.position.x
-                    touchY = down.position.y
-                    anchorX = down.position.x
-                    anchorY = down.position.y
-
                     if (isLeft) {
                         viewModel?.updateLeftStick(0f, 0f)
                     } else {
@@ -396,9 +275,6 @@ fun InbuildTouchpadHalf(
                         previousTouchX = currentTouchX
                         previousTouchY = currentTouchY
                         change.consume()
-
-                        touchX = currentTouchX
-                        touchY = currentTouchY
 
                         // Directional axis stabilization: suppress minor diagonal cross-talk
                         var finalDeltaX = deltaX
@@ -473,7 +349,6 @@ fun InbuildTouchpadHalf(
                     }
 
                     // Gesture released
-                    isDragging = false
                     val peakReleaseSpeed = velocityBuffer.peakSpeed()
                     if (peakReleaseSpeed < 80f) {
                         decayJob?.cancel()
@@ -490,21 +365,6 @@ fun InbuildTouchpadHalf(
             // Gaming small square grid lines covering the entire half-screen
             drawInbuildTouchpadGrid(
                 isLeft = isLeft,
-                auraColor = auraColor,
-                isRgbEnabled = isRgbEnabled,
-                touchX = touchX,
-                touchY = touchY,
-                activeAlpha = activeAlpha
-            )
-
-            // Dynamic capacitive touch puck & aim vector
-            drawInbuildActiveCapacitiveTouch(
-                touchX = touchX,
-                touchY = touchY,
-                anchorX = anchorX,
-                anchorY = anchorY,
-                activeAlpha = activeAlpha,
-                rgbBloomAlpha = rgbBloomAlpha,
                 auraColor = auraColor,
                 isRgbEnabled = isRgbEnabled
             )
@@ -557,7 +417,7 @@ fun InbuildTouchpad(
 
 /**
  * Static non-interactive preview of the Inbuild Touchpad for Button Studio card grids.
- * Displays the gaming small square grid lines with central capacitive puck bloom.
+ * Displays the gaming small square grid lines.
  */
 @Composable
 fun StaticInbuildTouchpad(
@@ -583,18 +443,6 @@ fun StaticInbuildTouchpad(
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawInbuildTouchpadGrid(
                 isLeft = isLeft,
-                auraColor = auraColor,
-                isRgbEnabled = isRgbEnabled
-            )
-
-            // Static puck hint at center
-            drawInbuildActiveCapacitiveTouch(
-                touchX = size.width / 2f,
-                touchY = size.height / 2f,
-                anchorX = size.width / 2f,
-                anchorY = size.height / 2f,
-                activeAlpha = 0.70f,
-                rgbBloomAlpha = 0.85f,
                 auraColor = auraColor,
                 isRgbEnabled = isRgbEnabled
             )
