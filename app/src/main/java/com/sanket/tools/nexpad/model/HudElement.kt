@@ -15,7 +15,10 @@ data class LayoutTransform(
     val opacity: Float = 1.0f,
     val sensitivity: Float = 2.0f,
     val heightScale: Float = 1.0f,
-    val isFlipped: Boolean = false
+    val isFlipped: Boolean = false,
+    val isLocked: Boolean = true,
+    val joystickMode: String = "LOCKED",
+    val hitboxScale: Float = 1.5f
 )
 
 /**
@@ -74,22 +77,32 @@ data class HudElement(
         customComponentId = skinId,
         sensitivity = transform.sensitivity,
         heightScale = transform.heightScale,
-        isFlipped = transform.isFlipped
+        isFlipped = transform.isFlipped,
+        isLocked = transform.isLocked,
+        joystickMode = transform.joystickMode,
+        hitboxScale = transform.hitboxScale
     )
 
     companion object {
-        fun fromPosition(key: String, position: Position): HudElement = HudElement(
-            controlKey = key.uppercase(),
-            transform = LayoutTransform(
-                xRatio = position.xRatio,
-                yRatio = position.yRatio,
-                scale = position.scale,
-                opacity = position.opacity,
-                sensitivity = position.sensitivity ?: 2.0f,
-                heightScale = position.heightScale ?: 1.0f,
-                isFlipped = position.isFlipped ?: false
-            ),
-            skinId = position.customComponentId
-        )
+        fun fromPosition(key: String, position: Position): HudElement {
+            val resolvedMode = position.joystickMode ?: if (position.isLocked == false) "BOX" else "LOCKED"
+            val resolvedLocked = (resolvedMode == "LOCKED")
+            return HudElement(
+                controlKey = key.uppercase(),
+                transform = LayoutTransform(
+                    xRatio = position.xRatio,
+                    yRatio = position.yRatio,
+                    scale = position.scale,
+                    opacity = position.opacity,
+                    sensitivity = position.sensitivity ?: 2.0f,
+                    heightScale = position.heightScale ?: 1.0f,
+                    isFlipped = position.isFlipped ?: false,
+                    isLocked = resolvedLocked,
+                    joystickMode = resolvedMode,
+                    hitboxScale = position.hitboxScale ?: 1.5f
+                ),
+                skinId = position.customComponentId
+            )
+        }
     }
 }

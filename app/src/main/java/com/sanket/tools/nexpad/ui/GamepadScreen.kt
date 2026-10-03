@@ -2,7 +2,11 @@ package com.sanket.tools.nexpad.ui
 
 import android.content.pm.ActivityInfo
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -10,15 +14,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerId
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import androidx.compose.ui.layout.layout
+import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.hypot
 import kotlin.math.roundToInt
+import kotlin.math.sin
 import android.os.Build
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
@@ -274,8 +287,11 @@ fun GamepadScreen(
     GamepadScreenContent(
         profile = profile,
         isConnected = isConnected,
+        viewModel = viewModel,
         onBack = onBack,
         renderElement = { key, position ->
+            val mode = position.joystickMode ?: if (position.isLocked == false) "FULL" else "LOCKED"
+            val isLocked = (mode == "LOCKED")
             com.sanket.tools.nexpad.ui.components.controller.ControllerElementRenderer(
                 key = key,
                 isConnected = isConnected,
@@ -286,6 +302,7 @@ fun GamepadScreen(
                 sensitivity = position.sensitivity,
                 heightScale = position.heightScale ?: 1.0f,
                 isFlipped = position.isFlipped ?: false,
+                isLocked = isLocked,
                 labelStyle = profile.controllerLabelStyle
             )
         }
@@ -296,10 +313,16 @@ fun GamepadScreen(
 fun GamepadScreenContent(
     profile: com.sanket.tools.nexpad.model.LayoutProfile,
     isConnected: Boolean = false,
+    viewModel: GamepadViewModel? = null,
     onBack: () -> Unit = {},
     renderElement: @Composable (key: String, position: com.sanket.tools.nexpad.model.Position) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val lsFloatX = remember { Animatable(0f) }
+    val lsFloatY = remember { Animatable(0f) }
+    val rsFloatX = remember { Animatable(0f) }
+    val rsFloatY = remember { Animatable(0f) }
+
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
@@ -308,14 +331,61 @@ fun GamepadScreenContent(
         val screenWidthPx = maxOf(constraints.maxWidth, constraints.maxHeight).toFloat()
         val screenHeightPx = minOf(constraints.maxWidth, constraints.maxHeight).toFloat()
 
-        // Render mapped components with center-based placement
+        // 1. Floating Joystick Touch Layer (Background layer behind controls)
+        val lsEntry = profile.positions.entries.firstOrNull { it.key.equals("LS", ignoreCase = true) }
+        val rsEntry = profile.positions.entries.firstOrNull { it.key.equals("RS", ignoreCase = true) }
+
+        if (lsEntry != null) {
+            val lsPos = lsEntry.value
+            val lsMode = lsPos.joystickMode ?: if (lsPos.isLocked == false) "FULL" else "LOCKED"
+            if (lsMode != "LOCKED") {
+                FloatingJoystickTouchLayer(
+                    isLeft = true,
+                    mode = lsMode,
+                    hitboxScale = lsPos.hitboxScale ?: 1.5f,
+                    position = lsPos,
+                    screenWidthPx = screenWidthPx,
+                    screenHeightPx = screenHeightPx,
+                    floatX = lsFloatX,
+                    floatY = lsFloatY,
+                    viewModel = viewModel,
+                    isConnected = isConnected
+                )
+            }
+        }
+
+        if (rsEntry != null) {
+            val rsPos = rsEntry.value
+            val rsMode = rsPos.joystickMode ?: if (rsPos.isLocked == false) "FULL" else "LOCKED"
+            if (rsMode != "LOCKED") {
+                FloatingJoystickTouchLayer(
+                    isLeft = false,
+                    mode = rsMode,
+                    hitboxScale = rsPos.hitboxScale ?: 1.5f,
+                    position = rsPos,
+                    screenWidthPx = screenWidthPx,
+                    screenHeightPx = screenHeightPx,
+                    floatX = rsFloatX,
+                    floatY = rsFloatY,
+                    viewModel = viewModel,
+                    isConnected = isConnected
+                )
+            }
+        }
+
+        // 2. Render mapped components with center-based placement + floating offsets
         profile.positions.forEach { (key, position) ->
+            val isLs = key.equals("LS", ignoreCase = true)
+            val isRs = key.equals("RS", ignoreCase = true)
+
             Box(
                 modifier = Modifier
                     .layout { measurable, childConstraints ->
                         val placeable = measurable.measure(childConstraints)
-                        val x = (position.xRatio * screenWidthPx - placeable.width / 2f).roundToInt()
-                        val y = (position.yRatio * screenHeightPx - placeable.height / 2f).roundToInt()
+                        val extraX = if (isLs) lsFloatX.value else if (isRs) rsFloatX.value else 0f
+                        val extraY = if (isLs) lsFloatY.value else if (isRs) rsFloatY.value else 0f
+                        val x = (position.xRatio * screenWidthPx - placeable.width / 2f + extraX).roundToInt()
+                        val y = (position.yRatio * screenHeightPx - placeable.height / 2f + extraY).roundToInt()
                         layout(placeable.width, placeable.height) {
                             placeable.placeRelative(x, y)
                         }
@@ -328,3 +398,136 @@ fun GamepadScreenContent(
         }
     }
 }
+
+@Composable
+private fun BoxScope.FloatingJoystickTouchLayer(
+    isLeft: Boolean,
+    mode: String,
+    hitboxScale: Float,
+    position: com.sanket.tools.nexpad.model.Position,
+    screenWidthPx: Float,
+    screenHeightPx: Float,
+    floatX: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>,
+    floatY: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>,
+    viewModel: GamepadViewModel?,
+    isConnected: Boolean
+) {
+    val coroutineScope = rememberCoroutineScope()
+    val density = LocalDensity.current
+
+    val homeCenter = remember(position, screenWidthPx, screenHeightPx) {
+        Offset(position.xRatio * screenWidthPx, position.yRatio * screenHeightPx)
+    }
+
+    val maxThrowPx = with(density) { 45.dp.toPx() }
+
+    val (boxModifier, boxLeft, boxTop) = remember(mode, hitboxScale, position, screenWidthPx, screenHeightPx) {
+        if (mode == "FULL") {
+            val halfWidth = screenWidthPx / 2f
+            val bLeft = if (isLeft) 0f else halfWidth
+            val bTop = 0f
+            val mod = Modifier
+                .fillMaxHeight()
+                .width(with(density) { halfWidth.toDp() })
+                .then(if (isLeft) Modifier.align(Alignment.CenterStart) else Modifier.align(Alignment.CenterEnd))
+            Triple(mod, bLeft, bTop)
+        } else {
+            val diameterPx = with(density) { 150.dp.toPx() } * position.scale
+            val boxSizePx = diameterPx * hitboxScale
+            val bLeft = homeCenter.x - boxSizePx / 2f
+            val bTop = homeCenter.y - boxSizePx / 2f
+            val mod = Modifier
+                .offset { IntOffset(bLeft.roundToInt(), bTop.roundToInt()) }
+                .size(with(density) { boxSizePx.toDp() })
+            Triple(mod, bLeft, bTop)
+        }
+    }
+
+    Box(
+        modifier = boxModifier
+            .pointerInput(isConnected, mode, boxLeft, boxTop, homeCenter) {
+                if (!isConnected) return@pointerInput
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = true)
+                    down.consume()
+
+                    val initialFingerPos = Offset(down.position.x + boxLeft, down.position.y + boxTop)
+                    var curCenter = initialFingerPos
+
+                    val initialOffsetX = curCenter.x - homeCenter.x
+                    val initialOffsetY = curCenter.y - homeCenter.y
+
+                    coroutineScope.launch {
+                        floatX.snapTo(initialOffsetX)
+                        floatY.snapTo(initialOffsetY)
+                    }
+
+                    if (isLeft) {
+                        viewModel?.updateLeftStick(0f, 0f)
+                    } else {
+                        viewModel?.updateRightStick(0f, 0f)
+                    }
+
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id }
+                        if (change == null || !change.pressed) break
+
+                        val curFingerPos = Offset(change.position.x + boxLeft, change.position.y + boxTop)
+                        change.consume()
+
+                        val delta = curFingerPos - curCenter
+                        val dist = hypot(delta.x, delta.y)
+
+                        val (stickX, stickY) = if (dist <= maxThrowPx) {
+                            val nx = if (dist < 4f) 0f else (delta.x / maxThrowPx).coerceIn(-1f, 1f)
+                            val ny = if (dist < 4f) 0f else (-delta.y / maxThrowPx).coerceIn(-1f, 1f)
+                            Pair(nx, ny)
+                        } else {
+                            val angle = atan2(delta.y, delta.x)
+                            val cosA = cos(angle)
+                            val sinA = sin(angle)
+                            curCenter = curFingerPos - Offset(cosA * maxThrowPx, sinA * maxThrowPx)
+
+                            val fx = curCenter.x - homeCenter.x
+                            val fy = curCenter.y - homeCenter.y
+                            coroutineScope.launch {
+                                floatX.snapTo(fx)
+                                floatY.snapTo(fy)
+                            }
+
+                            Pair(cosA, -sinA)
+                        }
+
+                        if (isLeft) {
+                            viewModel?.updateLeftStick(stickX, stickY)
+                        } else {
+                            viewModel?.updateRightStick(stickX, stickY)
+                        }
+                    }
+
+                    if (isLeft) {
+                        viewModel?.updateLeftStick(0f, 0f)
+                    } else {
+                        viewModel?.updateRightStick(0f, 0f)
+                    }
+
+                    coroutineScope.launch {
+                        launch {
+                            floatX.animateTo(
+                                0f,
+                                spring(dampingRatio = 0.70f, stiffness = 400f)
+                            )
+                        }
+                        launch {
+                            floatY.animateTo(
+                                0f,
+                                spring(dampingRatio = 0.70f, stiffness = 400f)
+                            )
+                        }
+                    }
+                }
+            }
+    )
+}
+

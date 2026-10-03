@@ -68,6 +68,7 @@ fun GyroJoystick(
     isConnected: Boolean,
     viewModel: GamepadViewModel,
     isRgbEnabled: Boolean,
+    isLocked: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -156,7 +157,11 @@ fun GyroJoystick(
 
     val stickKey = remember(isLeft) { if (isLeft) "LSB" else "RSB" }
 
-    val deflectionFraction = (hypot(animOffsetX.value, animOffsetY.value) / maxTravelPx).coerceIn(0f, 1f)
+    val stickState = if (isLeft) viewModel.leftStickState else viewModel.rightStickState
+    val effOffsetX = if (isLocked) animOffsetX.value else stickState.first * maxTravelPx
+    val effOffsetY = if (isLocked) animOffsetY.value else -stickState.second * maxTravelPx
+
+    val deflectionFraction = (hypot(effOffsetX, effOffsetY) / maxTravelPx).coerceIn(0f, 1f)
     val rgbBloomAlpha by animateFloatAsState(
         targetValue = 0.40f + 0.55f * deflectionFraction,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
@@ -168,8 +173,8 @@ fun GyroJoystick(
             .size(150.dp)
             .drawBehind {
                 if (isRgbEnabled) {
-                    val curX = animOffsetX.value
-                    val curY = animOffsetY.value
+                    val curX = effOffsetX
+                    val curY = effOffsetY
                     val curDist = hypot(curX, curY)
                     val defFraction = (curDist / maxTravelPx).coerceIn(0f, 1f)
                     val stickAngleDeg = Math.toDegrees(atan2(curY.toDouble(), curX.toDouble())).toFloat()
@@ -227,7 +232,8 @@ fun GyroJoystick(
                 color = Color.Black.copy(alpha = 0.60f),
                 shape = CircleShape
             )
-            .pointerInput(isLeft, isCameraMode, cameraSensitivity, density, maxTravelPx) {
+            .pointerInput(isConnected, isLocked, isLeft, isCameraMode, cameraSensitivity, density, maxTravelPx) {
+                if (!isConnected || !isLocked) return@pointerInput
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     val centerX = size.width / 2f
@@ -437,8 +443,8 @@ fun GyroJoystick(
             },
         contentAlignment = Alignment.Center
     ) {
-        val curOffsetX = animOffsetX.value
-        val curOffsetY = animOffsetY.value
+        val curOffsetX = effOffsetX
+        val curOffsetY = effOffsetY
         val curDist = hypot(curOffsetX, curOffsetY)
         val curMagnitude = min(1f, curDist / maxTravelPx)
         val curAngleDeg = (atan2(curOffsetX, -curOffsetY) * 180f / Math.PI.toFloat() + 360f) % 360f

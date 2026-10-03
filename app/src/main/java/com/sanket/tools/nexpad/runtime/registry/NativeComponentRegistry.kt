@@ -26,6 +26,7 @@ data class NativeRenderContext(
     val sensitivity: Float? = null,
     val heightScale: Float = 1.0f,
     val isFlipped: Boolean = false,
+    val isLocked: Boolean = true,
     val labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
     val modifier: Modifier = Modifier
 ) {
@@ -88,6 +89,7 @@ object RealisticLeftJoystickVariant : BaseNativeVariant("builtin.default_ls", Co
             isConnected = context.isConnected,
             viewModel = context.viewModel,
             isRgbEnabled = context.isRgbEnabled,
+            isLocked = context.isLocked,
             modifier = context.modifier
         )
     }
@@ -112,6 +114,7 @@ object FluxLeftJoystickVariant : BaseNativeVariant("builtin.flux_ls", ControlKey
             isConnected = context.isConnected,
             viewModel = context.viewModel,
             isRgbEnabled = context.isRgbEnabled,
+            isLocked = context.isLocked,
             modifier = context.modifier
         )
     }
@@ -135,6 +138,7 @@ object RealisticRightJoystickVariant : BaseNativeVariant("builtin.default_rs", C
             isConnected = context.isConnected,
             viewModel = context.viewModel,
             isRgbEnabled = context.isRgbEnabled,
+            isLocked = context.isLocked,
             modifier = context.modifier
         )
     }
@@ -159,6 +163,7 @@ object FluxRightJoystickVariant : BaseNativeVariant("builtin.flux_rs", ControlKe
             isConnected = context.isConnected,
             viewModel = context.viewModel,
             isRgbEnabled = context.isRgbEnabled,
+            isLocked = context.isLocked,
             modifier = context.modifier
         )
     }
@@ -182,6 +187,7 @@ object OrbLeftJoystickVariant : BaseNativeVariant("builtin.orb_ls", ControlKey.L
             isConnected = context.isConnected,
             viewModel = context.viewModel,
             isRgbEnabled = context.isRgbEnabled,
+            isLocked = context.isLocked,
             modifier = context.modifier
         )
     }
@@ -205,6 +211,7 @@ object OrbRightJoystickVariant : BaseNativeVariant("builtin.orb_rs", ControlKey.
             isConnected = context.isConnected,
             viewModel = context.viewModel,
             isRgbEnabled = context.isRgbEnabled,
+            isLocked = context.isLocked,
             modifier = context.modifier
         )
     }
@@ -228,6 +235,7 @@ object CompassLeftJoystickVariant : BaseNativeVariant("builtin.compass_ls", Cont
             isConnected = context.isConnected,
             viewModel = context.viewModel,
             isRgbEnabled = context.isRgbEnabled,
+            isLocked = context.isLocked,
             modifier = context.modifier
         )
     }
@@ -251,6 +259,7 @@ object CompassRightJoystickVariant : BaseNativeVariant("builtin.compass_rs", Con
             isConnected = context.isConnected,
             viewModel = context.viewModel,
             isRgbEnabled = context.isRgbEnabled,
+            isLocked = context.isLocked,
             modifier = context.modifier
         )
     }
@@ -274,6 +283,7 @@ object GyroLeftJoystickVariant : BaseNativeVariant("builtin.gyro_ls", ControlKey
             isConnected = context.isConnected,
             viewModel = context.viewModel,
             isRgbEnabled = context.isRgbEnabled,
+            isLocked = context.isLocked,
             modifier = context.modifier
         )
     }
@@ -297,6 +307,7 @@ object GyroRightJoystickVariant : BaseNativeVariant("builtin.gyro_rs", ControlKe
             isConnected = context.isConnected,
             viewModel = context.viewModel,
             isRgbEnabled = context.isRgbEnabled,
+            isLocked = context.isLocked,
             modifier = context.modifier
         )
     }
@@ -320,6 +331,7 @@ object SpotlightLeftJoystickVariant : BaseNativeVariant("builtin.spotlight_ls", 
             isConnected = context.isConnected,
             viewModel = context.viewModel,
             isRgbEnabled = context.isRgbEnabled,
+            isLocked = context.isLocked,
             modifier = context.modifier
         )
     }
@@ -343,6 +355,7 @@ object SpotlightRightJoystickVariant : BaseNativeVariant("builtin.spotlight_rs",
             isConnected = context.isConnected,
             viewModel = context.viewModel,
             isRgbEnabled = context.isRgbEnabled,
+            isLocked = context.isLocked,
             modifier = context.modifier
         )
     }
@@ -2407,6 +2420,7 @@ object NativeComponentRegistry {
         sensitivity: Float? = null,
         heightScale: Float = 1.0f,
         isFlipped: Boolean = false,
+        isLocked: Boolean = true,
         labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
         modifier: Modifier = Modifier
     ) {
@@ -2422,6 +2436,7 @@ object NativeComponentRegistry {
             sensitivity = sensitivity,
             heightScale = heightScale,
             isFlipped = isFlipped,
+            isLocked = isLocked,
             labelStyle = labelStyle,
             modifier = modifier
         )

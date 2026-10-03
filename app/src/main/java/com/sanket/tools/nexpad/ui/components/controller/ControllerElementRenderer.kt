@@ -37,6 +37,7 @@ fun ControllerElementRenderer(
     sensitivity: Float? = null,
     heightScale: Float = 1.0f,
     isFlipped: Boolean = false,
+    isLocked: Boolean = true,
     labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
     modifier: Modifier = Modifier
 ) {
@@ -95,6 +96,7 @@ fun ControllerElementRenderer(
             sensitivity = sensitivity,
             heightScale = heightScale,
             isFlipped = isFlipped,
+            isLocked = isLocked,
             labelStyle = labelStyle,
             modifier = modifier
         )
@@ -136,6 +138,7 @@ fun ControllerElementRenderer(
         viewModel = viewModel,
         onVibrate = onVibrate,
         sensitivity = sensitivity,
+        isLocked = isLocked,
         labelStyle = labelStyle,
         modifier = modifier
     )

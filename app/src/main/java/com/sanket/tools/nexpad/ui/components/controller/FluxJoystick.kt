@@ -67,6 +67,7 @@ fun FluxJoystick(
     isConnected: Boolean,
     viewModel: GamepadViewModel,
     isRgbEnabled: Boolean,
+    isLocked: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -170,7 +171,11 @@ fun FluxJoystick(
     val stickKey = remember(isLeft) { if (isLeft) "LSB" else "RSB" }
     val glyphLabel = remember(isLeft) { if (isLeft) "L" else "R" }
 
-    val deflectionFraction = (hypot(animOffsetX.value, animOffsetY.value) / maxTravelPx).coerceIn(0f, 1f)
+    val stickState = if (isLeft) viewModel.leftStickState else viewModel.rightStickState
+    val effOffsetX = if (isLocked) animOffsetX.value else stickState.first * maxTravelPx
+    val effOffsetY = if (isLocked) animOffsetY.value else -stickState.second * maxTravelPx
+
+    val deflectionFraction = (hypot(effOffsetX, effOffsetY) / maxTravelPx).coerceIn(0f, 1f)
     val rgbBloomAlpha by animateFloatAsState(
         targetValue = 0.40f + 0.55f * deflectionFraction,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
@@ -183,8 +188,8 @@ fun FluxJoystick(
             .drawBehind {
                 if (isRgbEnabled) {
                     val fluxRadius = size.minDimension * 0.52f
-                    val curX = animOffsetX.value
-                    val curY = animOffsetY.value
+                    val curX = effOffsetX
+                    val curY = effOffsetY
                     val curDist = hypot(curX, curY)
                     val defFraction = (curDist / maxTravelPx).coerceIn(0f, 1f)
 
@@ -265,7 +270,8 @@ fun FluxJoystick(
                 color = Color.Black.copy(alpha = 0.75f),
                 shape = CircleShape
             )
-            .pointerInput(isLeft, isCameraMode, cameraSensitivity, density, maxTravelPx, tapThresholdPx) {
+            .pointerInput(isConnected, isLocked, isLeft, isCameraMode, cameraSensitivity, density, maxTravelPx, tapThresholdPx) {
+                if (!isConnected || !isLocked) return@pointerInput
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     val centerX = size.width / 2f
@@ -465,8 +471,8 @@ fun FluxJoystick(
             },
         contentAlignment = Alignment.Center
     ) {
-        val curOffsetX = animOffsetX.value
-        val curOffsetY = animOffsetY.value
+        val curOffsetX = effOffsetX
+        val curOffsetY = effOffsetY
         val curDist = hypot(curOffsetX, curOffsetY)
         val curMagnitude = (curDist / maxTravelPx).coerceIn(0f, 1f)
         val curAngleRad = atan2(curOffsetY, curOffsetX)

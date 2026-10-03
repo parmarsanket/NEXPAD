@@ -55,6 +55,7 @@ fun RealisticJoystick(
     isConnected: Boolean,
     viewModel: GamepadViewModel,
     isRgbEnabled: Boolean,
+    isLocked: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     var thumbOffsetX by remember { mutableFloatStateOf(0f) }
@@ -90,7 +91,10 @@ fun RealisticJoystick(
     )
 
     val neonColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
-    val deflectionFraction = (hypot(thumbOffsetX, thumbOffsetY) / maxRadius).coerceIn(0f, 1f)
+    val stickState = if (isLeft) viewModel.leftStickState else viewModel.rightStickState
+    val effX = if (isLocked) thumbOffsetX else stickState.first * maxRadius
+    val effY = if (isLocked) thumbOffsetY else -stickState.second * maxRadius
+    val deflectionFraction = (hypot(effX, effY) / maxRadius).coerceIn(0f, 1f)
     val rgbBloomAlpha by animateFloatAsState(
         targetValue = 0.40f + 0.55f * deflectionFraction,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
@@ -109,8 +113,8 @@ fun RealisticJoystick(
             .size(150.dp)
             .drawBehind {
                 if (isRgbEnabled) {
-                    val capPos = Offset(center.x + thumbOffsetX, center.y + thumbOffsetY)
-                    val disp = hypot(thumbOffsetX, thumbOffsetY)
+                    val capPos = Offset(center.x + effX, center.y + effY)
+                    val disp = hypot(effX, effY)
                     val maxR = size.minDimension * 0.35f
                     val dispFraction = (disp / maxR).coerceIn(0f, 1f)
 
@@ -131,8 +135,8 @@ fun RealisticJoystick(
 
                     // 2. Deflection comet-plume trailing wake aura
                     val plumeCenter = Offset(
-                        center.x + thumbOffsetX * 0.65f,
-                        center.y + thumbOffsetY * 0.65f
+                        center.x + effX * 0.65f,
+                        center.y + effY * 0.65f
                     )
                     val plumeRadius = size.minDimension * (0.40f + 0.35f * dispFraction)
                     drawCircle(
@@ -179,7 +183,8 @@ fun RealisticJoystick(
                 ),
                 shape = CircleShape
             )
-            .pointerInput(isLeft, isCameraMode, cameraSensitivity, density) {
+            .pointerInput(isConnected, isLocked, isLeft, isCameraMode, cameraSensitivity, density) {
+                if (!isConnected || !isLocked) return@pointerInput
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     val centerX = size.width / 2f
@@ -382,7 +387,7 @@ fun RealisticJoystick(
         // Thumbstick Cap
         Box(
             modifier = Modifier
-                .offset { IntOffset(thumbOffsetX.roundToInt(), thumbOffsetY.roundToInt()) }
+                .offset { IntOffset(effX.roundToInt(), effY.roundToInt()) }
                 .size(90.dp)
                 .shadow(
                     elevation = 12.dp,

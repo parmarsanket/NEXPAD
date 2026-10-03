@@ -252,6 +252,9 @@ fun HudEditorScreen(
                 onSensitivityChange = { viewModel.setSensitivity(selectedControl!!, it) },
                 onHeightScaleChange = { viewModel.setHeightScale(selectedControl!!, it) },
                 onToggleFlip = { viewModel.toggleFlip(selectedControl!!) },
+                onToggleLock = { viewModel.toggleLock(selectedControl!!) },
+                onJoystickModeChange = { viewModel.setJoystickMode(selectedControl!!, it) },
+                onHitboxScaleChange = { viewModel.setHitboxScale(selectedControl!!, it) },
                 onCycleSkin = { viewModel.cycleNextSkin(selectedControl!!) },
                 onOpenStudio = {
                     navigationViewModel?.beginAssetSelection(

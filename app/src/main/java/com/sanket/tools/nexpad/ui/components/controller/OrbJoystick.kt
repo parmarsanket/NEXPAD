@@ -73,6 +73,7 @@ fun OrbJoystick(
     isConnected: Boolean,
     viewModel: GamepadViewModel,
     isRgbEnabled: Boolean,
+    isLocked: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -164,8 +165,12 @@ fun OrbJoystick(
     // Floating liquid core inertial lag offset (-dxn * 13px, -dyn * 13px)
     // CSS specification: transition: transform 0.14s ease-out, opacity 0.15s ease;
     // CubicBezierEasing(0f, 0f, 0.2f, 1f) precisely mirrors CSS ease-out
-    val curNormX = (animOffsetX.value / maxTravelPx).coerceIn(-1f, 1f)
-    val curNormY = (animOffsetY.value / maxTravelPx).coerceIn(-1f, 1f)
+    val stickState = if (isLeft) viewModel.leftStickState else viewModel.rightStickState
+    val effOffsetX = if (isLocked) animOffsetX.value else stickState.first * maxTravelPx
+    val effOffsetY = if (isLocked) animOffsetY.value else -stickState.second * maxTravelPx
+
+    val curNormX = (effOffsetX / maxTravelPx).coerceIn(-1f, 1f)
+    val curNormY = (effOffsetY / maxTravelPx).coerceIn(-1f, 1f)
 
     val coreLagOffsetX by animateFloatAsState(
         targetValue = -curNormX * maxCoreLagPx,
@@ -178,7 +183,7 @@ fun OrbJoystick(
         label = "orb_core_lag_y"
     )
 
-    val deflectionFraction = (hypot(animOffsetX.value, animOffsetY.value) / maxTravelPx).coerceIn(0f, 1f)
+    val deflectionFraction = (hypot(effOffsetX, effOffsetY) / maxTravelPx).coerceIn(0f, 1f)
     val rgbBloomAlpha by animateFloatAsState(
         targetValue = 0.40f + 0.55f * deflectionFraction,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
@@ -252,7 +257,8 @@ fun OrbJoystick(
                 color = Color.Black.copy(alpha = 0.60f),
                 shape = CircleShape
             )
-            .pointerInput(isLeft, isCameraMode, cameraSensitivity, density, maxTravelPx) {
+            .pointerInput(isConnected, isLocked, isLeft, isCameraMode, cameraSensitivity, density, maxTravelPx) {
+                if (!isConnected || !isLocked) return@pointerInput
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     val centerX = size.width / 2f
@@ -461,8 +467,8 @@ fun OrbJoystick(
             },
         contentAlignment = Alignment.Center
     ) {
-        val curOffsetX = animOffsetX.value
-        val curOffsetY = animOffsetY.value
+        val curOffsetX = effOffsetX
+        val curOffsetY = effOffsetY
         val curDist = hypot(curOffsetX, curOffsetY)
         val curMagnitude = min(1f, curDist / maxTravelPx)
         val curAngleDeg = (atan2(curOffsetX, -curOffsetY) * 180f / Math.PI.toFloat() + 360f) % 360f

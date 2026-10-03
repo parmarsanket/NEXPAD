@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
@@ -46,6 +47,9 @@ fun HudDockedInspector(
     onSensitivityChange: ((Float) -> Unit)? = null,
     onHeightScaleChange: ((Float) -> Unit)? = null,
     onToggleFlip: (() -> Unit)? = null,
+    onToggleLock: (() -> Unit)? = null,
+    onJoystickModeChange: ((String) -> Unit)? = null,
+    onHitboxScaleChange: ((Float) -> Unit)? = null,
     onCycleSkin: () -> Unit,
     onOpenStudio: () -> Unit,
     onResetPos: () -> Unit,
@@ -62,6 +66,11 @@ fun HudDockedInspector(
             element.controlKey.equals("RTP", ignoreCase = true) ||
             element.categoryTitle.equals("TOUCHPAD", ignoreCase = true) ||
             element.spec?.componentType == com.sanket.tools.nexpad.category.ComponentType.TOUCHPAD
+
+    val isJoystick = element.controlKey.equals("LS", ignoreCase = true) ||
+            element.controlKey.equals("RS", ignoreCase = true) ||
+            element.categoryTitle.equals("JOYSTICK", ignoreCase = true) ||
+            element.spec?.componentType == com.sanket.tools.nexpad.category.ComponentType.JOYSTICK
 
     val isSliderTrigger = element.skinId?.contains("slider", ignoreCase = true) == true ||
             element.skinId == "builtin.slider_lt" ||
@@ -176,6 +185,28 @@ fun HudDockedInspector(
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = NeonPalette.Green,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    if (isJoystick) {
+                        val mode = transform.joystickMode
+                        val (modeBadgeText, modeBadgeColor) = when (mode) {
+                            "FULL" -> "Mode: Full Screen" to NeonPalette.Purple
+                            "BOX" -> "Mode: Box (${(transform.hitboxScale * 100).roundToInt()}%)" to Color(0xFFFFB13F)
+                            else -> "Mode: Locked" to NeonPalette.Cyan
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = modeBadgeColor.copy(alpha = 0.18f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, modeBadgeColor.copy(alpha = 0.5f))
+                        ) {
+                            Text(
+                                text = modeBadgeText,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = modeBadgeColor,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
@@ -443,6 +474,117 @@ fun HudDockedInspector(
                                     fontWeight = FontWeight.Bold,
                                     color = if (transform.isFlipped) Color(0xFFFFB13F) else Color.White
                                 )
+                            }
+                        }
+                    }
+                }
+
+                // 3.7. Joystick Control Mode (3 Modes: LOCKED, BOX, FULL)
+                if (isJoystick && (onJoystickModeChange != null || onToggleLock != null)) {
+                    VerticalDivider(modifier = Modifier.height(28.dp), color = Color.White.copy(alpha = 0.1f))
+
+                    val currentMode = transform.joystickMode
+                    val activeColor = when (currentMode) {
+                        "FULL" -> NeonPalette.Purple
+                        "BOX" -> Color(0xFFFFB13F)
+                        else -> NeonPalette.Cyan
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Stick Mode:",
+                            fontSize = 11.sp,
+                            color = activeColor,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        val modes = listOf(
+                            Triple("LOCKED", "Locked", Icons.Rounded.Lock),
+                            Triple("BOX", "Box Zone", Icons.Rounded.CropSquare),
+                            Triple("FULL", "Full Screen", Icons.Rounded.Fullscreen)
+                        )
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            modes.forEach { (modeKey, modeTitle, modeIcon) ->
+                                val isSelected = currentMode == modeKey
+                                val buttonColor = when (modeKey) {
+                                    "FULL" -> NeonPalette.Purple
+                                    "BOX" -> Color(0xFFFFB13F)
+                                    else -> NeonPalette.Cyan
+                                }
+
+                                Button(
+                                    onClick = {
+                                        onJoystickModeChange?.invoke(modeKey)
+                                            ?: onToggleLock?.invoke()
+                                    },
+                                    shape = RoundedCornerShape(6.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (isSelected) buttonColor.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.06f)
+                                    ),
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.dp,
+                                        if (isSelected) buttonColor else Color.White.copy(alpha = 0.15f)
+                                    ),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                    modifier = Modifier.height(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = modeIcon,
+                                        contentDescription = modeTitle,
+                                        tint = if (isSelected) buttonColor else Color.White.copy(alpha = 0.6f),
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        text = modeTitle,
+                                        fontSize = 10.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isSelected) buttonColor else Color.White.copy(alpha = 0.8f)
+                                    )
+                                }
+                            }
+                        }
+
+                        // If BOX mode is active, provide Hitbox Size slider & buttons
+                        if (currentMode == "BOX" && onHitboxScaleChange != null) {
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = "Hitbox: ${(transform.hitboxScale * 100).roundToInt()}%",
+                                fontSize = 11.sp,
+                                color = Color(0xFFFFB13F),
+                                fontWeight = FontWeight.Bold
+                            )
+                            IconButton(
+                                onClick = {
+                                    val newScale = ((transform.hitboxScale - 0.1f) * 10f).roundToInt() / 10f
+                                    onHitboxScaleChange(newScale.coerceIn(1.2f, 3.0f))
+                                },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(Icons.Rounded.Remove, contentDescription = "Decrease Hitbox", tint = Color.White, modifier = Modifier.size(16.dp))
+                            }
+                            Slider(
+                                value = transform.hitboxScale,
+                                onValueChange = { onHitboxScaleChange(it) },
+                                valueRange = 1.2f..3.0f,
+                                modifier = Modifier.width(80.dp),
+                                colors = SliderDefaults.colors(thumbColor = Color(0xFFFFB13F), activeTrackColor = Color(0xFFFFB13F))
+                            )
+                            IconButton(
+                                onClick = {
+                                    val newScale = ((transform.hitboxScale + 0.1f) * 10f).roundToInt() / 10f
+                                    onHitboxScaleChange(newScale.coerceIn(1.2f, 3.0f))
+                                },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(Icons.Rounded.Add, contentDescription = "Increase Hitbox", tint = Color.White, modifier = Modifier.size(16.dp))
                             }
                         }
                     }

@@ -6,6 +6,9 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.net.Network
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.sanket.tools.nexpad.model.GamepadInput
@@ -332,14 +335,21 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    var leftStickState by mutableStateOf(Pair(0f, 0f))
+        private set
+    var rightStickState by mutableStateOf(Pair(0f, 0f))
+        private set
+
     fun updateLeftStick(x: Float, y: Float) {
         inputState.leftStickX = x
         inputState.leftStickY = y
+        leftStickState = Pair(x, y)
     }
 
     fun updateRightStick(x: Float, y: Float) {
         inputState.rightStickX = x
         inputState.rightStickY = y
+        rightStickState = Pair(x, y)
     }
 
     override fun onCleared() {

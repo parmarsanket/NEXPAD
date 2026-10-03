@@ -263,6 +263,60 @@ class HudEditorViewModel(
         _hasUnsavedChanges.value = true
     }
 
+    fun toggleLock(controlKey: String) {
+        val key = controlKey.uppercase()
+        val current = _elements.value[key] ?: return
+        val newLocked = !current.transform.isLocked
+        val newMode = if (newLocked) "LOCKED" else "BOX"
+        val updated = current.copy(
+            transform = current.transform.copy(
+                isLocked = newLocked,
+                joystickMode = newMode
+            )
+        )
+        _elements.value = _elements.value + (key to updated)
+        _hasUnsavedChanges.value = true
+    }
+
+    fun setLock(controlKey: String, isLocked: Boolean) {
+        val key = controlKey.uppercase()
+        val current = _elements.value[key] ?: return
+        val newMode = if (isLocked) "LOCKED" else "BOX"
+        val updated = current.copy(
+            transform = current.transform.copy(
+                isLocked = isLocked,
+                joystickMode = newMode
+            )
+        )
+        _elements.value = _elements.value + (key to updated)
+        _hasUnsavedChanges.value = true
+    }
+
+    fun setJoystickMode(controlKey: String, mode: String) {
+        val key = controlKey.uppercase()
+        val current = _elements.value[key] ?: return
+        val isLocked = (mode == "LOCKED")
+        val updated = current.copy(
+            transform = current.transform.copy(
+                joystickMode = mode,
+                isLocked = isLocked
+            )
+        )
+        _elements.value = _elements.value + (key to updated)
+        _hasUnsavedChanges.value = true
+    }
+
+    fun setHitboxScale(controlKey: String, scale: Float) {
+        val key = controlKey.uppercase()
+        val current = _elements.value[key] ?: return
+        val clamped = scale.coerceIn(1.2f, 3.0f)
+        val updated = current.copy(
+            transform = current.transform.copy(hitboxScale = clamped)
+        )
+        _elements.value = _elements.value + (key to updated)
+        _hasUnsavedChanges.value = true
+    }
+
     fun setSkin(controlKey: String, skinId: String?) {
         val key = controlKey.uppercase()
         val current = _elements.value[key] ?: return

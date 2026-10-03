@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -59,6 +60,76 @@ fun HudCanvas(
         elements.forEach { (controlKey, element) ->
             key(controlKey) {
                 val isSelected = selectedControl == controlKey
+                val isJoystick = controlKey.equals("LS", ignoreCase = true) ||
+                        controlKey.equals("RS", ignoreCase = true) ||
+                        element.categoryTitle.equals("JOYSTICK", ignoreCase = true)
+
+                // 1. Hitbox Box for BOX mode (white border 50% alpha, visible in HUD screen for setting joystick)
+                if (isJoystick && element.transform.joystickMode == "BOX") {
+                    val boxSizeDp = 150.dp * element.transform.hitboxScale * element.transform.scale
+                    Box(
+                        modifier = Modifier
+                            .layout { measurable, childConstraints ->
+                                val placeable = measurable.measure(childConstraints)
+                                val x = (element.transform.xRatio * screenWidthPx - placeable.width / 2f).roundToInt()
+                                val y = (element.transform.yRatio * screenHeightPx - placeable.height / 2f).roundToInt()
+                                layout(placeable.width, placeable.height) {
+                                    placeable.placeRelative(x, y)
+                                }
+                            }
+                            .size(boxSizeDp)
+                            .border(
+                                width = 1.5.dp,
+                                color = Color.White.copy(alpha = 0.50f),
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            .background(Color.White.copy(alpha = 0.04f))
+                    ) {
+                        Text(
+                            text = "HITBOX ${(element.transform.hitboxScale * 100).roundToInt()}%",
+                            color = Color.White.copy(alpha = 0.50f),
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = 6.dp)
+                        )
+                    }
+                }
+
+                // 2. Full-Screen Zone Indicator for FULL mode (visible when selected in HUD editor)
+                if (isJoystick && element.transform.joystickMode == "FULL" && isSelected) {
+                    val isLeftStick = controlKey.equals("LS", ignoreCase = true)
+                    val density = LocalDensity.current.density
+                    val halfWidthDp = (screenWidthPx / 2f / density).dp
+                    val fullHeightDp = (screenHeightPx / density).dp
+                    Box(
+                        modifier = Modifier
+                            .layout { measurable, childConstraints ->
+                                val placeable = measurable.measure(childConstraints)
+                                val x = if (isLeftStick) 0 else (screenWidthPx / 2f).roundToInt()
+                                layout(placeable.width, placeable.height) {
+                                    placeable.placeRelative(x, 0)
+                                }
+                            }
+                            .size(width = halfWidthDp, height = fullHeightDp)
+                            .border(
+                                width = 1.dp,
+                                color = NeonPalette.Purple.copy(alpha = 0.45f)
+                            )
+                            .background(NeonPalette.Purple.copy(alpha = 0.05f))
+                    ) {
+                        Text(
+                            text = if (isLeftStick) "◄ FULL SCREEN LEFT ZONE" else "FULL SCREEN RIGHT ZONE ►",
+                            color = NeonPalette.Purple.copy(alpha = 0.70f),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(top = 16.dp)
+                        )
+                    }
+                }
 
                 Box(
                     modifier = Modifier
@@ -88,6 +159,7 @@ fun HudCanvas(
                         sensitivity = element.transform.sensitivity,
                         heightScale = element.transform.heightScale,
                         isFlipped = element.transform.isFlipped,
+                        isLocked = element.transform.isLocked,
                         labelStyle = labelStyle
                     )
 

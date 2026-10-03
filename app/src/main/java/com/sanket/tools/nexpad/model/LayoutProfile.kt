@@ -66,7 +66,10 @@ data class Position(
     val customComponentId: String? = null,
     val sensitivity: Float? = null,
     val heightScale: Float? = null,
-    val isFlipped: Boolean? = null
+    val isFlipped: Boolean? = null,
+    val isLocked: Boolean? = null,
+    val joystickMode: String? = null,
+    val hitboxScale: Float? = null
 )
 
 /**
