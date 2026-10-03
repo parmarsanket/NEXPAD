@@ -184,7 +184,7 @@ fun ButtonStudioScreen(
                     compCtrl.categoryType.id == selectedCategory.id || selectedCategory.keys.contains(control)
                 } else {
                     val resolvedCat = CategoryType.fromIdentifier(category)
-                    resolvedCat?.id == selectedCategory.id || selectedCategory.keys.contains(control)
+                    resolvedCat?.id == selectedCategory.id || selectedCategory.keys.contains(control) || category.equals(selectedCategory.id, ignoreCase = true)
                 }
 
                 if (!matchesCategory) return@filter false

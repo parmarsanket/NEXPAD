@@ -141,6 +141,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
+        lifecycleScope.launch {
+            viewModel.isGyroEnabled.collect { enabled ->
+                motionSensorManager.isGyroMuted = !enabled
+            }
+        }
     }
 
     override fun onResume() {

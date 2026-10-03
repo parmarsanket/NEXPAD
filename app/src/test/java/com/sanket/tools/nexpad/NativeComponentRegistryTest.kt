@@ -2,6 +2,7 @@ package com.sanket.tools.nexpad
 
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.runtime.registry.DefaultComponents
 import com.sanket.tools.nexpad.runtime.registry.DefaultNativeFamily
 import com.sanket.tools.nexpad.runtime.registry.NativeComponentRegistry
 import com.sanket.tools.nexpad.ui.studio.model.ButtonStudioType
@@ -939,6 +940,18 @@ class NativeComponentRegistryTest {
         assertFalse(rtpVariant.isBaselineDefault)
         assertEquals("Inbuild Surface", rtpVariant.variantName)
         assertTrue("builtin.inbuild_rtp must be recognized as native builtin", NativeComponentRegistry.isNativeBuiltin("builtin.inbuild_rtp"))
+    }
+
+    @Test
+    fun testGyroTogglePresetAndRegistryRecognition() {
+        val gyroDef = DefaultComponents.DEFAULT_GYRO_TOGGLE
+        assertNotNull(gyroDef)
+        assertEquals("builtin.gyro_btn_default", gyroDef.manifest.id)
+        assertEquals("SPECIAL", gyroDef.manifest.category)
+        assertEquals("GYRO", gyroDef.manifest.defaultControl)
+        assertTrue("DEFAULT_GYRO_TOGGLE must be present in ALL_PRESETS", DefaultComponents.ALL_PRESETS.contains(gyroDef))
+        assertTrue("builtin.gyro_btn_default must be recognized as native builtin", NativeComponentRegistry.isNativeBuiltin("builtin.gyro_btn_default"))
+        assertTrue("builtin.gyro_btn must be recognized as native builtin", NativeComponentRegistry.isNativeBuiltin("builtin.gyro_btn"))
     }
 }
 

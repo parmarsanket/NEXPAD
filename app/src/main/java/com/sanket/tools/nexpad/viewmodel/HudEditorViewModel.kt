@@ -97,6 +97,10 @@ class HudEditorViewModel(
         componentId: String,
         targetControlKey: String
     ): Boolean {
+        if (targetControlKey.equals("GYRO", ignoreCase = true)) {
+            return componentDefaultControl.equals("GYRO", ignoreCase = true) ||
+                   componentCategory.equals("SPECIAL", ignoreCase = true)
+        }
         val targetSpec = CategoryManager.getControl(targetControlKey) ?: return false
         return isSkinCompatible(componentDefaultControl, componentCategory, componentId, targetSpec)
     }
@@ -111,7 +115,21 @@ class HudEditorViewModel(
      * - Each custom/remote skin appears exactly once.
      */
     fun getCompatibleSkins(controlKey: String): List<LayoutSkin> {
-        val targetSpec = CategoryManager.getControl(controlKey) ?: return emptyList()
+        val targetSpec = CategoryManager.getControl(controlKey)
+        if (targetSpec == null) {
+            val skins = mutableListOf<LayoutSkin>(LayoutSkin.NativeDefault)
+            val seenIds = mutableSetOf<String>()
+            val allComponents = componentRegistry.installedComponents.value
+            allComponents.forEach { def ->
+                if (def.manifest.defaultControl.equals(controlKey, ignoreCase = true) ||
+                    def.manifest.category.equals("SPECIAL", ignoreCase = true)) {
+                    if (seenIds.add(def.manifest.id)) {
+                        skins.add(LayoutSkin.CustomComponent(def))
+                    }
+                }
+            }
+            return skins
+        }
         val skins = mutableListOf<LayoutSkin>(LayoutSkin.NativeDefault)
         val seenIds = mutableSetOf<String>()
 

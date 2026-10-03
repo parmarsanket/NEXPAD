@@ -2443,7 +2443,7 @@ object NativeComponentRegistry {
             id.startsWith("builtin.flipbtn_") || id.startsWith("builtin.ripple_") ||
             id.startsWith("builtin.orbit_") ||
             id.startsWith("builtin.caps_") || id.startsWith("builtin.ecl_") ||
-            id.startsWith("builtin.inbuild_")
+            id.startsWith("builtin.inbuild_") || id.startsWith("builtin.gyro_btn")
         ) return true
         return DefaultNativeFamily.getVariant(id) != null
     }
@@ -2491,6 +2491,17 @@ object NativeComponentRegistry {
         labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
         modifier: Modifier = Modifier
     ) {
+        if (key.equals("GYRO", ignoreCase = true) || customComponentId?.startsWith("builtin.gyro_btn") == true) {
+            GyroToggleButton(
+                isConnected = isConnected,
+                onVibrate = onVibrate,
+                viewModel = viewModel,
+                isRgbEnabled = isRgbEnabled,
+                modifier = modifier
+            )
+            return
+        }
+
         val ctrl = ControlKey.fromIdentifier(key) ?: ControlKey.A
         val variant = resolveVariant(key, customComponentId)
         val context = NativeRenderContext(
@@ -2525,6 +2536,15 @@ object NativeComponentRegistry {
         labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
         modifier: Modifier = Modifier
     ) {
+        if (controlKey.equals("GYRO", ignoreCase = true) || id?.startsWith("builtin.gyro_btn") == true) {
+            StaticGyroToggleButton(
+                isRgbEnabled = true,
+                labelStyle = labelStyle,
+                modifier = modifier
+            )
+            return
+        }
+
         val ctrl = ControlKey.fromIdentifier(controlKey) ?: ControlKey.A
         val variant = resolveVariant(controlKey, id)
         val context = NativePreviewContext(

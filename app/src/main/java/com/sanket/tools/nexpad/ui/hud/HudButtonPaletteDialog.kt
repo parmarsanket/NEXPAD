@@ -182,6 +182,60 @@ fun HudButtonPaletteDialog(
                         }
                     }
                 }
+
+                // Special Mobile Device Controls (Gyroscope Sensing Toggle)
+                val isGyroPresent = currentElements.keys.any { it.equals("GYRO", ignoreCase = true) }
+                Text(
+                    "Special (Mobile Controls)",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        color = NeonPalette.Cyan,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color.White.copy(alpha = 0.04f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onToggleControl("GYRO") }
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = isGyroPresent,
+                            onCheckedChange = null,
+                            colors = CheckboxDefaults.colors(checkedColor = NeonPalette.Cyan)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text("🎯", fontSize = 16.sp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    "GYRO",
+                                    fontSize = 14.sp,
+                                    fontWeight = if (isGyroPresent) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isGyroPresent) Color.White else Color.Gray
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    "• Gyro Toggle",
+                                    fontSize = 12.sp,
+                                    color = if (isGyroPresent) NeonPalette.Cyan.copy(alpha = 0.8f) else Color.Gray.copy(alpha = 0.6f)
+                                )
+                            }
+                            Text(
+                                "Mute phone gyro sensing to rest hands or pause motion control.",
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {

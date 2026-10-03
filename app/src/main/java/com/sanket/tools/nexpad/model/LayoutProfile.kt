@@ -341,6 +341,7 @@ fun getControlDefaultPosition(canonicalKey: String): Position? {
         K.M2    -> Position(0.380f, 0.360f, scale = 0.75f)
         K.M3    -> Position(0.550f, 0.360f, scale = 0.75f)
         K.M4    -> Position(0.450f, 0.360f, scale = 0.75f)
+        "GYRO"  -> Position(0.500f, 0.280f, scale = 0.85f)
         else    -> null
     }
 }

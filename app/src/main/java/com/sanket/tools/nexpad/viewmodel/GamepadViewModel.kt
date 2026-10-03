@@ -278,6 +278,25 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     fun updateAccel(x: Float, y: Float, z: Float) = sensorController.updateAccel(x, y, z)
     fun updateGravity(x: Float, y: Float, z: Float) = sensorController.updateGravity(x, y, z)
     fun update6AxisGyro(x: Float, y: Float, z: Float) = sensorController.update6AxisGyro(x, y, z)
+
+    private val _isGyroEnabled = MutableStateFlow(true)
+    val isGyroEnabled: StateFlow<Boolean> = _isGyroEnabled.asStateFlow()
+
+    fun toggleGyro(): Boolean {
+        val newState = !_isGyroEnabled.value
+        _isGyroEnabled.value = newState
+        if (!newState) {
+            update6AxisGyro(0f, 0f, 0f)
+        }
+        return newState
+    }
+
+    fun setGyroEnabled(enabled: Boolean) {
+        _isGyroEnabled.value = enabled
+        if (!enabled) {
+            update6AxisGyro(0f, 0f, 0f)
+        }
+    }
     
     fun updateButton(buttonName: String, isPressed: Boolean) {
         applyButtonState(buttonName, isPressed)
@@ -302,6 +321,13 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun applyButtonState(buttonName: String, isPressed: Boolean) {
+        if (buttonName.equals("GYRO", ignoreCase = true)) {
+            if (isPressed) {
+                toggleGyro()
+            }
+            return
+        }
+
         // Canonical keys come from NexpadKeys (backed by CategoryManager).
         // Hardware alias keys (L1/L2/L3, R1/R2/R3, BACK, SELECT, HOME, XBOX, MENU, VIEW)
         // Dispatches through ControlKey single source of truth; all aliases, synonyms

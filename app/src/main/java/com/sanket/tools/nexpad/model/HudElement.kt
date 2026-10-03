@@ -61,13 +61,13 @@ data class HudElement(
         get() = CategoryManager.getControl(controlKey)
 
     val displayName: String
-        get() = spec?.label ?: controlKey
+        get() = spec?.label ?: if (controlKey.equals("GYRO", ignoreCase = true)) "Gyro Toggle" else controlKey
 
     val categoryTitle: String
-        get() = spec?.categoryType?.title ?: "Control"
+        get() = spec?.categoryType?.title ?: if (controlKey.equals("GYRO", ignoreCase = true)) "Special" else "Control"
 
     val emoji: String
-        get() = spec?.emoji ?: ""
+        get() = spec?.emoji ?: if (controlKey.equals("GYRO", ignoreCase = true)) "🎯" else ""
 
     fun toPosition(): Position = Position(
         xRatio = transform.xRatio,

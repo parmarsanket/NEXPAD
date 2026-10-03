@@ -3345,6 +3345,45 @@ object DefaultComponents {
         size = NxpSize(widthDp = 80, heightDp = 40)
     )
 
+    val DEFAULT_GYRO_TOGGLE = NxpComponentDef(
+        manifest = NxpManifest(
+            id = "builtin.gyro_btn_default",
+            name = "Gyro Sensor Toggle",
+            author = "NEXPAD Core",
+            version = "1.0.0",
+            category = "SPECIAL",
+            defaultControl = "GYRO",
+            description = "Hardware motion sensing toggle button. Tap to mute/unmute mobile gyro sensors on-the-fly."
+        ),
+        geometry = NxpGeometry(
+            type = "Circle",
+            cornerRadius = 38f
+        ),
+        visual = NxpVisual(
+            fillColor = "#131518",
+            opacity = 0.95f,
+            borderColor = "#00F0FF",
+            borderWidth = 1.5f,
+            glowColor = "#00F0FF",
+            glowRadius = 10f
+        ),
+        pressed = NxpPressedState(
+            scale = 0.94f,
+            fillColor = "#00F0FF",
+            borderColor = "#FFFFFF",
+            glowRadius = 18f,
+            springDamping = 0.68f,
+            springStiffness = 440f
+        ),
+        label = NxpLabel(
+            text = "GYRO",
+            color = "#00F0FF",
+            pressedColor = "#0A0B0C",
+            fontSize = 13f
+        ),
+        size = NxpSize(widthDp = 76, heightDp = 76)
+    )
+
     /**
      * All built-in presets: 19 Default Controller Buttons first, followed by Custom/Cyberpunk skins.
      * All entries are non-deletable core presets.
@@ -3381,6 +3420,7 @@ object DefaultComponents {
         DEFAULT_MACRO_M2,
         DEFAULT_MACRO_M3,
         DEFAULT_MACRO_M4,
+        DEFAULT_GYRO_TOGGLE,
 
         // Flux Cyber Suite
         FLUX_STICK_LS,

@@ -93,6 +93,15 @@ fun StaticDefaultButtonPreview(
     val key = ctrl?.key ?: controlKey.uppercase()
     val displayLabel = CategoryManager.getLabelForStyle(key, labelStyle)
 
+    if (key.equals("GYRO", ignoreCase = true)) {
+        com.sanket.tools.nexpad.ui.components.controller.StaticGyroToggleButton(
+            isRgbEnabled = true,
+            labelStyle = labelStyle,
+            modifier = modifier
+        )
+        return
+    }
+
     Box(
         modifier = modifier,
         contentAlignment = Alignment.Center

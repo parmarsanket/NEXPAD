@@ -67,6 +67,20 @@ class MotionSensorManager(
 
     // Single synchronized packet
     private val motion = MotionPacket()
+
+    @Volatile
+    var isGyroMuted: Boolean = false
+        set(value) {
+            field = value
+            if (value) {
+                motion.gyroX = 0f
+                motion.gyroY = 0f
+                motion.gyroZ = 0f
+                motion.rawGyroX = 0f
+                motion.rawGyroY = 0f
+                motion.rawGyroZ = 0f
+            }
+        }
     
     /**
      * NEXPAD always runs in locked landscape. We hardcode ROTATION_90 because:
@@ -126,6 +140,10 @@ class MotionSensorManager(
 
     override fun onSensorChanged(event: SensorEvent?) {
         event ?: return
+
+        if ((event.sensor.type == Sensor.TYPE_GYROSCOPE || event.sensor.type == Sensor.TYPE_GYROSCOPE_UNCALIBRATED) && isGyroMuted) {
+            return
+        }
 
         motion.timestamp = event.timestamp
 
