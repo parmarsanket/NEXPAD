@@ -60,7 +60,6 @@ import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.utils.HapticFeedbackHelper
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
-import java.util.Locale
 
 @Composable
 fun SettingsScreen(
@@ -76,12 +75,6 @@ fun SettingsScreen(
         profiles.find { it.name.equals(activeProfileName, ignoreCase = true) } ?: layoutManager.getActiveProfile()
     }
 
-    var rightStickCameraMode by remember {
-        mutableStateOf(sharedPref.getBoolean("RIGHT_STICK_CAMERA_MODE", false))
-    }
-    var cameraSensitivity by remember {
-        mutableFloatStateOf(sharedPref.getFloat("CAMERA_SENSITIVITY", 1.0f))
-    }
     var buttonHapticsEnabled by remember {
         mutableStateOf(sharedPref.getBoolean(HapticFeedbackHelper.PREF_BUTTON_HAPTICS_ENABLED, true))
     }
@@ -107,8 +100,6 @@ fun SettingsScreen(
         isConnected = isConnected,
         activeProfileName = currentProfile.name,
         isRgbEnabled = currentProfile.isRgbEnabled,
-        rightStickCameraMode = rightStickCameraMode,
-        cameraSensitivity = cameraSensitivity,
         buttonHapticsEnabled = buttonHapticsEnabled,
         vibrateOfflineEnabled = vibrateOfflineEnabled,
         hapticClickStrength = hapticClickStrength,
@@ -117,14 +108,6 @@ fun SettingsScreen(
         rumbleMode = rumbleMode,
         onRgbChange = {
             layoutManager.saveProfile(currentProfile.copy(isRgbEnabled = it), activate = true)
-        },
-        onRightStickCameraModeChange = {
-            rightStickCameraMode = it
-            sharedPref.edit().putBoolean("RIGHT_STICK_CAMERA_MODE", it).apply()
-        },
-        onCameraSensitivityChange = {
-            cameraSensitivity = it
-            sharedPref.edit().putFloat("CAMERA_SENSITIVITY", it).apply()
         },
         onButtonHapticsChange = {
             buttonHapticsEnabled = it
@@ -167,8 +150,6 @@ fun SettingsScreenContent(
     isConnected: Boolean = false,
     activeProfileName: String = "Standard Elite",
     isRgbEnabled: Boolean = true,
-    rightStickCameraMode: Boolean = false,
-    cameraSensitivity: Float = 1.0f,
     buttonHapticsEnabled: Boolean = true,
     vibrateOfflineEnabled: Boolean = false,
     hapticClickStrength: Float = 0.5f,
@@ -176,8 +157,6 @@ fun SettingsScreenContent(
     rumbleIntensity: Float = 1.0f,
     rumbleMode: String = "min",
     onRgbChange: (Boolean) -> Unit = {},
-    onRightStickCameraModeChange: (Boolean) -> Unit = {},
-    onCameraSensitivityChange: (Float) -> Unit = {},
     onButtonHapticsChange: (Boolean) -> Unit = {},
     onVibrateOfflineChange: (Boolean) -> Unit = {},
     onHapticClickStrengthChange: (Float) -> Unit = {},
@@ -220,11 +199,11 @@ fun SettingsScreenContent(
                     .verticalScroll(scrollState),
                 verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
-                // ── Card 1: Visual & Control Mechanics ────────────────────────────
+                // ── Card 1: Visual & Controller Aesthetics ────────────────────────
                 SettingsSectionCard(
                     accentColor = NeonPalette.Cyan,
-                    title = "VISUAL & CONTROL MECHANICS",
-                    subtitle = "Aura lighting & free-look swipe navigation",
+                    title = "VISUAL & CONTROLLER LIGHTING",
+                    subtitle = "RGB aura bloom & dynamic illumination",
                     icon = Icons.Rounded.Palette
                 ) {
                     SettingsToggleRow(
@@ -232,25 +211,6 @@ fun SettingsScreenContent(
                         description = "Dynamic neon bloom and outer lighting radiating behind controller buttons, d-pads, and joysticks",
                         checked = isRgbEnabled,
                         onCheckedChange = onRgbChange,
-                        accentColor = NeonPalette.Cyan
-                    )
-
-                    SettingsToggleRow(
-                        title = "Free-Look Camera Mode",
-                        description = "Relative swipe touchpad navigation (FPS / RPG style) instead of fixed anchor stick on right joystick",
-                        checked = rightStickCameraMode,
-                        onCheckedChange = onRightStickCameraModeChange,
-                        accentColor = NeonPalette.Cyan
-                    )
-
-                    SettingsSliderRow(
-                        title = "Camera Look Sensitivity",
-                        description = "Adjust rotational swipe sensitivity multiplier for free-look camera mode",
-                        value = cameraSensitivity,
-                        valueText = String.format(Locale.US, "%.1fx", cameraSensitivity),
-                        valueRange = 0.2f..3.0f,
-                        steps = 27,
-                        onValueChange = onCameraSensitivityChange,
                         accentColor = NeonPalette.Cyan
                     )
                 }
@@ -349,7 +309,7 @@ fun SettingsScreenContent(
                     SettingsInfoRow(label = "Input Polling Rate", value = "1000 Hz Locked", accentColor = NeonPalette.Green)
                     SettingsInfoRow(label = "Transports Supported", value = "USB AOA 2.0 • ADB • Wi-Fi UDP", accentColor = NeonPalette.Purple)
                     SettingsInfoRow(label = "Haptic Pipeline", value = "Direct LRA Primitive Composition", accentColor = NeonPalette.Amber)
-                    SettingsInfoRow(label = "Latency Pipeline", value = "Sub-millisecond Zero-Allocation", accentColor = NeonPalette.Magenta)
+                    SettingsInfoRow(label = "Touch Surface", value = "Dedicated Multitouch Trackpad Engine", accentColor = NeonPalette.Magenta)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
