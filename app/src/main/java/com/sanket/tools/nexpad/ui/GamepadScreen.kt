@@ -488,37 +488,23 @@ private fun BoxScope.FloatingJoystickTouchLayer(
                         val fx = change.position.x   // finger X (local = screen for full-screen Box)
                         val fy = change.position.y
 
-                        // Vector from current base origin to finger
+                        // Vector from fixed base origin to finger
                         val deltaX = fx - baseX
                         val deltaY = fy - baseY
                         val dist   = hypot(deltaX, deltaY)
 
+                        // Base is LOCKED at touch-down point — never slides.
+                        // Knob tracks finger up to maxThrowPx, then clamps to the rim.
+                        val clampedDist = dist.coerceAtMost(maxThrowPx)
                         val knobX: Float
                         val knobY: Float
-
-                        if (dist <= maxThrowPx) {
-                            // Inside throw radius: knob tracks finger exactly, base stays fixed
-                            knobX = deltaX
-                            knobY = deltaY
+                        if (dist < 0.001f) {
+                            knobX = 0f
+                            knobY = 0f
                         } else {
-                            // Outside throw radius: clamp knob to rim, slide base toward finger
-                            val invDist = 1f / dist          // inverse distance (avoids div twice)
-                            val dirX    = deltaX * invDist   // normalized direction X
-                            val dirY    = deltaY * invDist   // normalized direction Y
-                            val excess  = dist - maxThrowPx
-
-                            // Base slides so knob stays exactly at maxThrowPx from base
-                            baseX += dirX * excess
-                            baseY += dirY * excess
-
-                            coroutineScope.launch {
-                                floatX.snapTo(baseX - homeX)
-                                floatY.snapTo(baseY - homeY)
-                            }
-
-                            // Knob is at max deflection in the drag direction
-                            knobX = dirX * maxThrowPx
-                            knobY = dirY * maxThrowPx
+                            val invDist = 1f / dist
+                            knobX = deltaX * invDist * clampedDist
+                            knobY = deltaY * invDist * clampedDist
                         }
 
                         // Normalize to gamepad [-1, 1] convention.
