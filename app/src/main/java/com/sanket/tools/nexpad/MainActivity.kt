@@ -36,6 +36,7 @@ class MainActivity : ComponentActivity() {
     private var reloadReceiver: android.content.BroadcastReceiver? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         
         // Hide system bars (Navigation bar and Status bar)

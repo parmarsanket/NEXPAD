@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.sanket.tools.nexpad.ui.components.common.NexpadConfirmDialog
 import com.sanket.tools.nexpad.ui.hud.*
 import androidx.compose.ui.Alignment
@@ -85,10 +86,10 @@ fun HudEditorScreen(
             androidx.lifecycle.ViewModelProvider(activity)[GamepadViewModel::class.java]
         }
     } ?: viewModel<GamepadViewModel>(context as androidx.lifecycle.ViewModelStoreOwner)
-    var showAddDialog by remember { mutableStateOf(false) }
+    var showAddDialog by rememberSaveable { mutableStateOf(false) }
 
     // Unsaved-changes guard: show dialog before leaving if edits exist
-    var showUnsavedDialog by remember { mutableStateOf(false) }
+    var showUnsavedDialog by rememberSaveable { mutableStateOf(false) }
 
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
 
@@ -228,6 +229,7 @@ fun HudEditorScreen(
             onToggleDock = { autoDodgeCoordinator.toggleTopBarDock() },
             modifier = Modifier
                 .align(Alignment.TopCenter)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top))
                 .offset { IntOffset(0, topBarAnimatable.value.roundToInt()) }
                 .onGloballyPositioned { coordinates ->
                     val h = coordinates.size.height.toFloat()
@@ -288,6 +290,7 @@ fun HudEditorScreen(
                 onToggleDock = { autoDodgeCoordinator.toggleInspectorDock() },
                 modifier = Modifier
                     .align(Alignment.TopCenter)
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
                     .offset { IntOffset(0, inspectorAnimatable.value.roundToInt()) }
                     .onGloballyPositioned { coordinates ->
                         val newHeight = coordinates.size.height.toFloat()

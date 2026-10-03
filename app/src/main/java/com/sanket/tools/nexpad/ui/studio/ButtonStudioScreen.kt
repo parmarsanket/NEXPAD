@@ -17,6 +17,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -121,8 +122,8 @@ fun ButtonStudioScreen(
 
     var selectedCategory by remember { mutableStateOf(initialCategory) }
     var selectedSubFilter by remember { mutableStateOf<StudioSubFilter?>(initialSubFilter) }
-    var showImportMenu by remember { mutableStateOf(false) }
-    var showImportDialog by remember { mutableStateOf(false) }
+    var showImportMenu by rememberSaveable { mutableStateOf(false) }
+    var showImportDialog by rememberSaveable { mutableStateOf(false) }
     var previewTarget by remember { mutableStateOf<NxpComponentDef?>(null) }
 
     // Map of active controls (controlKey -> Boolean) in Builder mode

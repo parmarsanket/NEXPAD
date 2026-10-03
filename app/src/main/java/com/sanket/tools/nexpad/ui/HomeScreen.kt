@@ -231,7 +231,7 @@ fun HomeScreenContent(
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                         contentPadding = PaddingValues(bottom = 16.dp)
                     ) {
-                        item {
+                        item(key = "title_online_device") {
                             Text(
                                 text = "Online Device",
                                 style = MaterialTheme.typography.titleLarge,
@@ -239,7 +239,7 @@ fun HomeScreenContent(
                             )
                         }
 
-                        item {
+                        item(key = "card_device_hero") {
                             DeviceHeroCard(
                                 isConnected = isConnected,
                                 servers = discoveredServers,
@@ -255,7 +255,7 @@ fun HomeScreenContent(
                             )
                         }
 
-                        item {
+                        item(key = "title_command_center") {
                             Text(
                                 text = "Command Center",
                                 style = MaterialTheme.typography.titleLarge,
@@ -263,7 +263,7 @@ fun HomeScreenContent(
                             )
                         }
 
-                        item {
+                        item(key = "buttons_command_center") {
                             CommandCenterButtons(
                                 onNavigateVirtualController = onNavigateVirtualController,
                                 onNavigateConnections = onNavigateConnections,

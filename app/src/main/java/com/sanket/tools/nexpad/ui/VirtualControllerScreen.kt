@@ -16,6 +16,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -49,12 +50,18 @@ fun VirtualControllerScreen(
     val profiles by layoutManager.profilesFlow.collectAsState()
     val activeProfileName by layoutManager.activeProfileNameFlow.collectAsState()
 
-    var showAddDialog by remember { mutableStateOf(false) }
-    var profileToDuplicate by remember { mutableStateOf<LayoutProfile?>(null) }
-    var profileToRename by remember { mutableStateOf<LayoutProfile?>(null) }
-    var profileToDelete by remember { mutableStateOf<LayoutProfile?>(null) }
-    var profileToReset by remember { mutableStateOf<LayoutProfile?>(null) }
-    var profileToEditAsPreset by remember { mutableStateOf<LayoutProfile?>(null) }
+    var showAddDialog by rememberSaveable { mutableStateOf(false) }
+    var duplicateProfileName by rememberSaveable { mutableStateOf<String?>(null) }
+    var renameProfileName by rememberSaveable { mutableStateOf<String?>(null) }
+    var deleteProfileName by rememberSaveable { mutableStateOf<String?>(null) }
+    var resetProfileName by rememberSaveable { mutableStateOf<String?>(null) }
+    var editAsPresetProfileName by rememberSaveable { mutableStateOf<String?>(null) }
+
+    val profileToDuplicate = profiles.firstOrNull { it.name == duplicateProfileName }
+    val profileToRename = profiles.firstOrNull { it.name == renameProfileName }
+    val profileToDelete = profiles.firstOrNull { it.name == deleteProfileName }
+    val profileToReset = profiles.firstOrNull { it.name == resetProfileName }
+    val profileToEditAsPreset = profiles.firstOrNull { it.name == editAsPresetProfileName }
 
     VirtualControllerScreenContent(
         profiles = profiles,
@@ -73,7 +80,7 @@ fun VirtualControllerScreen(
         onEditHud = { profile ->
             if (profile.isDefault) {
                 // Preset protection: require creating a custom copy first
-                profileToEditAsPreset = profile
+                editAsPresetProfileName = profile.name
             } else {
                 navController.navigate(Route.Editor(profileName = profile.name))
             }
@@ -82,10 +89,10 @@ fun VirtualControllerScreen(
             navController.navigate(Route.ButtonStudio(mode = "editor", profileName = profile.name))
         },
         onDuplicate = { profile ->
-            profileToDuplicate = profile
+            duplicateProfileName = profile.name
         },
         onRename = { profile ->
-            profileToRename = profile
+            renameProfileName = profile.name
         },
         onShare = { profile ->
             val sendIntent = android.content.Intent().apply {
@@ -101,13 +108,13 @@ fun VirtualControllerScreen(
             context.startActivity(shareIntent)
         },
         onReset = { profile ->
-            profileToReset = profile
+            resetProfileName = profile.name
         },
         onDelete = { profile ->
             if (profile.isDefault) {
                 Toast.makeText(context, "Default layouts are protected and cannot be deleted", Toast.LENGTH_LONG).show()
             } else {
-                profileToDelete = profile
+                deleteProfileName = profile.name
             }
         },
         onUpdateLabelStyle = { profile, newStyle ->
@@ -154,10 +161,10 @@ fun VirtualControllerScreen(
                     name = name,
                     baseProfile = profile
                 )
-                profileToDuplicate = null
+                duplicateProfileName = null
                 Toast.makeText(context, "Duplicated to '$name'", Toast.LENGTH_SHORT).show()
             },
-            onDismiss = { profileToDuplicate = null }
+            onDismiss = { duplicateProfileName = null }
         )
     }
 
@@ -174,9 +181,9 @@ fun VirtualControllerScreen(
                         Toast.makeText(context, "Could not rename layout", Toast.LENGTH_SHORT).show()
                     }
                 }
-                profileToRename = null
+                renameProfileName = null
             },
-            onDismiss = { profileToRename = null }
+            onDismiss = { renameProfileName = null }
         )
     }
 
@@ -187,9 +194,9 @@ fun VirtualControllerScreen(
             onConfirm = {
                 layoutManager.resetDefaultProfile(profile.name)
                 Toast.makeText(context, "Reset '${profile.name}' to factory default", Toast.LENGTH_SHORT).show()
-                profileToReset = null
+                resetProfileName = null
             },
-            onDismiss = { profileToReset = null }
+            onDismiss = { resetProfileName = null }
         )
     }
 
@@ -202,9 +209,9 @@ fun VirtualControllerScreen(
                 if (deleted) {
                     Toast.makeText(context, "Deleted '${profile.name}'", Toast.LENGTH_SHORT).show()
                 }
-                profileToDelete = null
+                deleteProfileName = null
             },
-            onDismiss = { profileToDelete = null }
+            onDismiss = { deleteProfileName = null }
         )
     }
 
@@ -214,10 +221,10 @@ fun VirtualControllerScreen(
             preset = preset,
             onConfirm = { customName ->
                 val copy = layoutManager.createCustomProfile(name = customName, baseProfile = preset, activate = false)
-                profileToEditAsPreset = null
+                editAsPresetProfileName = null
                 navController.navigate(Route.Editor(profileName = copy.name))
             },
-            onDismiss = { profileToEditAsPreset = null }
+            onDismiss = { editAsPresetProfileName = null }
         )
     }
 }
