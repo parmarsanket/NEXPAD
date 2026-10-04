@@ -37,6 +37,7 @@ data class ConnectionStats(
     val rxLinkSpeedMbps: Int? = null,
     val txLinkSpeedMbps: Int? = null,
     val latencyMs: Long? = null,
+    val latencyFloatMs: Float? = null,
     val jitterMs: Float? = null,
     val packetLossPercent: Float? = null
 ) {
@@ -46,8 +47,25 @@ data class ConnectionStats(
      * Approximated as half of Round-Trip Ping (RTT).
      */
     val inputLagMs: Long?
-        get() = latencyMs?.let { rtt ->
-            if (rtt <= 0L) 1L else ((rtt + 1) / 2).coerceAtLeast(1L)
+        get() {
+            val rtt = latencyFloatMs ?: latencyMs?.toFloat() ?: return null
+            val oneWay = rtt / 2f
+            return if (oneWay < 1.0f) 0L else kotlin.math.round(oneWay).toLong().coerceAtLeast(1L)
+        }
+
+    val displayPing: String
+        get() {
+            val rtt = latencyFloatMs ?: latencyMs?.toFloat() ?: return "--"
+            return if (rtt < 1.0f) String.format(java.util.Locale.US, "%.1f", rtt)
+            else String.format(java.util.Locale.US, "%.0f", rtt)
+        }
+
+    val displayInputLag: String
+        get() {
+            val rtt = latencyFloatMs ?: latencyMs?.toFloat() ?: return "--"
+            val oneWay = rtt / 2f
+            return if (oneWay < 1.0f) String.format(java.util.Locale.US, "%.1f", oneWay)
+            else String.format(java.util.Locale.US, "%.0f", oneWay)
         }
 
     /**
@@ -214,7 +232,8 @@ class GamepadNetworkManager(
         }
         connection.onNetworkPerformanceUpdated = { latencyMs, jitterMs, packetLoss ->
             _connectionStats.value = _connectionStats.value.copy(
-                latencyMs = latencyMs,
+                latencyMs = kotlin.math.round(latencyMs).toLong().coerceAtLeast(0L),
+                latencyFloatMs = latencyMs,
                 jitterMs = jitterMs,
                 packetLossPercent = packetLoss
             )
@@ -243,7 +262,6 @@ class GamepadNetworkManager(
     }
 
     fun connect(address: String, port: Int, serverName: String? = null) {
-        val t0 = android.os.SystemClock.elapsedRealtime()
         if (serverName != null) {
             _connectedServerName.value = serverName
         }
@@ -261,8 +279,6 @@ class GamepadNetworkManager(
             setupConnectionCallbacks()
         }
         detectNetworkType(address)
-
-        (connection as? NetworkClient)?.benchmarkStartTimeMs = t0
 
         scope.launch {
             try {
@@ -406,18 +422,15 @@ class GamepadNetworkManager(
                 // Bluetooth Classic ACL 6-slot timing aligns optimally at 125 Hz (8ms).
                 // USB (ADB/AOA) and Wi-Fi run at full 200 Hz (5ms).
                 val intervalNanos = if (connection is com.sanket.tools.nexpad.network.BluetoothRfcommConnection) 8_000_000L else 5_000_000L
-                var nextTick = System.nanoTime()
                 
                 while (isActive) {
                     connection.sendInput(inputState)
                     
-                    nextTick += intervalNanos
+                    val nextTick = System.nanoTime() + intervalNanos
                     val sleepNanos = nextTick - System.nanoTime()
                     
                     if (sleepNanos > 0) {
                         java.util.concurrent.locks.LockSupport.parkNanos(sleepNanos)
-                    } else {
-                        nextTick = System.nanoTime() // fell behind — resync, don't stack debt
                     }
                 }
             } finally {

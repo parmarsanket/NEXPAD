@@ -165,8 +165,8 @@ fun ActiveSessionCard(
                     .padding(12.dp),
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
-                MetricItem(label = "PING (RTT)", value = "${stats.latencyMs ?: "--"} ms", valueColor = NeonPalette.Green)
-                MetricItem(label = "INPUT LAG", value = "${stats.inputLagMs ?: "--"} ms", valueColor = NeonPalette.Cyan)
+                MetricItem(label = "PING (RTT)", value = "${stats.displayPing} ms", valueColor = NeonPalette.Green)
+                MetricItem(label = "INPUT LAG", value = "${stats.displayInputLag} ms", valueColor = NeonPalette.Cyan)
                 MetricItem(label = "JITTER", value = "${stats.oneWayJitterMs?.let { "%.1f".format(it) } ?: "--"} ms", valueColor = NeonPalette.Amber)
                 MetricItem(
                     label = "LOSS",

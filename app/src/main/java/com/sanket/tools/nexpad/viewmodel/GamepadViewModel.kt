@@ -378,17 +378,33 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
         get() = Pair(rightStickX, rightStickY)
 
     fun updateLeftStick(x: Float, y: Float) {
+        val dx = kotlin.math.abs(x - inputState.leftStickX)
+        val dy = kotlin.math.abs(y - inputState.leftStickY)
+        val changed = dx > 0.002f || dy > 0.002f || (x == 0f && inputState.leftStickX != 0f) || (y == 0f && inputState.leftStickY != 0f)
+
         inputState.leftStickX = x
         inputState.leftStickY = y
         leftStickX = x
         leftStickY = y
+
+        if (changed) {
+            networkManager.sendImmediate()
+        }
     }
 
     fun updateRightStick(x: Float, y: Float) {
+        val dx = kotlin.math.abs(x - inputState.rightStickX)
+        val dy = kotlin.math.abs(y - inputState.rightStickY)
+        val changed = dx > 0.002f || dy > 0.002f || (x == 0f && inputState.rightStickX != 0f) || (y == 0f && inputState.rightStickY != 0f)
+
         inputState.rightStickX = x
         inputState.rightStickY = y
         rightStickX = x
         rightStickY = y
+
+        if (changed) {
+            networkManager.sendImmediate()
+        }
     }
 
     companion object {

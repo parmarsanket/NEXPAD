@@ -61,6 +61,8 @@ import com.sanket.tools.nexpad.utils.HapticFeedbackHelper
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
+const val PREF_DOUBLE_TAP_BACK_EXIT = "DOUBLE_TAP_BACK_EXIT"
+
 @Composable
 fun SettingsScreen(
     navController: AppNavigator,
@@ -91,6 +93,9 @@ fun SettingsScreen(
         )
     }
     var rumbleMode by remember { mutableStateOf(sharedPref.getString("RUMBLE_MODE", "min") ?: "min") }
+    var doubleTapBackExitEnabled by remember {
+        mutableStateOf(sharedPref.getBoolean(PREF_DOUBLE_TAP_BACK_EXIT, true))
+    }
 
     val context = LocalContext.current
     val hapticHelper = remember(context) { HapticFeedbackHelper(context) }
@@ -104,6 +109,7 @@ fun SettingsScreen(
         hapticClickStrength = hapticClickStrength,
         hapticStyle = hapticStyle,
         rumbleMode = rumbleMode,
+        doubleTapBackExitEnabled = doubleTapBackExitEnabled,
         onRgbChange = {
             layoutManager.saveProfile(currentProfile.copy(isRgbEnabled = it), activate = true)
         },
@@ -135,6 +141,10 @@ fun SettingsScreen(
             rumbleMode = it
             sharedPref.edit().putString("RUMBLE_MODE", it).apply()
         },
+        onDoubleTapBackExitChange = {
+            doubleTapBackExitEnabled = it
+            sharedPref.edit().putBoolean(PREF_DOUBLE_TAP_BACK_EXIT, it).apply()
+        },
         onBack = { navController.popBackStack() }
     )
 }
@@ -149,6 +159,7 @@ fun SettingsScreenContent(
     hapticClickStrength: Float = 0.3f,
     hapticStyle: String = HapticFeedbackHelper.STYLE_CRISP,
     rumbleMode: String = "min",
+    doubleTapBackExitEnabled: Boolean = true,
     onRgbChange: (Boolean) -> Unit = {},
     onButtonHapticsChange: (Boolean) -> Unit = {},
     onVibrateOfflineChange: (Boolean) -> Unit = {},
@@ -156,6 +167,7 @@ fun SettingsScreenContent(
     onHapticClickStrengthFinished: () -> Unit = {},
     onHapticStyleChange: (String) -> Unit = {},
     onRumbleModeChange: (String) -> Unit = {},
+    onDoubleTapBackExitChange: (Boolean) -> Unit = {},
     onBack: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -286,7 +298,23 @@ fun SettingsScreenContent(
                     )
                 }
 
-                // ── Card 4: Engine Architecture & Hardware ────────────────────────
+                // ── Card 4: Gameplay Safety & Navigation ──────────────────────────
+                SettingsSectionCard(
+                    accentColor = NeonPalette.Amber,
+                    title = "GAMEPLAY & ACCIDENTAL EXIT PROTECTION",
+                    subtitle = "Accidental interruption and back navigation guards",
+                    icon = Icons.Rounded.Shield
+                ) {
+                    SettingsToggleRow(
+                        title = "Double-Tap Back to Exit",
+                        description = "Requires pressing the back gesture or button twice within 2 seconds to exit the gamepad, preventing accidental game quits while playing",
+                        checked = doubleTapBackExitEnabled,
+                        onCheckedChange = onDoubleTapBackExitChange,
+                        accentColor = NeonPalette.Amber
+                    )
+                }
+
+                // ── Card 5: Engine Architecture & Hardware ────────────────────────
                 SettingsSectionCard(
                     accentColor = NeonPalette.Purple,
                     title = "ENGINE ARCHITECTURE & HARDWARE",
@@ -294,7 +322,7 @@ fun SettingsScreenContent(
                     icon = Icons.Rounded.Shield
                 ) {
                     SettingsInfoRow(label = "Active Layout Profile", value = activeProfileName, accentColor = NeonPalette.Cyan)
-                    SettingsInfoRow(label = "Input Polling Rate", value = "1000 Hz Locked", accentColor = NeonPalette.Green)
+                    SettingsInfoRow(label = "Input Polling Rate", value = "200 Hz Sync • Event-Driven", accentColor = NeonPalette.Green)
                     SettingsInfoRow(label = "Transports Supported", value = "USB AOA 2.0 • ADB • Wi-Fi UDP", accentColor = NeonPalette.Purple)
                     SettingsInfoRow(label = "Haptic Pipeline", value = "Direct LRA Primitive Composition", accentColor = NeonPalette.Amber)
                     SettingsInfoRow(label = "Touch Surface", value = "Dedicated Multitouch Trackpad Engine", accentColor = NeonPalette.Magenta)

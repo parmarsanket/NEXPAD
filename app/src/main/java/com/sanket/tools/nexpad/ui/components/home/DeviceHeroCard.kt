@@ -433,9 +433,9 @@ fun ConnectedContent(name: String, stats: ConnectionStats, onDisconnectClick: ()
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            LiveStat(modifier = Modifier.weight(1.1f), label = "Input Lag", value = stats.inputLagMs?.toString() ?: "--", unit = "ms")
+            LiveStat(modifier = Modifier.weight(1.1f), label = "Input Lag", value = stats.displayInputLag, unit = "ms")
             StatDivider()
-            LiveStat(modifier = Modifier.weight(0.9f), label = "Ping", value = stats.latencyMs?.toString() ?: "--", unit = "ms")
+            LiveStat(modifier = Modifier.weight(0.9f), label = "Ping", value = stats.displayPing, unit = "ms")
             StatDivider()
             LiveStat(modifier = Modifier.weight(1.0f), label = "Jitter", value = stats.oneWayJitterMs?.let { String.format(Locale.US, "±%.1f", it) } ?: "--", unit = "ms")
             StatDivider()

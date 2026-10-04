@@ -120,7 +120,8 @@ fun NavigationGraph(
                         navigationViewModel = navigationViewModel,
                         overrideProfileName = key.layoutProfileName,
                         onBack = { navigator.popBackStack() },
-                        onVibrate = onVibrate
+                        onVibrate = onVibrate,
+                        sharedPref = sharedPref
                     )
                 }
                 is Route.ButtonStudio -> {

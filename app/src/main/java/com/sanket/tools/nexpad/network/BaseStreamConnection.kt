@@ -12,8 +12,6 @@ import kotlinx.coroutines.launch
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.locks.LockSupport
 import kotlin.math.abs
 
 /**
@@ -34,7 +32,7 @@ abstract class BaseStreamConnection : IGamepadConnection {
     override var onConnectionStateChanged: ((Boolean) -> Unit)? = null
     override var onStatusChanged: ((String) -> Unit)? = null
     override var onDiagnosticLog: ((String) -> Unit)? = null
-    override var onNetworkPerformanceUpdated: ((latencyMs: Long, jitterMs: Float, packetLoss: Float) -> Unit)? = null
+    override var onNetworkPerformanceUpdated: ((latencyMs: Float, jitterMs: Float, packetLoss: Float) -> Unit)? = null
     override var onServerNameResolved: ((String) -> Unit)? = null
 
     @Volatile protected var isConnected = false
@@ -42,14 +40,11 @@ abstract class BaseStreamConnection : IGamepadConnection {
     private var inputStream: InputStream? = null
     private var outputStream: OutputStream? = null
 
-    private var txThread: Thread? = null
     private var rxThread: Thread? = null
     protected var callbackScope: CoroutineScope? = null
         private set
 
     private val txLock = Any()
-    private val hasPendingPacket = AtomicBoolean(false)
-    private val txStagingBuffer = ByteArray(INPUT_PACKET_SIZE)
     private val txWriteBuffer = ByteArray(INPUT_PACKET_SIZE)
 
     private val rxAccumulator = ByteArray(FEEDBACK_PACKET_SIZE)
@@ -67,28 +62,41 @@ abstract class BaseStreamConnection : IGamepadConnection {
     private var lastLeftMotor = -1
     private var lastRightMotor = -1
 
+    private var currentTag = "STREAM"
+
     override suspend fun sendInput(input: GamepadInput) {
         if (!isConnected) return
+        val stream = outputStream ?: return
 
         val seq = NexpadProtocol.nextSequenceNumber()
         input.sequenceNumber = seq
 
         val slot = seq and (RTT_RING_SIZE - 1)
         sendSeqNumbers[slot] = seq
-        sendTimestamps[slot] = System.nanoTime()
 
-        synchronized(txLock) {
-            NexpadProtocol.encodeInput(input, txStagingBuffer)
-            hasPendingPacket.set(true)
-        }
-
-        val t = txThread
-        if (t != null) {
-            LockSupport.unpark(t)
+        try {
+            synchronized(txLock) {
+                NexpadProtocol.encodeInput(input, txWriteBuffer)
+                sendTimestamps[slot] = System.nanoTime()
+                stream.write(txWriteBuffer)
+                stream.flush()
+            }
+        } catch (e: IOException) {
+            if (isConnected) {
+                Log.e("BaseStreamConnection", "TX write error", e)
+                disconnect()
+            }
         }
     }
 
     protected fun startStreamWorkers(input: InputStream, output: OutputStream, transportTag: String) {
+        currentTag = transportTag
+        rttSamples = 0
+        rttHistoryIndex = 0
+        lastRttLogTime = 0L
+        lastLeftMotor = -1
+        lastRightMotor = -1
+        sendSeqNumbers.fill(-1)
         inputStream = input
         outputStream = output
         isConnected = true
@@ -96,64 +104,29 @@ abstract class BaseStreamConnection : IGamepadConnection {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         callbackScope = scope
 
-        val tx = Thread({ runTxLoop(transportTag) }, "NEXPAD-$transportTag-TX")
         val rx = Thread({ runRxLoop(transportTag) }, "NEXPAD-$transportTag-RX")
-        txThread = tx
         rxThread = rx
-        tx.start()
         rx.start()
 
         onConnectionStateChanged?.invoke(true)
     }
 
     protected fun stopStreamWorkers() {
-        if (!isConnected && txThread == null && rxThread == null) return
+        if (!isConnected && rxThread == null) return
         isConnected = false
-        val tx = txThread
-        if (tx != null) {
-            LockSupport.unpark(tx)
-        }
         try { inputStream?.close() } catch (_: Exception) {}
         try { outputStream?.close() } catch (_: Exception) {}
 
-        txThread?.interrupt()
         rxThread?.interrupt()
         callbackScope?.cancel()
 
         inputStream = null
         outputStream = null
-        txThread = null
         rxThread = null
         callbackScope = null
 
         onConnectionStateChanged?.invoke(false)
         onStatusChanged?.invoke("Disconnected")
-    }
-
-    private fun runTxLoop(tag: String) {
-        android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO)
-        while (isConnected) {
-            while (!hasPendingPacket.get() && isConnected) {
-                LockSupport.park()
-            }
-            if (!isConnected) break
-
-            synchronized(txLock) {
-                System.arraycopy(txStagingBuffer, 0, txWriteBuffer, 0, INPUT_PACKET_SIZE)
-                hasPendingPacket.set(false)
-            }
-
-            try {
-                outputStream?.write(txWriteBuffer)
-                outputStream?.flush()
-            } catch (e: IOException) {
-                if (isConnected) {
-                    Log.e(tag, "$tag TX write error", e)
-                    disconnect()
-                }
-                break
-            }
-        }
     }
 
     private fun runRxLoop(tag: String) {
@@ -230,14 +203,17 @@ abstract class BaseStreamConnection : IGamepadConnection {
             }
         }
 
-        val slot = echoSeq and (RTT_RING_SIZE - 1)
-        if (sendSeqNumbers[slot] == echoSeq) {
-            val sentTimeNanos = sendTimestamps[slot]
-            val rttNanos = System.nanoTime() - sentTimeNanos
-            val rttMs = rttNanos / 1_000_000.0
-            sendSeqNumbers[slot] = -1
+        if (echoSeq > 0) {
+            val slot = echoSeq and (RTT_RING_SIZE - 1)
+            val expectedSeq = sendSeqNumbers[slot]
+            if (expectedSeq == echoSeq) {
+                val sentTimeNanos = sendTimestamps[slot]
+                val rttNanos = System.nanoTime() - sentTimeNanos
+                val rttMs = rttNanos / 1_000_000.0
+                sendSeqNumbers[slot] = -1
 
-            recordRttSample(rttMs, packetLoss)
+                recordRttSample(rttMs, packetLoss)
+            }
         }
     }
 
@@ -266,8 +242,16 @@ abstract class BaseStreamConnection : IGamepadConnection {
             val jitterMs = if (count > 1) (sumConsecutiveDelta / (count - 1)) else 0.0
             val lossPctFloat = (packetLossByte and 0xFF) / 255f
 
+            val sorted = rttHistory.copyOf(count).apply { java.util.Arrays.sort(this) }
+            val p50 = sorted[count / 2]
+            val p95 = sorted[(count * 0.95).toInt().coerceAtMost(count - 1)]
+            val p99 = sorted[(count * 0.99).toInt().coerceAtMost(count - 1)]
+            val rttMsg = String.format(java.util.Locale.US, "p50 %.2fms / p95 %.2fms / p99 %.2fms / avg %.2fms", p50, p95, p99, avgRtt)
+            val logMsg = "📡 [$currentTag] RTT: $rttMsg | Samples: $count | Jitter: ±${String.format(java.util.Locale.US, "%.2f", jitterMs)}ms | Loss: ${(lossPctFloat * 100).toInt()}%"
+            onDiagnosticLog?.invoke(logMsg)
+
             callbackScope?.launch {
-                onNetworkPerformanceUpdated?.invoke(avgRtt.toLong(), jitterMs.toFloat(), lossPctFloat)
+                onNetworkPerformanceUpdated?.invoke(avgRtt.toFloat(), jitterMs.toFloat(), lossPctFloat)
             }
         }
     }

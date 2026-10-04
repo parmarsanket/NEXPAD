@@ -1,6 +1,10 @@
 package com.sanket.tools.nexpad.ui
 
+import android.content.Context
+import android.content.SharedPreferences
 import android.content.pm.ActivityInfo
+import android.os.SystemClock
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
@@ -58,9 +62,43 @@ fun GamepadScreen(
     navigationViewModel: NavigationViewModel? = null,
     overrideProfileName: String? = null,
     onBack: () -> Unit,
-    onVibrate: () -> Unit
+    onVibrate: () -> Unit,
+    sharedPref: SharedPreferences? = null
 ) {
-    BackHandler(onBack = onBack)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val prefs = remember(sharedPref, context) {
+        sharedPref ?: context.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
+    }
+    val doubleTapExitEnabled = remember(prefs) {
+        prefs.getBoolean(PREF_DOUBLE_TAP_BACK_EXIT, true)
+    }
+    var lastBackPressTime by remember { mutableLongStateOf(0L) }
+    var backToast by remember { mutableStateOf<Toast?>(null) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            backToast?.cancel()
+        }
+    }
+
+    BackHandler {
+        if (!doubleTapExitEnabled) {
+            onBack()
+        } else {
+            val now = SystemClock.uptimeMillis()
+            if (now - lastBackPressTime < 2000L) {
+                backToast?.cancel()
+                onBack()
+            } else {
+                lastBackPressTime = now
+                backToast?.cancel()
+                backToast = Toast.makeText(context, "Press back again to exit", Toast.LENGTH_SHORT).apply {
+                    show()
+                }
+            }
+        }
+    }
+
     val activeProfileName by layoutManager.activeProfileNameFlow.collectAsState()
     val profiles by layoutManager.profilesFlow.collectAsState()
     val sessionProfileName by (navigationViewModel?.sessionProfileName ?: remember { kotlinx.coroutines.flow.MutableStateFlow(null) }).collectAsState()
@@ -77,7 +115,6 @@ fun GamepadScreen(
     }
     val isConnected by viewModel.isConnected.collectAsState()
     
-    val context = androidx.compose.ui.platform.LocalContext.current
     LockScreenOrientation(
         ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
     )

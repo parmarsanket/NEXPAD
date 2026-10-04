@@ -63,12 +63,23 @@ class AoaAccessoryConnection(private val context: Context) : BaseStreamConnectio
             onStatusChanged?.invoke("Requesting USB permission...")
             val filter = IntentFilter(ACTION_USB_PERMISSION)
             if (!isReceiverRegistered) {
-                context.registerReceiver(permissionReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    context.registerReceiver(permissionReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+                } else {
+                    context.registerReceiver(permissionReceiver, filter)
+                }
                 isReceiverRegistered = true
             }
-            val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
-            val permissionIntent = PendingIntent.getBroadcast(context, 0, Intent(ACTION_USB_PERMISSION), flags)
-            usbManager.requestPermission(accessory, permissionIntent)
+            val permissionIntent = Intent(ACTION_USB_PERMISSION).apply {
+                setPackage(context.packageName)
+            }
+            val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+            val pendingIntent = PendingIntent.getBroadcast(context, 0, permissionIntent, flags)
+            usbManager.requestPermission(accessory, pendingIntent)
         }
     }
 
