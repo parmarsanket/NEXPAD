@@ -152,5 +152,62 @@ class GamepadScreenScreenshotTest {
             )
         }
     }
+
+    @PreviewTest
+    @Preview(showBackground = true, backgroundColor = 0xFF08090C, widthDp = 640, heightDp = 320)
+    @Composable
+    fun gamepadScreenCompactPhoneLandscapePreview() {
+        val profile = getDefaultLayoutProfiles().first { it.name.contains("Standard", ignoreCase = true) }
+        NEXPADTheme {
+            GamepadScreenContent(
+                profile = profile,
+                isConnected = true,
+                renderElement = { key, _ ->
+                    StaticDefaultButtonPreview(
+                        controlKey = key,
+                        labelStyle = profile.controllerLabelStyle
+                    )
+                }
+            )
+        }
+    }
+
+    @PreviewTest
+    @Preview(showBackground = true, backgroundColor = 0xFF08090C, widthDp = 1200, heightDp = 800)
+    @Composable
+    fun gamepadScreenExpandedTabletLandscapePreview() {
+        val profile = getDefaultLayoutProfiles().first { it.name.contains("Standard", ignoreCase = true) }
+        NEXPADTheme {
+            GamepadScreenContent(
+                profile = profile,
+                isConnected = true,
+                renderElement = { key, _ ->
+                    StaticDefaultButtonPreview(
+                        controlKey = key,
+                        labelStyle = profile.controllerLabelStyle
+                    )
+                }
+            )
+        }
+    }
+
+    @PreviewTest
+    @Preview(showBackground = true, backgroundColor = 0xFF08090C, widthDp = 800, heightDp = 600)
+    @Composable
+    fun gamepadScreenFoldableLandscapePreview() {
+        val profile = getDefaultLayoutProfiles().first { it.name.contains("Standard", ignoreCase = true) }
+        NEXPADTheme {
+            GamepadScreenContent(
+                profile = profile,
+                isConnected = true,
+                renderElement = { key, _ ->
+                    StaticDefaultButtonPreview(
+                        controlKey = key,
+                        labelStyle = profile.controllerLabelStyle
+                    )
+                }
+            )
+        }
+    }
 }
 

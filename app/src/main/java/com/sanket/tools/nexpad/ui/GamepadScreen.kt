@@ -356,27 +356,38 @@ fun GamepadScreenContent(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        val screenWidthPx = maxOf(constraints.maxWidth, constraints.maxHeight).toFloat()
-        val screenHeightPx = minOf(constraints.maxWidth, constraints.maxHeight).toFloat()
+        val screenWidthPx = constraints.maxWidth.toFloat()
+        val screenHeightPx = constraints.maxHeight.toFloat()
         val density = LocalDensity.current
+        val widthDp = screenWidthPx / density.density
+        val heightDp = screenHeightPx / density.density
+        val responsiveScale = com.sanket.tools.nexpad.model.LayoutMetrics.calculateResponsiveScale(widthDp, heightDp)
 
-        val lsEntry = profile.positions.entries.firstOrNull { it.key.equals("LS", ignoreCase = true) }
-        val rsEntry = profile.positions.entries.firstOrNull { it.key.equals("RS", ignoreCase = true) }
-        val ltpEntry = profile.positions.entries.firstOrNull { it.key.equals("LTP", ignoreCase = true) }
-        val rtpEntry = profile.positions.entries.firstOrNull { it.key.equals("RTP", ignoreCase = true) }
+        val adjustedPositions = remember(profile.positions, screenWidthPx, screenHeightPx) {
+            com.sanket.tools.nexpad.model.LayoutMetrics.adjustClusterPositionsForAspectRatio(
+                positions = profile.positions,
+                screenWidthPx = screenWidthPx,
+                screenHeightPx = screenHeightPx
+            )
+        }
 
-        val touchpadEntries = remember(profile.positions) {
-            profile.positions.entries.filter { (key, _) ->
+        val lsEntry = adjustedPositions.entries.firstOrNull { it.key.equals("LS", ignoreCase = true) }
+        val rsEntry = adjustedPositions.entries.firstOrNull { it.key.equals("RS", ignoreCase = true) }
+        val ltpEntry = adjustedPositions.entries.firstOrNull { it.key.equals("LTP", ignoreCase = true) }
+        val rtpEntry = adjustedPositions.entries.firstOrNull { it.key.equals("RTP", ignoreCase = true) }
+
+        val touchpadEntries = remember(adjustedPositions) {
+            adjustedPositions.entries.filter { (key, _) ->
                 key.equals("LTP", ignoreCase = true) || key.equals("RTP", ignoreCase = true)
             }
         }
-        val joystickEntries = remember(profile.positions) {
-            profile.positions.entries.filter { (key, _) ->
+        val joystickEntries = remember(adjustedPositions) {
+            adjustedPositions.entries.filter { (key, _) ->
                 key.equals("LS", ignoreCase = true) || key.equals("RS", ignoreCase = true)
             }
         }
-        val interactiveButtonEntries = remember(profile.positions) {
-            profile.positions.entries.filter { (key, _) ->
+        val interactiveButtonEntries = remember(adjustedPositions) {
+            adjustedPositions.entries.filter { (key, _) ->
                 !key.equals("LS", ignoreCase = true) &&
                 !key.equals("RS", ignoreCase = true) &&
                 !key.equals("LTP", ignoreCase = true) &&
@@ -386,7 +397,7 @@ fun GamepadScreenContent(
 
         // Dynamically track exact runtime bounding boxes of all interactive buttons in container coords
         val buttonBoundsMap = remember { mutableStateMapOf<String, Rect>() }
-        LaunchedEffect(profile.positions) {
+        LaunchedEffect(adjustedPositions) {
             buttonBoundsMap.clear()
         }
 
@@ -462,7 +473,7 @@ fun GamepadScreenContent(
                             placeable.placeRelative(x, y)
                         }
                     }
-                    .scale(position.scale)
+                    .scale(position.scale * responsiveScale)
                     .alpha(position.opacity)
             ) {
                 renderElement(key, position)
@@ -486,7 +497,7 @@ fun GamepadScreenContent(
                             placeable.placeRelative(x, y)
                         }
                     }
-                    .scale(position.scale)
+                    .scale(position.scale * responsiveScale)
                     .alpha(position.opacity)
             ) {
                 renderElement(key, position)
@@ -520,7 +531,8 @@ fun GamepadScreenContent(
                         floatY = lsFloatY,
                         viewModel = viewModel,
                         isConnected = isConnected,
-                        exclusionRects = leftExclusions
+                        exclusionRects = leftExclusions,
+                        responsiveScale = responsiveScale
                     )
                 }
             }
@@ -551,7 +563,8 @@ fun GamepadScreenContent(
                         floatY = rsFloatY,
                         viewModel = viewModel,
                         isConnected = isConnected,
-                        exclusionRects = rightExclusions
+                        exclusionRects = rightExclusions,
+                        responsiveScale = responsiveScale
                     )
                 }
             }
@@ -570,7 +583,7 @@ fun GamepadScreenContent(
                             placeable.placeRelative(x, y)
                         }
                     }
-                    .scale(position.scale)
+                    .scale(position.scale * responsiveScale)
                     .alpha(position.opacity)
                     .onGloballyPositioned { coordinates ->
                         buttonBoundsMap[key] = coordinates.boundsInParent()
@@ -594,7 +607,8 @@ private fun BoxScope.JoystickTouchLayer(
     floatY: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>,
     viewModel: GamepadViewModel?,
     isConnected: Boolean,
-    exclusionRects: List<Rect>
+    exclusionRects: List<Rect>,
+    responsiveScale: Float = 1.0f
 ) {
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
@@ -608,9 +622,9 @@ private fun BoxScope.JoystickTouchLayer(
     val maxThrowPx = remember(density) { with(density) { 60.dp.toPx() } }
 
     // BOX mode: half-size of the square activation region (centered on home)
-    val boxHalfPx = remember(mode, hitboxScale, position, density) {
+    val boxHalfPx = remember(mode, hitboxScale, position, density, responsiveScale) {
         if (mode == "BOX") {
-            val joystickDiamPx = with(density) { 150.dp.toPx() } * position.scale
+            val joystickDiamPx = with(density) { 150.dp.toPx() } * position.scale * responsiveScale
             (joystickDiamPx * hitboxScale) / 2f
         } else 0f
     }

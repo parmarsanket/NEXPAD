@@ -55,9 +55,21 @@ fun HudCanvas(
     val remoteRegistry = remember { RemoteComponentRegistry.getInstance(context) }
     val installedComponents by registry.installedComponents.collectAsState()
     val remoteDocs by remoteRegistry.loadedComponents.collectAsState()
+    val density = LocalDensity.current.density
+    val widthDp = screenWidthPx / density
+    val heightDp = screenHeightPx / density
+    val responsiveScale = com.sanket.tools.nexpad.model.LayoutMetrics.calculateResponsiveScale(widthDp, heightDp)
+
+    val adjustedElements = remember(elements, screenWidthPx, screenHeightPx) {
+        com.sanket.tools.nexpad.model.LayoutMetrics.adjustHudElementsForAspectRatio(
+            elements = elements,
+            screenWidthPx = screenWidthPx,
+            screenHeightPx = screenHeightPx
+        )
+    }
 
     Box(modifier = modifier) {
-        elements.forEach { (controlKey, element) ->
+        adjustedElements.forEach { (controlKey, element) ->
             key(controlKey) {
                 val isSelected = selectedControl == controlKey
                 val isJoystick = controlKey.equals("LS", ignoreCase = true) ||
@@ -66,7 +78,7 @@ fun HudCanvas(
 
                 // 1. Hitbox Box for BOX mode (white border 50% alpha, visible in HUD screen for setting joystick)
                 if (isJoystick && element.transform.joystickMode == "BOX") {
-                    val boxSizeDp = 150.dp * element.transform.hitboxScale * element.transform.scale
+                    val boxSizeDp = 150.dp * element.transform.hitboxScale * element.transform.scale * responsiveScale
                     Box(
                         modifier = Modifier
                             .layout { measurable, childConstraints ->
@@ -143,8 +155,8 @@ fun HudCanvas(
                         }
                         // GPU Layer: Zero recomposition during scaling, opacity changes, and rotation
                         .graphicsLayer {
-                            scaleX = element.transform.scale
-                            scaleY = element.transform.scale
+                            scaleX = element.transform.scale * responsiveScale
+                            scaleY = element.transform.scale * responsiveScale
                             alpha = element.transform.opacity
                         }
                 ) {

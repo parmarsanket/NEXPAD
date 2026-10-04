@@ -93,8 +93,8 @@ fun standardElitePositions(): Map<String, Position> {
         K.RB to Position(0.920f, 0.375f, scale = 0.95f),
 
         // Left Stick & D-Pad (Integrated 4-Way Cross Pad)
-        K.LS   to Position(0.115f, 0.740f, scale = 0.95f),
-        K.DPAD to Position(0.320f, 0.740f, scale = 1.10f),
+        K.LS   to Position(0.110f, 0.740f, scale = 0.95f),
+        K.DPAD to Position(0.330f, 0.740f, scale = 0.96f),
 
         // Right Stick
         K.RS to Position(0.895f, 0.740f, scale = 0.95f),
@@ -136,12 +136,12 @@ fun playStationDualSensePositions(): Map<String, Position> {
         K.LB to Position(0.080f, 0.360f, scale = 0.90f),
         K.RB to Position(0.920f, 0.360f, scale = 0.90f),
 
-        // D-Pad — primary left thumb control (upper-mid, clear of LS)
-        K.DPAD to Position(0.130f, 0.650f, scale = 1.05f),
+        // D-Pad — primary left thumb control (upper-mid, clear of LS and L1)
+        K.DPAD to Position(0.125f, 0.665f, scale = 0.90f),
 
         // Symmetric DualSense Sticks — lower row, centered side-by-side
-        K.LS to Position(0.345f, 0.740f, scale = 0.95f),
-        K.RS to Position(0.655f, 0.740f, scale = 0.95f),
+        K.LS to Position(0.355f, 0.740f, scale = 0.95f),
+        K.RS to Position(0.645f, 0.740f, scale = 0.95f),
 
         // PS / Create / Options — center mid-band
         K.GUIDE to Position(0.500f, 0.130f, scale = 1.15f), // PS button
@@ -153,7 +153,7 @@ fun playStationDualSensePositions(): Map<String, Position> {
     positions.putAll(
         LayoutMetrics.createDiamondCluster(
             centerX = 0.875f,
-            centerY = 0.650f,
+            centerY = 0.665f,
             radiusDp = 50.0f,
             scale = 0.80f
         )

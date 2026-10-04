@@ -147,8 +147,8 @@ fun HudEditorScreen(
                 }
             }
     ) {
-        val screenWidthPx = maxOf(constraints.maxWidth, constraints.maxHeight).toFloat()
-        val screenHeightPx = minOf(constraints.maxWidth, constraints.maxHeight).toFloat()
+        val screenWidthPx = constraints.maxWidth.toFloat()
+        val screenHeightPx = constraints.maxHeight.toFloat()
         val density = LocalDensity.current
         val coroutineScope = rememberCoroutineScope()
 
