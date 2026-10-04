@@ -113,19 +113,6 @@ fun LayoutProfileCard(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
                     )
-                    if (!profile.isDefault) {
-                        IconButton(
-                            onClick = onRename,
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                Icons.Rounded.Edit,
-                                contentDescription = "Rename layout",
-                                tint = NeonPalette.Cyan.copy(alpha = 0.7f),
-                                modifier = Modifier.size(14.dp)
-                            )
-                        }
-                    }
                     // Protection badge
                     if (profile.isDefault) {
                         Surface(
