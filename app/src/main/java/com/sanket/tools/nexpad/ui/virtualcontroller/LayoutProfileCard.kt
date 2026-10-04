@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.category.CategoryManager
@@ -107,7 +108,10 @@ fun LayoutProfileCard(
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = Color.White
-                        )
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
                     if (!profile.isDefault) {
                         IconButton(
@@ -144,7 +148,9 @@ fun LayoutProfileCard(
                                     "DEFAULT",
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = NeonPalette.Cyan
+                                    color = NeonPalette.Cyan,
+                                    maxLines = 1,
+                                    softWrap = false
                                 )
                             }
                         }
@@ -169,7 +175,9 @@ fun LayoutProfileCard(
                                     "CUSTOM",
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFFFFB703)
+                                    color = Color(0xFFFFB703),
+                                    maxLines = 1,
+                                    softWrap = false
                                 )
                             }
                         }
@@ -192,6 +200,8 @@ fun LayoutProfileCard(
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Black,
                                 color = Color(0xFF00FF66),
+                                maxLines = 1,
+                                softWrap = false,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
                             )
                         }
@@ -227,7 +237,9 @@ fun LayoutProfileCard(
             val previewKeys = remember(buttonKeys) { buttonKeys.take(6) }
             val remainingCount = remember(buttonKeys) { maxOf(0, buttonKeys.size - 6) }
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -240,6 +252,8 @@ fun LayoutProfileCard(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        softWrap = false,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
@@ -269,6 +283,8 @@ fun LayoutProfileCard(
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                softWrap = false,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
                             )
                         }
@@ -279,6 +295,8 @@ fun LayoutProfileCard(
                         "+$remainingCount more",
                         fontSize = 10.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        softWrap = false,
                         modifier = Modifier.align(Alignment.CenterVertically)
                     )
                 }
@@ -291,7 +309,7 @@ fun LayoutProfileCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (!isActive) {
@@ -300,12 +318,12 @@ fun LayoutProfileCard(
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Cyan),
                         border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.7f)),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                         modifier = Modifier.height(36.dp)
                     ) {
                         Icon(Icons.Rounded.CheckCircle, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Set Active", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Set Active", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
                     }
                 }
 
@@ -313,12 +331,12 @@ fun LayoutProfileCard(
                     onClick = onPlay,
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                     modifier = Modifier.height(36.dp)
                 ) {
                     Icon(Icons.Rounded.SportsEsports, contentDescription = null, tint = Color.Black, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Play", color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("Play", color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                 }
 
                 var showStyleDropdown by remember { mutableStateOf(false) }
@@ -328,15 +346,17 @@ fun LayoutProfileCard(
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
                         border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                         modifier = Modifier.height(36.dp)
                     ) {
                         val isXbox = profile.controllerLabelStyle == ControllerLabelStyle.XBOX
                         Text(
-                            if (isXbox) "Xbox" else "PlayStation",
+                            if (isXbox) "Xbox" else "PS",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (isXbox) NeonPalette.Green else NeonPalette.Cyan
+                            color = if (isXbox) NeonPalette.Green else NeonPalette.Cyan,
+                            maxLines = 1,
+                            softWrap = false
                         )
                         Icon(
                             Icons.Rounded.ArrowDropDown,
@@ -383,12 +403,12 @@ fun LayoutProfileCard(
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
                     border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                     modifier = Modifier.height(36.dp)
                 ) {
                     Icon(Icons.Rounded.DashboardCustomize, contentDescription = null, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("HUD", fontSize = 12.sp)
+                    Text("HUD", fontSize = 12.sp, maxLines = 1, softWrap = false)
                 }
 
                 if (!profile.isDefault) {
@@ -397,12 +417,12 @@ fun LayoutProfileCard(
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Purple),
                         border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Purple.copy(alpha = 0.6f)),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                         modifier = Modifier.height(36.dp)
                     ) {
                         Icon(Icons.Rounded.Palette, contentDescription = null, tint = NeonPalette.Purple, modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Studio", fontSize = 12.sp, color = NeonPalette.Purple, fontWeight = FontWeight.SemiBold)
+                        Text("Studio", fontSize = 12.sp, color = NeonPalette.Purple, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
                     }
                 }
 

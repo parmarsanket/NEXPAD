@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -280,7 +281,7 @@ fun SettingsScreenContent(
 
                     SettingsInfoRow(
                         label = "In-Game Rumble Volume",
-                        value = "Controlled by PC Game (0–255 UInt8)",
+                        value = "PC Game Controlled (0–255)",
                         accentColor = NeonPalette.Magenta
                     )
                 }
@@ -629,15 +630,19 @@ private fun SettingsInfoRow(
             style = MaterialTheme.typography.bodySmall.copy(
                 color = Color(0xFF94A3B8),
                 fontSize = 11.5.sp
-            )
+            ),
+            modifier = Modifier.weight(1f, fill = false)
         )
+        Spacer(Modifier.width(8.dp))
         Text(
             text = value,
+            textAlign = TextAlign.End,
             style = MaterialTheme.typography.bodySmall.copy(
                 color = accentColor,
                 fontWeight = FontWeight.Bold,
                 fontSize = 11.5.sp
-            )
+            ),
+            modifier = Modifier.weight(1f, fill = false)
         )
     }
 }

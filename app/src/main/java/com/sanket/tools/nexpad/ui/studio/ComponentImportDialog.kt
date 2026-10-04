@@ -92,7 +92,8 @@ fun ComponentImportDialog(
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth(0.95f)
+                    .widthIn(max = 560.dp)
+                    .fillMaxWidth()
                     .fillMaxHeight(0.9f)
                     .clip(RoundedCornerShape(24.dp))
                     .border(1.5.dp, NeonPalette.Cyan.copy(alpha = 0.5f), RoundedCornerShape(24.dp))

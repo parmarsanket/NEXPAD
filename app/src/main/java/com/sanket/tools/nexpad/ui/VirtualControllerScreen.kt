@@ -20,6 +20,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
@@ -257,40 +258,75 @@ fun VirtualControllerScreenContent(
     var localProfiles by remember(profiles) { mutableStateOf(profiles) }
     var dragging by remember { mutableStateOf(isAnyItemDragging) }
 
+    val screenWidthDp = LocalConfiguration.current.screenWidthDp
+    val isVeryCompact = screenWidthDp < 380
+    val isCompact = screenWidthDp < 600
+
     Scaffold(
         modifier = modifier,
         topBar = {
             NexpadTopAppBar(
                 title = "Virtual Controller",
-                subtitle = "Layouts & Button Management",
+                subtitle = if (isCompact) "Layouts & Buttons" else "Layouts & Button Management",
                 onBack = onBack,
                 isNavigationEnabled = !dragging,
                 actions = {
-                    OutlinedButton(
-                        onClick = onOpenButtonStudio,
-                        enabled = !dragging,
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Purple),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Purple.copy(alpha = if (dragging) 0.3f else 0.7f)),
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                        modifier = Modifier.padding(end = 6.dp).height(36.dp)
-                    ) {
-                        Icon(Icons.Rounded.Palette, contentDescription = null, tint = if (dragging) NeonPalette.Purple.copy(alpha = 0.4f) else NeonPalette.Purple, modifier = Modifier.size(15.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Button Studio", color = if (dragging) NeonPalette.Purple.copy(alpha = 0.4f) else NeonPalette.Purple, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                    }
+                    if (isVeryCompact) {
+                        IconButton(
+                            onClick = onOpenButtonStudio,
+                            enabled = !dragging,
+                            modifier = Modifier.padding(end = 2.dp).size(36.dp)
+                        ) {
+                            Icon(
+                                Icons.Rounded.Palette,
+                                contentDescription = "Button Studio",
+                                tint = if (dragging) NeonPalette.Purple.copy(alpha = 0.4f) else NeonPalette.Purple,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        FilledIconButton(
+                            onClick = onAddCustom,
+                            enabled = !dragging,
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = NeonPalette.Cyan,
+                                contentColor = Color.Black
+                            ),
+                            modifier = Modifier.padding(end = 8.dp).size(36.dp)
+                        ) {
+                            Icon(
+                                Icons.Rounded.Add,
+                                contentDescription = "Add Custom",
+                                tint = Color.Black,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    } else {
+                        OutlinedButton(
+                            onClick = onOpenButtonStudio,
+                            enabled = !dragging,
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Purple),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Purple.copy(alpha = if (dragging) 0.3f else 0.7f)),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                            modifier = Modifier.padding(end = 6.dp).height(36.dp)
+                        ) {
+                            Icon(Icons.Rounded.Palette, contentDescription = null, tint = if (dragging) NeonPalette.Purple.copy(alpha = 0.4f) else NeonPalette.Purple, modifier = Modifier.size(15.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(if (isCompact) "Studio" else "Button Studio", color = if (dragging) NeonPalette.Purple.copy(alpha = 0.4f) else NeonPalette.Purple, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        }
 
-                    Button(
-                        onClick = onAddCustom,
-                        enabled = !dragging,
-                        colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan),
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                        modifier = Modifier.padding(end = 8.dp).height(36.dp)
-                    ) {
-                        Icon(Icons.Rounded.Add, contentDescription = null, tint = Color.Black, modifier = Modifier.size(15.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Add Custom", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Button(
+                            onClick = onAddCustom,
+                            enabled = !dragging,
+                            colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            modifier = Modifier.padding(end = 8.dp).height(36.dp)
+                        ) {
+                            Icon(Icons.Rounded.Add, contentDescription = null, tint = Color.Black, modifier = Modifier.size(15.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(if (isCompact) "Add" else "Add Custom", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
                     }
                 }
             )

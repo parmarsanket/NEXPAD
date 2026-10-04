@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -310,8 +311,9 @@ fun ButtonStudioScreen(
                                     )
                                 }
                             } else {
+                                val screenWidthDp = LocalConfiguration.current.screenWidthDp
                                 Text(
-                                    text = "Button Catalog • Browse, test & add buttons",
+                                    text = if (screenWidthDp < 380) "Button Catalog" else "Button Catalog • Browse, test & add buttons",
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontSize = 10.sp

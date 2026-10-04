@@ -17,8 +17,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -75,6 +77,10 @@ fun SandboxPreviewModal(
         )
     }
 
+    val configuration = LocalConfiguration.current
+    val screenHeightDp = configuration.screenHeightDp
+    val arenaHeight = if (screenHeightDp < 660) 175.dp else if (screenHeightDp < 760) 195.dp else 220.dp
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -88,7 +94,8 @@ fun SandboxPreviewModal(
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth(0.95f)
+                    .widthIn(max = 480.dp)
+                    .fillMaxWidth()
                     .clip(RoundedCornerShape(24.dp))
                     .border(1.5.dp, NeonPalette.Cyan.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
                     .background(
@@ -113,14 +120,18 @@ fun SandboxPreviewModal(
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
                                 text = componentDef.manifest.name,
                                 style = MaterialTheme.typography.titleLarge.copy(
                                     fontWeight = FontWeight.Black,
                                     color = NeonPalette.Cyan
-                                )
+                                ),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
                             )
 
                             val type = remember(componentDef.manifest.id) { resolveButtonSourceType(componentDef) }
@@ -135,7 +146,8 @@ fun SandboxPreviewModal(
                                     text = type.label,
                                     color = type.badgeColor,
                                     fontSize = 10.sp,
-                                    fontWeight = FontWeight.Black
+                                    fontWeight = FontWeight.Black,
+                                    maxLines = 1
                                 )
                             }
                         }
@@ -148,7 +160,9 @@ fun SandboxPreviewModal(
                             style = MaterialTheme.typography.labelMedium.copy(
                                 color = Color.White.copy(alpha = 0.7f),
                                 fontSize = 12.sp
-                            )
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
 
@@ -161,7 +175,7 @@ fun SandboxPreviewModal(
                 BoxWithConstraints(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(220.dp)
+                        .height(arenaHeight)
                         .clip(RoundedCornerShape(16.dp))
                         .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
                         .background(Color(0xFF040810)),
@@ -306,18 +320,40 @@ fun SandboxPreviewModal(
                     Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("STATUS: $telemetryAction", color = NeonPalette.Cyan, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                            Text("EVENTS: $eventCount", color = Color.LightGray, fontSize = 12.sp)
+                            Text(
+                                text = "STATUS: $telemetryAction",
+                                color = NeonPalette.Cyan,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .weight(1f, fill = false)
+                                    .padding(end = 8.dp)
+                            )
+                            Text(
+                                text = "EVENTS: $eventCount",
+                                color = Color.LightGray,
+                                fontSize = 11.sp,
+                                maxLines = 1
+                            )
                         }
                         if (componentDef.manifest.category.equals("JOYSTICK", ignoreCase = true)) {
-                            Text("AXIS: X=%.2f, Y=%.2f".format(axisValues.first, axisValues.second), color = Color.Yellow, fontSize = 12.sp)
+                            Text("AXIS: X=%.2f, Y=%.2f".format(axisValues.first, axisValues.second), color = Color.Yellow, fontSize = 11.sp)
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Rounded.Speed, contentDescription = null, tint = Color.Green, modifier = Modifier.size(15.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("Latency: <0.2ms (Zero-alloc UI thread path)", color = Color.Green, fontSize = 11.sp)
+                            Text(
+                                text = "Latency: <0.2ms (Zero-alloc UI thread path)",
+                                color = Color.Green,
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                     }
                 }
@@ -430,6 +466,8 @@ fun SandboxPreviewModal(
                         Text("Back", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
                     }
                 }
+
+                Spacer(Modifier.height(4.dp))
             }
         }
     }
