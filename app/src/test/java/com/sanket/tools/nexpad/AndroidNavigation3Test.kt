@@ -109,14 +109,14 @@ class AndroidNavigation3Test {
                 mode = "button_editor",
                 profileName = "Default",
                 controlKey = "B",
-                currentAssetId = "builtin.cyber_octa_b"
+                currentAssetId = "builtin.liq_b"
             )
         )
         assertEquals(2, navigator.backStack.size)
         val studioKey = navigator.backStack.last() as Route.ButtonStudio
         assertEquals("button_editor", studioKey.mode)
         assertEquals("B", studioKey.controlKey)
-        assertEquals("builtin.cyber_octa_b", studioKey.currentAssetId)
+        assertEquals("builtin.liq_b", studioKey.currentAssetId)
 
         // Verify routing logic resolves to BUTTON_EDITOR
         val resolvedMode = when {

@@ -70,7 +70,7 @@ Binary format `.nxprc` allows rich button authoring in HTML/CSS on Desktop with 
 ### Android (`NEXPAD/app/.../ui/`)
 - `VirtualControllerScreen.kt`: Main landscape gameplay HUD canvas.
 - `HudEditorScreen.kt`: Visual drag-and-drop layout builder (drag, resize, snap-to-grid, assign skins).
-- `studio/ButtonStudioScreen.kt`: Skin selector modal (Default, SVG, Tier 1 Plugin, Tier 2 Remote Compose).
+- `studio/ButtonStudioScreen.kt`: Skin selector modal (Default, Tier 1 Plugin, Tier 2 Remote Compose).
 
 ---
 

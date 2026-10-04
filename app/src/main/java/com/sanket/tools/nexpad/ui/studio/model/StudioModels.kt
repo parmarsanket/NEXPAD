@@ -21,14 +21,13 @@ enum class ButtonStudioMode(val label: String) {
 }
 
 /**
- * Categorization badges for the 3 button types in Button Studio:
- * - DEFAULT: Authentic native 3D controller component from ui/components/controller/
- * - SVG: Cyber / Vector / Geometric polygon skin from DefaultComponents.kt
+ * Categorization badges for button sources in Button Studio:
+ * - DEFAULT: Authentic native controller component from ui/components/controller/ and NativeComponentRegistry
  * - PLUGIN: Dynamic Compose / AI imported JSON plugin from ComponentRegistry
+ * - REMOTE_COMPOSE: Remote Compose components (.nxprc)
  */
 enum class ButtonStudioType(val label: String, val badgeColor: Color, val badgeBg: Color) {
     DEFAULT("DEFAULT", Color(0xFF00E5FF), Color(0x2200E5FF)),
-    SVG("SVG / VECTOR", Color(0xFF39FF14), Color(0x2239FF14)),
     PLUGIN("PLUGIN / NXP", Color(0xFFB400FF), Color(0x22B400FF)),
     REMOTE_COMPOSE("REMOTE / RC", Color(0xFFFF9100), Color(0x22FF9100))
 }
@@ -46,8 +45,7 @@ fun resolveButtonSourceType(id: String?): ButtonStudioType {
     if (id == null) return ButtonStudioType.DEFAULT
     return when {
         id.startsWith("rc.") -> ButtonStudioType.REMOTE_COMPOSE
-        NativeComponentRegistry.isNativeBuiltin(id) -> ButtonStudioType.DEFAULT
-        id.startsWith("builtin.") -> ButtonStudioType.SVG
+        NativeComponentRegistry.isNativeBuiltin(id) || id.startsWith("builtin.") -> ButtonStudioType.DEFAULT
         else -> ButtonStudioType.PLUGIN
     }
 }

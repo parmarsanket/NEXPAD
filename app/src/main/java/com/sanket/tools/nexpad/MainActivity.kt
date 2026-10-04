@@ -22,6 +22,7 @@ import kotlinx.coroutines.withContext
 import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import com.sanket.tools.nexpad.sensors.MotionSensorManager
+import com.sanket.tools.nexpad.share.ShareManager
 import com.sanket.tools.nexpad.ui.NavigationGraph
 import com.sanket.tools.nexpad.ui.theme.NEXPADTheme
 import com.sanket.tools.nexpad.utils.LayoutManager
@@ -55,6 +56,7 @@ class MainActivity : ComponentActivity() {
         if (intent?.action == android.hardware.usb.UsbManager.ACTION_USB_ACCESSORY_ATTACHED) {
             viewModel.checkAoaAccessory()
         }
+        handleIncomingFileIntent(intent)
 
         // Register broadcast receiver for Desktop ADB push reload
         val receiver = object : android.content.BroadcastReceiver() {
@@ -164,8 +166,24 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         if (intent.action == android.hardware.usb.UsbManager.ACTION_USB_ACCESSORY_ATTACHED) {
             viewModel.checkAoaAccessory()
+        }
+        handleIncomingFileIntent(intent)
+    }
+
+    private fun handleIncomingFileIntent(intent: android.content.Intent?) {
+        if (intent == null) return
+        if (intent.action == android.content.Intent.ACTION_VIEW && intent.data != null) {
+            val uri = intent.data ?: return
+            lifecycleScope.launch(Dispatchers.IO) {
+                ShareManager.handleIncomingFileUri(
+                    context = this@MainActivity,
+                    uri = uri,
+                    layoutManager = layoutManager
+                )
+            }
         }
     }
 

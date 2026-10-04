@@ -36,6 +36,8 @@ import com.sanket.tools.nexpad.runtime.model.SandboxInputTarget
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import com.sanket.tools.nexpad.runtime.registry.NativeComponentRegistry
 import com.sanket.tools.nexpad.ui.components.controller.ControllerElementRenderer
+import com.sanket.tools.nexpad.share.ShareManager
+import com.sanket.tools.nexpad.ui.studio.model.ButtonStudioType
 import com.sanket.tools.nexpad.ui.studio.model.resolveButtonSourceType
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
@@ -60,6 +62,12 @@ fun SandboxPreviewModal(
     var eventCount by remember { mutableIntStateOf(0) }
 
     val context = LocalContext.current
+    val isRemote = remember(componentDef.manifest.id) {
+        componentDef.manifest.id.startsWith("rc.") || resolveButtonSourceType(componentDef) == ButtonStudioType.REMOTE_COMPOSE
+    }
+    val remoteDoc = remember(componentDef.manifest.id, isRemote) {
+        if (isRemote) RemoteComponentRegistry.getInstance(context).getComponent(componentDef.manifest.id) else null
+    }
     val hapticHelper = remember(context) { com.sanket.tools.nexpad.utils.HapticFeedbackHelper(context) }
 
     val sandboxTarget = remember(hapticHelper) {
@@ -188,10 +196,6 @@ fun SandboxPreviewModal(
                         }
                     } ?: viewModel<GamepadViewModel>(context as androidx.lifecycle.ViewModelStoreOwner)
                     val isNative = NativeComponentRegistry.isNativeBuiltin(componentDef.manifest.id)
-                    val isRemote = componentDef.manifest.id.startsWith("rc.")
-                    val remoteDoc = remember(componentDef.manifest.id) {
-                        if (isRemote) RemoteComponentRegistry.getInstance(context).getComponent(componentDef.manifest.id) else null
-                    }
 
                     val controlKey = componentDef.manifest.defaultControl.uppercase()
 
@@ -441,6 +445,34 @@ fun SandboxPreviewModal(
                             Icon(Icons.Rounded.ContentCopy, contentDescription = null, modifier = Modifier.size(14.dp))
                             Spacer(Modifier.width(4.dp))
                             Text("Copy JSON", fontSize = 11.sp)
+                        }
+
+                        // Share button ONLY for NXPRC type buttons per spec
+                        if (isRemote) {
+                            OutlinedButton(
+                                onClick = {
+                                    ShareManager.shareNxprcComponent(
+                                        context = context,
+                                        componentId = componentDef.manifest.id,
+                                        componentName = componentDef.manifest.name,
+                                        document = remoteDoc
+                                    )
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Amber),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Amber.copy(alpha = 0.5f)),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                                modifier = Modifier.height(34.dp)
+                            ) {
+                                Icon(
+                                    Icons.Rounded.Share,
+                                    contentDescription = "Share .nxprc button",
+                                    tint = NeonPalette.Amber,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text("Share", color = NeonPalette.Amber, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
 
                         if (!componentDef.manifest.id.startsWith("builtin.")) {

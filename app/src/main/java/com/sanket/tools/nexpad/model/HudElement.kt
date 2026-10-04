@@ -34,7 +34,7 @@ sealed interface LayoutSkin {
         override val name: String = "Default 3D"
     }
 
-    /** Vector, SVG, or dynamic Compose plugin loaded from ComponentRegistry */
+    /** Dynamic JSON plugin loaded from ComponentRegistry */
     data class CustomComponent(val def: NxpComponentDef) : LayoutSkin {
         override val id: String = def.manifest.id
         override val name: String = def.manifest.name

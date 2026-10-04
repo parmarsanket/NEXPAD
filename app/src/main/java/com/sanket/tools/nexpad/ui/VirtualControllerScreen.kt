@@ -14,10 +14,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Upload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.Modifier
+import com.sanket.tools.nexpad.share.ShareManager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
@@ -64,12 +68,30 @@ fun VirtualControllerScreen(
     val profileToReset = profiles.firstOrNull { it.name == resetProfileName }
     val profileToEditAsPreset = profiles.firstOrNull { it.name == editAsPresetProfileName }
 
+    val importLayoutLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            val result = ShareManager.importLayoutFromUri(context, uri, layoutManager)
+            result.onSuccess { imported ->
+                Toast.makeText(context, "Imported layout '${imported.name}'!", Toast.LENGTH_SHORT).show()
+            }.onFailure { err ->
+                Toast.makeText(
+                    context,
+                    "Failed to import layout: ${err.localizedMessage ?: "Invalid .nxlayout file"}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
+
     VirtualControllerScreenContent(
         profiles = profiles,
         activeProfileName = activeProfileName,
         onBack = { navController.popBackStack() },
         onOpenButtonStudio = { navController.navigate(Route.ButtonStudio(mode = "viewer")) },
         onAddCustom = { showAddDialog = true },
+        onImportLayout = { importLayoutLauncher.launch(arrayOf("*/*")) },
         onSetActive = { profile ->
             layoutManager.setActiveProfile(profile.name)
             Toast.makeText(context, "Activated ${profile.name}", Toast.LENGTH_SHORT).show()
@@ -96,17 +118,7 @@ fun VirtualControllerScreen(
             renameProfileName = profile.name
         },
         onShare = { profile ->
-            val sendIntent = android.content.Intent().apply {
-                action = android.content.Intent.ACTION_SEND
-                putExtra(android.content.Intent.EXTRA_TITLE, "NEXPAD Layout: ${profile.name}")
-                putExtra(
-                    android.content.Intent.EXTRA_TEXT,
-                    "🎮 NEXPAD Controller Layout: ${profile.name} (${profile.positions.size} controls)\nDesigned with NEXPAD."
-                )
-                type = "text/plain"
-            }
-            val shareIntent = android.content.Intent.createChooser(sendIntent, "Share '${profile.name}'")
-            context.startActivity(shareIntent)
+            ShareManager.shareLayout(context, profile)
         },
         onReset = { profile ->
             resetProfileName = profile.name
@@ -239,6 +251,7 @@ fun VirtualControllerScreenContent(
     onBack: () -> Unit = {},
     onOpenButtonStudio: () -> Unit = {},
     onAddCustom: () -> Unit = {},
+    onImportLayout: () -> Unit = {},
     onSetActive: (LayoutProfile) -> Unit = {},
     onPlay: (LayoutProfile) -> Unit = {},
     onEditHud: (LayoutProfile) -> Unit = {},
@@ -284,6 +297,18 @@ fun VirtualControllerScreenContent(
                                 modifier = Modifier.size(20.dp)
                             )
                         }
+                        IconButton(
+                            onClick = onImportLayout,
+                            enabled = !dragging,
+                            modifier = Modifier.padding(end = 2.dp).size(36.dp)
+                        ) {
+                            Icon(
+                                Icons.Rounded.Upload,
+                                contentDescription = "Import Layout",
+                                tint = if (dragging) NeonPalette.Amber.copy(alpha = 0.4f) else NeonPalette.Amber,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                         FilledIconButton(
                             onClick = onAddCustom,
                             enabled = !dragging,
@@ -312,20 +337,34 @@ fun VirtualControllerScreenContent(
                         ) {
                             Icon(Icons.Rounded.Palette, contentDescription = null, tint = if (dragging) NeonPalette.Purple.copy(alpha = 0.4f) else NeonPalette.Purple, modifier = Modifier.size(15.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text(if (isCompact) "Studio" else "Button Studio", color = if (dragging) NeonPalette.Purple.copy(alpha = 0.4f) else NeonPalette.Purple, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            Text(if (isCompact) "" else "Button Studio", color = if (dragging) NeonPalette.Purple.copy(alpha = 0.4f) else NeonPalette.Purple, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                         }
 
-                        Button(
+                        OutlinedButton(
                             onClick = onAddCustom,
                             enabled = !dragging,
-                            colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = if (dragging) 0.3f else 0.7f)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor =NeonPalette.Cyan),
                             shape = RoundedCornerShape(10.dp),
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                             modifier = Modifier.padding(end = 8.dp).height(36.dp)
                         ) {
-                            Icon(Icons.Rounded.Add, contentDescription = null, tint = Color.Black, modifier = Modifier.size(15.dp))
+                            Icon(Icons.Rounded.Add, contentDescription = null, tint = NeonPalette.Cyan.copy(alpha = if (dragging) 0.3f else 1f), modifier = Modifier.size(15.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text(if (isCompact) "Add" else "Add Custom", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text(if (isCompact) "" else "Add Custom", color = NeonPalette.Cyan.copy(alpha = if (dragging) 0.3f else 0.7f), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                        OutlinedButton(
+                            onClick = onImportLayout,
+                            enabled = !dragging,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Amber.copy(alpha = if (dragging) 0.3f else 0.7f)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor  = NeonPalette.Amber),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            modifier = Modifier.padding(end = 8.dp).height(36.dp)
+                        ) {
+                            Icon(Icons.Rounded.Upload, contentDescription = null, tint =  NeonPalette.Amber.copy(alpha = if (dragging) 0.3f else 1f), modifier = Modifier.size(15.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(if (isCompact) "" else "Add layout", color = NeonPalette.Amber.copy(alpha = if (dragging) 0.3f else 0.7f), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
                 }

@@ -121,10 +121,10 @@ class CategoryManagerHudTest {
             return false
         }
 
-        // LB must match LB, L1, rc.bumper_lb, builtin.cyber_bumper_lb
+        // LB must match LB, L1, rc.bumper_lb, builtin.arc_lb
         assertTrue(isSkinCompatible("LB", "BUMPER", "rc.bumper_lb", "LB"))
         assertTrue(isSkinCompatible("L1", "BUMPER", "rc.my_custom_bumper", "LB"))
-        assertTrue(isSkinCompatible("", "BUMPER", "builtin.cyber_bumper_lb", "LB"))
+        assertTrue(isSkinCompatible("", "BUMPER", "builtin.arc_lb", "LB"))
         assertTrue(isSkinCompatible("Left Bumper", "BUMPER", "custom_123", "LB"))
 
         // Cross-button leakage must NEVER occur
@@ -142,10 +142,10 @@ class CategoryManagerHudTest {
         // Simulates the skins available for LB
         val dummySkins = listOf(
             TestSkin(null, "Default 3D"), // index 0 (id = null)
-            TestSkin("builtin.cyber_bumper_lb", "Tactical Bumper LB"),
-            TestSkin("builtin.neon_cyan_bumper_lb", "Neon Cyan Bumper LB"),
-            TestSkin("builtin.stealth_carbon_lb", "Stealth Carbon LB"),
-            TestSkin("builtin.crimson_mecha_lb", "Crimson Mecha LB"),
+            TestSkin("builtin.arc_lb", "Arc Bumper LB"),
+            TestSkin("builtin.led_lb", "LED Bar Bumper LB"),
+            TestSkin("builtin.peek_lb", "Peek Bumper LB"),
+            TestSkin("builtin.rib_lb", "Ribbed Bumper LB"),
             TestSkin("rc.bumper_lb", "Shoulder Bumper LB")
         )
 
@@ -166,21 +166,21 @@ class CategoryManagerHudTest {
 
         var skin: String? = null // Starts at Default 3D
 
-        // Cycle 1: 0 -> 1 (cyber_bumper_lb)
+        // Cycle 1: 0 -> 1 (arc_lb)
         skin = getNextSkinId(skin)
-        assertEquals("builtin.cyber_bumper_lb", skin)
+        assertEquals("builtin.arc_lb", skin)
 
-        // Cycle 2: 1 -> 2 (neon_cyan_bumper_lb)
+        // Cycle 2: 1 -> 2 (led_lb)
         skin = getNextSkinId(skin)
-        assertEquals("builtin.neon_cyan_bumper_lb", skin)
+        assertEquals("builtin.led_lb", skin)
 
-        // Cycle 3: 2 -> 3 (stealth_carbon_lb)
+        // Cycle 3: 2 -> 3 (peek_lb)
         skin = getNextSkinId(skin)
-        assertEquals("builtin.stealth_carbon_lb", skin)
+        assertEquals("builtin.peek_lb", skin)
 
-        // Cycle 4: 3 -> 4 (crimson_mecha_lb)
+        // Cycle 4: 3 -> 4 (rib_lb)
         skin = getNextSkinId(skin)
-        assertEquals("builtin.crimson_mecha_lb", skin)
+        assertEquals("builtin.rib_lb", skin)
 
         // Cycle 5: 4 -> 5 ("Shoulder Bumper LB")
         skin = getNextSkinId(skin)
@@ -192,11 +192,11 @@ class CategoryManagerHudTest {
 
         // Cycle 7: 0 -> 1 (CONTINUES LOOPING FOREVER, NEVER STUCK)
         skin = getNextSkinId(skin)
-        assertEquals("builtin.cyber_bumper_lb", skin)
+        assertEquals("builtin.arc_lb", skin)
 
         // Cycle 8: 1 -> 2
         skin = getNextSkinId(skin)
-        assertEquals("builtin.neon_cyan_bumper_lb", skin)
+        assertEquals("builtin.led_lb", skin)
 
         // Unknown or deleted skin cleanly resets to 0 (default)
         val resetSkin = getNextSkinId("deleted_unknown_skin_id")
