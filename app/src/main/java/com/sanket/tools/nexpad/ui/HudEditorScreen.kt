@@ -155,10 +155,12 @@ fun HudEditorScreen(
         // Auto-Dodge Coordinator for intelligent collision-avoidance overlay physics
         val defaultTopBarHeightPx = with(density) { 56.dp.toPx() }
         val defaultInspectorHeightPx = with(density) { 120.dp.toPx() }
-        val topBarAnimatable = remember { Animatable(0f) }
-        val inspectorAnimatable = remember { Animatable((screenHeightPx - defaultInspectorHeightPx).coerceAtLeast(0f)) }
+        val topBarAnimatable = remember(screenWidthPx, screenHeightPx) { Animatable(0f) }
+        val inspectorAnimatable = remember(screenWidthPx, screenHeightPx) {
+            Animatable((screenHeightPx - defaultInspectorHeightPx).coerceAtLeast(0f))
+        }
 
-        val autoDodgeCoordinator = remember {
+        val autoDodgeCoordinator = remember(screenWidthPx, screenHeightPx) {
             HudAutoDodgeCoordinator(
                 topBarAnimatable = topBarAnimatable,
                 inspectorAnimatable = inspectorAnimatable,
@@ -296,6 +298,7 @@ fun HudEditorScreen(
                         val newHeight = coordinates.size.height.toFloat()
                         if (newHeight > 0f && autoDodgeCoordinator.inspectorHeightPx != newHeight) {
                             autoDodgeCoordinator.inspectorHeightPx = newHeight
+                            autoDodgeCoordinator.animateInspector()
                         }
                     }
             )

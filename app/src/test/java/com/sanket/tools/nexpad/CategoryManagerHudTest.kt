@@ -1524,7 +1524,7 @@ class CategoryManagerHudTest {
 
     @Test
     fun testInbuildTouchpadExcludesDiscreteBoxWidget() {
-        // Layout positions with LTP and RTP using inbuild touchpads or default skins
+        // Layout positions with LTP and RTP using inbuild touchpads
         val positions = mapOf(
             "LTP" to Position(xRatio = 0.10f, yRatio = 0.75f, customComponentId = "builtin.inbuild_ltp"),
             "RTP" to Position(xRatio = 0.90f, yRatio = 0.75f, customComponentId = "builtin.inbuild_rtp"),
@@ -1536,13 +1536,34 @@ class CategoryManagerHudTest {
         }
         assertEquals(2, touchpadEntries.size)
 
-        // Filter for discrete touchpad elements: inbuild and default touchpads are ambient full-surface layers,
-        // so no discrete box UI widget should be rendered
+        // Filter for discrete touchpad elements: ONLY inbuild touchpads are ambient full-surface layers,
+        // so no discrete box UI widget is rendered for inbuild touchpads
         val discreteTouchpadEntries = touchpadEntries.filter { (_, pos) ->
             val id = pos.customComponentId
-            id != null && !id.startsWith("builtin.inbuild_") && !id.startsWith("builtin.default_")
+            id == null || !id.startsWith("builtin.inbuild_")
         }
         assertTrue("Discrete box UI must be empty for inbuild touchpads", discreteTouchpadEntries.isEmpty())
+    }
+
+    @Test
+    fun testRealisticAndNxprcTouchpadsRenderAsDiscreteBoxWidgets() {
+        // Layout positions with default RealisticTouchPad, explicit RealisticTouchPad, and NXPRC touchpad
+        val positions = mapOf(
+            "LTP" to Position(xRatio = 0.10f, yRatio = 0.75f, customComponentId = null),
+            "RTP" to Position(xRatio = 0.90f, yRatio = 0.75f, customComponentId = "builtin.default_rtp"),
+            "LTP_RC" to Position(xRatio = 0.15f, yRatio = 0.75f, customComponentId = "rc.my_touchpad")
+        )
+
+        val touchpadEntries = positions.entries.filter { (key, _) ->
+            key.startsWith("LTP", ignoreCase = true) || key.startsWith("RTP", ignoreCase = true)
+        }
+        assertEquals(3, touchpadEntries.size)
+
+        val discreteTouchpadEntries = touchpadEntries.filter { (_, pos) ->
+            val id = pos.customComponentId
+            id == null || !id.startsWith("builtin.inbuild_")
+        }
+        assertEquals("Realistic and NXPRC touchpads must be rendered as discrete widgets", 3, discreteTouchpadEntries.size)
     }
 }
 

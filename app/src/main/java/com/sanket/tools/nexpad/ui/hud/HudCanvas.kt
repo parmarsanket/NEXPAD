@@ -60,16 +60,11 @@ fun HudCanvas(
     val heightDp = screenHeightPx / density
     val responsiveScale = com.sanket.tools.nexpad.model.LayoutMetrics.calculateResponsiveScale(widthDp, heightDp)
 
-    val adjustedElements = remember(elements, screenWidthPx, screenHeightPx) {
-        com.sanket.tools.nexpad.model.LayoutMetrics.adjustHudElementsForAspectRatio(
-            elements = elements,
-            screenWidthPx = screenWidthPx,
-            screenHeightPx = screenHeightPx
-        )
-    }
+    val currentOnSelect by rememberUpdatedState(onSelect)
+    val currentOnDragDelta by rememberUpdatedState(onDragDelta)
 
     Box(modifier = modifier) {
-        adjustedElements.forEach { (controlKey, element) ->
+        elements.forEach { (controlKey, element) ->
             key(controlKey) {
                 val isSelected = selectedControl == controlKey
                 val isJoystick = controlKey.equals("LS", ignoreCase = true) ||
@@ -222,19 +217,19 @@ fun HudCanvas(
                             .matchParentSize()
                             .pointerInput(controlKey, screenWidthPx, screenHeightPx) {
                                 detectTapGestures(
-                                    onTap = { onSelect(controlKey) }
+                                    onTap = { currentOnSelect(controlKey) }
                                 )
                             }
                             .pointerInput(controlKey, screenWidthPx, screenHeightPx) {
                                 detectDragGestures(
-                                    onDragStart = { onSelect(controlKey) },
+                                    onDragStart = { currentOnSelect(controlKey) },
                                     onDragEnd = {},
                                     onDragCancel = {}
                                 ) { change, dragAmount ->
                                     change.consume()
                                     val dx = dragAmount.x / screenWidthPx
                                     val dy = dragAmount.y / screenHeightPx
-                                    onDragDelta(controlKey, dx, dy)
+                                    currentOnDragDelta(controlKey, dx, dy)
                                 }
                             }
                     )

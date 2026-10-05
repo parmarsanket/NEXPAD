@@ -58,6 +58,12 @@ class HudAutoDodgeCoordinator(
         screenHeightPx = height
         if (topBarH > 0f) topBarHeightPx = topBarH
         if (inspectorH > 0f) inspectorHeightPx = inspectorH
+        val maxOffset = (height - (if (inspectorHeightPx > 0f) inspectorHeightPx else inspectorH)).coerceAtLeast(0f)
+        if (inspectorAnimatable.value > maxOffset && maxOffset > 0f) {
+            coroutineScope.launch {
+                inspectorAnimatable.snapTo(maxOffset)
+            }
+        }
     }
 
     /**
@@ -140,9 +146,12 @@ class HudAutoDodgeCoordinator(
             }
         }
 
-        // 3. Dispatch smooth spring animations if dock targets changed
-        if (inspectorTargetChanged && !isDraggingInspector) {
-            animateInspector()
+        // 3. Dispatch smooth spring animations if dock targets changed or inspector is out of screen bounds
+        if (!isDraggingInspector) {
+            val isOutOfBounds = inspectorAnimatable.value > maxInspectorOffsetY || inspectorAnimatable.value < 0f
+            if (inspectorTargetChanged || isOutOfBounds) {
+                animateInspector()
+            }
         }
         if (topBarTargetChanged && !isDraggingTopBar) {
             animateTopBar(hasActiveElement = true)

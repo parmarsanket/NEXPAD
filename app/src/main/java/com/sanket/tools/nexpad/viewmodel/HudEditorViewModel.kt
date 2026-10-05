@@ -212,6 +212,15 @@ class HudEditorViewModel(
         _hasUnsavedChanges.value = false
     }
 
+    fun resolveElementKey(controlKey: String): String {
+        val upper = controlKey.uppercase()
+        if (elements.containsKey(upper)) return upper
+        val targetCtrl = ControlKey.fromIdentifier(controlKey)
+        return elements.keys.firstOrNull {
+            it.equals(upper, ignoreCase = true) || (targetCtrl != null && ControlKey.fromIdentifier(it) == targetCtrl)
+        } ?: upper
+    }
+
     fun selectControl(controlKey: String?) {
         if (controlKey == null) {
             _selectedControl.value = null
@@ -223,7 +232,8 @@ class HudEditorViewModel(
             if (targetCtrl != null) ControlKey.fromIdentifier(it) == targetCtrl
             else it.equals(canonical, ignoreCase = true)
         }
-        _selectedControl.value = matchingKey ?: canonical
+        val resolved = matchingKey ?: canonical
+        _selectedControl.value = resolved
     }
 
     fun updateTransform(
@@ -233,8 +243,8 @@ class HudEditorViewModel(
         scale: Float? = null,
         opacity: Float? = null
     ) {
-        val key = controlKey.uppercase()
-        val current = elements[key] ?: return
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
         val updated = current.copy(
             transform = current.transform.copy(
                 xRatio = xRatio.coerceIn(0.0f, 1.0f),
@@ -243,66 +253,66 @@ class HudEditorViewModel(
                 opacity = opacity?.coerceIn(0.1f, 1.0f) ?: current.transform.opacity
             )
         )
-        elements[key] = updated
+        elements[targetKey] = updated
         _hasUnsavedChanges.value = true
     }
 
     fun nudge(controlKey: String, dxRatio: Float, dyRatio: Float) {
-        val key = controlKey.uppercase()
-        val current = elements[key] ?: return
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
         val newX = (current.transform.xRatio + dxRatio).coerceIn(0.0f, 1.0f)
         val newY = (current.transform.yRatio + dyRatio).coerceIn(0.0f, 1.0f)
-        updateTransform(key, newX, newY)
+        updateTransform(targetKey, newX, newY)
     }
 
     fun setScale(controlKey: String, newScale: Float) {
-        val key = controlKey.uppercase()
-        val current = elements[key] ?: return
-        updateTransform(key, current.transform.xRatio, current.transform.yRatio, scale = newScale)
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
+        updateTransform(targetKey, current.transform.xRatio, current.transform.yRatio, scale = newScale)
     }
 
     fun setOpacity(controlKey: String, newOpacity: Float) {
-        val key = controlKey.uppercase()
-        val current = elements[key] ?: return
-        updateTransform(key, current.transform.xRatio, current.transform.yRatio, opacity = newOpacity)
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
+        updateTransform(targetKey, current.transform.xRatio, current.transform.yRatio, opacity = newOpacity)
     }
 
     fun setSensitivity(controlKey: String, newSensitivity: Float) {
-        val key = controlKey.uppercase()
-        val current = elements[key] ?: return
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
         val clamped = newSensitivity.coerceIn(0.5f, 4.0f)
         val updated = current.copy(
             transform = current.transform.copy(sensitivity = clamped)
         )
-        elements[key] = updated
+        elements[targetKey] = updated
         _hasUnsavedChanges.value = true
-        layoutManager.updateTouchpadSensitivity(key, clamped)
+        layoutManager.updateTouchpadSensitivity(targetKey, clamped)
     }
 
     fun setHeightScale(controlKey: String, newHeightScale: Float) {
-        val key = controlKey.uppercase()
-        val current = elements[key] ?: return
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
         val clamped = newHeightScale.coerceIn(0.5f, 2.5f)
         val updated = current.copy(
             transform = current.transform.copy(heightScale = clamped)
         )
-        elements[key] = updated
+        elements[targetKey] = updated
         _hasUnsavedChanges.value = true
     }
 
     fun toggleFlip(controlKey: String) {
-        val key = controlKey.uppercase()
-        val current = elements[key] ?: return
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
         val updated = current.copy(
             transform = current.transform.copy(isFlipped = !current.transform.isFlipped)
         )
-        elements[key] = updated
+        elements[targetKey] = updated
         _hasUnsavedChanges.value = true
     }
 
     fun toggleLock(controlKey: String) {
-        val key = controlKey.uppercase()
-        val current = elements[key] ?: return
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
         val newLocked = !current.transform.isLocked
         val newMode = if (newLocked) "LOCKED" else "BOX"
         val updated = current.copy(
@@ -311,13 +321,13 @@ class HudEditorViewModel(
                 joystickMode = newMode
             )
         )
-        elements[key] = updated
+        elements[targetKey] = updated
         _hasUnsavedChanges.value = true
     }
 
     fun setLock(controlKey: String, isLocked: Boolean) {
-        val key = controlKey.uppercase()
-        val current = elements[key] ?: return
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
         val newMode = if (isLocked) "LOCKED" else "BOX"
         val updated = current.copy(
             transform = current.transform.copy(
@@ -325,13 +335,13 @@ class HudEditorViewModel(
                 joystickMode = newMode
             )
         )
-        elements[key] = updated
+        elements[targetKey] = updated
         _hasUnsavedChanges.value = true
     }
 
     fun setJoystickMode(controlKey: String, mode: String) {
-        val key = controlKey.uppercase()
-        val current = elements[key] ?: return
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
         val isLocked = (mode == "LOCKED")
         val updated = current.copy(
             transform = current.transform.copy(
@@ -339,35 +349,35 @@ class HudEditorViewModel(
                 isLocked = isLocked
             )
         )
-        elements[key] = updated
+        elements[targetKey] = updated
         _hasUnsavedChanges.value = true
     }
 
     fun setHitboxScale(controlKey: String, scale: Float) {
-        val key = controlKey.uppercase()
-        val current = elements[key] ?: return
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
         val clamped = scale.coerceIn(1.2f, 3.0f)
         val updated = current.copy(
             transform = current.transform.copy(hitboxScale = clamped)
         )
-        elements[key] = updated
+        elements[targetKey] = updated
         _hasUnsavedChanges.value = true
     }
 
     fun setSkin(controlKey: String, skinId: String?) {
-        val key = controlKey.uppercase()
-        val current = elements[key] ?: return
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
         val updated = current.copy(skinId = skinId)
-        elements[key] = updated
+        elements[targetKey] = updated
         _hasUnsavedChanges.value = true
     }
 
     fun cycleNextSkin(controlKey: String) {
-        val key = controlKey.uppercase()
-        val available = getCompatibleSkins(key)
+        val targetKey = resolveElementKey(controlKey)
+        val available = getCompatibleSkins(targetKey)
         if (available.isEmpty()) return
 
-        val currentSkinId = elements[key]?.skinId?.takeIf { it.isNotBlank() }
+        val currentSkinId = elements[targetKey]?.skinId?.takeIf { it.isNotBlank() }
         val isCurrentDefault = currentSkinId == null || currentSkinId.startsWith("builtin.default_")
 
         val currentIndex = if (isCurrentDefault) {
@@ -384,7 +394,7 @@ class HudEditorViewModel(
         }
 
         val nextSkin = available[nextIndex]
-        setSkin(key, nextSkin.id)
+        setSkin(targetKey, nextSkin.id)
     }
 
     fun addControl(controlKey: String, skinId: String? = null) {

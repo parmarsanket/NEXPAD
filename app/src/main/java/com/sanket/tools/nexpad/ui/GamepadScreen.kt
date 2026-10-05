@@ -443,7 +443,13 @@ fun GamepadScreenContent(
         // 1. INBUILD TOUCHPAD FULL-SURFACE AMBIENT LAYER (LOWEST Z-INDEX)
         // Consumes all empty space: Center-to-Left for LTP, Center-to-Right for RTP.
         // Protected by 16.dp button exclusion buffer zone so interactive buttons have absolute priority.
-        if (ltpEntry != null) {
+        // NOTE: Only active for InbuildTouchpad ("builtin.inbuild_ltp" / "builtin.inbuild_rtp").
+        // RealisticTouchPad (default), NXPRC, and custom skins render as discrete widgets at their placed positions.
+        val inbuildLtp = ltpEntry?.takeIf { it.value.customComponentId?.startsWith("builtin.inbuild_") == true }
+        val inbuildRtp = rtpEntry?.takeIf { it.value.customComponentId?.startsWith("builtin.inbuild_") == true }
+
+        if (inbuildLtp != null) {
+            val ltpPos = inbuildLtp.value
             val leftExclusions = remember(buttonBoundsMap.toMap(), screenWidthPx) {
                 buttonBoundsMap.values.filter { it.center.x < screenWidthPx / 2f }
             }
@@ -461,12 +467,13 @@ fun GamepadScreenContent(
                     isConnected = isConnected,
                     isRgbEnabled = profile.isRgbEnabled,
                     viewModel = viewModel,
-                    sensitivity = ltpEntry.value.sensitivity
+                    sensitivity = ltpPos.sensitivity
                 )
             }
         }
 
-        if (rtpEntry != null) {
+        if (inbuildRtp != null) {
+            val rtpPos = inbuildRtp.value
             val rightExclusions = remember(buttonBoundsMap.toMap(), screenWidthPx) {
                 buttonBoundsMap.values.filter { it.center.x >= screenWidthPx / 2f }
             }
@@ -484,18 +491,17 @@ fun GamepadScreenContent(
                     isConnected = isConnected,
                     isRgbEnabled = profile.isRgbEnabled,
                     viewModel = viewModel,
-                    sensitivity = rtpEntry.value.sensitivity
+                    sensitivity = rtpPos.sensitivity
                 )
             }
         }
 
-        // Discrete Touchpad UI elements (only non-inbuild custom/vector skins, if any).
-        // Inbuild touchpads are ambient full-surface layers covering half the screen with gaming grid lines,
-        // so no discrete box UI is rendered on screen for inbuild / default touchpads.
+        // Discrete Touchpad UI elements (LTP, RTP) — Placed at lowest Z-order so user can place buttons over them.
+        // Rendered for RealisticTouchPad (default), NXPRC, and custom skins (all non-inbuild touchpads).
         val discreteTouchpadEntries = remember(touchpadEntries) {
             touchpadEntries.filter { (_, pos) ->
                 val id = pos.customComponentId
-                id != null && !id.startsWith("builtin.inbuild_") && !id.startsWith("builtin.default_")
+                id == null || !id.startsWith("builtin.inbuild_")
             }
         }
 
@@ -512,6 +518,9 @@ fun GamepadScreenContent(
                     }
                     .scale(position.scale * responsiveScale)
                     .alpha(position.opacity)
+                    .onGloballyPositioned { coordinates ->
+                        buttonBoundsMap[key] = coordinates.boundsInParent()
+                    }
             ) {
                 renderElement(key, position)
             }
