@@ -76,7 +76,8 @@ fun calculateDiscPuckOffset(pressedDirs: Set<String>): Pair<Float, Float> {
 }
 
 /**
- * Calculates the dynamic directional arc angle (0° to 360°, where 0° = UP, 90° = RIGHT, etc.).
+ * Calculates the dynamic directional arc angle (0° to 360° in Compose Canvas coordinates,
+ * where 270° = UP, 0° = RIGHT, 90° = DOWN, 180° = LEFT).
  * Returns null if no direction is currently pressed.
  */
 fun calculateDiscGateAngle(pressedDirs: Set<String>): Float? {
@@ -90,7 +91,7 @@ fun calculateDiscGateAngle(pressedDirs: Set<String>): Float? {
 
     if (vx == 0f && vy == 0f) return null
 
-    val rad = atan2(vx.toDouble(), -vy.toDouble())
+    val rad = atan2(vy.toDouble(), vx.toDouble())
     val deg = Math.toDegrees(rad).toFloat()
     return (deg + 360f) % 360f
 }

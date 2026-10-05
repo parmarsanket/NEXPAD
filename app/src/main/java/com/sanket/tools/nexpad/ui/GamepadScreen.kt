@@ -52,6 +52,7 @@ import com.sanket.tools.nexpad.ui.components.controller.RealisticMacroButton
 import com.sanket.tools.nexpad.ui.components.controller.RealisticSystemButton
 import com.sanket.tools.nexpad.ui.components.controller.RealisticTrigger
 import com.sanket.tools.nexpad.ui.components.controller.InbuildTouchpadHalf
+import com.sanket.tools.nexpad.utils.ImmersiveSystemBars
 import com.sanket.tools.nexpad.utils.LockScreenOrientation
 import kotlin.math.pow
 
@@ -118,6 +119,7 @@ fun GamepadScreen(
     LockScreenOrientation(
         ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
     )
+    ImmersiveSystemBars()
 
     // Initialize vibrator ONCE
     val vibrator = remember {

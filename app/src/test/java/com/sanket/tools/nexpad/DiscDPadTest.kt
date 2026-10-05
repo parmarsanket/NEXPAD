@@ -126,29 +126,29 @@ class DiscDPadTest {
         // Neutral: no gate angle
         assertNull(calculateDiscGateAngle(emptySet()))
 
-        // UP: 0°
-        assertEquals(0f, calculateDiscGateAngle(setOf(K.UP))!!, 0.001f)
+        // UP: 270° (12 o'clock in Compose Canvas drawArc)
+        assertEquals(270f, calculateDiscGateAngle(setOf(K.UP))!!, 0.001f)
 
-        // RIGHT: 90°
-        assertEquals(90f, calculateDiscGateAngle(setOf(K.RIGHT))!!, 0.001f)
+        // RIGHT: 0° (3 o'clock in Compose Canvas drawArc)
+        assertEquals(0f, calculateDiscGateAngle(setOf(K.RIGHT))!!, 0.001f)
 
-        // DOWN: 180°
-        assertEquals(180f, calculateDiscGateAngle(setOf(K.DOWN))!!, 0.001f)
+        // DOWN: 90° (6 o'clock in Compose Canvas drawArc)
+        assertEquals(90f, calculateDiscGateAngle(setOf(K.DOWN))!!, 0.001f)
 
-        // LEFT: 270°
-        assertEquals(270f, calculateDiscGateAngle(setOf(K.LEFT))!!, 0.001f)
+        // LEFT: 180° (9 o'clock in Compose Canvas drawArc)
+        assertEquals(180f, calculateDiscGateAngle(setOf(K.LEFT))!!, 0.001f)
 
-        // UP + RIGHT: 45°
-        assertEquals(45f, calculateDiscGateAngle(setOf(K.UP, K.RIGHT))!!, 0.001f)
+        // UP + RIGHT: 315° (top-right in Compose Canvas drawArc)
+        assertEquals(315f, calculateDiscGateAngle(setOf(K.UP, K.RIGHT))!!, 0.001f)
 
-        // DOWN + RIGHT: 135°
-        assertEquals(135f, calculateDiscGateAngle(setOf(K.DOWN, K.RIGHT))!!, 0.001f)
+        // DOWN + RIGHT: 45° (bottom-right in Compose Canvas drawArc)
+        assertEquals(45f, calculateDiscGateAngle(setOf(K.DOWN, K.RIGHT))!!, 0.001f)
 
-        // DOWN + LEFT: 225°
-        assertEquals(225f, calculateDiscGateAngle(setOf(K.DOWN, K.LEFT))!!, 0.001f)
+        // DOWN + LEFT: 135° (bottom-left in Compose Canvas drawArc)
+        assertEquals(135f, calculateDiscGateAngle(setOf(K.DOWN, K.LEFT))!!, 0.001f)
 
-        // UP + LEFT: 315°
-        assertEquals(315f, calculateDiscGateAngle(setOf(K.UP, K.LEFT))!!, 0.001f)
+        // UP + LEFT: 225° (top-left in Compose Canvas drawArc)
+        assertEquals(225f, calculateDiscGateAngle(setOf(K.UP, K.LEFT))!!, 0.001f)
     }
 
     @Test

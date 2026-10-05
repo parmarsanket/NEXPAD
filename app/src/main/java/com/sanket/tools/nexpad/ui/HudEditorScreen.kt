@@ -52,6 +52,7 @@ import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
 import com.sanket.tools.nexpad.ui.components.controller.ControllerElementRenderer
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.utils.LayoutManager
+import com.sanket.tools.nexpad.utils.ImmersiveSystemBars
 import com.sanket.tools.nexpad.utils.LockScreenOrientation
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import com.sanket.tools.nexpad.viewmodel.HudEditorViewModel
@@ -92,6 +93,7 @@ fun HudEditorScreen(
     var showUnsavedDialog by rememberSaveable { mutableStateOf(false) }
 
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
+    ImmersiveSystemBars()
 
     // Load the correct profile on entry.
     // If initialProfileName is provided (e.g. launched from VirtualController),

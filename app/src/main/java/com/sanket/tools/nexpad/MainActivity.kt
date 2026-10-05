@@ -11,9 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
@@ -39,11 +36,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        
-        // Hide system bars (Navigation bar and Status bar)
-        val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
-        windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
         
         // Draw across the camera cutout
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -115,7 +107,6 @@ class MainActivity : ComponentActivity() {
         // Setup HD Haptic Engine
         hapticFeedbackHelper = com.sanket.tools.nexpad.utils.HapticFeedbackHelper(this)
 
-        enableEdgeToEdge()
         setContent {
             NEXPADTheme {
                 Surface(
