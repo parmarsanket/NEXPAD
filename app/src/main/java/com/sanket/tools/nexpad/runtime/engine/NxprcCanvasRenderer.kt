@@ -33,7 +33,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.drawBehind
 import com.sanket.tools.nexpad.category.CategoryManager
+import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpad.runtime.model.NexPadControl
@@ -75,6 +77,73 @@ private fun createHueRotateColorMatrix(degrees: Float): ColorMatrix {
 
         0f, 0f, 0f, 1f, 0f
     ))
+}
+
+private fun rotateHue(color: Color, degrees: Float): Color {
+    val rad = Math.toRadians(degrees.toDouble()).toFloat()
+    val cosVal = cos(rad)
+    val sinVal = sin(rad)
+    val r = color.red
+    val g = color.green
+    val b = color.blue
+    val lumR = 0.213f
+    val lumG = 0.715f
+    val lumB = 0.072f
+    val newR = ((lumR + cosVal * (1f - lumR) + sinVal * (-lumR)) * r +
+            (lumG + cosVal * (-lumG) + sinVal * (-lumG)) * g +
+            (lumB + cosVal * (-lumB) + sinVal * (1f - lumB)) * b).coerceIn(0f, 1f)
+    val newG = ((lumR + cosVal * (-lumR) + sinVal * 0.143f) * r +
+            (lumG + cosVal * (1f - lumG) + sinVal * 0.140f) * g +
+            (lumB + cosVal * (-lumB) + sinVal * (-0.283f)) * b).coerceIn(0f, 1f)
+    val newB = ((lumR + cosVal * (-lumR) + sinVal * (-(1f - lumR))) * r +
+            (lumG + cosVal * (-lumG) + sinVal * 0.715f) * g +
+            (lumB + cosVal * (1f - lumB) + sinVal * 0.072f) * b).coerceIn(0f, 1f)
+    return Color(red = newR, green = newG, blue = newB, alpha = color.alpha)
+}
+
+internal fun resolveAuraColor(document: NxprcDocument): Color {
+    // 1. Explicit GlowRing layer
+    val explicitGlow = document.canvas.layers.filterIsInstance<CanvasLayer.GlowRing>().firstOrNull()
+    if (explicitGlow != null) return Color(explicitGlow.glowColor)
+
+    // 2. Outset vibrant box-shadow
+    for (layer in document.canvas.layers) {
+        if (layer is CanvasLayer.BoxLayer) {
+            val vibrantShadow = layer.boxShadows.firstOrNull { shadow ->
+                if (shadow.isInset) false else {
+                    val c = Color(shadow.color)
+                    c.alpha > 0.05f && (kotlin.math.abs(c.red - c.green) > 0.08f || kotlin.math.abs(c.green - c.blue) > 0.08f)
+                }
+            }
+            if (vibrantShadow != null) return Color(vibrantShadow.color)
+        }
+    }
+
+    // 3. Vibrant stroke
+    for (layer in document.canvas.layers) {
+        val strokeColor = when (layer) {
+            is CanvasLayer.BoxLayer -> layer.stroke?.color
+            is CanvasLayer.GradientShape -> layer.stroke?.color
+            is CanvasLayer.VectorPath -> layer.stroke?.color
+            else -> null
+        }
+        if (strokeColor != null) {
+            val c = Color(strokeColor)
+            if (c.alpha > 0.1f && (kotlin.math.abs(c.red - c.green) > 0.08f || kotlin.math.abs(c.green - c.blue) > 0.08f)) {
+                return c
+            }
+        }
+    }
+
+    // 4. ControlKey accentColorArgb
+    val controlKey = ControlKey.fromIdentifier(document.manifest.defaultControl)
+        ?: ControlKey.fromIdentifier(document.manifest.id)
+    if (controlKey != null) {
+        return Color(controlKey.accentColorArgb)
+    }
+
+    // 5. Default Emerald Fallback
+    return Color(0xFF4ADE80L)
 }
 
 private fun createNxprcColorFilter(filter: FilterDef): ColorFilter? {
@@ -339,6 +408,24 @@ fun NxprcCanvasRenderer(
     val isDpadCross = (assignedControl is NexPadControl.Button && (assignedControl.key.equals(NexpadKeys.DPAD, ignoreCase = true) || document.manifest.defaultControl.equals(NexpadKeys.DPAD, ignoreCase = true))) ||
             (document.manifest.category.equals(NexpadKeys.DPAD, ignoreCase = true) && assignedControl is NexPadControl.Button && assignedControl.key.equals(NexpadKeys.DPAD, ignoreCase = true)) ||
             (document.manifest.id.contains("dpad_cross", ignoreCase = true))
+
+    val isTouchpad = document.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
+            document.manifest.defaultControl.uppercase() in listOf(NexpadKeys.LTP, NexpadKeys.RTP)
+
+    val rawAuraColor = remember(document) { resolveAuraColor(document) }
+    val auraBloomAlpha = if (isInteractive) {
+        animateFloatAsState(
+            targetValue = if (isPressed) 0.90f else 0.40f,
+            animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+            label = "nxprc_aura_alpha"
+        ).value
+    } else 0.40f
+
+    val stickMaxR = widthDp * 0.28f * density
+    val stickDispFraction = (hypot(thumbOffsetX, thumbOffsetY) / stickMaxR.coerceAtLeast(1f)).coerceIn(0f, 1f)
+    val stickBloomAlpha = if (isInteractive) {
+        0.40f + 0.55f * stickDispFraction
+    } else 0.40f
 
     val gestureModifier = if (!isInteractive) {
         Modifier
@@ -630,11 +717,99 @@ fun NxprcCanvasRenderer(
     Box(
         modifier = modifier
             .size(widthDp.dp, heightDp.dp)
+            .drawBehind {
+                val activeHueDegrees = if (hasDynamicTracks && trackHueAngle != 0f) {
+                    trackHueAngle
+                } else if (needsRgbCycle) {
+                    rgbHueAngle
+                } else 0f
+
+                val baseColor = if (activeHueDegrees != 0f) {
+                    rotateHue(rawAuraColor, activeHueDegrees)
+                } else rawAuraColor
+
+                val effAlpha = if (needsPulse) {
+                    pulseAlpha * (if (isStick) stickBloomAlpha else auraBloomAlpha)
+                } else {
+                    if (isStick) stickBloomAlpha else auraBloomAlpha
+                }
+
+                if (isStick && !isTouchpad) {
+                    val maxR = size.minDimension * 0.35f
+                    val dispFraction = (hypot(thumbOffsetX, thumbOffsetY) / maxR).coerceIn(0f, 1f)
+
+                    // 1. Base socket containment bloom
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                baseColor.copy(alpha = effAlpha * 0.35f),
+                                baseColor.copy(alpha = effAlpha * 0.12f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension * 0.55f
+                        ),
+                        radius = size.minDimension * 0.55f,
+                        center = center
+                    )
+
+                    // 2. Deflection comet-plume trailing wake aura
+                    val plumeCenter = Offset(
+                        center.x + thumbOffsetX * 0.65f,
+                        center.y + thumbOffsetY * 0.65f
+                    )
+                    val plumeRadius = size.minDimension * (0.40f + 0.35f * dispFraction)
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colorStops = arrayOf(
+                                0.00f to (if (dispFraction > 0.4f) Color.White else baseColor).copy(alpha = effAlpha * (0.50f + 0.35f * dispFraction)),
+                                0.40f to baseColor.copy(alpha = effAlpha * (0.30f + 0.25f * dispFraction)),
+                                1.00f to Color.Transparent
+                            ),
+                            center = plumeCenter,
+                            radius = plumeRadius
+                        ),
+                        radius = plumeRadius,
+                        center = plumeCenter
+                    )
+
+                    // 3. High-energy thumbstick cap beacon bloom
+                    val capPos = Offset(center.x + thumbOffsetX, center.y + thumbOffsetY)
+                    val capBloomR = (size.minDimension * 0.32f) + (size.minDimension * 0.08f * dispFraction)
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                baseColor.copy(alpha = effAlpha * 0.45f),
+                                baseColor.copy(alpha = effAlpha * 0.15f),
+                                Color.Transparent
+                            ),
+                            center = capPos,
+                            radius = capBloomR
+                        ),
+                        radius = capBloomR,
+                        center = capPos
+                    )
+                } else {
+                    // Unclipped button / trigger / dpad atmospheric socket bloom
+                    val auraRadius = size.minDimension * 0.85f
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                baseColor.copy(alpha = effAlpha * 0.45f),
+                                baseColor.copy(alpha = effAlpha * 0.18f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = auraRadius
+                        ),
+                        radius = auraRadius,
+                        center = center
+                    )
+                }
+            }
             .then(gestureModifier),
         contentAlignment = Alignment.Center
     ) {
-        val isTouchpad = document.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
-                document.manifest.defaultControl.uppercase() in listOf(NexpadKeys.LTP, NexpadKeys.RTP)
         val isTwoStageStick = isStick && !isTouchpad && document.canvas.capLayerIndices.isNotEmpty()
         val capIndicesSet = remember(document) { if (isTouchpad) emptySet() else document.canvas.capLayerIndices.toSet() }
 
@@ -1043,7 +1218,7 @@ fun NxprcCanvasRenderer(
                             val glowColor = Color(layer.glowColor)
                             val buttonRadius = minOf(buttonW, buttonH) / 2f
                             val blurPx = (layer.blurRadius * pxPerUnit).coerceAtLeast(8f * scaleRatio)
-                            val totalRadius = (buttonRadius + blurPx).coerceAtMost(size.minDimension / 2f)
+                            val totalRadius = buttonRadius + blurPx
                             val innerRatio = (buttonRadius / totalRadius).coerceIn(0.1f, 0.85f)
                             drawCircle(
                                 brush = Brush.radialGradient(
