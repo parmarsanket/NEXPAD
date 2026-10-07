@@ -178,12 +178,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onTrimMemory(level: Int) {
-        super.onTrimMemory(level)
-        if (level >= TRIM_MEMORY_RUNNING_LOW || level >= TRIM_MEMORY_UI_HIDDEN) {
-            com.sanket.tools.nexpad.runtime.engine.clearNxprcRenderCaches()
-        }
-    }
 
     override fun onDestroy() {
         com.sanket.tools.nexpad.runtime.engine.clearNxprcRenderCaches()
