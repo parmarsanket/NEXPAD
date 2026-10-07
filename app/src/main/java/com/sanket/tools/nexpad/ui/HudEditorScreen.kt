@@ -92,6 +92,12 @@ fun HudEditorScreen(
     // Unsaved-changes guard: show dialog before leaving if edits exist
     var showUnsavedDialog by rememberSaveable { mutableStateOf(false) }
 
+    DisposableEffect(Unit) {
+        onDispose {
+            com.sanket.tools.nexpad.runtime.engine.clearNxprcRenderCaches()
+        }
+    }
+
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
     ImmersiveSystemBars()
 

@@ -2,6 +2,7 @@ package com.sanket.tools.nexpad.runtime.plugin
 
 import android.content.Context
 import android.net.Uri
+import com.sanket.tools.nexpad.nxprc.NxprcDocument
 import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,6 +37,7 @@ class RemoteComponentRegistry private constructor(private val context: Context) 
 
     @Synchronized
     fun reloadAll() {
+        com.sanket.tools.nexpad.runtime.engine.clearNxprcRenderCaches()
         val internalFiles = remoteDir.listFiles { file -> file.extension.lowercase() == "nxprc" } ?: emptyArray()
         val externalFiles = externalRemoteDir?.listFiles { file -> file.extension.lowercase() == "nxprc" } ?: emptyArray()
         val currentFiles = (internalFiles.toList() + externalFiles.toList()).distinctBy { it.name }
@@ -96,14 +98,12 @@ class RemoteComponentRegistry private constructor(private val context: Context) 
                 return Result.failure(IllegalArgumentException("Manifest name cannot be blank"))
             }
 
-            val safeFileName = doc.manifest.id.replace(Regex("[^a-zA-Z0-9_.-]"), "_") + ".nxprc"
-            val targetFile = File(remoteDir, safeFileName)
-            targetFile.writeBytes(bytes)
+            val savedDoc = saveDocumentNonDestructively(doc, bytes)
 
             reloadAll()
             ComponentRegistry.getInstance(context).reloadAll()
 
-            Result.success(doc)
+            Result.success(savedDoc)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -117,20 +117,59 @@ class RemoteComponentRegistry private constructor(private val context: Context) 
             val decodeResult = NxprcDocument.decodeFromBytes(bytes)
             val doc = decodeResult.getOrThrow()
 
-            val safeFileName = doc.manifest.id.replace(Regex("[^a-zA-Z0-9_.-]"), "_") + ".nxprc"
-            val targetFile = File(remoteDir, safeFileName)
-            targetFile.writeBytes(bytes)
+            val savedDoc = saveDocumentNonDestructively(doc, bytes)
 
             reloadAll()
             ComponentRegistry.getInstance(context).reloadAll()
 
-            Result.success(doc)
+            Result.success(savedDoc)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
+    private fun saveDocumentNonDestructively(doc: NxprcDocument, rawBytes: ByteArray): NxprcDocument {
+        val baseId = doc.manifest.id
+        val safeFileName = baseId.replace(Regex("[^a-zA-Z0-9_.-]"), "_") + ".nxprc"
+        val targetFile = File(remoteDir, safeFileName)
+
+        if (!targetFile.exists() || targetFile.readBytes().contentEquals(rawBytes)) {
+            targetFile.writeBytes(rawBytes)
+            return doc
+        }
+
+        // File exists with different content; save as non-colliding variant
+        val rawName = doc.manifest.name
+        val baseName = rawName.replace(Regex("""\s*\(Variant\s*\d+\)"""), "").trim()
+        var variantNum = 2
+        var candidateId = "${baseId}_v$variantNum"
+        var candidateSafe = candidateId.replace(Regex("[^a-zA-Z0-9_.-]"), "_") + ".nxprc"
+        var candidateFile = File(remoteDir, candidateSafe)
+
+        while (candidateFile.exists()) {
+            if (candidateFile.readBytes().contentEquals(rawBytes)) {
+                return doc
+            }
+            variantNum++
+            candidateId = "${baseId}_v$variantNum"
+            candidateSafe = candidateId.replace(Regex("[^a-zA-Z0-9_.-]"), "_") + ".nxprc"
+            candidateFile = File(remoteDir, candidateSafe)
+        }
+
+        val finalName = "$baseName (Variant $variantNum)"
+        val updatedDoc = doc.copy(
+            manifest = doc.manifest.copy(
+                id = candidateId,
+                name = finalName
+            )
+        )
+        val finalBytes = NxprcDocument.encodeToBytes(updatedDoc)
+        candidateFile.writeBytes(finalBytes)
+        return updatedDoc
+    }
+
     fun deleteComponent(id: String): Boolean {
+        com.sanket.tools.nexpad.runtime.engine.clearNxprcRenderCaches()
         val safeFileName = id.replace(Regex("[^a-zA-Z0-9_.-]"), "_") + ".nxprc"
         val targetFile = File(remoteDir, safeFileName)
         val internalDeleted = if (targetFile.exists()) targetFile.delete() else false

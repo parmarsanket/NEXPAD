@@ -2,6 +2,7 @@ package com.sanket.tools.nexpad.runtime.engine
 
 import android.content.Context
 import android.os.Build
+import android.util.LruCache
 import androidx.compose.animation.core.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.Canvas
@@ -288,15 +289,25 @@ fun NxprcCanvasRenderer(
     val trigger = assignedControl as? NexPadControl.Trigger
     val pullProgress = remember { androidx.compose.animation.core.Animatable(0f) }
 
-    val needsPulse = isInteractive && document.animations.idleType == "PULSE"
-    val needsRotation = isInteractive && document.animations.idleType == "ROTATE"
-    val needsRgbCycle = isInteractive && document.animations.idleType == "RGB_CYCLE"
+    val isButtonActive = isInteractive && (
+        isPressed ||
+        (isStick && (thumbOffsetX != 0f || thumbOffsetY != 0f)) ||
+        (isTrigger && pullProgress.value > 0.01f)
+    )
 
-    val infiniteTransition = if (isInteractive && (needsPulse || needsRotation || needsRgbCycle || document.animations.tracks.isNotEmpty() || (rumbleIntensity > 0f && document.animations.enableGameRumble))) {
-        rememberInfiniteTransition(label = "nxprc_idle")
+    val needsPulse = isInteractive && isButtonActive && (document.animations.idleType == "PULSE" || document.canvas.layers.any { it is CanvasLayer.GlowRing && it.pulseEnabled })
+    val needsRotation = isInteractive && isButtonActive && document.animations.idleType == "ROTATE"
+    val needsRgbCycle = isInteractive && isButtonActive && document.animations.idleType == "RGB_CYCLE"
+
+    val hasDynamicTracks = isInteractive && isButtonActive && document.animations.tracks.isNotEmpty()
+    val trackDurationMs = document.animations.tracks.firstOrNull()?.durationMs ?: document.animations.idleDurationMs
+    val rumbleActive = isInteractive && rumbleIntensity > 0f && document.animations.enableGameRumble
+
+    val infiniteTransition = if (needsPulse || needsRotation || needsRgbCycle || hasDynamicTracks || rumbleActive) {
+        rememberInfiniteTransition(label = "nxprc_active")
     } else null
 
-    val pulseAlpha = if (needsPulse && infiniteTransition != null) {
+    val pulseAlphaState = if (needsPulse && infiniteTransition != null) {
         infiniteTransition.animateFloat(
             initialValue = 0.4f,
             targetValue = 1.0f,
@@ -305,10 +316,10 @@ fun NxprcCanvasRenderer(
                 repeatMode = RepeatMode.Reverse
             ),
             label = "pulse"
-        ).value
-    } else 0.8f
+        )
+    } else null
 
-    val rotateAngle = if (needsRotation && infiniteTransition != null) {
+    val rotateAngleState = if (needsRotation && infiniteTransition != null) {
         infiniteTransition.animateFloat(
             initialValue = 0f,
             targetValue = 360f,
@@ -317,10 +328,10 @@ fun NxprcCanvasRenderer(
                 repeatMode = RepeatMode.Restart
             ),
             label = "rotate"
-        ).value
-    } else 0f
+        )
+    } else null
 
-    val rgbHueAngle = if (needsRgbCycle && infiniteTransition != null) {
+    val rgbHueAngleState = if (needsRgbCycle && infiniteTransition != null) {
         infiniteTransition.animateFloat(
             initialValue = 0f,
             targetValue = 360f,
@@ -329,14 +340,12 @@ fun NxprcCanvasRenderer(
                 repeatMode = RepeatMode.Restart
             ),
             label = "rgb_cycle"
-        ).value
-    } else 0f
+        )
+    } else null
 
     // Dynamic Universal Timeline Track Sampling
-    val hasDynamicTracks = isInteractive && document.animations.tracks.isNotEmpty()
-    val trackDurationMs = document.animations.tracks.firstOrNull()?.durationMs ?: document.animations.idleDurationMs
 
-    val timelineProgress = if (hasDynamicTracks && infiniteTransition != null) {
+    val timelineProgressState = if (hasDynamicTracks && infiniteTransition != null) {
         infiniteTransition.animateFloat(
             initialValue = 0f,
             targetValue = 1f,
@@ -345,40 +354,39 @@ fun NxprcCanvasRenderer(
                 repeatMode = RepeatMode.Restart
             ),
             label = "timeline_progress"
-        ).value
-    } else 0f
+        )
+    } else null
 
     val trackScale = if (hasDynamicTracks) {
         document.animations.tracks.firstOrNull { it.property == AnimatedProperty.SCALE }
-            ?.let { evaluateAnimationTrack(it, timelineProgress) } ?: 1f
+            ?.let { evaluateAnimationTrack(it, timelineProgressState?.value ?: 0f) } ?: 1f
     } else 1f
 
     val trackRotation = if (hasDynamicTracks) {
         document.animations.tracks.firstOrNull { it.property == AnimatedProperty.ROTATION }
-            ?.let { evaluateAnimationTrack(it, timelineProgress) } ?: 0f
+            ?.let { evaluateAnimationTrack(it, timelineProgressState?.value ?: 0f) } ?: 0f
     } else 0f
 
     val trackOpacity = if (hasDynamicTracks) {
         document.animations.tracks.firstOrNull { it.property == AnimatedProperty.OPACITY }
-            ?.let { evaluateAnimationTrack(it, timelineProgress) } ?: 1f
+            ?.let { evaluateAnimationTrack(it, timelineProgressState?.value ?: 0f) } ?: 1f
     } else 1f
 
     val trackTranslateX = if (hasDynamicTracks) {
         document.animations.tracks.firstOrNull { it.property == AnimatedProperty.TRANSLATE_X }
-            ?.let { evaluateAnimationTrack(it, timelineProgress) } ?: 0f
+            ?.let { evaluateAnimationTrack(it, timelineProgressState?.value ?: 0f) } ?: 0f
     } else 0f
 
     val trackTranslateY = if (hasDynamicTracks) {
         document.animations.tracks.firstOrNull { it.property == AnimatedProperty.TRANSLATE_Y }
-            ?.let { evaluateAnimationTrack(it, timelineProgress) } ?: 0f
+            ?.let { evaluateAnimationTrack(it, timelineProgressState?.value ?: 0f) } ?: 0f
     } else 0f
 
     val trackHueAngle = if (hasDynamicTracks) {
         document.animations.tracks.firstOrNull { it.property == AnimatedProperty.HUE_ROTATE }
-            ?.let { evaluateAnimationTrack(it, timelineProgress) } ?: 0f
+            ?.let { evaluateAnimationTrack(it, timelineProgressState?.value ?: 0f) } ?: 0f
     } else 0f
 
-    val rumbleActive = isInteractive && rumbleIntensity > 0f && document.animations.enableGameRumble
     val rumblePhase = if (rumbleActive && infiniteTransition != null) {
         infiniteTransition.animateFloat(
             initialValue = 0f,
@@ -720,18 +728,19 @@ fun NxprcCanvasRenderer(
             .drawBehind {
                 val activeHueDegrees = if (hasDynamicTracks && trackHueAngle != 0f) {
                     trackHueAngle
-                } else if (needsRgbCycle) {
-                    rgbHueAngle
+                } else if (needsRgbCycle && isButtonActive) {
+                    rgbHueAngleState?.value ?: 0f
                 } else 0f
 
                 val baseColor = if (activeHueDegrees != 0f) {
                     rotateHue(rawAuraColor, activeHueDegrees)
                 } else rawAuraColor
 
-                val effAlpha = if (needsPulse) {
-                    pulseAlpha * (if (isStick) stickBloomAlpha else auraBloomAlpha)
+                val effAlpha = if (isButtonActive) {
+                    (if (needsPulse) (pulseAlphaState?.value ?: 1.0f) else 1.0f) * (if (isStick) stickBloomAlpha else auraBloomAlpha)
                 } else {
-                    if (isStick) stickBloomAlpha else auraBloomAlpha
+                    // Subtle static ambient aura when idle (zero frame redraws, keeps mobile cool)
+                    (if (isStick) stickBloomAlpha else auraBloomAlpha) * 0.35f
                 }
 
                 if (isStick && !isTouchpad) {
@@ -828,7 +837,7 @@ fun NxprcCanvasRenderer(
                     val activeHueAngle = if (hasDynamicTracks && trackHueAngle != 0f) {
                         trackHueAngle
                     } else if (needsRgbCycle) {
-                        rgbHueAngle
+                        rgbHueAngleState?.value ?: 0f
                     } else 0f
 
                     if (activeHueAngle != 0f) {
@@ -868,23 +877,32 @@ fun NxprcCanvasRenderer(
                     rootShapeType == "OCTAGON" -> 8
                     else -> 0
                 }
-                val rootClipShape = Path().apply {
-                    if (primaryBox != null && primaryBox.pathData.isNotBlank()) {
-                        addPath(buildScaledPath(primaryBox.pathData, Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH)))
-                    } else if (rootEffectiveSides >= 3) {
-                        addPath(buildRegularPolygonPath(rootEffectiveSides, Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH)))
-                    } else if (rootIsOval) {
-                        addOval(Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH))
-                    } else {
-                        addRoundRect(
-                            androidx.compose.ui.geometry.RoundRect(
-                                rect = Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH),
-                                topLeft = CornerRadius(rootTl, rootTl),
-                                topRight = CornerRadius(rootTr, rootTr),
-                                bottomRight = CornerRadius(rootBr, rootBr),
-                                bottomLeft = CornerRadius(rootBl, rootBl)
+                val clipKey = RootClipKey(
+                    primaryBox?.pathData ?: "",
+                    rootEffectiveSides,
+                    rootIsOval,
+                    buttonLeft, buttonTop, buttonW, buttonH,
+                    rootTl, rootTr, rootBr, rootBl
+                )
+                val rootClipShape = getCachedRootClipShape(clipKey) {
+                    Path().apply {
+                        if (primaryBox != null && primaryBox.pathData.isNotBlank()) {
+                            addPath(buildScaledPath(primaryBox.pathData, Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH)))
+                        } else if (rootEffectiveSides >= 3) {
+                            addPath(buildRegularPolygonPath(rootEffectiveSides, Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH)))
+                        } else if (rootIsOval) {
+                            addOval(Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH))
+                        } else {
+                            addRoundRect(
+                                androidx.compose.ui.geometry.RoundRect(
+                                    rect = Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH),
+                                    topLeft = CornerRadius(rootTl, rootTl),
+                                    topRight = CornerRadius(rootTr, rootTr),
+                                    bottomRight = CornerRadius(rootBr, rootBr),
+                                    bottomLeft = CornerRadius(rootBl, rootBl)
+                                )
                             )
-                        )
+                        }
                     }
                 }
 
@@ -900,7 +918,7 @@ fun NxprcCanvasRenderer(
                             val boxTop = buttonTop + transform.offsetYRatio * buttonH
 
                             val pivot = Offset(boxLeft + boxWidth * transform.originXRatio, boxTop + boxHeight * transform.originYRatio)
-                            val rotAngle = if (transform.isRotating && document.animations.idleType == "ROTATE") rotateAngle else transform.rotationDegrees
+                            val rotAngle = if (transform.isRotating && document.animations.idleType == "ROTATE") (rotateAngleState?.value ?: 0f) else transform.rotationDegrees
 
                             val isPolygon = layer.shapeType.uppercase() == "POLYGON" || layer.shapeType.uppercase() == "PATH" || layer.pathData.isNotBlank() || layer.polygonSides >= 3
                             val isHexagon = layer.shapeType.uppercase() == "HEXAGON" || layer.polygonSides == 6
@@ -925,16 +943,10 @@ fun NxprcCanvasRenderer(
                                 Path()
                             }
 
-                            val variablePath = Path().apply {
-                                addRoundRect(
-                                    androidx.compose.ui.geometry.RoundRect(
-                                        rect = Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight),
-                                        topLeft = CornerRadius(tl, tl),
-                                        topRight = CornerRadius(tr, tr),
-                                        bottomRight = CornerRadius(br, br),
-                                        bottomLeft = CornerRadius(bl, bl)
-                                    )
-                                )
+                            val variablePath = if (hasVariableCorners) {
+                                getCachedVariablePath(boxLeft, boxTop, boxWidth, boxHeight, tl, tr, br, bl)
+                            } else {
+                                Path()
                             }
 
                             val needsOffscreen = effects.compositingStrategy == com.sanket.tools.nexpad.nxprc.CompositingStrategy.OFFSCREEN ||
@@ -946,29 +958,9 @@ fun NxprcCanvasRenderer(
                                     if (rotAngle != 0f) rotate(rotAngle, pivot = pivot)
                                     if (transform.scaleX != 1f || transform.scaleY != 1f) scale(scaleX = transform.scaleX, scaleY = transform.scaleY, pivot = pivot)
                                 }) {
-                                    val ovalClipPath = Path().apply {
-                                        addOval(Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight))
-                                    }
+                                    val ovalClipPath = getCachedOvalPath(Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight))
 
-                                    val createBoxPath = { l: Float, t: Float, w: Float, h: Float, tlR: Float, trR: Float, brR: Float, blR: Float, oval: Boolean ->
-                                        Path().apply {
-                                            if (oval) {
-                                                addOval(Rect(l, t, l + w, t + h))
-                                            } else {
-                                                addRoundRect(
-                                                    androidx.compose.ui.geometry.RoundRect(
-                                                        rect = Rect(l, t, l + w, t + h),
-                                                        topLeft = CornerRadius(tlR, tlR),
-                                                        topRight = CornerRadius(trR, trR),
-                                                        bottomRight = CornerRadius(brR, brR),
-                                                        bottomLeft = CornerRadius(blR, blR)
-                                                    )
-                                                )
-                                            }
-                                        }.asAndroidPath()
-                                    }
-
-                                    val elementPath = createBoxPath(boxLeft, boxTop, boxWidth, boxHeight, tl, tr, br, bl, isOval)
+                                    val elementPath = getOrCreateBoxPath(boxLeft, boxTop, boxWidth, boxHeight, tl, tr, br, bl, isOval)
 
                                     // 1. Outset box shadows (drawn bottom-to-top per CSS spec)
                                     layer.boxShadows.filter { !it.isInset }.reversed().forEach { shadow ->
@@ -989,17 +981,14 @@ fun NxprcCanvasRenderer(
                                         val sBr = (br + spreadPx).coerceAtLeast(0f)
                                         val sBl = (bl + spreadPx).coerceAtLeast(0f)
 
-                                        val shadowPath = createBoxPath(sLeft, sTop, sWidth, sHeight, sTl, sTr, sBr, sBl, isOval)
+                                        val shadowPath = getOrCreateBoxPath(sLeft, sTop, sWidth, sHeight, sTl, sTr, sBr, sBl, isOval)
 
                                         val nativeCanvas = drawContext.canvas.nativeCanvas
-                                        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                                        val paint = localShadowPaint.get()!!.apply {
+                                            reset()
+                                            isAntiAlias = true
                                             color = shadowColorArgb
-                                            if (blurPx > 0f) {
-                                                maskFilter = android.graphics.BlurMaskFilter(
-                                                    (blurPx / 2f).coerceAtLeast(0.5f),
-                                                    android.graphics.BlurMaskFilter.Blur.NORMAL
-                                                )
-                                            }
+                                            maskFilter = if (blurPx > 0f) getCachedBlurMaskFilter(blurPx / 2f) else null
                                         }
 
                                         nativeCanvas.save()
@@ -1126,30 +1115,16 @@ fun NxprcCanvasRenderer(
                                             val hBr = (br - spreadPx).coerceAtLeast(0f)
                                             val hBl = (bl - spreadPx).coerceAtLeast(0f)
 
-                                            val holePath = createBoxPath(hLeft, hTop, hWidth, hHeight, hTl, hTr, hBr, hBl, isOval)
                                             val margin = blurPx * 3f + kotlin.math.abs(sOffset.x) + kotlin.math.abs(sOffset.y) + 32f
-
-                                            val insetPath = android.graphics.Path().apply {
-                                                fillType = android.graphics.Path.FillType.EVEN_ODD
-                                                addRect(
-                                                    boxLeft - margin,
-                                                    boxTop - margin,
-                                                    boxLeft + boxWidth + margin,
-                                                    boxTop + boxHeight + margin,
-                                                    android.graphics.Path.Direction.CW
-                                                )
-                                                addPath(holePath)
-                                            }
+                                            val holeKey = BoxPathKey(hLeft, hTop, hWidth, hHeight, hTl, hTr, hBr, hBl, isOval)
+                                            val insetPath = getOrCreateInsetPath(boxLeft, boxTop, boxWidth, boxHeight, margin, holeKey)
 
                                             val nativeCanvas = drawContext.canvas.nativeCanvas
-                                            val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                                            val paint = localShadowPaint.get()!!.apply {
+                                                reset()
+                                                isAntiAlias = true
                                                 color = shadowColorArgb
-                                                if (blurPx > 0f) {
-                                                    maskFilter = android.graphics.BlurMaskFilter(
-                                                        (blurPx / 2f).coerceAtLeast(0.5f),
-                                                        android.graphics.BlurMaskFilter.Blur.NORMAL
-                                                    )
-                                                }
+                                                maskFilter = if (blurPx > 0f) getCachedBlurMaskFilter(blurPx / 2f) else null
                                             }
 
                                             nativeCanvas.save()
@@ -1214,7 +1189,15 @@ fun NxprcCanvasRenderer(
                             )
                         }
                         is CanvasLayer.GlowRing -> {
-                            val alpha = if (layer.pulseEnabled && document.animations.idleType == "PULSE") pulseAlpha else 0.8f
+                            val alpha = if (isButtonActive) {
+                                if (layer.pulseEnabled && document.animations.idleType == "PULSE") {
+                                    pulseAlphaState?.value ?: 1.0f
+                                } else {
+                                    1.0f
+                                }
+                            } else {
+                                0.35f
+                            }
                             val glowColor = Color(layer.glowColor)
                             val buttonRadius = minOf(buttonW, buttonH) / 2f
                             val blurPx = (layer.blurRadius * pxPerUnit).coerceAtLeast(8f * scaleRatio)
@@ -1359,21 +1342,7 @@ fun NxprcCanvasRenderer(
                         }
                         is CanvasLayer.InnerShadow -> {
                             val createInnerPath = { l: Float, t: Float, w: Float, h: Float, rad: Float, oval: Boolean ->
-                                Path().apply {
-                                    if (oval) {
-                                        addOval(Rect(l, t, l + w, t + h))
-                                    } else {
-                                        addRoundRect(
-                                            androidx.compose.ui.geometry.RoundRect(
-                                                rect = Rect(l, t, l + w, t + h),
-                                                topLeft = CornerRadius(rad, rad),
-                                                topRight = CornerRadius(rad, rad),
-                                                bottomRight = CornerRadius(rad, rad),
-                                                bottomLeft = CornerRadius(rad, rad)
-                                            )
-                                        )
-                                    }
-                                }.asAndroidPath()
+                                getOrCreateBoxPath(l, t, w, h, rad, rad, rad, rad, oval)
                             }
 
                             val elementPath = createInnerPath(buttonLeft, buttonTop, buttonW, buttonH, rootTl, rootIsOval)
@@ -1391,29 +1360,15 @@ fun NxprcCanvasRenderer(
 
                                 val hLeft = buttonLeft + sOffset.x
                                 val hTop = buttonTop + sOffset.y
-                                val holePath = createInnerPath(hLeft, hTop, buttonW, buttonH, rootTl, rootIsOval)
                                 val margin = blurPx * 3f + kotlin.math.abs(sOffset.y) + 32f
+                                val holeKey = BoxPathKey(hLeft, hTop, buttonW, buttonH, rootTl, rootTl, rootTl, rootTl, rootIsOval)
+                                val insetPath = getOrCreateInsetPath(buttonLeft, buttonTop, buttonW, buttonH, margin, holeKey)
 
-                                val insetPath = android.graphics.Path().apply {
-                                    fillType = android.graphics.Path.FillType.EVEN_ODD
-                                    addRect(
-                                        buttonLeft - margin,
-                                        buttonTop - margin,
-                                        buttonLeft + buttonW + margin,
-                                        buttonTop + buttonH + margin,
-                                        android.graphics.Path.Direction.CW
-                                    )
-                                    addPath(holePath)
-                                }
-
-                                val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                                val paint = localShadowPaint.get()!!.apply {
+                                    reset()
+                                    isAntiAlias = true
                                     this.color = shadowColorArgb
-                                    if (blurPx > 0f) {
-                                        maskFilter = android.graphics.BlurMaskFilter(
-                                            (blurPx / 2f).coerceAtLeast(0.5f),
-                                            android.graphics.BlurMaskFilter.Blur.NORMAL
-                                        )
-                                    }
+                                    maskFilter = if (blurPx > 0f) getCachedBlurMaskFilter(blurPx / 2f) else null
                                 }
 
                                 nativeCanvas.save()
@@ -1470,7 +1425,7 @@ fun NxprcCanvasRenderer(
                                 buttonTop + buttonH * (layer.offsetYRatio + layer.scale)
                             )
                             val brush = createBrush(layer.fill, targetRect.size, targetRect.topLeft)
-                            val angle = if (layer.isRotating && document.animations.idleType == "ROTATE") rotateAngle else layer.rotationDegrees
+                            val angle = if (layer.isRotating && document.animations.idleType == "ROTATE") (rotateAngleState?.value ?: 0f) else layer.rotationDegrees
                             val vectorPath = if (layer.pathData.isNotBlank()) {
                                 buildScaledPath(layer.pathData, targetRect)
                             } else null
@@ -1728,7 +1683,246 @@ private fun sampleGradientColor(colors: List<Long>, stops: List<Float>, pos: Flo
     )
 }
 
-private fun createBrush(fill: FillBrush, size: Size, topLeft: Offset = Offset.Zero): Brush {
+// --- LRU RENDER CACHES & POOLS (Zero-allocation memoization) ---
+
+internal data class ScaledPathKey(
+    val svgData: String,
+    val left: Float,
+    val top: Float,
+    val width: Float,
+    val height: Float
+)
+
+internal data class BaseSvgPathEntry(
+    val path: android.graphics.Path,
+    val bounds: android.graphics.RectF,
+    val isNormalized100: Boolean
+)
+
+internal data class PolygonKey(
+    val sides: Int,
+    val left: Float,
+    val top: Float,
+    val width: Float,
+    val height: Float
+)
+
+internal data class BoxPathKey(
+    val l: Float,
+    val t: Float,
+    val w: Float,
+    val h: Float,
+    val tlR: Float,
+    val trR: Float,
+    val brR: Float,
+    val blR: Float,
+    val isOval: Boolean
+)
+
+internal data class InsetPathKey(
+    val boxLeft: Float,
+    val boxTop: Float,
+    val boxWidth: Float,
+    val boxHeight: Float,
+    val margin: Float,
+    val holeKey: BoxPathKey
+)
+
+internal data class BrushKey(
+    val fill: FillBrush,
+    val width: Float,
+    val height: Float,
+    val left: Float,
+    val top: Float
+)
+
+internal data class VariablePathKey(
+    val l: Float,
+    val t: Float,
+    val w: Float,
+    val h: Float,
+    val tl: Float,
+    val tr: Float,
+    val br: Float,
+    val bl: Float
+)
+
+internal data class RootClipKey(
+    val pathData: String,
+    val effectiveSides: Int,
+    val isOval: Boolean,
+    val buttonLeft: Float,
+    val buttonTop: Float,
+    val buttonW: Float,
+    val buttonH: Float,
+    val tl: Float,
+    val tr: Float,
+    val br: Float,
+    val bl: Float
+)
+
+private val scaledPathCache = LruCache<ScaledPathKey, Path>(512)
+private val baseSvgPathCache = LruCache<String, BaseSvgPathEntry>(256)
+private val polygonPathCache = LruCache<PolygonKey, Path>(128)
+private val androidBoxPathCache = LruCache<BoxPathKey, android.graphics.Path>(256)
+private val insetPathCache = LruCache<InsetPathKey, android.graphics.Path>(128)
+private val brushCache = LruCache<BrushKey, Brush>(512)
+private val blurFilterCache = LruCache<Int, android.graphics.BlurMaskFilter>(64)
+private val variablePathCache = LruCache<VariablePathKey, Path>(256)
+private val rootClipShapeCache = LruCache<RootClipKey, Path>(128)
+private val ovalClipPathCache = LruCache<Rect, Path>(128)
+
+internal val localShadowPaint = ThreadLocal.withInitial {
+    android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+}
+
+internal fun getCachedBlurMaskFilter(blurRadiusPx: Float): android.graphics.BlurMaskFilter? {
+    if (blurRadiusPx <= 0f) return null
+    val key = (blurRadiusPx * 10f).toInt().coerceAtLeast(1)
+    synchronized(blurFilterCache) {
+        val cached = blurFilterCache.get(key)
+        if (cached != null) return cached
+        val created = android.graphics.BlurMaskFilter(
+            blurRadiusPx.coerceAtLeast(0.5f),
+            android.graphics.BlurMaskFilter.Blur.NORMAL
+        )
+        blurFilterCache.put(key, created)
+        return created
+    }
+}
+
+internal fun getOrCreateBoxPath(
+    l: Float, t: Float, w: Float, h: Float,
+    tlR: Float, trR: Float, brR: Float, blR: Float,
+    isOval: Boolean
+): android.graphics.Path {
+    val key = BoxPathKey(l, t, w, h, tlR, trR, brR, blR, isOval)
+    synchronized(androidBoxPathCache) {
+        val cached = androidBoxPathCache.get(key)
+        if (cached != null) return cached
+    }
+    val path = android.graphics.Path().apply {
+        if (isOval) {
+            addOval(android.graphics.RectF(l, t, l + w, t + h), android.graphics.Path.Direction.CW)
+        } else {
+            val radii = floatArrayOf(tlR, tlR, trR, trR, brR, brR, blR, blR)
+            addRoundRect(android.graphics.RectF(l, t, l + w, t + h), radii, android.graphics.Path.Direction.CW)
+        }
+    }
+    synchronized(androidBoxPathCache) {
+        androidBoxPathCache.put(key, path)
+    }
+    return path
+}
+
+internal fun getOrCreateInsetPath(
+    boxLeft: Float, boxTop: Float, boxWidth: Float, boxHeight: Float,
+    margin: Float,
+    holeKey: BoxPathKey
+): android.graphics.Path {
+    val key = InsetPathKey(boxLeft, boxTop, boxWidth, boxHeight, margin, holeKey)
+    synchronized(insetPathCache) {
+        val cached = insetPathCache.get(key)
+        if (cached != null) return cached
+    }
+    val holePath = getOrCreateBoxPath(holeKey.l, holeKey.t, holeKey.w, holeKey.h, holeKey.tlR, holeKey.trR, holeKey.brR, holeKey.blR, holeKey.isOval)
+    val insetPath = android.graphics.Path().apply {
+        fillType = android.graphics.Path.FillType.EVEN_ODD
+        addRect(
+            boxLeft - margin,
+            boxTop - margin,
+            boxLeft + boxWidth + margin,
+            boxTop + boxHeight + margin,
+            android.graphics.Path.Direction.CW
+        )
+        addPath(holePath)
+    }
+    synchronized(insetPathCache) {
+        insetPathCache.put(key, insetPath)
+    }
+    return insetPath
+}
+
+internal fun getCachedVariablePath(
+    l: Float, t: Float, w: Float, h: Float,
+    tl: Float, tr: Float, br: Float, bl: Float
+): Path {
+    val key = VariablePathKey(l, t, w, h, tl, tr, br, bl)
+    synchronized(variablePathCache) {
+        val cached = variablePathCache.get(key)
+        if (cached != null) return cached
+    }
+    val created = Path().apply {
+        addRoundRect(
+            androidx.compose.ui.geometry.RoundRect(
+                rect = Rect(l, t, l + w, t + h),
+                topLeft = CornerRadius(tl, tl),
+                topRight = CornerRadius(tr, tr),
+                bottomRight = CornerRadius(br, br),
+                bottomLeft = CornerRadius(bl, bl)
+            )
+        )
+    }
+    synchronized(variablePathCache) {
+        variablePathCache.put(key, created)
+    }
+    return created
+}
+
+internal fun getCachedRootClipShape(
+    key: RootClipKey,
+    builder: () -> Path
+): Path {
+    synchronized(rootClipShapeCache) {
+        val cached = rootClipShapeCache.get(key)
+        if (cached != null) return cached
+    }
+    val created = builder()
+    synchronized(rootClipShapeCache) {
+        rootClipShapeCache.put(key, created)
+    }
+    return created
+}
+
+internal fun getCachedOvalPath(rect: Rect): Path {
+    synchronized(ovalClipPathCache) {
+        val cached = ovalClipPathCache.get(rect)
+        if (cached != null) return cached
+    }
+    val created = Path().apply { addOval(rect) }
+    synchronized(ovalClipPathCache) {
+        ovalClipPathCache.put(rect, created)
+    }
+    return created
+}
+
+fun clearNxprcRenderCaches() {
+    synchronized(scaledPathCache) { scaledPathCache.evictAll() }
+    synchronized(baseSvgPathCache) { baseSvgPathCache.evictAll() }
+    synchronized(polygonPathCache) { polygonPathCache.evictAll() }
+    synchronized(androidBoxPathCache) { androidBoxPathCache.evictAll() }
+    synchronized(insetPathCache) { insetPathCache.evictAll() }
+    synchronized(brushCache) { brushCache.evictAll() }
+    synchronized(blurFilterCache) { blurFilterCache.evictAll() }
+    synchronized(variablePathCache) { variablePathCache.evictAll() }
+    synchronized(rootClipShapeCache) { rootClipShapeCache.evictAll() }
+    synchronized(ovalClipPathCache) { ovalClipPathCache.evictAll() }
+}
+
+internal fun createBrush(fill: FillBrush, size: Size, topLeft: Offset = Offset.Zero): Brush {
+    val key = BrushKey(fill, size.width, size.height, topLeft.x, topLeft.y)
+    synchronized(brushCache) {
+        val cached = brushCache.get(key)
+        if (cached != null) return cached
+    }
+    val created = computeBrush(fill, size, topLeft)
+    synchronized(brushCache) {
+        brushCache.put(key, created)
+    }
+    return created
+}
+
+private fun computeBrush(fill: FillBrush, size: Size, topLeft: Offset = Offset.Zero): Brush {
     return when (fill) {
         is FillBrush.Solid -> SolidColor(Color(fill.color))
         is FillBrush.LinearGradient -> {
@@ -1816,25 +2010,52 @@ internal fun buildScaledPath(svgData: String, targetRect: Rect): Path {
     val trimmed = svgData.trim()
     if (trimmed.isBlank()) return Path()
 
+    val key = ScaledPathKey(trimmed, targetRect.left, targetRect.top, targetRect.width, targetRect.height)
+    synchronized(scaledPathCache) {
+        val cached = scaledPathCache.get(key)
+        if (cached != null) return cached
+    }
+
+    val calculated = computeScaledPath(trimmed, targetRect)
+    synchronized(scaledPathCache) {
+        scaledPathCache.put(key, calculated)
+    }
+    return calculated
+}
+
+private fun computeScaledPath(trimmed: String, targetRect: Rect): Path {
     // 1. Android core graphics PathParser with exact Matrix transformation
     try {
-        val androidPath = androidx.core.graphics.PathParser.createPathFromPathData(trimmed)
-        val bounds = android.graphics.RectF()
-        androidPath.computeBounds(bounds, true)
-        if (bounds.width() > 0.001f && bounds.height() > 0.001f) {
-            val isNormalized100 = bounds.left >= -5f && bounds.top >= -5f && bounds.right <= 105f && bounds.bottom <= 105f
+        val baseEntry = synchronized(baseSvgPathCache) {
+            baseSvgPathCache.get(trimmed)
+        } ?: run {
+            val androidPath = androidx.core.graphics.PathParser.createPathFromPathData(trimmed)
+            val bounds = android.graphics.RectF()
+            androidPath.computeBounds(bounds, true)
+            if (bounds.width() > 0.001f && bounds.height() > 0.001f) {
+                val isNormalized100 = bounds.left >= -5f && bounds.top >= -5f && bounds.right <= 105f && bounds.bottom <= 105f
+                val entry = BaseSvgPathEntry(androidPath, bounds, isNormalized100)
+                synchronized(baseSvgPathCache) {
+                    baseSvgPathCache.put(trimmed, entry)
+                }
+                entry
+            } else null
+        }
+
+        if (baseEntry != null) {
+            val transformedPath = android.graphics.Path(baseEntry.path)
             val matrix = android.graphics.Matrix().apply {
-                if (isNormalized100) {
+                if (baseEntry.isNormalized100) {
                     postScale(targetRect.width / 100f, targetRect.height / 100f)
                     postTranslate(targetRect.left, targetRect.top)
                 } else {
-                    postTranslate(-bounds.left, -bounds.top)
-                    postScale(targetRect.width / bounds.width(), targetRect.height / bounds.height())
+                    postTranslate(-baseEntry.bounds.left, -baseEntry.bounds.top)
+                    postScale(targetRect.width / baseEntry.bounds.width(), targetRect.height / baseEntry.bounds.height())
                     postTranslate(targetRect.left, targetRect.top)
                 }
             }
-            androidPath.transform(matrix)
-            return androidPath.asComposePath()
+            transformedPath.transform(matrix)
+            return transformedPath.asComposePath()
         }
     } catch (_: Throwable) {
         // Fall back to manual token parser below
@@ -1874,8 +2095,14 @@ internal fun buildScaledPath(svgData: String, targetRect: Rect): Path {
 }
 
 internal fun buildRegularPolygonPath(sides: Int, targetRect: Rect): Path {
+    if (sides < 3) return Path()
+    val key = PolygonKey(sides, targetRect.left, targetRect.top, targetRect.width, targetRect.height)
+    synchronized(polygonPathCache) {
+        val cached = polygonPathCache.get(key)
+        if (cached != null) return cached
+    }
+
     val path = Path()
-    if (sides < 3) return path
     val cx = targetRect.center.x
     val cy = targetRect.center.y
     val rx = targetRect.width / 2f
@@ -1890,5 +2117,9 @@ internal fun buildRegularPolygonPath(sides: Int, targetRect: Rect): Path {
         if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
     }
     path.close()
+
+    synchronized(polygonPathCache) {
+        polygonPathCache.put(key, path)
+    }
     return path
 }

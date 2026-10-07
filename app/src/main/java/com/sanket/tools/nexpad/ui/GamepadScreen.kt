@@ -79,6 +79,7 @@ fun GamepadScreen(
     DisposableEffect(Unit) {
         onDispose {
             backToast?.cancel()
+            com.sanket.tools.nexpad.runtime.engine.clearNxprcRenderCaches()
         }
     }
 
