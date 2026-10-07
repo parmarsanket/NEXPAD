@@ -50,7 +50,7 @@ fun StudioGridCard(
     isAppliedToActiveProfile: Boolean = false,
     isSelectedInBuilder: Boolean = false,
     mode: ButtonStudioMode = ButtonStudioMode.MANAGE,
-    scale: Float = 0.50f, // <-- Adjust size from 0.0f to 1.0f according to your preference
+    scale: Float = 0.56f, // Calibrated 30% smaller (0.80f * 0.70f) for Button Studio tile preview
     onClick: () -> Unit,
     onToggleSelectInBuilder: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -179,7 +179,8 @@ fun StudioGridCard(
                             isConnected = false,
                             inputTarget = NoOpInputTarget,
                             isInteractive = false,
-                            labelStyle = labelStyle
+                            labelStyle = labelStyle,
+                            sizingPolicy = com.sanket.tools.nexpad.runtime.engine.NxprcSizingPolicy.StudioGrid(scale = 0.70f)
                         )
                     } else {
                         val isStickCategory = def.manifest.category.equals("JOYSTICK", ignoreCase = true) ||

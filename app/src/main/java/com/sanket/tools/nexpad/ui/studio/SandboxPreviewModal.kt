@@ -282,8 +282,8 @@ fun SandboxPreviewModal(
                                 assignedControl = control,
                                 isConnected = true,
                                 inputTarget = sandboxTarget,
-                                overrideSizeDp = 140,
-                                labelStyle = labelStyle
+                                labelStyle = labelStyle,
+                                sizingPolicy = com.sanket.tools.nexpad.runtime.engine.NxprcSizingPolicy.StudioModal(targetSizeDp = 115, scale = 0.85f)
                             )
                         } else {
                             val isStickCategory = componentDef.manifest.category.equals("JOYSTICK", ignoreCase = true) ||

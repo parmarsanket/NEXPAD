@@ -80,7 +80,8 @@ fun ControllerElementRenderer(
                 isConnected = isConnected,
                 inputTarget = viewModel.asInputTarget(onVibrate),
                 rumbleIntensity = rumbleIntensity,
-                labelStyle = labelStyle
+                labelStyle = labelStyle,
+                sizingPolicy = com.sanket.tools.nexpad.runtime.engine.NxprcSizingPolicy.GamepadHud
             )
             return
         }

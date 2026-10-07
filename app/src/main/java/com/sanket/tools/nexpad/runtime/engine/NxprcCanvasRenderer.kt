@@ -3,6 +3,7 @@ package com.sanket.tools.nexpad.runtime.engine
 import android.content.Context
 import android.os.Build
 import android.util.LruCache
+import kotlin.math.roundToInt
 import androidx.compose.animation.core.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.Canvas
@@ -195,6 +196,36 @@ internal fun evaluateAnimationTrack(track: AnimationTrack, progress: Float): Flo
 }
 
 /**
+ * Decoupled Sizing Policy for Nxprc rendering:
+ * Guarantees distinct, non-interfering dimensions between Game Screen HUD and Studio Previews.
+ */
+sealed interface NxprcSizingPolicy {
+    /**
+     * Standard Game Screen Controller HUD sizing:
+     * Calibrated at 0.82x so a 96dp Nxprc button renders at 78.7dp ~ 80dp,
+     * maintaining exact 1:1 physical parity with native 80dp controller buttons (RealisticButton).
+     */
+    object GamepadHud : NxprcSizingPolicy
+
+    /**
+     * Button Studio Catalog Grid tile preview:
+     * Calibrated at 0.70x with tile bounds for safe display within Studio cards.
+     */
+    data class StudioGrid(val scale: Float = 0.70f) : NxprcSizingPolicy
+
+    /**
+     * Button Studio Interactive Test Sandbox Modal preview:
+     * Calibrated specifically for the sandbox testing arena (115dp).
+     */
+    data class StudioModal(val targetSizeDp: Int = 115, val scale: Float = 0.85f) : NxprcSizingPolicy
+
+    /**
+     * Custom sizing.
+     */
+    data class Custom(val scale: Float = 1.0f, val sizeDp: Int? = null) : NxprcSizingPolicy
+}
+
+/**
  * Unlimited Vector Canvas & Animation Renderer for .nxprc packages.
  * Play Store 100% compliant: Pure native Compose vector canvas rendering
  * with photorealistic 3D lighting, specular gloss reflections, and microsecond input latency.
@@ -209,7 +240,8 @@ fun NxprcCanvasRenderer(
     overrideSizeDp: Int? = null,
     rumbleIntensity: Float = 0f,
     isInteractive: Boolean = true,
-    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX
+    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
+    sizingPolicy: NxprcSizingPolicy = NxprcSizingPolicy.GamepadHud
 ) {
     var isPressed by remember { mutableStateOf(false) }
     val currentInputTarget by rememberUpdatedState(inputTarget)
@@ -401,8 +433,42 @@ fun NxprcCanvasRenderer(
     val rumbleShakeX = if (rumbleActive) (sin(rumblePhase * 3f) * 3.5f * rumbleIntensity * document.animations.rumbleIntensity) else 0f
     val rumbleShakeY = if (rumbleActive) (cos(rumblePhase * 4f) * 3.5f * rumbleIntensity * document.animations.rumbleIntensity) else 0f
 
-    val widthDp = overrideSizeDp ?: document.manifest.widthDp
-    val heightDp = overrideSizeDp ?: document.manifest.heightDp
+    val (rawWidthDp, rawHeightDp, renderScale) = remember(document, overrideSizeDp, sizingPolicy) {
+        when (sizingPolicy) {
+            is NxprcSizingPolicy.GamepadHud -> {
+                val w = (overrideSizeDp ?: document.manifest.widthDp).toFloat()
+                val h = (overrideSizeDp ?: document.manifest.heightDp).toFloat()
+                // Gamepad HUD: calibrated at 0.82x so a 96dp Nxprc button renders at 78.7dp ~ 80dp (exact parity with RealisticButton 80dp)
+                Triple(w, h, 0.82f)
+            }
+            is NxprcSizingPolicy.StudioGrid -> {
+                val w = (overrideSizeDp ?: document.manifest.widthDp).toFloat()
+                val h = (overrideSizeDp ?: document.manifest.heightDp).toFloat()
+                Triple(w, h, sizingPolicy.scale)
+            }
+            is NxprcSizingPolicy.StudioModal -> {
+                val s = (overrideSizeDp ?: sizingPolicy.targetSizeDp).toFloat()
+                Triple(s, s, sizingPolicy.scale)
+            }
+            is NxprcSizingPolicy.Custom -> {
+                val w = (sizingPolicy.sizeDp ?: overrideSizeDp ?: document.manifest.widthDp).toFloat()
+                val h = (sizingPolicy.sizeDp ?: overrideSizeDp ?: document.manifest.heightDp).toFloat()
+                Triple(w, h, sizingPolicy.scale)
+            }
+        }
+    }
+
+    val canvasOutsets = document.canvas.canvasOutsets
+    val hasAuraOrOutsets = document.canvas.layers.any { it is CanvasLayer.GlowRing } ||
+            canvasOutsets.left > 0f || canvasOutsets.right > 0f || canvasOutsets.top > 0f || canvasOutsets.bottom > 0f
+    val maxOutsetVal = maxOf(canvasOutsets.left, canvasOutsets.right, canvasOutsets.top, canvasOutsets.bottom, 0f)
+
+    // Aura boundary headroom: expand the Composable's layout boundary so hardware RenderNode textures
+    // never clip radial auras and glow rings into a boxy square.
+    val auraHeadroomDp = if (hasAuraOrOutsets) maxOf(maxOutsetVal * 1.15f, 24f).roundToInt() else 0
+
+    val widthDp = (rawWidthDp + auraHeadroomDp * 2).roundToInt()
+    val heightDp = (rawHeightDp + auraHeadroomDp * 2).roundToInt()
 
     val buttonControl = remember(assignedControl) {
         when (assignedControl) {
@@ -429,7 +495,7 @@ fun NxprcCanvasRenderer(
         ).value
     } else 0.40f
 
-    val stickMaxR = widthDp * 0.28f * density
+    val stickMaxR = rawWidthDp * 0.28f * density
     val stickDispFraction = (hypot(thumbOffsetX, thumbOffsetY) / stickMaxR.coerceAtLeast(1f)).coerceIn(0f, 1f)
     val stickBloomAlpha = if (isInteractive) {
         0.40f + 0.55f * stickDispFraction
@@ -708,19 +774,31 @@ fun NxprcCanvasRenderer(
             }
         }
         else -> {
-            Modifier.pointerInput(document.manifest.id, assignedControl) {
+            Modifier.pointerInput(document.manifest.id, assignedControl, rawWidthDp, rawHeightDp, density) {
                 awaitEachGesture {
-                    awaitFirstDown(requireUnconsumed = false)
-                    isPressed = true
-                    currentInputTarget.onButtonPress(buttonControl)
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val center = Offset(size.width / 2f, size.height / 2f)
+                    val btnRad = (minOf(rawWidthDp, rawHeightDp) / 2f * density) * renderScale * 1.25f
+                    val dist = hypot(down.position.x - center.x, down.position.y - center.y)
+                    if (dist <= btnRad) {
+                        isPressed = true
+                        currentInputTarget.onButtonPress(buttonControl)
 
-                    val upOrCancel = waitForUpOrCancellation()
-                    isPressed = false
-                    currentInputTarget.onButtonRelease(buttonControl)
+                        val upOrCancel = waitForUpOrCancellation()
+                        isPressed = false
+                        currentInputTarget.onButtonRelease(buttonControl)
+                    }
                 }
             }
         }
     }
+
+    val primaryBox = remember(document) { document.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>().firstOrNull() }
+    val primaryShape = remember(document) { document.canvas.layers.filterIsInstance<CanvasLayer.GradientShape>().firstOrNull() }
+    val rootShapeType = remember(primaryBox, primaryShape) {
+        (primaryBox?.shapeType?.uppercase() ?: primaryShape?.shapeType?.uppercase() ?: "ROUNDED_RECT")
+    }
+    val rootIsOval = rootShapeType == "OVAL"
 
     Box(
         modifier = modifier
@@ -799,21 +877,44 @@ fun NxprcCanvasRenderer(
                         center = capPos
                     )
                 } else {
-                    // Unclipped button / trigger / dpad atmospheric socket bloom
-                    val auraRadius = size.minDimension * 0.85f
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                baseColor.copy(alpha = effAlpha * 0.45f),
-                                baseColor.copy(alpha = effAlpha * 0.18f),
-                                Color.Transparent
+                    // Shape-aware atmospheric socket bloom: matches button geometry and stays safely within container bounds
+                    val auraRadius = size.minDimension * 0.48f
+                    if (rootIsOval) {
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    baseColor.copy(alpha = effAlpha * 0.45f),
+                                    baseColor.copy(alpha = effAlpha * 0.18f),
+                                    Color.Transparent
+                                ),
+                                center = center,
+                                radius = auraRadius
                             ),
-                            center = center,
-                            radius = auraRadius
-                        ),
-                        radius = auraRadius,
-                        center = center
-                    )
+                            radius = auraRadius,
+                            center = center
+                        )
+                    } else {
+                        val cornerRadius = (primaryBox?.cornerRadiusTopLeft ?: primaryShape?.cornerRadius ?: 16f) * (size.minDimension / document.canvas.viewBoxWidth.coerceAtLeast(1f))
+                        val aspect = size.height / size.width.coerceAtLeast(1f)
+                        drawRoundRect(
+                            color = baseColor.copy(alpha = effAlpha * 0.12f),
+                            topLeft = Offset(center.x - auraRadius, center.y - auraRadius * aspect),
+                            size = Size(auraRadius * 2f, auraRadius * 2f * aspect),
+                            cornerRadius = CornerRadius(cornerRadius * 1.5f, cornerRadius * 1.5f)
+                        )
+                        drawRoundRect(
+                            color = baseColor.copy(alpha = effAlpha * 0.25f),
+                            topLeft = Offset(center.x - auraRadius * 0.82f, center.y - auraRadius * 0.82f * aspect),
+                            size = Size(auraRadius * 1.64f, auraRadius * 1.64f * aspect),
+                            cornerRadius = CornerRadius(cornerRadius * 1.3f, cornerRadius * 1.3f)
+                        )
+                        drawRoundRect(
+                            color = baseColor.copy(alpha = effAlpha * 0.40f),
+                            topLeft = Offset(center.x - auraRadius * 0.65f, center.y - auraRadius * 0.65f * aspect),
+                            size = Size(auraRadius * 1.30f, auraRadius * 1.30f * aspect),
+                            cornerRadius = CornerRadius(cornerRadius, cornerRadius)
+                        )
+                    }
                 }
             }
             .then(gestureModifier),
@@ -847,11 +948,15 @@ fun NxprcCanvasRenderer(
             contentAlignment = Alignment.Center
         ) {
             Canvas(modifier = Modifier.size(widthDp.dp, heightDp.dp)) {
-                // Match the CSS document viewBox instead of applying a fixed
-                // 90% scale. This keeps Android and Desktop previews aligned.
+                // Safe headroom calculation: Outset shadows, glow rings, and press glows
+                // require padding around the button body so they never collide with the
+                // Canvas hardware texture boundary and get clipped into squares.
                 val viewBoxW = document.canvas.viewBoxWidth.coerceAtLeast(1f)
                 val viewBoxH = document.canvas.viewBoxHeight.coerceAtLeast(1f)
-                val viewScale = minOf(size.width / viewBoxW, size.height / viewBoxH)
+
+                // Base scale maps viewBox to button design dimensions, scaled per sizing policy.
+                val baseScale = minOf((rawWidthDp * density) / viewBoxW, (rawHeightDp * density) / viewBoxH)
+                val viewScale = baseScale * renderScale
                 val buttonW = viewBoxW * viewScale
                 val buttonH = viewBoxH * viewScale
                 val buttonLeft = (size.width - buttonW) / 2f
@@ -963,7 +1068,11 @@ fun NxprcCanvasRenderer(
                                     val elementPath = getOrCreateBoxPath(boxLeft, boxTop, boxWidth, boxHeight, tl, tr, br, bl, isOval)
 
                                     // 1. Outset box shadows (drawn bottom-to-top per CSS spec)
+                                    val glowRing = document.canvas.layers.filterIsInstance<CanvasLayer.GlowRing>().firstOrNull()
                                     layer.boxShadows.filter { !it.isInset }.reversed().forEach { shadow ->
+                                        if (glowRing != null && shadow.color == glowRing.glowColor && shadow.blurRadius == glowRing.blurRadius) {
+                                            return@forEach
+                                        }
                                         val shadowOffset = Offset(shadow.offsetX * pxPerUnit, shadow.offsetY * pxPerUnit)
                                         val sColor = Color(shadow.color)
                                         val spreadPx = shadow.spreadRadius * pxPerUnit
@@ -1201,22 +1310,53 @@ fun NxprcCanvasRenderer(
                             val glowColor = Color(layer.glowColor)
                             val buttonRadius = minOf(buttonW, buttonH) / 2f
                             val blurPx = (layer.blurRadius * pxPerUnit).coerceAtLeast(8f * scaleRatio)
-                            val totalRadius = buttonRadius + blurPx
+                            val totalRadius = (buttonRadius + blurPx).coerceAtMost(size.minDimension * 0.49f)
                             val innerRatio = (buttonRadius / totalRadius).coerceIn(0.1f, 0.85f)
-                            drawCircle(
-                                brush = Brush.radialGradient(
-                                    colorStops = arrayOf(
-                                        0.0f to glowColor.copy(alpha = alpha * 0.35f),
-                                        innerRatio to glowColor.copy(alpha = alpha * 0.28f),
-                                        (innerRatio + (1f - innerRatio) * 0.5f) to glowColor.copy(alpha = alpha * 0.10f),
-                                        1.0f to Color.Transparent
+                            if (rootIsOval) {
+                                drawCircle(
+                                    brush = Brush.radialGradient(
+                                        colorStops = arrayOf(
+                                            0.0f to glowColor.copy(alpha = alpha * 0.35f),
+                                            innerRatio to glowColor.copy(alpha = alpha * 0.28f),
+                                            (innerRatio + (1f - innerRatio) * 0.5f) to glowColor.copy(alpha = alpha * 0.10f),
+                                            1.0f to Color.Transparent
+                                        ),
+                                        center = centerOffset,
+                                        radius = totalRadius
                                     ),
-                                    center = centerOffset,
-                                    radius = totalRadius
-                                ),
-                                radius = totalRadius,
-                                center = centerOffset
-                            )
+                                    radius = totalRadius,
+                                    center = centerOffset
+                                )
+                            } else {
+                                val nativeCanvas = drawContext.canvas.nativeCanvas
+                                val glowPaint = localShadowPaint.get()!!.apply {
+                                    reset()
+                                    isAntiAlias = true
+                                    color = glowColor.copy(alpha = alpha * 0.35f).toArgb()
+                                    maskFilter = getCachedBlurMaskFilter(blurPx * 0.6f)
+                                }
+                                val glowPath = if (rootIsPolygon) {
+                                    rootClipShape.asAndroidPath()
+                                } else {
+                                    getOrCreateBoxPath(
+                                        buttonLeft - blurPx * 0.4f,
+                                        buttonTop - blurPx * 0.4f,
+                                        buttonW + blurPx * 0.8f,
+                                        buttonH + blurPx * 0.8f,
+                                        rootTl + blurPx * 0.4f,
+                                        rootTr + blurPx * 0.4f,
+                                        rootBr + blurPx * 0.4f,
+                                        rootBl + blurPx * 0.4f,
+                                        false
+                                    )
+                                }
+                                nativeCanvas.save()
+                                try {
+                                    nativeCanvas.drawPath(glowPath, glowPaint)
+                                } finally {
+                                    nativeCanvas.restore()
+                                }
+                            }
                         }
                         is CanvasLayer.GradientShape -> {
                             val transform = layer.effectiveTransform
@@ -1473,7 +1613,8 @@ fun NxprcCanvasRenderer(
         val textLayers = remember(document) { document.canvas.layers.filterIsInstance<CanvasLayer.TextLayer>() }
         val viewBox = document.canvas.viewBoxWidth.coerceAtLeast(1f)
         val viewBoxH = document.canvas.viewBoxHeight.coerceAtLeast(1f)
-        val viewScale = minOf(widthDp.toFloat() / viewBox, heightDp.toFloat() / viewBoxH)
+        val baseScale = minOf(rawWidthDp / viewBox, rawHeightDp / viewBoxH)
+        val viewScale = baseScale * renderScale
         val buttonW = viewBox * viewScale
         val buttonH = viewBoxH * viewScale
         val scaleFactor = viewScale
