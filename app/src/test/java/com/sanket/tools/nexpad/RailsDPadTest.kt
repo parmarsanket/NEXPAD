@@ -5,9 +5,9 @@ import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.model.NexpadKeys as K
 import com.sanket.tools.nexpad.runtime.registry.DefaultNativeFamily
 import com.sanket.tools.nexpad.runtime.registry.NativeComponentRegistry
-import com.sanket.tools.nexpad.ui.components.controller.calculateRailsPuckOffset
-import com.sanket.tools.nexpad.ui.components.controller.calculateRailsTilt
-import com.sanket.tools.nexpad.ui.components.controller.resolveRailsTouch
+import com.sanket.tools.nexpad.ui.components.controller.dpad.calculateRailsPuckOffset
+import com.sanket.tools.nexpad.ui.components.controller.dpad.calculateRailsTilt
+import com.sanket.tools.nexpad.ui.components.controller.dpad.resolveRailsTouch
 import com.sanket.tools.nexpad.ui.studio.model.ButtonStudioType
 import com.sanket.tools.nexpad.ui.studio.model.resolveButtonSourceType
 import org.junit.Assert.assertEquals

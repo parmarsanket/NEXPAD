@@ -38,14 +38,17 @@ import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.CategoryType
 import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
-import com.sanket.tools.nexpad.ui.components.controller.PlayStationSymbol
-import com.sanket.tools.nexpad.ui.components.controller.getPlayStationShape
-import com.sanket.tools.nexpad.ui.components.controller.ButtonPerspectiveDirection
-import com.sanket.tools.nexpad.ui.components.controller.BottomHorizonClipShape
-import com.sanket.tools.nexpad.ui.components.controller.TopHorizonClipShape
-import com.sanket.tools.nexpad.ui.components.controller.LeftHorizonClipShape
-import com.sanket.tools.nexpad.ui.components.controller.RightHorizonClipShape
-import com.sanket.tools.nexpad.ui.components.controller.drawSystemIcon
+import com.sanket.tools.nexpad.ui.components.controller.abxy.PlayStationSymbol
+import com.sanket.tools.nexpad.ui.components.controller.abxy.getPlayStationShape
+import com.sanket.tools.nexpad.ui.components.controller.abxy.ButtonPerspectiveDirection
+import com.sanket.tools.nexpad.ui.components.controller.abxy.BottomHorizonClipShape
+import com.sanket.tools.nexpad.ui.components.controller.abxy.TopHorizonClipShape
+import com.sanket.tools.nexpad.ui.components.controller.abxy.LeftHorizonClipShape
+import com.sanket.tools.nexpad.ui.components.controller.abxy.RightHorizonClipShape
+import com.sanket.tools.nexpad.ui.components.controller.system.drawSystemIcon
+import com.sanket.tools.nexpad.ui.components.controller.special.StaticGyroToggleButton
+import com.sanket.tools.nexpad.ui.components.controller.special.StaticRealisticTouchPad
+import com.sanket.tools.nexpad.ui.components.controller.dpad.createContouredCrossPath
 import androidx.compose.ui.unit.IntOffset
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import androidx.compose.ui.geometry.Rect
@@ -94,7 +97,7 @@ fun StaticDefaultButtonPreview(
     val displayLabel = CategoryManager.getLabelForStyle(key, labelStyle)
 
     if (key.equals("GYRO", ignoreCase = true)) {
-        com.sanket.tools.nexpad.ui.components.controller.StaticGyroToggleButton(
+        StaticGyroToggleButton(
             isRgbEnabled = true,
             labelStyle = labelStyle,
             modifier = modifier
@@ -2209,7 +2212,7 @@ private fun StaticRealisticTouchPad(
     isLeft: Boolean,
     modifier: Modifier = Modifier
 ) {
-    com.sanket.tools.nexpad.ui.components.controller.StaticRealisticTouchPad(
+    com.sanket.tools.nexpad.ui.components.controller.special.StaticRealisticTouchPad(
         isLeft = isLeft,
         isRgbEnabled = true,
         modifier = modifier
@@ -2504,15 +2507,15 @@ internal fun StaticLensDPad(
             contentAlignment = Alignment.Center
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
-                val crossPath = com.sanket.tools.nexpad.ui.components.controller.createContouredCrossPath(size, insetDp = 0f)
-                val insetNeonPath = com.sanket.tools.nexpad.ui.components.controller.createContouredCrossPath(size, insetDp = 3.6f)
+                val crossPath = createContouredCrossPath(size, insetDp = 0f)
+                val insetNeonPath = createContouredCrossPath(size, insetDp = 3.6f)
                 val scale = min(size.width, size.height) / 150f
 
                 // 1. Soft Multi-pass Drop Shadow (translate 0 5)
                 for (step in 0..4) {
                     val offY = (2.5f + step * 0.9f) * scale
                     val shadowPath = Path().apply {
-                        addPath(com.sanket.tools.nexpad.ui.components.controller.createContouredCrossPath(size, insetDp = step * 0.4f), Offset(0f, offY))
+                        addPath(createContouredCrossPath(size, insetDp = step * 0.4f), Offset(0f, offY))
                     }
                     drawPath(path = shadowPath, color = Color.Black.copy(alpha = 0.14f))
                 }

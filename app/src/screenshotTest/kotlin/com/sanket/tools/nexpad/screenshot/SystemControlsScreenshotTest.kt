@@ -13,7 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.tools.screenshot.PreviewTest
-import com.sanket.tools.nexpad.ui.components.controller.StaticOrbitHomeButton
+import com.sanket.tools.nexpad.ui.components.controller.system.StaticOrbitHomeButton
 import com.sanket.tools.nexpad.ui.studio.components.StaticDefaultButtonPreview
 
 /**

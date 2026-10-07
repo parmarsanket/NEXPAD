@@ -42,10 +42,10 @@ import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpad.runtime.model.NexPadControl
 import com.sanket.tools.nexpad.runtime.model.NexPadInputTarget
 import com.sanket.tools.nexpad.nxprc.*
-import com.sanket.tools.nexpad.ui.components.controller.PlayStationSymbol
-import com.sanket.tools.nexpad.ui.components.controller.getPlayStationShape
-import com.sanket.tools.nexpad.ui.components.controller.calculateGamingStickMagnitude
-import com.sanket.tools.nexpad.ui.components.controller.VelocityRingBuffer
+import com.sanket.tools.nexpad.ui.components.controller.abxy.PlayStationSymbol
+import com.sanket.tools.nexpad.ui.components.controller.abxy.getPlayStationShape
+import com.sanket.tools.nexpad.ui.components.controller.special.calculateGamingStickMagnitude
+import com.sanket.tools.nexpad.ui.components.controller.special.VelocityRingBuffer
 import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.cos

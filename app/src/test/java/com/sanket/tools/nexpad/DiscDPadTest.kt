@@ -5,10 +5,10 @@ import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.model.NexpadKeys as K
 import com.sanket.tools.nexpad.runtime.registry.DefaultNativeFamily
 import com.sanket.tools.nexpad.runtime.registry.NativeComponentRegistry
-import com.sanket.tools.nexpad.ui.components.controller.calculateDiscGateAngle
-import com.sanket.tools.nexpad.ui.components.controller.calculateDiscPuckOffset
-import com.sanket.tools.nexpad.ui.components.controller.calculateDiscTilt
-import com.sanket.tools.nexpad.ui.components.controller.resolveDiscTouch
+import com.sanket.tools.nexpad.ui.components.controller.dpad.calculateDiscGateAngle
+import com.sanket.tools.nexpad.ui.components.controller.dpad.calculateDiscPuckOffset
+import com.sanket.tools.nexpad.ui.components.controller.dpad.calculateDiscTilt
+import com.sanket.tools.nexpad.ui.components.controller.dpad.resolveDiscTouch
 import com.sanket.tools.nexpad.ui.studio.model.ButtonStudioType
 import com.sanket.tools.nexpad.ui.studio.model.resolveButtonSourceType
 import org.junit.Assert.assertEquals

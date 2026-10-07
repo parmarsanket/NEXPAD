@@ -14,13 +14,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.tools.screenshot.PreviewTest
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
-import com.sanket.tools.nexpad.ui.components.controller.StaticCapsulesButton
-import com.sanket.tools.nexpad.ui.components.controller.StaticEclipseButton
-import com.sanket.tools.nexpad.ui.components.controller.StaticFacetButton
-import com.sanket.tools.nexpad.ui.components.controller.StaticFlipButton
-import com.sanket.tools.nexpad.ui.components.controller.StaticLiquidButton
-import com.sanket.tools.nexpad.ui.components.controller.StaticOrbitButton
-import com.sanket.tools.nexpad.ui.components.controller.StaticRippleButton
+import com.sanket.tools.nexpad.ui.components.controller.abxy.StaticCapsulesButton
+import com.sanket.tools.nexpad.ui.components.controller.abxy.StaticEclipseButton
+import com.sanket.tools.nexpad.ui.components.controller.abxy.StaticFacetButton
+import com.sanket.tools.nexpad.ui.components.controller.abxy.StaticFlipButton
+import com.sanket.tools.nexpad.ui.components.controller.abxy.StaticLiquidButton
+import com.sanket.tools.nexpad.ui.components.controller.abxy.StaticOrbitButton
+import com.sanket.tools.nexpad.ui.components.controller.abxy.StaticRippleButton
 import com.sanket.tools.nexpad.ui.studio.components.StaticDefaultButtonPreview
 
 /**

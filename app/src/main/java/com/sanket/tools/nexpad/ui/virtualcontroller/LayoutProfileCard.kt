@@ -31,8 +31,8 @@ import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.model.LayoutProfile
-import com.sanket.tools.nexpad.ui.components.controller.PlayStationSymbol
-import com.sanket.tools.nexpad.ui.components.controller.getPlayStationShape
+import com.sanket.tools.nexpad.ui.components.controller.abxy.PlayStationSymbol
+import com.sanket.tools.nexpad.ui.components.controller.abxy.getPlayStationShape
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 /**

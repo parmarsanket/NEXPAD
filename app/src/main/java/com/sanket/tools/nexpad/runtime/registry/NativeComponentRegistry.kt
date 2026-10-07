@@ -9,6 +9,14 @@ import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.model.NexpadKeys as K
 import com.sanket.tools.nexpad.ui.components.controller.*
+import com.sanket.tools.nexpad.ui.components.controller.abxy.*
+import com.sanket.tools.nexpad.ui.components.controller.bumper.*
+import com.sanket.tools.nexpad.ui.components.controller.dpad.*
+import com.sanket.tools.nexpad.ui.components.controller.macros.*
+import com.sanket.tools.nexpad.ui.components.controller.special.*
+import com.sanket.tools.nexpad.ui.components.controller.sticks.*
+import com.sanket.tools.nexpad.ui.components.controller.system.*
+import com.sanket.tools.nexpad.ui.components.controller.trigger.*
 import com.sanket.tools.nexpad.ui.studio.components.*
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 

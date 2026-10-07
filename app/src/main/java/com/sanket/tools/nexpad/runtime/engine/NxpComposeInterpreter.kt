@@ -42,8 +42,8 @@ import com.sanket.tools.nexpad.runtime.model.NexPadControl
 import com.sanket.tools.nexpad.runtime.model.NexPadInputTarget
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
 import com.sanket.tools.nexpad.runtime.model.NxpGeometry
-import com.sanket.tools.nexpad.ui.components.controller.calculateGamingStickMagnitude
-import com.sanket.tools.nexpad.ui.components.controller.VelocityRingBuffer
+import com.sanket.tools.nexpad.ui.components.controller.special.calculateGamingStickMagnitude
+import com.sanket.tools.nexpad.ui.components.controller.special.VelocityRingBuffer
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.cos

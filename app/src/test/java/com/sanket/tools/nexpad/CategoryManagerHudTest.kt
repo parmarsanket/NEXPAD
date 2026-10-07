@@ -17,11 +17,11 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 import kotlin.math.hypot
 import kotlin.math.pow
-import com.sanket.tools.nexpad.ui.components.controller.calculateGamingStickMagnitude
-import com.sanket.tools.nexpad.ui.components.controller.VelocityRingBuffer
-import com.sanket.tools.nexpad.ui.components.controller.PlayStationShape
-import com.sanket.tools.nexpad.ui.components.controller.getPlayStationShape
-import com.sanket.tools.nexpad.ui.components.controller.isPlayStationSymbol
+import com.sanket.tools.nexpad.ui.components.controller.special.calculateGamingStickMagnitude
+import com.sanket.tools.nexpad.ui.components.controller.special.VelocityRingBuffer
+import com.sanket.tools.nexpad.ui.components.controller.abxy.PlayStationShape
+import com.sanket.tools.nexpad.ui.components.controller.abxy.getPlayStationShape
+import com.sanket.tools.nexpad.ui.components.controller.abxy.isPlayStationSymbol
 import com.sanket.tools.nexpad.runtime.registry.NativeComponentRegistry
 import com.sanket.tools.nexpad.runtime.registry.DefaultComponents
 
