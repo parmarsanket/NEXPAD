@@ -11,6 +11,7 @@ import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.DatagramChannel
 import kotlinx.coroutines.CoroutineScope
+import kotlin.time.Duration.Companion.milliseconds
 
 data class DiscoveredServer(
     val name: String,
@@ -106,7 +107,7 @@ class DiscoveryClient {
                 }
             }
 
-            // Start broadcasting every 2 seconds
+            // Start broadcasting every 1200ms
             broadcastJob = scope.launch(Dispatchers.IO) {
                 val broadcastBuffer = ByteBuffer.allocate(1).apply {
                     put(NexpadProtocol.PACKET_TYPE_DISCOVER)
@@ -125,7 +126,7 @@ class DiscoveryClient {
                     } catch (_: Exception) {
                         // Network interfaces may be transitioning
                     }
-                    delay(2000)
+                    delay(1200.milliseconds)
                 }
             }
         } catch (e: Exception) {

@@ -202,10 +202,10 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
                     _isAdbAvailable.value = false
                     _adbServerName.value = null
                 }
-                // Prune stale discovered servers (older than 4 seconds)
+                // Prune stale discovered servers (older than 10 seconds to prevent Wi-Fi jitter/flicker)
                 val currentServers = _discoveredServers.value
                 if (currentServers.isNotEmpty()) {
-                    val fresh = currentServers.filter { now - it.lastSeenTimestamp <= 4000L }
+                    val fresh = currentServers.filter { now - it.lastSeenTimestamp <= 10000L }
                     if (fresh.size != currentServers.size) {
                         _discoveredServers.value = fresh
                     }
@@ -231,16 +231,18 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
 
 
     fun startDiscovery() {
-        // Clear stale servers so UI drops back to "Scanning" state instantly
-        _discoveredServers.value = emptyList()
+        val now = System.currentTimeMillis()
+        // Prune only genuinely dead servers (> 10s) instead of wiping UI to empty on every scan
+        _discoveredServers.value = _discoveredServers.value.filter { now - it.lastSeenTimestamp <= 10000L }
         viewModelScope.launch {
             discoveryClient.startDiscovery(viewModelScope) { server ->
                 val current = _discoveredServers.value.toMutableList()
                 val existingIndex = current.indexOfFirst { it.ipAddress == server.ipAddress }
+                val updatedServer = server.copy(lastSeenTimestamp = System.currentTimeMillis())
                 if (existingIndex >= 0) {
-                    current[existingIndex] = server
+                    current[existingIndex] = updatedServer
                 } else {
-                    current.add(server)
+                    current.add(updatedServer)
                 }
                 // Prioritize USB Tethering servers over Wi-Fi
                 current.sortByDescending { it.isUsbTethering }
