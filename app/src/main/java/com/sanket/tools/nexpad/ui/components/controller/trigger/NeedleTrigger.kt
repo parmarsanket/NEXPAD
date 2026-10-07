@@ -89,11 +89,6 @@ fun NeedleTrigger(
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "needle_scale"
     )
-    val pressOffsetYAnim by animateFloatAsState(
-        targetValue = if (isPressed) 2.0f else 0f,
-        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
-        label = "needle_offset"
-    )
     val rgbBloomAlpha by animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
@@ -135,7 +130,6 @@ fun NeedleTrigger(
                 scaleX = scaleAnim
                 scaleY = scaleAnim
             }
-            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             // Outer dynamic RGB aura
             .drawBehind {
                 if (isRgbEnabled) {

@@ -72,16 +72,11 @@ fun RealisticTrigger(
         RoundedCornerShape(15.dp)
     }
 
-    // Kinematics: 0.95 scale + 2dp plunge on press
+    // Kinematics: 0.95 scale on press (zero-mobility stationary actuation)
     val scaleAnim by animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "trigger_scale"
-    )
-    val pressOffsetYAnim by animateFloatAsState(
-        targetValue = if (isPressed) 2.0f else 0f,
-        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
-        label = "trigger_offset"
     )
     val rgbBloomAlpha by animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.45f,
@@ -144,7 +139,6 @@ fun RealisticTrigger(
                 scaleX = scaleAnim
                 scaleY = scaleAnim
             }
-            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             // Outer dynamic RGB aura
             .drawBehind {
                 if (isRgbEnabled) {

@@ -74,11 +74,6 @@ fun DialTrigger(
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "dial_trigger_scale"
     )
-    val pressOffsetYAnim by animateFloatAsState(
-        targetValue = if (isPressed) 2.0f else 0f,
-        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
-        label = "dial_trigger_offset"
-    )
     val rgbBloomAlpha by animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.55f,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
@@ -229,7 +224,6 @@ fun DialTrigger(
                 scaleX = scaleAnim
                 scaleY = scaleAnim
             }
-            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .shadow(
                 elevation = if (isPressed) 2.dp else 6.dp,
                 shape = triggerShape,
