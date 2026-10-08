@@ -27,10 +27,15 @@ data class MotionPacket(
     var gravityY: Float = 0f,
     var gravityZ: Float = 0f,
 
-    // Linear Acceleration
+    // Linear Acceleration (m/s²)
     var accelX: Float = 0f,
     var accelY: Float = 0f,
     var accelZ: Float = 0f,
+
+    // Raw Accelerometer (before any gravity separation)
+    var rawAccelX: Float = 0f,
+    var rawAccelY: Float = 0f,
+    var rawAccelZ: Float = 0f,
 
     // Calibrated Gyro
     var gyroX: Float = 0f,
@@ -174,21 +179,35 @@ class MotionSensorManager(
                 motion.gravityZ = hwZ
             }
             Sensor.TYPE_ACCELEROMETER -> {
+                motion.rawAccelX = x
+                motion.rawAccelY = y
+                motion.rawAccelZ = hwZ
                 motion.accelX = x
                 motion.accelY = y
                 motion.accelZ = hwZ
             }
-            Sensor.TYPE_GYROSCOPE -> {
-                motion.gyroX = -x
-                motion.gyroY = -y
-                motion.gyroZ = -hwZ
-            }
-            Sensor.TYPE_GYROSCOPE_UNCALIBRATED -> {
-                motion.rawGyroX = -x
-                motion.rawGyroY = -y
-                motion.rawGyroZ = -hwZ
+            Sensor.TYPE_GYROSCOPE, Sensor.TYPE_GYROSCOPE_UNCALIBRATED -> {
+                // Direct recognition of Pitch, Yaw, Roll:
+                // Pitch: rotation around horizontal axis (x)
+                // Yaw: rotation around screen normal axis (hwZ)
+                // Roll: rotation around vertical axis (y)
+                val pitchVal = -x
+                val yawVal = -hwZ
+                val rollVal = -y
 
-                if (event.values.size >= 6) {
+                motion.pitch = pitchVal
+                motion.yaw = yawVal
+                motion.roll = rollVal
+
+                // Standard field compatibility
+                motion.gyroX = pitchVal
+                motion.gyroY = rollVal
+                motion.gyroZ = yawVal
+                motion.rawGyroX = pitchVal
+                motion.rawGyroY = rollVal
+                motion.rawGyroZ = yawVal
+
+                if (event.sensor.type == Sensor.TYPE_GYROSCOPE_UNCALIBRATED && event.values.size >= 6) {
                     // Bias values are also in portrait coordinate space — remap to landscape
                     val hwBiasX = event.values[3]
                     val hwBiasY = event.values[4]

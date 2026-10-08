@@ -26,6 +26,17 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
+enum class ImuTestMode(val displayName: String) {
+    ALL_AXES("All 6 Axes (Normal)"),
+    PITCH_ONLY("Pitch Only (Up/Down)"),
+    YAW_ONLY("Yaw Only (Turn Left/Right)"),
+    ROLL_ONLY("Roll Only (Tilt Side)"),
+    ACCEL_X_ONLY("Accel X Only (Lateral)"),
+    ACCEL_Y_ONLY("Accel Y Only (Vertical)"),
+    ACCEL_Z_ONLY("Accel Z Only (Face/Gravity)"),
+    RAW_PASSTHROUGH("Raw Pass-Through (Pure Original Data)")
+}
+
 class GamepadViewModel(application: Application) : AndroidViewModel(application) {
     // Single shared instance for zero-allocation state updates
     val inputState = GamepadInput()
@@ -280,6 +291,39 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     fun updateAccel(x: Float, y: Float, z: Float) = sensorController.updateAccel(x, y, z)
     fun updateGravity(x: Float, y: Float, z: Float) = sensorController.updateGravity(x, y, z)
     fun update6AxisGyro(x: Float, y: Float, z: Float) = sensorController.update6AxisGyro(x, y, z)
+
+    fun update6AxisMotion(
+        pitch: Float,
+        yaw: Float,
+        roll: Float,
+        accelX: Float,
+        accelY: Float,
+        accelZ: Float,
+        gravityX: Float = 0f,
+        gravityY: Float = 0f,
+        gravityZ: Float = 0f,
+        isGravity: Boolean = false
+    ) = sensorController.update6AxisMotion(
+        pitch, yaw, roll, accelX, accelY, accelZ, gravityX, gravityY, gravityZ, isGravity
+    )
+
+    private val _imuTestMode = MutableStateFlow(ImuTestMode.ALL_AXES)
+    val imuTestMode: StateFlow<ImuTestMode> = _imuTestMode.asStateFlow()
+
+    fun setImuTestMode(mode: ImuTestMode) {
+        _imuTestMode.value = mode
+        val flags: Byte = when (mode) {
+            ImuTestMode.ALL_AXES -> com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_FLAG_DEFAULT
+            ImuTestMode.PITCH_ONLY -> (com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_FLAG_AXIS_PITCH.toInt() or com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_FLAG_RAW_MODE.toInt()).toByte()
+            ImuTestMode.YAW_ONLY -> (com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_FLAG_AXIS_YAW.toInt() or com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_FLAG_RAW_MODE.toInt()).toByte()
+            ImuTestMode.ROLL_ONLY -> (com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_FLAG_AXIS_ROLL.toInt() or com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_FLAG_RAW_MODE.toInt()).toByte()
+            ImuTestMode.ACCEL_X_ONLY -> (com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_FLAG_AXIS_ACCEL_X.toInt() or com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_FLAG_RAW_MODE.toInt()).toByte()
+            ImuTestMode.ACCEL_Y_ONLY -> (com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_FLAG_AXIS_ACCEL_Y.toInt() or com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_FLAG_RAW_MODE.toInt()).toByte()
+            ImuTestMode.ACCEL_Z_ONLY -> (com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_FLAG_AXIS_ACCEL_Z.toInt() or com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_FLAG_RAW_MODE.toInt()).toByte()
+            ImuTestMode.RAW_PASSTHROUGH -> (com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_FLAG_ALL_AXES.toInt() or com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_FLAG_RAW_MODE.toInt()).toByte()
+        }
+        sensorController.activeSensorFlags = flags
+    }
 
     private val _isGyroEnabled = MutableStateFlow(true)
     val isGyroEnabled: StateFlow<Boolean> = _isGyroEnabled.asStateFlow()

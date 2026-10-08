@@ -89,18 +89,23 @@ class MainActivity : ComponentActivity() {
         motionSensorManager = MotionSensorManager(
             context = this,
             onMotionPacket = { packet ->
-                // Send filtered Gravity data when available, fallback to raw Accelerometer
-                if (packet.gravityX != 0f || packet.gravityY != 0f || packet.gravityZ != 0f) {
-                    viewModel.updateGravity(packet.gravityX, packet.gravityY, packet.gravityZ)
-                } else {
-                    viewModel.updateAccel(packet.accelX, packet.accelY, packet.accelZ)
-                }
-                
-                // Fallback to calibrated gyro if the device doesn't support uncalibrated gyro
-                val gX = if (packet.rawGyroX != 0f) packet.rawGyroX else packet.gyroX
-                val gY = if (packet.rawGyroY != 0f) packet.rawGyroY else packet.gyroY
-                val gZ = if (packet.rawGyroZ != 0f) packet.rawGyroZ else packet.gyroZ
-                viewModel.update6AxisGyro(gX, gY, gZ)
+                val useGravity = (packet.gravityX != 0f || packet.gravityY != 0f || packet.gravityZ != 0f)
+                val ax = if (useGravity) packet.gravityX else packet.accelX
+                val ay = if (useGravity) packet.gravityY else packet.accelY
+                val az = if (useGravity) packet.gravityZ else packet.accelZ
+
+                viewModel.update6AxisMotion(
+                    pitch = packet.pitch,
+                    yaw = packet.yaw,
+                    roll = packet.roll,
+                    accelX = ax,
+                    accelY = ay,
+                    accelZ = az,
+                    gravityX = packet.gravityX,
+                    gravityY = packet.gravityY,
+                    gravityZ = packet.gravityZ,
+                    isGravity = useGravity
+                )
             }
         )
 
