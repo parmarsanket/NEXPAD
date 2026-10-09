@@ -186,34 +186,54 @@ class MotionSensorManager(
                 motion.accelY = y
                 motion.accelZ = hwZ
             }
-            Sensor.TYPE_GYROSCOPE, Sensor.TYPE_GYROSCOPE_UNCALIBRATED -> {
-                // Direct recognition of Pitch, Yaw, Roll:
-                // Pitch: rotation around horizontal axis (x)
-                // Yaw: rotation around screen normal axis (hwZ)
-                // Roll: rotation around vertical axis (y)
+            Sensor.TYPE_GYROSCOPE -> {
+                // Direct recognition of Pitch, Yaw, Roll in landscape (ROTATION_90):
+                // Android TYPE_GYROSCOPE provides OS-level bias-compensated clean rotation rates!
                 val pitchVal = -x
-                val yawVal = -hwZ
-                val rollVal = -y
+                val yawVal = -y
+                val rollVal = -hwZ
 
                 motion.pitch = pitchVal
                 motion.yaw = yawVal
                 motion.roll = rollVal
 
-                // Standard field compatibility
+                // Standard slot mapping: Slot X = Pitch, Slot Y = Yaw, Slot Z = Roll
                 motion.gyroX = pitchVal
-                motion.gyroY = rollVal
-                motion.gyroZ = yawVal
+                motion.gyroY = yawVal
+                motion.gyroZ = rollVal
                 motion.rawGyroX = pitchVal
-                motion.rawGyroY = rollVal
-                motion.rawGyroZ = yawVal
+                motion.rawGyroY = yawVal
+                motion.rawGyroZ = rollVal
+            }
+            Sensor.TYPE_GYROSCOPE_UNCALIBRATED -> {
+                val pitchVal = -x
+                val yawVal = -y
+                val rollVal = -hwZ
 
-                if (event.sensor.type == Sensor.TYPE_GYROSCOPE_UNCALIBRATED && event.values.size >= 6) {
+                motion.rawGyroX = pitchVal
+                motion.rawGyroY = yawVal
+                motion.rawGyroZ = rollVal
+
+                if (event.values.size >= 6) {
                     // Bias values are also in portrait coordinate space — remap to landscape
                     val hwBiasX = event.values[3]
                     val hwBiasY = event.values[4]
                     motion.biasX = hwBiasY        // X' = Y  (landscape remap)
                     motion.biasY = -hwBiasX       // Y' = -X (landscape remap)
                     motion.biasZ = event.values[5] // Z unchanged
+                }
+
+                // If the device lacks a calibrated sensor, fallback to uncalibrated minus bias
+                if (gyroSensor == null) {
+                    val calPitch = pitchVal - motion.biasX
+                    val calYaw = yawVal - motion.biasY
+                    val calRoll = rollVal - motion.biasZ
+                    motion.pitch = calPitch
+                    motion.yaw = calYaw
+                    motion.roll = calRoll
+                    motion.gyroX = calPitch
+                    motion.gyroY = calYaw
+                    motion.gyroZ = calRoll
                 }
             }
         }

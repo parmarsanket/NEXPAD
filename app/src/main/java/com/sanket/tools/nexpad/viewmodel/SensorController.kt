@@ -34,10 +34,10 @@ class SensorController(
         val isAyActive = NexpadProtocol.isAccelYEnabled(flags)
         val isAzActive = NexpadProtocol.isAccelZEnabled(flags)
 
-        // Gyroscope slots: Pitch, Roll, Yaw
+        // Gyroscope slots: Pitch (X), Yaw (Y), Roll (Z)
         inputState.gyroX = if (isPitchActive) pitch else 0f
-        inputState.gyroY = if (isRollActive) roll else 0f
-        inputState.gyroZ = if (isYawActive) yaw else 0f
+        inputState.gyroY = if (isYawActive) yaw else 0f
+        inputState.gyroZ = if (isRollActive) roll else 0f
 
         // Accelerometer slots: Accel X, Accel Y, Accel Z
         inputState.accelX = if (isAxActive) accelX else 0f
@@ -68,8 +68,8 @@ class SensorController(
     fun update6AxisGyro(x: Float, y: Float, z: Float) {
         val flags = activeSensorFlags
         inputState.gyroX = if (NexpadProtocol.isPitchEnabled(flags)) x else 0f
-        inputState.gyroY = if (NexpadProtocol.isRollEnabled(flags)) y else 0f
-        inputState.gyroZ = if (NexpadProtocol.isYawEnabled(flags)) z else 0f
+        inputState.gyroY = if (NexpadProtocol.isYawEnabled(flags)) y else 0f
+        inputState.gyroZ = if (NexpadProtocol.isRollEnabled(flags)) z else 0f
     }
 
     fun updateGravity(x: Float, y: Float, z: Float) {
