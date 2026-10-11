@@ -15,20 +15,29 @@ class SensorController(
         if (requestedSensorMode != mode) {
             requestedSensorMode = mode
             inputState.sensorFlags = mode
-            if (mode == NexpadProtocol.SENSOR_MODE_GRAVITY) {
-                // Clear IMU slots so no residual gyro/accel data leaks into the packet
-                inputState.gyroX = 0f
-                inputState.gyroY = 0f
-                inputState.gyroZ = 0f
-                inputState.accelX = 0f
-                inputState.accelY = 0f
-                inputState.accelZ = 0f
-            } else {
-                // Clear gravity slots
-                inputState.gravityX = 0f
-                inputState.gravityY = 0f
-                inputState.gravityZ = 0f
-            }
+            // Clear all sensor channels on mode transition to avoid residue
+            inputState.gyroX = 0f
+            inputState.gyroY = 0f
+            inputState.gyroZ = 0f
+            inputState.accelX = 0f
+            inputState.accelY = 0f
+            inputState.accelZ = 0f
+            inputState.gravityX = 0f
+            inputState.gravityY = 0f
+            inputState.gravityZ = 0f
+            inputState.quatX = 0f
+            inputState.quatY = 0f
+            inputState.quatZ = 0f
+            inputState.quatW = 1f
+            inputState.linearAccelX = 0f
+            inputState.linearAccelY = 0f
+            inputState.linearAccelZ = 0f
+            inputState.rawGyroX = 0f
+            inputState.rawGyroY = 0f
+            inputState.rawGyroZ = 0f
+            inputState.gyroBiasX = 0f
+            inputState.gyroBiasY = 0f
+            inputState.gyroBiasZ = 0f
         }
     }
 
@@ -56,6 +65,46 @@ class SensorController(
             inputState.gravityY = y
             inputState.gravityZ = z
             inputState.sensorFlags = NexpadProtocol.SENSOR_MODE_GRAVITY
+        }
+    }
+
+    fun updateGameRotation(qx: Float, qy: Float, qz: Float, qw: Float) {
+        if (requestedSensorMode == NexpadProtocol.SENSOR_MODE_GAME_ROTATION) {
+            inputState.quatX = qx
+            inputState.quatY = qy
+            inputState.quatZ = qz
+            inputState.quatW = qw
+            inputState.sensorFlags = NexpadProtocol.SENSOR_MODE_GAME_ROTATION
+        }
+    }
+
+    fun updateLinearGesture(lx: Float, ly: Float, lz: Float, gx: Float, gy: Float, gz: Float) {
+        if (requestedSensorMode == NexpadProtocol.SENSOR_MODE_LINEAR_GESTURE) {
+            inputState.linearAccelX = lx
+            inputState.linearAccelY = ly
+            inputState.linearAccelZ = lz
+            inputState.gravityX = gx
+            inputState.gravityY = gy
+            inputState.gravityZ = gz
+            inputState.accelX = gx
+            inputState.accelY = gy
+            inputState.accelZ = gz
+            inputState.gyroX = gx
+            inputState.gyroY = gy
+            inputState.gyroZ = gz
+            inputState.sensorFlags = NexpadProtocol.SENSOR_MODE_LINEAR_GESTURE
+        }
+    }
+
+    fun updateRawUncalibrated(rx: Float, ry: Float, rz: Float, bx: Float, by: Float, bz: Float) {
+        if (requestedSensorMode == NexpadProtocol.SENSOR_MODE_RAW_UNCALIBRATED) {
+            inputState.rawGyroX = rx
+            inputState.rawGyroY = ry
+            inputState.rawGyroZ = rz
+            inputState.gyroBiasX = bx
+            inputState.gyroBiasY = by
+            inputState.gyroBiasZ = bz
+            inputState.sensorFlags = NexpadProtocol.SENSOR_MODE_RAW_UNCALIBRATED
         }
     }
 }

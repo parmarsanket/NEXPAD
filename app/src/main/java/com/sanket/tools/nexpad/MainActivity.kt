@@ -89,20 +89,44 @@ class MainActivity : ComponentActivity() {
         motionSensorManager = MotionSensorManager(
             context = this,
             onMotionPacket = { packet ->
-                if (viewModel.requestedSensorMode == com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_GRAVITY) {
-                    // Mode 0x01: Gravity mode for racing / steering wheel tilt
-                    if (packet.gravityX != 0f || packet.gravityY != 0f || packet.gravityZ != 0f) {
-                        viewModel.updateGravity(packet.gravityX, packet.gravityY, packet.gravityZ)
-                    } else {
-                        viewModel.updateGravity(packet.accelX, packet.accelY, packet.accelZ)
+                when (viewModel.requestedSensorMode) {
+                    com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_GRAVITY -> {
+                        // Mode 0x01: Gravity mode for racing / steering wheel tilt
+                        if (packet.gravityX != 0f || packet.gravityY != 0f || packet.gravityZ != 0f) {
+                            viewModel.updateGravity(packet.gravityX, packet.gravityY, packet.gravityZ)
+                        } else {
+                            viewModel.updateGravity(packet.accelX, packet.accelY, packet.accelZ)
+                        }
                     }
-                } else {
-                    // Mode 0x00: Standard 6-axis IMU (gyro + raw accel) for DS4 and FPS aiming
-                    viewModel.updateAccel(packet.accelX, packet.accelY, packet.accelZ)
-                    val gX = if (packet.rawGyroX != 0f) packet.rawGyroX else packet.gyroX
-                    val gY = if (packet.rawGyroY != 0f) packet.rawGyroY else packet.gyroY
-                    val gZ = if (packet.rawGyroZ != 0f) packet.rawGyroZ else packet.gyroZ
-                    viewModel.update6AxisGyro(gX, gY, gZ)
+                    com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_GAME_ROTATION -> {
+                        // Mode 0x02: 3D Orientation Quaternion for Air Mouse / Laser Pointer & VR
+                        viewModel.updateGameRotation(packet.qX, packet.qY, packet.qZ, packet.qW)
+                    }
+                    com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_LINEAR_GESTURE -> {
+                        // Mode 0x03: Linear Acceleration for flicks/shakes + Gravity for tilt postures
+                        val gravX = if (packet.gravityX != 0f) packet.gravityX else packet.accelX
+                        val gravY = if (packet.gravityY != 0f) packet.gravityY else packet.accelY
+                        val gravZ = if (packet.gravityZ != 0f) packet.gravityZ else packet.accelZ
+                        viewModel.updateLinearGesture(
+                            packet.linearAccelX, packet.linearAccelY, packet.linearAccelZ,
+                            gravX, gravY, gravZ
+                        )
+                    }
+                    com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_RAW_UNCALIBRATED -> {
+                        // Mode 0x04: Pure raw silicon gyro + estimated hardware bias
+                        viewModel.updateRawUncalibrated(
+                            packet.rawGyroX, packet.rawGyroY, packet.rawGyroZ,
+                            packet.biasX, packet.biasY, packet.biasZ
+                        )
+                    }
+                    else -> {
+                        // Mode 0x00: Standard 6-axis IMU (gyro + raw accel) for DS4 and FPS aiming
+                        viewModel.updateAccel(packet.accelX, packet.accelY, packet.accelZ)
+                        val gX = if (packet.rawGyroX != 0f) packet.rawGyroX else packet.gyroX
+                        val gY = if (packet.rawGyroY != 0f) packet.rawGyroY else packet.gyroY
+                        val gZ = if (packet.rawGyroZ != 0f) packet.rawGyroZ else packet.gyroZ
+                        viewModel.update6AxisGyro(gX, gY, gZ)
+                    }
                 }
             }
         )

@@ -37,6 +37,11 @@ data class MotionPacket(
     var gyroY: Float = 0f,
     var gyroZ: Float = 0f,
 
+    // Linear Acceleration (excluding gravity)
+    var linearAccelX: Float = 0f,
+    var linearAccelY: Float = 0f,
+    var linearAccelZ: Float = 0f,
+
     // Raw Gyro
     var rawGyroX: Float = 0f,
     var rawGyroY: Float = 0f,
@@ -64,6 +69,8 @@ class MotionSensorManager(
     private val accelSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
     private val gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
     private val uncalibratedGyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE_UNCALIBRATED)
+    private val linearAccelSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
+    private val gameRotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR)
 
     // Single synchronized packet
     private val motion = MotionPacket()
@@ -116,8 +123,9 @@ class MotionSensorManager(
             gravitySensor,
             accelSensor,
             gyroSensor,
-            uncalibratedGyroSensor
-            // gameRotationSensor // UNUSED: Heavy CPU calculation, disabled for now
+            uncalibratedGyroSensor,
+            linearAccelSensor,
+            gameRotationSensor
         ).forEach { sensor ->
             sensor?.let { 
                 sensorManager.registerListener(this, it, SENSOR_DELAY_MICROS, sensorHandler) 
@@ -178,6 +186,11 @@ class MotionSensorManager(
                 motion.accelY = y
                 motion.accelZ = hwZ
             }
+            Sensor.TYPE_LINEAR_ACCELERATION -> {
+                motion.linearAccelX = x
+                motion.linearAccelY = y
+                motion.linearAccelZ = hwZ
+            }
             Sensor.TYPE_GYROSCOPE -> {
                 motion.gyroX = -x
                 motion.gyroY = -y
@@ -189,23 +202,40 @@ class MotionSensorManager(
                 motion.rawGyroZ = -hwZ
 
                 if (event.values.size >= 6) {
-                    // Bias values are also in portrait coordinate space — remap to landscape
+                    // Bias values are in portrait space — remap to landscape with matching signs:
+                    // rawGyroX = -hwY  ==> biasX = -hwBiasY  ==> cleanX = rawGyroX - biasX = -(hwY - hwBiasY) = gyroX
+                    // rawGyroY =  hwX  ==> biasY =  hwBiasX  ==> cleanY = rawGyroY - biasY =  (hwX - hwBiasX) = gyroY
+                    // rawGyroZ = -hwZ  ==> biasZ = -hwBiasZ  ==> cleanZ = rawGyroZ - biasZ = -(hwZ - hwBiasZ) = gyroZ
                     val hwBiasX = event.values[3]
                     val hwBiasY = event.values[4]
-                    motion.biasX = hwBiasY        // X' = Y  (landscape remap)
-                    motion.biasY = -hwBiasX       // Y' = -X (landscape remap)
-                    motion.biasZ = event.values[5] // Z unchanged
+                    motion.biasX = -hwBiasY
+                    motion.biasY = hwBiasX
+                    motion.biasZ = -event.values[5]
                 }
+            }
+            Sensor.TYPE_GAME_ROTATION_VECTOR -> {
+                val qRawX = event.values[0]
+                val qRawY = event.values[1]
+                val qRawZ = event.values[2]
+                val qRawW = if (event.values.size >= 4) event.values[3] else {
+                    val sumSq = qRawX * qRawX + qRawY * qRawY + qRawZ * qRawZ
+                    if (sumSq < 1f) kotlin.math.sqrt(1f - sumSq) else 0f
+                }
+                // ROTATION_90 remap: q' = q * q_rotZ(-90 deg)
+                val k = 0.70710678f
+                motion.qX = k * (qRawX + qRawY)
+                motion.qY = k * (qRawY - qRawX)
+                motion.qZ = k * (qRawZ - qRawW)
+                motion.qW = k * (qRawW + qRawZ)
             }
         }
 
-        // Emit the synchronized packet on Gyro updates (or Gravity updates when gyro is muted/absent)
-        if (event.sensor.type == Sensor.TYPE_GYROSCOPE || event.sensor.type == Sensor.TYPE_GYROSCOPE_UNCALIBRATED) {
-            if (event.timestamp != lastSentTimestamp) {
-                lastSentTimestamp = event.timestamp
-                onMotionPacket(motion)
-            }
-        } else if (event.sensor.type == Sensor.TYPE_GRAVITY && (isGyroMuted || gyroSensor == null)) {
+        // Emit the synchronized packet on updates from whichever sensor is currently driving the mode
+        if (event.sensor.type == Sensor.TYPE_GYROSCOPE || 
+            event.sensor.type == Sensor.TYPE_GYROSCOPE_UNCALIBRATED ||
+            event.sensor.type == Sensor.TYPE_GRAVITY ||
+            event.sensor.type == Sensor.TYPE_GAME_ROTATION_VECTOR ||
+            event.sensor.type == Sensor.TYPE_LINEAR_ACCELERATION) {
             if (event.timestamp != lastSentTimestamp) {
                 lastSentTimestamp = event.timestamp
                 onMotionPacket(motion)

@@ -43,6 +43,9 @@ class NetworkClient : IGamepadConnection {
     private var rttSamples = 0
     private var lastRttLogTime = 0L
     private var lastPacketReceivedTime = 0L
+    private var packetsReceived = 0
+    private var packetsSent = 0
+    private var connectionStartTime = 0L
 
     // Rumble & Sensor Mode State Deduplication (Avoids 100 coroutine/Flow emissions per second)
     private var lastLeftMotor = -1
@@ -65,6 +68,10 @@ class NetworkClient : IGamepadConnection {
         lastLeftMotor = -1
         lastRightMotor = -1
         lastRequestedSensorMode = -1
+        packetsSent = 0
+        packetsReceived = 0
+        connectionStartTime = System.currentTimeMillis()
+        lastPacketReceivedTime = System.currentTimeMillis()
         Arrays.fill(sendSeqNumbers, -1)
         disconnecting.set(false)
 
@@ -101,13 +108,18 @@ class NetworkClient : IGamepadConnection {
         val scope = kotlinx.coroutines.CoroutineScope(SupervisorJob() + Dispatchers.IO)
         connectionScope = scope
         
-        // Watchdog Coroutine to detect PC disconnection
+        // Watchdog Coroutine to detect true PC disconnection (5s timeout, resilient to Wi-Fi jitter)
         scope.launch {
             while (isActive) {
                 kotlinx.coroutines.delay(1000)
                 if (isHandshakeComplete) {
-                    if (System.currentTimeMillis() - lastPacketReceivedTime > 2000) {
-                        Log.w("NEXPAD", "⏳ Connection Timeout! PC stopped responding.")
+                    val timeSince = System.currentTimeMillis() - lastPacketReceivedTime
+                    if (timeSince in 2501..3500) {
+                        Log.w("NEXPAD", "⚠️ [UDP CLIENT] Wi-Fi Warning: No packet from PC for ${timeSince}ms (timeout limit 5000ms). Sent: $packetsSent, Recv: $packetsReceived")
+                    }
+                    if (timeSince > 5000) {
+                        val durationSec = (System.currentTimeMillis() - connectionStartTime) / 1000
+                        Log.w("NEXPAD", "⏳ [UDP CLIENT] Connection Timeout! PC stopped responding for ${timeSince}ms. Active duration: ${durationSec}s | Sent: $packetsSent | Recv: $packetsReceived | Channel open: ${myChannel?.isOpen}")
                         onStatusChanged?.invoke("Connection Lost")
                         disconnect()
                         break
@@ -163,10 +175,17 @@ class NetworkClient : IGamepadConnection {
                     
                     if (senderAddress != null || receiveBuffer.position() > 0) {
                         lastPacketReceivedTime = System.currentTimeMillis()
+                        packetsReceived++
                         receiveBuffer.flip()
                         val bytes = ByteArray(receiveBuffer.remaining())
                         receiveBuffer.get(bytes)
                         
+                        if (packetsReceived == 1) {
+                            Log.d("NEXPAD", "📡 [UDP CLIENT] First packet received from PC! Size: ${bytes.size} bytes | First byte: ${bytes.getOrNull(0)}")
+                        } else if (packetsReceived % 120 == 0) {
+                            Log.d("NEXPAD", "📡 [UDP CLIENT] Packets received: $packetsReceived | Sent: $packetsSent | Last RTT samples: $rttSamples")
+                        }
+
                         // Check for Handshake Reply
                         if (bytes.isNotEmpty() && bytes[0] == NexpadProtocol.PACKET_TYPE_CONNECTED) {
                             if (!isHandshakeComplete) {
@@ -178,6 +197,7 @@ class NetworkClient : IGamepadConnection {
                                         resolvedName = String(bytes, 2, nameLen, Charsets.UTF_8).trim()
                                     }
                                 }
+                                Log.d("NEXPAD", "🤝 [UDP CLIENT] Handshake complete! Connected to PC: ${resolvedName ?: serverAddress?.hostString}")
                                 if (!resolvedName.isNullOrBlank()) {
                                     onServerNameResolved?.invoke(resolvedName)
                                 }
@@ -214,22 +234,28 @@ class NetworkClient : IGamepadConnection {
                                 
                                 recordRttSample(rttMs, feedback.packetLossPct)
                             }
+                        } else if (bytes.isNotEmpty() && packetsReceived % 60 == 0) {
+                            Log.w("NEXPAD", "⚠️ [UDP CLIENT] Received non-feedback packet (${bytes.size} bytes, type: 0x${bytes[0].toString(16)})")
                         }
                     }
                 } catch (e: java.nio.channels.AsynchronousCloseException) {
+                    Log.d("NEXPAD", "ℹ️ [UDP CLIENT] Receive channel closed asynchronously")
                     break // Normal closure
                 } catch (e: java.nio.channels.ClosedChannelException) {
+                    Log.d("NEXPAD", "ℹ️ [UDP CLIENT] Receive channel closed")
                     break // Normal closure
                 } catch (e: java.io.IOException) {
                     if (isActive) {
-                        e.printStackTrace()
+                        Log.e("NEXPAD", "❌ [UDP CLIENT] Receive IOException: ${e.javaClass.simpleName} - ${e.message}", e)
                         if (channel === myChannel) {
                             disconnect()
                         }
                     }
                     break
                 } catch (e: Exception) {
-                    if (isActive) e.printStackTrace()
+                    if (isActive) {
+                        Log.e("NEXPAD", "❌ [UDP CLIENT] Receive unexpected exception: ${e.javaClass.simpleName} - ${e.message}", e)
+                    }
                 }
             }
         }
@@ -272,8 +298,6 @@ class NetworkClient : IGamepadConnection {
         }
     }
 
-    private var packetsSent = 0
-    
     override suspend fun sendInput(input: GamepadInput) {
         if (!isHandshakeComplete) return
         
@@ -297,18 +321,20 @@ class NetworkClient : IGamepadConnection {
                 currentChannel.send(sendBuffer, target)
                 
                 packetsSent++
-                if (packetsSent % 60 == 0) {
-                    onDiagnosticLog?.invoke("Sent $packetsSent packets to ${target.hostString}:${target.port}")
+                if (packetsSent % 120 == 0) {
+                    val logMsg = "📡 [UDP CLIENT] Packets sent: $packetsSent to ${target.hostString}:${target.port}"
+                    Log.d("NEXPAD", logMsg)
+                    onDiagnosticLog?.invoke(logMsg)
                 }
             }
         } catch (e: java.io.IOException) {
-            e.printStackTrace()
+            Log.e("NEXPAD", "❌ [UDP CLIENT] sendInput IOException: ${e.javaClass.simpleName} - ${e.message}", e)
             onDiagnosticLog?.invoke("Network dropped: ${e.message}")
             if (channel === currentChannel) {
                 disconnect()
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("NEXPAD", "❌ [UDP CLIENT] sendInput Exception: ${e.javaClass.simpleName} - ${e.message}", e)
             onDiagnosticLog?.invoke("Send error: ${e.javaClass.simpleName} - ${e.message}")
         }
     }
@@ -316,6 +342,9 @@ class NetworkClient : IGamepadConnection {
     override fun disconnect() {
         if (!disconnecting.compareAndSet(false, true)) return
         
+        val durationSec = if (connectionStartTime > 0L) (System.currentTimeMillis() - connectionStartTime) / 1000 else 0L
+        Log.d("NEXPAD", "🔌 [UDP CLIENT] Disconnecting session. Duration: ${durationSec}s | Sent: $packetsSent | Recv: $packetsReceived")
+
         val currentChannel = channel
         val target = serverAddress
         if (currentChannel != null && target != null && currentChannel.isOpen) {
