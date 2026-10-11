@@ -44,9 +44,10 @@ class NetworkClient : IGamepadConnection {
     private var lastRttLogTime = 0L
     private var lastPacketReceivedTime = 0L
 
-    // Rumble State Deduplication (Avoids 100 coroutine/Flow emissions per second)
+    // Rumble & Sensor Mode State Deduplication (Avoids 100 coroutine/Flow emissions per second)
     private var lastLeftMotor = -1
     private var lastRightMotor = -1
+    private var lastRequestedSensorMode: Byte = -1
     
     override var onFeedbackReceived: ((GamepadFeedback) -> Unit)? = null
     override var onConnectionStateChanged: ((Boolean) -> Unit)? = null
@@ -63,6 +64,7 @@ class NetworkClient : IGamepadConnection {
         rttHistoryIndex = 0
         lastLeftMotor = -1
         lastRightMotor = -1
+        lastRequestedSensorMode = -1
         Arrays.fill(sendSeqNumbers, -1)
         disconnecting.set(false)
 
@@ -191,10 +193,13 @@ class NetworkClient : IGamepadConnection {
                             val feedback = feedbackPair.first
                             val echoSeq = feedbackPair.second
                             
-                            // Only emit feedback if motor speeds actually changed
-                            if (feedback.leftMotorSpeed != lastLeftMotor || feedback.rightMotorSpeed != lastRightMotor) {
+                            // Only emit feedback if motor speeds or requested sensor mode actually changed
+                            if (feedback.leftMotorSpeed != lastLeftMotor ||
+                                feedback.rightMotorSpeed != lastRightMotor ||
+                                feedback.requestedSensorMode != lastRequestedSensorMode) {
                                 lastLeftMotor = feedback.leftMotorSpeed
                                 lastRightMotor = feedback.rightMotorSpeed
+                                lastRequestedSensorMode = feedback.requestedSensorMode
                                 onFeedbackReceived?.invoke(feedback)
                             }
                             

@@ -439,7 +439,8 @@ fun NxprcCanvasRenderer(
                 val w = (overrideSizeDp ?: document.manifest.widthDp).toFloat()
                 val h = (overrideSizeDp ?: document.manifest.heightDp).toFloat()
                 // Gamepad HUD: calibrated at 0.82x so a 96dp Nxprc button renders at 78.7dp ~ 80dp (exact parity with RealisticButton 80dp)
-                Triple(w, h, 0.82f)
+                // Layout width and height match the rendered button size so bounds are tight
+                Triple(w * 0.82f, h * 0.82f, 1.0f)
             }
             is NxprcSizingPolicy.StudioGrid -> {
                 val w = (overrideSizeDp ?: document.manifest.widthDp).toFloat()
@@ -458,17 +459,11 @@ fun NxprcCanvasRenderer(
         }
     }
 
-    val canvasOutsets = document.canvas.canvasOutsets
-    val hasAuraOrOutsets = document.canvas.layers.any { it is CanvasLayer.GlowRing } ||
-            canvasOutsets.left > 0f || canvasOutsets.right > 0f || canvasOutsets.top > 0f || canvasOutsets.bottom > 0f
-    val maxOutsetVal = maxOf(canvasOutsets.left, canvasOutsets.right, canvasOutsets.top, canvasOutsets.bottom, 0f)
+    // Aura boundary headroom removed: component layout bounds strictly match the component dimensions
+    val auraHeadroomDp = 0
 
-    // Aura boundary headroom: expand the Composable's layout boundary so hardware RenderNode textures
-    // never clip radial auras and glow rings into a boxy square.
-    val auraHeadroomDp = if (hasAuraOrOutsets) maxOf(maxOutsetVal * 1.15f, 24f).roundToInt() else 0
-
-    val widthDp = (rawWidthDp + auraHeadroomDp * 2).roundToInt()
-    val heightDp = (rawHeightDp + auraHeadroomDp * 2).roundToInt()
+    val widthDp = rawWidthDp.roundToInt()
+    val heightDp = rawHeightDp.roundToInt()
 
     val buttonControl = remember(assignedControl) {
         when (assignedControl) {
@@ -500,6 +495,13 @@ fun NxprcCanvasRenderer(
     val stickBloomAlpha = if (isInteractive) {
         0.40f + 0.55f * stickDispFraction
     } else 0.40f
+
+    val primaryBox = remember(document) { document.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>().firstOrNull() }
+    val primaryShape = remember(document) { document.canvas.layers.filterIsInstance<CanvasLayer.GradientShape>().firstOrNull() }
+    val rootShapeType = remember(primaryBox, primaryShape) {
+        (primaryBox?.shapeType?.uppercase() ?: primaryShape?.shapeType?.uppercase() ?: "ROUNDED_RECT")
+    }
+    val rootIsOval = rootShapeType == "OVAL"
 
     val gestureModifier = if (!isInteractive) {
         Modifier
@@ -777,10 +779,15 @@ fun NxprcCanvasRenderer(
             Modifier.pointerInput(document.manifest.id, assignedControl, rawWidthDp, rawHeightDp, density) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
-                    val center = Offset(size.width / 2f, size.height / 2f)
-                    val btnRad = (minOf(rawWidthDp, rawHeightDp) / 2f * density) * renderScale * 1.25f
-                    val dist = hypot(down.position.x - center.x, down.position.y - center.y)
-                    if (dist <= btnRad) {
+                    val isSymmetricCircle = rootIsOval && kotlin.math.abs(rawWidthDp - rawHeightDp) < 4f
+                    val isInside = if (isSymmetricCircle) {
+                        val center = Offset(size.width / 2f, size.height / 2f)
+                        val btnRad = (minOf(rawWidthDp, rawHeightDp) / 2f * density) * renderScale * 1.25f
+                        hypot(down.position.x - center.x, down.position.y - center.y) <= btnRad
+                    } else {
+                        down.position.x in 0f..size.width.toFloat() && down.position.y in 0f..size.height.toFloat()
+                    }
+                    if (isInside) {
                         isPressed = true
                         currentInputTarget.onButtonPress(buttonControl)
 
@@ -792,13 +799,6 @@ fun NxprcCanvasRenderer(
             }
         }
     }
-
-    val primaryBox = remember(document) { document.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>().firstOrNull() }
-    val primaryShape = remember(document) { document.canvas.layers.filterIsInstance<CanvasLayer.GradientShape>().firstOrNull() }
-    val rootShapeType = remember(primaryBox, primaryShape) {
-        (primaryBox?.shapeType?.uppercase() ?: primaryShape?.shapeType?.uppercase() ?: "ROUNDED_RECT")
-    }
-    val rootIsOval = rootShapeType == "OVAL"
 
     Box(
         modifier = modifier
@@ -826,6 +826,7 @@ fun NxprcCanvasRenderer(
                     val dispFraction = (hypot(thumbOffsetX, thumbOffsetY) / maxR).coerceIn(0f, 1f)
 
                     // 1. Base socket containment bloom
+                    val baseBloomR = size.minDimension * 0.75f
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
@@ -834,9 +835,9 @@ fun NxprcCanvasRenderer(
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 0.55f
+                            radius = baseBloomR
                         ),
-                        radius = size.minDimension * 0.55f,
+                        radius = baseBloomR,
                         center = center
                     )
 
@@ -877,14 +878,15 @@ fun NxprcCanvasRenderer(
                         center = capPos
                     )
                 } else {
-                    // Shape-aware atmospheric socket bloom: matches button geometry and stays safely within container bounds
-                    val auraRadius = size.minDimension * 0.48f
-                    if (rootIsOval) {
+                    // Atmospheric ambient bloom behind button: blooms outward beyond layout bounds via .drawBehind (matching RealisticButton)
+                    val isSymmetricCircle = rootIsOval && kotlin.math.abs(size.width - size.height) < 4f
+                    if (isSymmetricCircle) {
+                        val auraRadius = size.minDimension * 0.85f
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    baseColor.copy(alpha = effAlpha * 0.45f),
-                                    baseColor.copy(alpha = effAlpha * 0.18f),
+                                    baseColor.copy(alpha = effAlpha * 0.50f),
+                                    baseColor.copy(alpha = effAlpha * 0.20f),
                                     Color.Transparent
                                 ),
                                 center = center,
@@ -894,25 +896,31 @@ fun NxprcCanvasRenderer(
                             center = center
                         )
                     } else {
-                        val cornerRadius = (primaryBox?.cornerRadiusTopLeft ?: primaryShape?.cornerRadius ?: 16f) * (size.minDimension / document.canvas.viewBoxWidth.coerceAtLeast(1f))
-                        val aspect = size.height / size.width.coerceAtLeast(1f)
+                        // Universal outward bloom for rectangular, stadium/pill, trigger, bumper, macro & polygon shapes
+                        val padX = size.width * 0.20f + 6f * density
+                        val padY = size.height * 0.20f + 6f * density
+                        val cornerRadius = (primaryBox?.cornerRadiusTopLeft ?: primaryShape?.cornerRadius ?: 16f) * (minOf(size.width, size.height) / document.canvas.viewBoxWidth.coerceAtLeast(1f))
+
+                        // 1. Soft atmospheric outer perimeter
                         drawRoundRect(
                             color = baseColor.copy(alpha = effAlpha * 0.12f),
-                            topLeft = Offset(center.x - auraRadius, center.y - auraRadius * aspect),
-                            size = Size(auraRadius * 2f, auraRadius * 2f * aspect),
-                            cornerRadius = CornerRadius(cornerRadius * 1.5f, cornerRadius * 1.5f)
+                            topLeft = Offset(-padX, -padY),
+                            size = Size(size.width + padX * 2f, size.height + padY * 2f),
+                            cornerRadius = CornerRadius(cornerRadius + padY * 0.8f, cornerRadius + padY * 0.8f)
                         )
+                        // 2. Mid ambient halo
                         drawRoundRect(
                             color = baseColor.copy(alpha = effAlpha * 0.25f),
-                            topLeft = Offset(center.x - auraRadius * 0.82f, center.y - auraRadius * 0.82f * aspect),
-                            size = Size(auraRadius * 1.64f, auraRadius * 1.64f * aspect),
-                            cornerRadius = CornerRadius(cornerRadius * 1.3f, cornerRadius * 1.3f)
+                            topLeft = Offset(-padX * 0.65f, -padY * 0.65f),
+                            size = Size(size.width + padX * 1.30f, size.height + padY * 1.30f),
+                            cornerRadius = CornerRadius(cornerRadius + padY * 0.5f, cornerRadius + padY * 0.5f)
                         )
+                        // 3. Inner core bloom
                         drawRoundRect(
                             color = baseColor.copy(alpha = effAlpha * 0.40f),
-                            topLeft = Offset(center.x - auraRadius * 0.65f, center.y - auraRadius * 0.65f * aspect),
-                            size = Size(auraRadius * 1.30f, auraRadius * 1.30f * aspect),
-                            cornerRadius = CornerRadius(cornerRadius, cornerRadius)
+                            topLeft = Offset(-padX * 0.35f, -padY * 0.35f),
+                            size = Size(size.width + padX * 0.70f, size.height + padY * 0.70f),
+                            cornerRadius = CornerRadius(cornerRadius + padY * 0.2f, cornerRadius + padY * 0.2f)
                         )
                     }
                 }
@@ -1310,7 +1318,7 @@ fun NxprcCanvasRenderer(
                             val glowColor = Color(layer.glowColor)
                             val buttonRadius = minOf(buttonW, buttonH) / 2f
                             val blurPx = (layer.blurRadius * pxPerUnit).coerceAtLeast(8f * scaleRatio)
-                            val totalRadius = (buttonRadius + blurPx).coerceAtMost(size.minDimension * 0.49f)
+                            val totalRadius = buttonRadius + blurPx
                             val innerRatio = (buttonRadius / totalRadius).coerceIn(0.1f, 0.85f)
                             if (rootIsOval) {
                                 drawCircle(

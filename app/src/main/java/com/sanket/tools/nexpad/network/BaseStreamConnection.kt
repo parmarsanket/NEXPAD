@@ -61,6 +61,7 @@ abstract class BaseStreamConnection : IGamepadConnection {
 
     private var lastLeftMotor = -1
     private var lastRightMotor = -1
+    private var lastRequestedSensorMode: Byte = -1
 
     private var currentTag = "STREAM"
 
@@ -188,16 +189,18 @@ abstract class BaseStreamConnection : IGamepadConnection {
 
         val leftMotor = data[1].toInt() and 0xFF
         val rightMotor = data[2].toInt() and 0xFF
+        val requestedSensorMode = data[3]
         val packetLoss = data[5].toInt() and 0xFF
         val echoSeq = ((data[6].toInt() and 0xFF) shl 24) or
                 ((data[7].toInt() and 0xFF) shl 16) or
                 ((data[8].toInt() and 0xFF) shl 8) or
                 (data[9].toInt() and 0xFF)
 
-        if (leftMotor != lastLeftMotor || rightMotor != lastRightMotor) {
+        if (leftMotor != lastLeftMotor || rightMotor != lastRightMotor || requestedSensorMode != lastRequestedSensorMode) {
             lastLeftMotor = leftMotor
             lastRightMotor = rightMotor
-            val feedback = GamepadFeedback(leftMotor, rightMotor, packetLoss)
+            lastRequestedSensorMode = requestedSensorMode
+            val feedback = GamepadFeedback(leftMotor, rightMotor, packetLoss, requestedSensorMode = requestedSensorMode)
             callbackScope?.launch {
                 onFeedbackReceived?.invoke(feedback)
             }

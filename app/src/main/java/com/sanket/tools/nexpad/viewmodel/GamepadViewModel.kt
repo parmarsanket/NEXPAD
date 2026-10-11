@@ -52,6 +52,7 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     private val sensorController = SensorController(
         inputState = inputState
     )
+    val requestedSensorMode: Byte get() = sensorController.requestedSensorMode
 
     private val sharedPreferences = application.getSharedPreferences("nexpad_prefs", android.content.Context.MODE_PRIVATE)
     private val _emulationMode = MutableStateFlow(sharedPreferences.getString("emulation_mode", "generic") ?: "generic")
@@ -222,6 +223,13 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
                 } else {
                     startDiscovery()
                 }
+            }
+        }
+
+        // Sync requestedSensorMode from Desktop feedback packets
+        viewModelScope.launch {
+            networkManager.feedbackFlow.collect { feedback ->
+                sensorController.setRequestedSensorMode(feedback.requestedSensorMode)
             }
         }
 

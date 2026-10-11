@@ -199,9 +199,13 @@ class MotionSensorManager(
             }
         }
 
-        // Emit the synchronized packet on Gyro updates since Game Rotation Vector is disabled.
-        // We use timestamp debouncing to prevent sending 2x packets if both Calibrated and Uncalibrated gyros fire.
+        // Emit the synchronized packet on Gyro updates (or Gravity updates when gyro is muted/absent)
         if (event.sensor.type == Sensor.TYPE_GYROSCOPE || event.sensor.type == Sensor.TYPE_GYROSCOPE_UNCALIBRATED) {
+            if (event.timestamp != lastSentTimestamp) {
+                lastSentTimestamp = event.timestamp
+                onMotionPacket(motion)
+            }
+        } else if (event.sensor.type == Sensor.TYPE_GRAVITY && (isGyroMuted || gyroSensor == null)) {
             if (event.timestamp != lastSentTimestamp) {
                 lastSentTimestamp = event.timestamp
                 onMotionPacket(motion)

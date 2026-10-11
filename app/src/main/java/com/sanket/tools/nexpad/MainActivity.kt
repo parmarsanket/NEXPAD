@@ -89,18 +89,21 @@ class MainActivity : ComponentActivity() {
         motionSensorManager = MotionSensorManager(
             context = this,
             onMotionPacket = { packet ->
-                // Send filtered Gravity data when available, fallback to raw Accelerometer
-                if (packet.gravityX != 0f || packet.gravityY != 0f || packet.gravityZ != 0f) {
-                    viewModel.updateGravity(packet.gravityX, packet.gravityY, packet.gravityZ)
+                if (viewModel.requestedSensorMode == com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_GRAVITY) {
+                    // Mode 0x01: Gravity mode for racing / steering wheel tilt
+                    if (packet.gravityX != 0f || packet.gravityY != 0f || packet.gravityZ != 0f) {
+                        viewModel.updateGravity(packet.gravityX, packet.gravityY, packet.gravityZ)
+                    } else {
+                        viewModel.updateGravity(packet.accelX, packet.accelY, packet.accelZ)
+                    }
                 } else {
+                    // Mode 0x00: Standard 6-axis IMU (gyro + raw accel) for DS4 and FPS aiming
                     viewModel.updateAccel(packet.accelX, packet.accelY, packet.accelZ)
+                    val gX = if (packet.rawGyroX != 0f) packet.rawGyroX else packet.gyroX
+                    val gY = if (packet.rawGyroY != 0f) packet.rawGyroY else packet.gyroY
+                    val gZ = if (packet.rawGyroZ != 0f) packet.rawGyroZ else packet.gyroZ
+                    viewModel.update6AxisGyro(gX, gY, gZ)
                 }
-                
-                // Fallback to calibrated gyro if the device doesn't support uncalibrated gyro
-                val gX = if (packet.rawGyroX != 0f) packet.rawGyroX else packet.gyroX
-                val gY = if (packet.rawGyroY != 0f) packet.rawGyroY else packet.gyroY
-                val gZ = if (packet.rawGyroZ != 0f) packet.rawGyroZ else packet.gyroZ
-                viewModel.update6AxisGyro(gX, gY, gZ)
             }
         )
 
