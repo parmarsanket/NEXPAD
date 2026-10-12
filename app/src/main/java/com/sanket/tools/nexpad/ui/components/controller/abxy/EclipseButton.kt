@@ -93,6 +93,8 @@ fun EclipseButton(
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
     val activeLabel = displayLabel ?: key
+    val psShape = getPlayStationShape(activeLabel)
+    val effectiveColor = if (psShape != null) getPlayStationColor(psShape) else buttonColor
 
     Box(
         modifier = modifier
@@ -114,8 +116,8 @@ fun EclipseButton(
                         brush = Brush.radialGradient(
                             colorStops = arrayOf(
                                 0.00f to Color.White.copy(alpha = if (isPressed) 0.65f else 0.20f),
-                                0.25f to buttonColor.copy(alpha = rgbBloomAlpha * 0.70f),
-                                0.65f to buttonColor.copy(alpha = rgbBloomAlpha * 0.20f),
+                                0.25f to effectiveColor.copy(alpha = rgbBloomAlpha * 0.70f),
+                                0.65f to effectiveColor.copy(alpha = rgbBloomAlpha * 0.20f),
                                 1.00f to Color.Transparent
                             ),
                             center = penumbraCenter,
@@ -127,7 +129,7 @@ fun EclipseButton(
 
                     // 2. Annular limb ring
                     drawCircle(
-                        color = buttonColor.copy(alpha = if (isPressed) 0.55f else 0.22f),
+                        color = effectiveColor.copy(alpha = if (isPressed) 0.55f else 0.22f),
                         radius = size.minDimension * 0.52f,
                         center = center,
                         style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.5f)
@@ -142,7 +144,7 @@ fun EclipseButton(
                         // Brilliant diamond core
                         drawCircle(
                             brush = Brush.radialGradient(
-                                colors = listOf(Color.White, buttonColor, Color.Transparent),
+                                colors = listOf(Color.White, effectiveColor, Color.Transparent),
                                 center = flareCenter,
                                 radius = 22f
                             ),
@@ -168,8 +170,8 @@ fun EclipseButton(
             .shadow(
                 elevation = if (isPressed) 1.dp else 4.dp,
                 shape = CircleShape,
-                ambientColor = if (isRgbEnabled) buttonColor else Color.Black,
-                spotColor = if (isRgbEnabled) buttonColor else Color.Black
+                ambientColor = if (isRgbEnabled) effectiveColor else Color.Black,
+                spotColor = if (isRgbEnabled) effectiveColor else Color.Black
             )
             .clip(CircleShape)
             // .lx-body background #040405
@@ -209,7 +211,7 @@ fun EclipseButton(
                 brush = Brush.radialGradient(
                     colorStops = arrayOf(
                         0.00f to Color.White.copy(alpha = 0.95f * coronaAlpha),
-                        0.35f to buttonColor.copy(alpha = 0.90f * coronaAlpha),
+                        0.35f to effectiveColor.copy(alpha = 0.90f * coronaAlpha),
                         0.80f to Color.Transparent
                     ),
                     center = coronaCenter,
@@ -242,12 +244,20 @@ fun EclipseButton(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = activeLabel,
-                color = buttonColor,
-                fontWeight = FontWeight.Medium,
-                fontSize = 44.sp
-            )
+            if (psShape != null) {
+                PlayStationSymbol(
+                    shape = psShape,
+                    color = effectiveColor,
+                    size = 38.dp
+                )
+            } else {
+                Text(
+                    text = activeLabel,
+                    color = effectiveColor,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 44.sp
+                )
+            }
         }
 
         // ── 3. SHELL OVERLAY (.lx-ring + .lx-lens + undercut shadow) ──
@@ -278,12 +288,12 @@ fun EclipseButton(
             // Neon ring (.lx-ring): inset 3px, 2px core + 4px bloom
             val ringRadius = r - 3.dp.toPx()
             drawCircle(
-                color = buttonColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
+                color = effectiveColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
                 radius = ringRadius,
                 style = Stroke(width = 4.dp.toPx())
             )
             drawCircle(
-                color = buttonColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
+                color = effectiveColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
                 radius = ringRadius,
                 style = Stroke(width = 2.dp.toPx())
             )
@@ -333,13 +343,8 @@ internal fun StaticEclipseButton(
     modifier: Modifier = Modifier
 ) {
     val displayLabel = CategoryManager.getLabelForStyle(controlKey, labelStyle)
-    val buttonColor = when (controlKey.uppercase()) {
-        "A" -> Color(0xFF3FD25A)
-        "B" -> Color(0xFFE6474E)
-        "X" -> Color(0xFF3F8FE0)
-        "Y" -> Color(0xFFE0A03F)
-        else -> Color(0xFF3FD25A)
-    }
+    val buttonColor = resolveButtonColor(controlKey, labelStyle, displayLabel)
+    val psShape = getPlayStationShape(displayLabel)
 
     Box(
         modifier = modifier
@@ -420,12 +425,20 @@ internal fun StaticEclipseButton(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = displayLabel,
-                color = buttonColor,
-                fontWeight = FontWeight.Medium,
-                fontSize = 44.sp
-            )
+            if (psShape != null) {
+                PlayStationSymbol(
+                    shape = psShape,
+                    color = buttonColor,
+                    size = 38.dp
+                )
+            } else {
+                Text(
+                    text = displayLabel,
+                    color = buttonColor,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 44.sp
+                )
+            }
         }
 
         // Shell

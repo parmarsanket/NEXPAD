@@ -98,6 +98,8 @@ fun FacetButton(
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
     val activeLabel = displayLabel ?: key
+    val psShape = getPlayStationShape(activeLabel)
+    val effectiveColor = if (psShape != null) getPlayStationColor(psShape) else buttonColor
     val gemShape = remember { RoundedCornerShape(14.dp) }
 
     Box(
@@ -114,8 +116,8 @@ fun FacetButton(
                         drawRoundRect(
                             brush = Brush.radialGradient(
                                 colorStops = arrayOf(
-                                    0.00f to buttonColor.copy(alpha = rgbBloomAlpha * 0.60f),
-                                    0.45f to buttonColor.copy(alpha = rgbBloomAlpha * 0.22f),
+                                    0.00f to effectiveColor.copy(alpha = rgbBloomAlpha * 0.60f),
+                                    0.45f to effectiveColor.copy(alpha = rgbBloomAlpha * 0.22f),
                                     1.00f to Color.Transparent
                                 ),
                                 center = center,
@@ -128,7 +130,7 @@ fun FacetButton(
 
                         // 8-point crystalline diffraction spikes
                         val spikeLen = size.minDimension * 0.58f
-                        val spikeColor = buttonColor.copy(alpha = if (isPressed) 0.85f else 0.40f)
+                        val spikeColor = effectiveColor.copy(alpha = if (isPressed) 0.85f else 0.40f)
                         // Cardinal axes
                         drawLine(
                             color = spikeColor,
@@ -188,8 +190,8 @@ fun FacetButton(
                 .shadow(
                     elevation = if (isPressed) 1.dp else 4.dp,
                     shape = gemShape,
-                    spotColor = if (isRgbEnabled) buttonColor else Color.Black,
-                    ambientColor = if (isRgbEnabled) buttonColor else Color.Black
+                    spotColor = if (isRgbEnabled) effectiveColor else Color.Black,
+                    ambientColor = if (isRgbEnabled) effectiveColor else Color.Black
                 )
                 .clip(gemShape)
                 .background(
@@ -228,7 +230,7 @@ fun FacetButton(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(buttonColor.copy(alpha = fillAlpha))
+                        .background(effectiveColor.copy(alpha = fillAlpha))
                 )
             }
 
@@ -260,7 +262,7 @@ fun FacetButton(
                     scale(scaleX = innerScaleAnim, scaleY = innerScaleAnim, pivot = center) {
                         // Inner diamond glow bloom
                         drawRoundRect(
-                            color = buttonColor.copy(alpha = innerAlpha * 0.55f),
+                            color = effectiveColor.copy(alpha = innerAlpha * 0.55f),
                             topLeft = Offset(inset - 1.5.dp.toPx(), inset - 1.5.dp.toPx()),
                             size = Size(innerW + 3.dp.toPx(), innerH + 3.dp.toPx()),
                             cornerRadius = CornerRadius(cr + 1.5.dp.toPx(), cr + 1.5.dp.toPx()),
@@ -268,7 +270,7 @@ fun FacetButton(
                         )
                         // Inner diamond core stroke
                         drawRoundRect(
-                            color = buttonColor.copy(alpha = innerAlpha),
+                            color = effectiveColor.copy(alpha = innerAlpha),
                             topLeft = Offset(inset, inset),
                             size = Size(innerW, innerH),
                             cornerRadius = CornerRadius(cr, cr),
@@ -283,18 +285,26 @@ fun FacetButton(
                 modifier = Modifier.graphicsLayer { rotationZ = -45f },
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = activeLabel,
-                    color = buttonColor,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 32.sp,
-                    style = androidx.compose.ui.text.TextStyle(
-                        shadow = androidx.compose.ui.graphics.Shadow(
-                            color = buttonColor.copy(alpha = if (isPressed) 0.90f else 0.50f),
-                            blurRadius = 14f
+                if (psShape != null) {
+                    PlayStationSymbol(
+                        shape = psShape,
+                        color = effectiveColor,
+                        size = 32.dp
+                    )
+                } else {
+                    Text(
+                        text = activeLabel,
+                        color = effectiveColor,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 32.sp,
+                        style = androidx.compose.ui.text.TextStyle(
+                            shadow = androidx.compose.ui.graphics.Shadow(
+                                color = effectiveColor.copy(alpha = if (isPressed) 0.90f else 0.50f),
+                                blurRadius = 14f
+                            )
                         )
                     )
-                )
+                }
             }
 
             // ── 4. SHELL OVERLAY (.lx-ring + .lx-lens) ──
@@ -310,7 +320,7 @@ fun FacetButton(
 
                 // Outer soft bloom
                 drawRoundRect(
-                    color = buttonColor.copy(alpha = if (isPressed) 0.65f else 0.35f),
+                    color = effectiveColor.copy(alpha = if (isPressed) 0.65f else 0.35f),
                     topLeft = Offset(ringInset - 1f, ringInset - 1f),
                     size = Size(ringW + 2f, ringH + 2f),
                     cornerRadius = CornerRadius(ringCr + 1f, ringCr + 1f),
@@ -318,7 +328,7 @@ fun FacetButton(
                 )
                 // Core crisp ring
                 drawRoundRect(
-                    color = buttonColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
+                    color = effectiveColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
                     topLeft = Offset(ringInset, ringInset),
                     size = Size(ringW, ringH),
                     cornerRadius = CornerRadius(ringCr, ringCr),
@@ -356,13 +366,8 @@ internal fun StaticFacetButton(
     modifier: Modifier = Modifier
 ) {
     val displayLabel = CategoryManager.getLabelForStyle(controlKey, labelStyle)
-    val buttonColor = when (controlKey.uppercase()) {
-        "A" -> Color(0xFF3FD25A)
-        "B" -> Color(0xFFE6474E)
-        "X" -> Color(0xFF3F8FE0)
-        "Y" -> Color(0xFFE0A03F)
-        else -> Color(0xFF3FD25A)
-    }
+    val buttonColor = resolveButtonColor(controlKey, labelStyle, displayLabel)
+    val psShape = getPlayStationShape(displayLabel)
     val gemShape = remember { RoundedCornerShape(14.dp) }
 
     Box(
@@ -455,18 +460,26 @@ internal fun StaticFacetButton(
                 modifier = Modifier.graphicsLayer { rotationZ = -45f },
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = displayLabel,
-                    color = buttonColor,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 32.sp,
-                    style = androidx.compose.ui.text.TextStyle(
-                        shadow = androidx.compose.ui.graphics.Shadow(
-                            color = buttonColor.copy(alpha = 0.50f),
-                            blurRadius = 14f
+                if (psShape != null) {
+                    PlayStationSymbol(
+                        shape = psShape,
+                        color = buttonColor,
+                        size = 32.dp
+                    )
+                } else {
+                    Text(
+                        text = displayLabel,
+                        color = buttonColor,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 32.sp,
+                        style = androidx.compose.ui.text.TextStyle(
+                            shadow = androidx.compose.ui.graphics.Shadow(
+                                color = buttonColor.copy(alpha = 0.50f),
+                                blurRadius = 14f
+                            )
                         )
                     )
-                )
+                }
             }
 
             Canvas(modifier = Modifier.fillMaxSize()) {

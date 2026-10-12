@@ -14,6 +14,50 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.category.ControllerLabelStyle
+
+/**
+ * Authentic Classic PlayStation controller button colors (DualShock / PlayStation iconic 4-color palette).
+ * - Top: Triangle △ (Green)
+ * - Right: Circle ○ (Red)
+ * - Left: Square □ (Pink)
+ * - Bottom: Cross × (Blue)
+ */
+object PlayStationColors {
+    /** Classic PlayStation Cross (Blue #3F8FE0, bottom position / A) */
+    val Cross: Color = Color(0xFF3F8FE0)
+
+    /** Classic PlayStation Circle (Red #E6474E, right position / B) */
+    val Circle: Color = Color(0xFFE6474E)
+
+    /** Classic PlayStation Square (Pink #E055B8, left position / X) */
+    val Square: Color = Color(0xFFE055B8)
+
+    /** Classic PlayStation Triangle (Green #3FD25A, top position / Y) */
+    val Triangle: Color = Color(0xFF3FD25A)
+}
+
+/**
+ * Classic Xbox controller button colors.
+ * - Top: Y (Yellow)
+ * - Right: B (Red)
+ * - Left: X (Blue)
+ * - Bottom: A (Green)
+ */
+object XboxColors {
+    /** Xbox A button (Green #3FD25A, bottom position) */
+    val A: Color = Color(0xFF3FD25A)
+
+    /** Xbox B button (Red #E6474E, right position) */
+    val B: Color = Color(0xFFE6474E)
+
+    /** Xbox X button (Blue #3F8FE0, left position) */
+    val X: Color = Color(0xFF3F8FE0)
+
+    /** Xbox Y button (Yellow #E0A03F, top position) */
+    val Y: Color = Color(0xFFE0A03F)
+}
 
 /**
  * Supported PlayStation geometric button shapes.
@@ -24,6 +68,77 @@ enum class PlayStationShape {
     SQUARE,
     TRIANGLE
 }
+
+/**
+ * Returns the classic authentic PlayStation color for a given [PlayStationShape].
+ * - Cross: Blue (#3F8FE0)
+ * - Circle: Red (#E6474E)
+ * - Square: Pink (#E055B8)
+ * - Triangle: Green (#3FD25A)
+ */
+fun getPlayStationColor(shape: PlayStationShape): Color = when (shape) {
+    PlayStationShape.CROSS -> PlayStationColors.Cross
+    PlayStationShape.CIRCLE -> PlayStationColors.Circle
+    PlayStationShape.SQUARE -> PlayStationColors.Square
+    PlayStationShape.TRIANGLE -> PlayStationColors.Triangle
+}
+
+/**
+ * Resolves the authentic face button color based on its control identity, active [ControllerLabelStyle],
+ * and/or explicit glyph label.
+ *
+ * When [labelStyle] is [ControllerLabelStyle.PLAYSTATION] or [displayLabel] is a PlayStation symbol:
+ * - Cross × / A  -> Blue (#3F8FE0)
+ * - Circle ○ / B -> Red (#E6474E)
+ * - Square □ / X -> Pink (#E055B8)
+ * - Triangle △ / Y -> Green (#3FD25A)
+ *
+ * When [labelStyle] is [ControllerLabelStyle.XBOX]:
+ * - A -> Green (#3FD25A)
+ * - B -> Red (#E6474E)
+ * - X -> Blue (#3F8FE0)
+ * - Y -> Yellow (#E0A03F)
+ */
+fun resolveButtonColor(
+    controlKey: String,
+    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
+    displayLabel: String? = null,
+    fallbackColor: Color = Color(0xFF3FD25A)
+): Color {
+    // 1. If explicit displayLabel or controlKey represents a PlayStation shape, use its authentic color
+    val psShape = getPlayStationShape(displayLabel) ?: getPlayStationShape(controlKey)
+    if (psShape != null) {
+        return getPlayStationColor(psShape)
+    }
+
+    // 2. If active profile style is PLAYSTATION, map the cardinal button position
+    if (labelStyle == ControllerLabelStyle.PLAYSTATION) {
+        return when (controlKey.trim().uppercase()) {
+            "A", "CROSS", "✕", "×"    -> PlayStationColors.Cross
+            "B", "CIRCLE", "○", "◯"   -> PlayStationColors.Circle
+            "X", "SQUARE", "□", "◻"   -> PlayStationColors.Square
+            "Y", "TRIANGLE", "△", "▲" -> PlayStationColors.Triangle
+            else -> fallbackColor
+        }
+    }
+
+    // 3. Default Xbox Face Button Colors
+    return when (controlKey.trim().uppercase()) {
+        "A" -> XboxColors.A
+        "B" -> XboxColors.B
+        "X" -> XboxColors.X
+        "Y" -> XboxColors.Y
+        else -> fallbackColor
+    }
+}
+
+/**
+ * Overload resolving button color from a type-safe [ControlKey].
+ */
+fun resolveButtonColor(
+    controlKey: ControlKey,
+    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX
+): Color = resolveButtonColor(controlKey.key, labelStyle)
 
 /**
  * Determines whether a string identifier or label corresponds to an authentic PlayStation face shape.

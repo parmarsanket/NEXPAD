@@ -107,6 +107,8 @@ fun OrbitButton(
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
     val activeLabel = displayLabel ?: key
+    val psShape = getPlayStationShape(activeLabel)
+    val effectiveColor = if (psShape != null) getPlayStationColor(psShape) else buttonColor
 
     val baseDomeGradient = remember {
         Brush.radialGradient(
@@ -135,8 +137,8 @@ fun OrbitButton(
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                buttonColor.copy(alpha = rgbBloomAlpha * 0.50f),
-                                buttonColor.copy(alpha = rgbBloomAlpha * 0.18f),
+                                effectiveColor.copy(alpha = rgbBloomAlpha * 0.50f),
+                                effectiveColor.copy(alpha = rgbBloomAlpha * 0.18f),
                                 Color.Transparent
                             ),
                             center = center,
@@ -150,7 +152,7 @@ fun OrbitButton(
                     val r1 = size.minDimension * 0.62f
                     rotate(degrees = rotation1, pivot = center) {
                         drawCircle(
-                            color = buttonColor.copy(alpha = if (isPressed) 0.85f else 0.40f),
+                            color = effectiveColor.copy(alpha = if (isPressed) 0.85f else 0.40f),
                             radius = r1,
                             center = center,
                             style = androidx.compose.ui.graphics.drawscope.Stroke(
@@ -171,7 +173,7 @@ fun OrbitButton(
                         center = pip1
                     )
                     drawCircle(
-                        color = buttonColor.copy(alpha = 0.6f),
+                        color = effectiveColor.copy(alpha = 0.6f),
                         radius = if (isPressed) 8f else 5f,
                         center = pip1
                     )
@@ -180,7 +182,7 @@ fun OrbitButton(
                     val r2 = size.minDimension * 0.53f
                     rotate(degrees = rotation2, pivot = center) {
                         drawCircle(
-                            color = buttonColor.copy(alpha = if (isPressed) 0.70f else 0.30f),
+                            color = effectiveColor.copy(alpha = if (isPressed) 0.70f else 0.30f),
                             radius = r2,
                             center = center,
                             style = androidx.compose.ui.graphics.drawscope.Stroke(
@@ -205,8 +207,8 @@ fun OrbitButton(
             .shadow(
                 elevation = if (isPressed) 1.dp else 4.dp,
                 shape = CircleShape,
-                ambientColor = if (isRgbEnabled) buttonColor else Color.Black,
-                spotColor = if (isRgbEnabled) buttonColor else Color.Black
+                ambientColor = if (isRgbEnabled) effectiveColor else Color.Black,
+                spotColor = if (isRgbEnabled) effectiveColor else Color.Black
             )
             .clip(CircleShape)
             .background(baseDomeGradient)
@@ -263,7 +265,7 @@ fun OrbitButton(
 
             rotate(degrees = rotation1, pivot = Offset(cx, cy)) {
                 drawCircle(
-                    color = buttonColor.copy(alpha = orbit1Alpha),
+                    color = effectiveColor.copy(alpha = orbit1Alpha),
                     radius = r1,
                     center = Offset(cx, cy),
                     style = Stroke(
@@ -282,7 +284,7 @@ fun OrbitButton(
 
             rotate(degrees = rotation2, pivot = Offset(cx, cy)) {
                 drawCircle(
-                    color = buttonColor.copy(alpha = orbit2Alpha),
+                    color = effectiveColor.copy(alpha = orbit2Alpha),
                     radius = r2,
                     center = Offset(cx, cy),
                     style = Stroke(
@@ -295,12 +297,20 @@ fun OrbitButton(
         }
 
         // ── 2. CENTER GLYPH (font-size: 34px) ──
-        Text(
-            text = activeLabel,
-            color = buttonColor,
-            fontWeight = FontWeight.Medium,
-            fontSize = 34.sp
-        )
+        if (psShape != null) {
+            PlayStationSymbol(
+                shape = psShape,
+                color = effectiveColor,
+                size = 32.dp
+            )
+        } else {
+            Text(
+                text = activeLabel,
+                color = effectiveColor,
+                fontWeight = FontWeight.Medium,
+                fontSize = 34.sp
+            )
+        }
 
         // ── 3. SHELL OVERLAY (.lx-ring + .lx-lens) ──
         Canvas(modifier = Modifier.fillMaxSize()) {
@@ -318,12 +328,12 @@ fun OrbitButton(
             // Neon ring (.lx-ring)
             val ringRadius = r - 3.dp.toPx()
             drawCircle(
-                color = buttonColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
+                color = effectiveColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
                 radius = ringRadius,
                 style = Stroke(width = 4.dp.toPx())
             )
             drawCircle(
-                color = buttonColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
+                color = effectiveColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
                 radius = ringRadius,
                 style = Stroke(width = 2.dp.toPx())
             )
@@ -372,13 +382,8 @@ internal fun StaticOrbitButton(
     modifier: Modifier = Modifier
 ) {
     val displayLabel = CategoryManager.getLabelForStyle(controlKey, labelStyle)
-    val buttonColor = when (controlKey.uppercase()) {
-        "A" -> Color(0xFF3FD25A)
-        "B" -> Color(0xFFE6474E)
-        "X" -> Color(0xFF3F8FE0)
-        "Y" -> Color(0xFFE0A03F)
-        else -> Color(0xFF3FD25A)
-    }
+    val buttonColor = resolveButtonColor(controlKey, labelStyle, displayLabel)
+    val psShape = getPlayStationShape(displayLabel)
 
     Box(
         modifier = modifier
@@ -476,12 +481,20 @@ internal fun StaticOrbitButton(
             )
         }
 
-        Text(
-            text = displayLabel,
-            color = buttonColor,
-            fontWeight = FontWeight.Medium,
-            fontSize = 34.sp
-        )
+        if (psShape != null) {
+            PlayStationSymbol(
+                shape = psShape,
+                color = buttonColor,
+                size = 32.dp
+            )
+        } else {
+            Text(
+                text = displayLabel,
+                color = buttonColor,
+                fontWeight = FontWeight.Medium,
+                fontSize = 34.sp
+            )
+        }
 
         // Shell
         Canvas(modifier = Modifier.fillMaxSize()) {

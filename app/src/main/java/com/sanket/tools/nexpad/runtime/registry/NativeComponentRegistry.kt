@@ -718,9 +718,15 @@ class RealisticButtonVariant(
 
     @Composable
     override fun RenderInteractive(context: NativeRenderContext) {
+        val effectiveColor = resolveButtonColor(
+            controlKey = controlKey.key,
+            labelStyle = context.labelStyle,
+            displayLabel = context.displayLabel,
+            fallbackColor = buttonColor
+        )
         RealisticButton(
             key = controlKey.key,
-            buttonColor = buttonColor,
+            buttonColor = effectiveColor,
             isConnected = context.isConnected,
             onVibrate = context.onVibrate,
             viewModel = context.viewModel,
@@ -748,9 +754,15 @@ class LiquidButtonVariant(
     override val isBaselineDefault: Boolean = false
     @Composable
     override fun RenderInteractive(context: NativeRenderContext) {
+        val effectiveColor = resolveButtonColor(
+            controlKey = controlKey.key,
+            labelStyle = context.labelStyle,
+            displayLabel = context.displayLabel,
+            fallbackColor = buttonColor
+        )
         LiquidButton(
             key = controlKey.key,
-            buttonColor = buttonColor,
+            buttonColor = effectiveColor,
             isConnected = context.isConnected,
             onVibrate = context.onVibrate,
             viewModel = context.viewModel,
@@ -777,9 +789,15 @@ class FacetButtonVariant(
     override val isBaselineDefault: Boolean = false
     @Composable
     override fun RenderInteractive(context: NativeRenderContext) {
+        val effectiveColor = resolveButtonColor(
+            controlKey = controlKey.key,
+            labelStyle = context.labelStyle,
+            displayLabel = context.displayLabel,
+            fallbackColor = buttonColor
+        )
         FacetButton(
             key = controlKey.key,
-            buttonColor = buttonColor,
+            buttonColor = effectiveColor,
             isConnected = context.isConnected,
             onVibrate = context.onVibrate,
             viewModel = context.viewModel,
@@ -806,9 +824,15 @@ class FlipButtonVariant(
     override val isBaselineDefault: Boolean = false
     @Composable
     override fun RenderInteractive(context: NativeRenderContext) {
+        val effectiveColor = resolveButtonColor(
+            controlKey = controlKey.key,
+            labelStyle = context.labelStyle,
+            displayLabel = context.displayLabel,
+            fallbackColor = buttonColor
+        )
         FlipButton(
             key = controlKey.key,
-            buttonColor = buttonColor,
+            buttonColor = effectiveColor,
             isConnected = context.isConnected,
             onVibrate = context.onVibrate,
             viewModel = context.viewModel,
@@ -835,9 +859,15 @@ class RippleButtonVariant(
     override val isBaselineDefault: Boolean = false
     @Composable
     override fun RenderInteractive(context: NativeRenderContext) {
+        val effectiveColor = resolveButtonColor(
+            controlKey = controlKey.key,
+            labelStyle = context.labelStyle,
+            displayLabel = context.displayLabel,
+            fallbackColor = buttonColor
+        )
         RippleButton(
             key = controlKey.key,
-            buttonColor = buttonColor,
+            buttonColor = effectiveColor,
             isConnected = context.isConnected,
             onVibrate = context.onVibrate,
             viewModel = context.viewModel,
@@ -865,9 +895,15 @@ class OrbitButtonVariant(
     override val isBaselineDefault: Boolean = false
     @Composable
     override fun RenderInteractive(context: NativeRenderContext) {
+        val effectiveColor = resolveButtonColor(
+            controlKey = controlKey.key,
+            labelStyle = context.labelStyle,
+            displayLabel = context.displayLabel,
+            fallbackColor = buttonColor
+        )
         OrbitButton(
             key = controlKey.key,
-            buttonColor = buttonColor,
+            buttonColor = effectiveColor,
             isConnected = context.isConnected,
             onVibrate = context.onVibrate,
             viewModel = context.viewModel,
@@ -894,9 +930,15 @@ class CapsulesButtonVariant(
     override val isBaselineDefault: Boolean = false
     @Composable
     override fun RenderInteractive(context: NativeRenderContext) {
+        val effectiveColor = resolveButtonColor(
+            controlKey = controlKey.key,
+            labelStyle = context.labelStyle,
+            displayLabel = context.displayLabel,
+            fallbackColor = buttonColor
+        )
         CapsulesButton(
             key = controlKey.key,
-            buttonColor = buttonColor,
+            buttonColor = effectiveColor,
             isConnected = context.isConnected,
             onVibrate = context.onVibrate,
             viewModel = context.viewModel,
@@ -923,9 +965,15 @@ class EclipseButtonVariant(
     override val isBaselineDefault: Boolean = false
     @Composable
     override fun RenderInteractive(context: NativeRenderContext) {
+        val effectiveColor = resolveButtonColor(
+            controlKey = controlKey.key,
+            labelStyle = context.labelStyle,
+            displayLabel = context.displayLabel,
+            fallbackColor = buttonColor
+        )
         EclipseButton(
             key = controlKey.key,
-            buttonColor = buttonColor,
+            buttonColor = effectiveColor,
             isConnected = context.isConnected,
             onVibrate = context.onVibrate,
             viewModel = context.viewModel,
@@ -2592,16 +2640,24 @@ object NativeComponentRegistry {
                 isRgbEnabled = context.isRgbEnabled,
                 modifier = context.modifier
             )
-            else -> RealisticButton(
-                key = context.key,
-                buttonColor = Color.Gray,
-                isConnected = context.isConnected,
-                onVibrate = context.onVibrate,
-                viewModel = context.viewModel,
-                isRgbEnabled = context.isRgbEnabled,
-                displayLabel = context.displayLabel,
-                modifier = context.modifier
-            )
+            else -> {
+                val effectiveColor = resolveButtonColor(
+                    controlKey = context.key,
+                    labelStyle = context.labelStyle,
+                    displayLabel = context.displayLabel,
+                    fallbackColor = Color.Gray
+                )
+                RealisticButton(
+                    key = context.key,
+                    buttonColor = effectiveColor,
+                    isConnected = context.isConnected,
+                    onVibrate = context.onVibrate,
+                    viewModel = context.viewModel,
+                    isRgbEnabled = context.isRgbEnabled,
+                    displayLabel = context.displayLabel,
+                    modifier = context.modifier
+                )
+            }
         }
     }
 }

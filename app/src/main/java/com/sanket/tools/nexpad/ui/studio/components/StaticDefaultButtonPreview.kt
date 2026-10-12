@@ -40,6 +40,8 @@ import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.ui.components.controller.abxy.PlayStationSymbol
 import com.sanket.tools.nexpad.ui.components.controller.abxy.getPlayStationShape
+import com.sanket.tools.nexpad.ui.components.controller.abxy.getPlayStationColor
+import com.sanket.tools.nexpad.ui.components.controller.abxy.resolveButtonColor
 import com.sanket.tools.nexpad.ui.components.controller.abxy.ButtonPerspectiveDirection
 import com.sanket.tools.nexpad.ui.components.controller.abxy.BottomHorizonClipShape
 import com.sanket.tools.nexpad.ui.components.controller.abxy.TopHorizonClipShape
@@ -110,10 +112,10 @@ fun StaticDefaultButtonPreview(
         contentAlignment = Alignment.Center
     ) {
         when (ctrl) {
-            ControlKey.A -> StaticRealisticButton(key = displayLabel, buttonColor = Color(0xFF3FD25A))
-            ControlKey.B -> StaticRealisticButton(key = displayLabel, buttonColor = Color(0xFFE6474E))
-            ControlKey.X -> StaticRealisticButton(key = displayLabel, buttonColor = Color(0xFF3F8FE0))
-            ControlKey.Y -> StaticRealisticButton(key = displayLabel, buttonColor = Color(0xFFE0A03F))
+            ControlKey.A -> StaticRealisticButton(key = displayLabel, buttonColor = resolveButtonColor("A", labelStyle, displayLabel))
+            ControlKey.B -> StaticRealisticButton(key = displayLabel, buttonColor = resolveButtonColor("B", labelStyle, displayLabel))
+            ControlKey.X -> StaticRealisticButton(key = displayLabel, buttonColor = resolveButtonColor("X", labelStyle, displayLabel))
+            ControlKey.Y -> StaticRealisticButton(key = displayLabel, buttonColor = resolveButtonColor("Y", labelStyle, displayLabel))
 
             ControlKey.LS -> StaticRealisticJoystick(isLeft = true)
             ControlKey.RS -> StaticRealisticJoystick(isLeft = false)
@@ -156,6 +158,9 @@ private fun StaticRealisticButton(
     buttonColor: Color,
     modifier: Modifier = Modifier
 ) {
+    val psShape = getPlayStationShape(key)
+    val effectiveColor = if (psShape != null) getPlayStationColor(psShape) else buttonColor
+
     val perspectiveDirection = when {
         key.equals("A", ignoreCase = true) || key.equals("CROSS", ignoreCase = true) || key.equals("DOWN", ignoreCase = true) -> ButtonPerspectiveDirection.BOTTOM
         key.equals("Y", ignoreCase = true) || key.equals("TRIANGLE", ignoreCase = true) || key.equals("UP", ignoreCase = true) -> ButtonPerspectiveDirection.TOP
@@ -189,8 +194,8 @@ private fun StaticRealisticButton(
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            buttonColor.copy(alpha = 0.45f * 0.55f),
-                            buttonColor.copy(alpha = 0.45f * 0.22f),
+                            effectiveColor.copy(alpha = 0.45f * 0.55f),
+                            effectiveColor.copy(alpha = 0.45f * 0.22f),
                             Color.Transparent
                         ),
                         center = center,
@@ -202,8 +207,8 @@ private fun StaticRealisticButton(
             .shadow(
                 elevation = 4.dp,
                 shape = CircleShape,
-                ambientColor = buttonColor,
-                spotColor = buttonColor
+                ambientColor = effectiveColor,
+                spotColor = effectiveColor
             )
             .clip(CircleShape)
             .background(baseDomeGradient),
@@ -337,20 +342,20 @@ private fun StaticRealisticButton(
             val ringRadius = r - 3.dp.toPx()
             // Outer bloom
             drawCircle(
-                color = buttonColor.copy(alpha = 0.25f),
+                color = effectiveColor.copy(alpha = 0.25f),
                 radius = ringRadius,
                 style = Stroke(width = 4.dp.toPx())
             )
             // Core crisp ring
             drawCircle(
-                color = buttonColor.copy(alpha = 0.70f),
+                color = effectiveColor.copy(alpha = 0.70f),
                 radius = ringRadius,
                 style = Stroke(width = 2.dp.toPx())
             )
 
-            // Layer #6: Socket Bevel Rim — buttonColor outside neon ring
+            // Layer #6: Socket Bevel Rim — effectiveColor outside neon ring
             drawCircle(
-                color = buttonColor.copy(alpha = 0.12f),
+                color = effectiveColor.copy(alpha = 0.12f),
                 radius = ringRadius + 1.5.dp.toPx(),
                 style = Stroke(width = 2.dp.toPx())
             )
@@ -391,7 +396,6 @@ private fun StaticRealisticButton(
         }
 
         // .glyph: Magnified Optical Glyph with Directional Shift & Horizon Clipping
-        val psShape = getPlayStationShape(key)
         val glyphOffset = when (perspectiveDirection) {
             ButtonPerspectiveDirection.BOTTOM -> IntOffset(0, 7)
             ButtonPerspectiveDirection.TOP    -> IntOffset(0, -7)
@@ -407,14 +411,14 @@ private fun StaticRealisticButton(
         if (psShape != null) {
             PlayStationSymbol(
                 shape = psShape,
-                color = buttonColor,
+                color = effectiveColor,
                 size = 40.dp,
                 modifier = glyphModifier
             )
         } else {
             Text(
                 text = key,
-                color = buttonColor,
+                color = effectiveColor,
                 fontSize = 46.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = glyphModifier

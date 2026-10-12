@@ -119,6 +119,8 @@ fun LiquidButton(
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
     val activeLabel = displayLabel ?: key
+    val psShape = getPlayStationShape(activeLabel)
+    val effectiveColor = if (psShape != null) getPlayStationColor(psShape) else buttonColor
 
     val baseDomeGradient = remember {
         Brush.radialGradient(
@@ -147,9 +149,9 @@ fun LiquidButton(
                     drawCircle(
                         brush = Brush.radialGradient(
                             colorStops = arrayOf(
-                                0.00f to (if (isPressed) Color.White else buttonColor).copy(alpha = rgbBloomAlpha * 0.55f),
-                                0.35f to buttonColor.copy(alpha = rgbBloomAlpha * (0.35f + 0.35f * clampedFill)),
-                                0.75f to buttonColor.copy(alpha = rgbBloomAlpha * 0.15f),
+                                0.00f to (if (isPressed) Color.White else effectiveColor).copy(alpha = rgbBloomAlpha * 0.55f),
+                                0.35f to effectiveColor.copy(alpha = rgbBloomAlpha * (0.35f + 0.35f * clampedFill)),
+                                0.75f to effectiveColor.copy(alpha = rgbBloomAlpha * 0.15f),
                                 1.00f to Color.Transparent
                             ),
                             center = poolCenter,
@@ -168,7 +170,7 @@ fun LiquidButton(
                             center = Offset(center.x - 16f, poolCenterY - 14f * clampedFill)
                         )
                         drawCircle(
-                            color = buttonColor.copy(alpha = bubbleAlpha * 0.90f),
+                            color = effectiveColor.copy(alpha = bubbleAlpha * 0.90f),
                             radius = 3.6f,
                             center = Offset(center.x + 18f, poolCenterY - 24f * clampedFill)
                         )
@@ -188,8 +190,8 @@ fun LiquidButton(
             .shadow(
                 elevation = if (isPressed) 1.dp else 4.dp,
                 shape = CircleShape,
-                ambientColor = if (isRgbEnabled) buttonColor else Color.Black,
-                spotColor = if (isRgbEnabled) buttonColor else Color.Black
+                ambientColor = if (isRgbEnabled) effectiveColor else Color.Black,
+                spotColor = if (isRgbEnabled) effectiveColor else Color.Black
             )
             .clip(CircleShape)
             .background(baseDomeGradient)
@@ -234,7 +236,7 @@ fun LiquidButton(
 
                     // Main rectangular liquid mass
                     drawRect(
-                        color = buttonColor,
+                        color = effectiveColor,
                         topLeft = Offset(0f, fillTop),
                         size = Size(w, fillH)
                     )
@@ -248,7 +250,7 @@ fun LiquidButton(
                         val ellipseTop = fillTop - ellipseH / 2f
 
                         drawOval(
-                            color = buttonColor,
+                            color = effectiveColor,
                             topLeft = Offset(ellipseLeft, ellipseTop),
                             size = Size(ellipseW, ellipseH)
                         )
@@ -290,20 +292,33 @@ fun LiquidButton(
 
         // ── 3. GLYPH (TRANSITIONS TO DARK INK WHEN SUBMERGED) ──
         Box(contentAlignment = Alignment.Center) {
-            // Neon glyph (fades out as ink alpha rises)
-            Text(
-                text = activeLabel,
-                color = buttonColor.copy(alpha = (1f - labelInkAlpha).coerceIn(0f, 1f)),
-                fontWeight = FontWeight.Medium,
-                fontSize = 44.sp
-            )
-            // Dark ink glyph (.ab.pressed .g { color: #0b0c0d })
-            Text(
-                text = activeLabel,
-                color = Color(0xFF0B0C0D).copy(alpha = labelInkAlpha.coerceIn(0f, 1f)),
-                fontWeight = FontWeight.Medium,
-                fontSize = 44.sp
-            )
+            if (psShape != null) {
+                PlayStationSymbol(
+                    shape = psShape,
+                    color = effectiveColor.copy(alpha = (1f - labelInkAlpha).coerceIn(0f, 1f)),
+                    size = 38.dp
+                )
+                PlayStationSymbol(
+                    shape = psShape,
+                    color = Color(0xFF0B0C0D).copy(alpha = labelInkAlpha.coerceIn(0f, 1f)),
+                    size = 38.dp
+                )
+            } else {
+                // Neon glyph (fades out as ink alpha rises)
+                Text(
+                    text = activeLabel,
+                    color = effectiveColor.copy(alpha = (1f - labelInkAlpha).coerceIn(0f, 1f)),
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 44.sp
+                )
+                // Dark ink glyph (.ab.pressed .g { color: #0b0c0d })
+                Text(
+                    text = activeLabel,
+                    color = Color(0xFF0B0C0D).copy(alpha = labelInkAlpha.coerceIn(0f, 1f)),
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 44.sp
+                )
+            }
         }
 
         // ── 4. SHELL OVERLAY (.lx-ring + .lx-lens) ──
@@ -322,12 +337,12 @@ fun LiquidButton(
             // Neon ring
             val ringRadius = r - 3.dp.toPx()
             drawCircle(
-                color = buttonColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
+                color = effectiveColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
                 radius = ringRadius,
                 style = Stroke(width = 4.dp.toPx())
             )
             drawCircle(
-                color = buttonColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
+                color = effectiveColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
                 radius = ringRadius,
                 style = Stroke(width = 2.dp.toPx())
             )
@@ -376,13 +391,8 @@ internal fun StaticLiquidButton(
     modifier: Modifier = Modifier
 ) {
     val displayLabel = CategoryManager.getLabelForStyle(controlKey, labelStyle)
-    val buttonColor = when (controlKey.uppercase()) {
-        "A" -> Color(0xFF3FD25A)
-        "B" -> Color(0xFFE6474E)
-        "X" -> Color(0xFF3F8FE0)
-        "Y" -> Color(0xFFE0A03F)
-        else -> Color(0xFF3FD25A)
-    }
+    val buttonColor = resolveButtonColor(controlKey, labelStyle, displayLabel)
+    val psShape = getPlayStationShape(displayLabel)
 
     Box(
         modifier = modifier
@@ -443,12 +453,20 @@ internal fun StaticLiquidButton(
             )
         }
 
-        Text(
-            text = displayLabel,
-            color = buttonColor,
-            fontWeight = FontWeight.Medium,
-            fontSize = 44.sp
-        )
+        if (psShape != null) {
+            PlayStationSymbol(
+                shape = psShape,
+                color = buttonColor,
+                size = 38.dp
+            )
+        } else {
+            Text(
+                text = displayLabel,
+                color = buttonColor,
+                fontWeight = FontWeight.Medium,
+                fontSize = 44.sp
+            )
+        }
 
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width

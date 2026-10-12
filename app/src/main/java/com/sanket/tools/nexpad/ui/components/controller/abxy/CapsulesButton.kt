@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
@@ -80,6 +81,9 @@ fun CapsulesButton(
 
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
+    val activeLabel = displayLabel ?: key
+    val psShape = getPlayStationShape(activeLabel)
+    val effectiveColor = if (psShape != null) getPlayStationColor(psShape) else buttonColor
 
     val pillShape = RoundedCornerShape(26.dp)
     val isVertical = key.uppercase() == ControlKey.Y.key || key.uppercase() == ControlKey.A.key
@@ -89,16 +93,16 @@ fun CapsulesButton(
     // Flood gradient direction based on key
     val floodBrush = when (key.uppercase()) {
         ControlKey.Y.key -> Brush.verticalGradient(
-            colors = listOf(buttonColor.copy(alpha = floodAlpha), Color.Transparent)
+            colors = listOf(effectiveColor.copy(alpha = floodAlpha), Color.Transparent)
         )
         ControlKey.A.key -> Brush.verticalGradient(
-            colors = listOf(Color.Transparent, buttonColor.copy(alpha = floodAlpha))
+            colors = listOf(Color.Transparent, effectiveColor.copy(alpha = floodAlpha))
         )
         ControlKey.X.key -> Brush.horizontalGradient(
-            colors = listOf(buttonColor.copy(alpha = floodAlpha), Color.Transparent)
+            colors = listOf(effectiveColor.copy(alpha = floodAlpha), Color.Transparent)
         )
         else -> Brush.horizontalGradient(
-            colors = listOf(Color.Transparent, buttonColor.copy(alpha = floodAlpha))
+            colors = listOf(Color.Transparent, effectiveColor.copy(alpha = floodAlpha))
         )
     }
 
@@ -128,8 +132,8 @@ fun CapsulesButton(
                         drawRoundRect(
                             brush = Brush.radialGradient(
                                 colorStops = arrayOf(
-                                    0.00f to buttonColor.copy(alpha = rgbBloomAlpha * 0.55f),
-                                    0.45f to buttonColor.copy(alpha = rgbBloomAlpha * 0.22f),
+                                    0.00f to effectiveColor.copy(alpha = rgbBloomAlpha * 0.55f),
+                                    0.45f to effectiveColor.copy(alpha = rgbBloomAlpha * 0.22f),
                                     1.00f to Color.Transparent
                                 ),
                                 center = center,
@@ -148,8 +152,8 @@ fun CapsulesButton(
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    (if (isPressed) Color.White else buttonColor).copy(alpha = rgbBloomAlpha * 0.70f),
-                                    buttonColor.copy(alpha = rgbBloomAlpha * 0.25f),
+                                    (if (isPressed) Color.White else effectiveColor).copy(alpha = rgbBloomAlpha * 0.70f),
+                                    effectiveColor.copy(alpha = rgbBloomAlpha * 0.25f),
                                     Color.Transparent
                                 ),
                                 center = node1,
@@ -161,8 +165,8 @@ fun CapsulesButton(
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    (if (isPressed) Color.White else buttonColor).copy(alpha = rgbBloomAlpha * 0.70f),
-                                    buttonColor.copy(alpha = rgbBloomAlpha * 0.25f),
+                                    (if (isPressed) Color.White else effectiveColor).copy(alpha = rgbBloomAlpha * 0.70f),
+                                    effectiveColor.copy(alpha = rgbBloomAlpha * 0.25f),
                                     Color.Transparent
                                 ),
                                 center = node2,
@@ -181,15 +185,15 @@ fun CapsulesButton(
                 .shadow(
                     elevation = if (isPressed) 1.dp else 4.dp,
                     shape = pillShape,
-                    spotColor = if (isRgbEnabled) buttonColor else Color.Black,
-                    ambientColor = if (isRgbEnabled) buttonColor else Color.Black
+                    spotColor = if (isRgbEnabled) effectiveColor else Color.Black,
+                    ambientColor = if (isRgbEnabled) effectiveColor else Color.Black
                 )
                 .clip(pillShape)
                 .background(domeBrush)
                 .background(floodBrush)
                 .border(
                     width = 2.dp,
-                    color = buttonColor.copy(alpha = if (isPressed) 0.9f else 0.6f),
+                    color = effectiveColor.copy(alpha = if (isPressed) 0.9f else 0.6f),
                     shape = pillShape
                 )
                 .pointerInput(key) {
@@ -206,12 +210,20 @@ fun CapsulesButton(
                 },
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = displayLabel ?: key,
-                color = if (isPressed) Color.White else buttonColor,
-                fontWeight = FontWeight.Bold,
-                fontSize = 24.sp
-            )
+            if (psShape != null) {
+                PlayStationSymbol(
+                    shape = psShape,
+                    color = if (isPressed) Color.White else effectiveColor,
+                    size = 24.dp
+                )
+            } else {
+                Text(
+                    text = activeLabel,
+                    color = if (isPressed) Color.White else effectiveColor,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 24.sp
+                )
+            }
         }
     }
 }
@@ -222,12 +234,9 @@ internal fun StaticCapsulesButton(
     labelStyle: ControllerLabelStyle,
     modifier: Modifier = Modifier
 ) {
-    val buttonColor = when (controlKey.uppercase()) {
-        ControlKey.A.key -> Color(0xFF3FD25A)
-        ControlKey.B.key -> Color(0xFFE6474E)
-        ControlKey.X.key -> Color(0xFF3F8FE0)
-        else             -> Color(0xFFE0A03F)
-    }
+    val displayLabel = CategoryManager.getLabelForStyle(controlKey, labelStyle)
+    val buttonColor = resolveButtonColor(controlKey, labelStyle, displayLabel)
+    val psShape = getPlayStationShape(displayLabel)
 
     val pillShape = RoundedCornerShape(26.dp)
     val isVertical = controlKey.uppercase() == ControlKey.Y.key || controlKey.uppercase() == ControlKey.A.key
@@ -277,12 +286,20 @@ internal fun StaticCapsulesButton(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = controlKey,
-                color = buttonColor,
-                fontWeight = FontWeight.Bold,
-                fontSize = 24.sp
-            )
+            if (psShape != null) {
+                PlayStationSymbol(
+                    shape = psShape,
+                    color = buttonColor,
+                    size = 24.dp
+                )
+            } else {
+                Text(
+                    text = displayLabel,
+                    color = buttonColor,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 24.sp
+                )
+            }
         }
     }
 }

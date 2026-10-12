@@ -175,6 +175,8 @@ fun RealisticButton(
     )
 
     val activeLabel = displayLabel ?: key
+    val psShape = getPlayStationShape(activeLabel)
+    val effectiveColor = if (psShape != null) getPlayStationColor(psShape) else buttonColor
 
     // Determine 4-way directional perspective based on face button role
     val perspectiveDirection = remember(key) {
@@ -230,8 +232,8 @@ fun RealisticButton(
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                buttonColor.copy(alpha = rgbBloomAlpha * 0.55f),
-                                buttonColor.copy(alpha = rgbBloomAlpha * 0.22f),
+                                effectiveColor.copy(alpha = rgbBloomAlpha * 0.55f),
+                                effectiveColor.copy(alpha = rgbBloomAlpha * 0.22f),
                                 Color.Transparent
                             ),
                             center = center,
@@ -250,8 +252,8 @@ fun RealisticButton(
             .shadow(
                 elevation = if (isPressed) 1.dp else 4.dp,
                 shape = CircleShape,
-                ambientColor = if (isRgbEnabled) buttonColor else Color.Black,
-                spotColor = if (isRgbEnabled) buttonColor else Color.Black
+                ambientColor = if (isRgbEnabled) effectiveColor else Color.Black,
+                spotColor = if (isRgbEnabled) effectiveColor else Color.Black
             )
             .clip(CircleShape)
             // .cap base dome: radial-gradient(circle at 50% 55%, #232527 0%, #0c0d0e 75%, #000 100%)
@@ -398,20 +400,20 @@ fun RealisticButton(
             val ringRadius = r - 3.dp.toPx()
             // Outer bloom
             drawCircle(
-                color = buttonColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
+                color = effectiveColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
                 radius = ringRadius,
                 style = Stroke(width = 4.dp.toPx())
             )
             // Core crisp ring
             drawCircle(
-                color = buttonColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
+                color = effectiveColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
                 radius = ringRadius,
                 style = Stroke(width = 2.dp.toPx())
             )
 
             // Layer #6: Socket Bevel Rim — outside neon ring
             drawCircle(
-                color = buttonColor.copy(alpha = if (isPressed) 0.35f else 0.12f),
+                color = effectiveColor.copy(alpha = if (isPressed) 0.35f else 0.12f),
                 radius = ringRadius + 1.5.dp.toPx(),
                 style = Stroke(width = if (isPressed) 3.5.dp.toPx() else 2.dp.toPx())
             )
@@ -452,7 +454,6 @@ fun RealisticButton(
         }
 
         // .glyph: Magnified Optical Glyph with Directional Shift & Horizon Clipping
-        val psShape = getPlayStationShape(activeLabel)
         val glyphAlpha = if (isPressed) 0.85f else 1.0f
 
         val glyphOffset = when (perspectiveDirection) {
@@ -470,14 +471,14 @@ fun RealisticButton(
         if (psShape != null) {
             PlayStationSymbol(
                 shape = psShape,
-                color = buttonColor.copy(alpha = glyphAlpha),
+                color = effectiveColor.copy(alpha = glyphAlpha),
                 size = 40.dp,
                 modifier = glyphModifier
             )
         } else {
             Text(
                 text = activeLabel,
-                color = buttonColor.copy(alpha = glyphAlpha),
+                color = effectiveColor.copy(alpha = glyphAlpha),
                 fontSize = 46.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = glyphModifier

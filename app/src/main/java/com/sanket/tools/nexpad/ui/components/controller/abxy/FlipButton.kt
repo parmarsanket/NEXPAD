@@ -75,6 +75,8 @@ fun FlipButton(
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
     val activeLabel = displayLabel ?: key
+    val psShape = getPlayStationShape(activeLabel)
+    val effectiveColor = if (psShape != null) getPlayStationColor(psShape) else buttonColor
 
     val isBackFace = flipAngle > 90f
 
@@ -93,8 +95,8 @@ fun FlipButton(
                     drawOval(
                         brush = Brush.radialGradient(
                             colorStops = arrayOf(
-                                0.00f to (if (isBackFace) Color.White else buttonColor).copy(alpha = rgbBloomAlpha * 0.60f),
-                                0.40f to buttonColor.copy(alpha = rgbBloomAlpha * 0.30f),
+                                0.00f to (if (isBackFace) Color.White else effectiveColor).copy(alpha = rgbBloomAlpha * 0.60f),
+                                0.40f to effectiveColor.copy(alpha = rgbBloomAlpha * 0.30f),
                                 1.00f to Color.Transparent
                             ),
                             center = center,
@@ -115,7 +117,7 @@ fun FlipButton(
                             strokeWidth = 2.5f
                         )
                         drawLine(
-                            color = buttonColor.copy(alpha = bladeIntensity * 0.70f),
+                            color = effectiveColor.copy(alpha = bladeIntensity * 0.70f),
                             start = Offset(center.x, center.y - bladeHalfH * 1.15f),
                             end = Offset(center.x, center.y + bladeHalfH * 1.15f),
                             strokeWidth = 5.0f
@@ -165,7 +167,7 @@ fun FlipButton(
                 }
                 .clip(CircleShape)
                 .background(
-                    if (isBackFace) SolidColor(buttonColor)
+                    if (isBackFace) SolidColor(effectiveColor)
                     else Brush.radialGradient(
                         colors = listOf(Color(0xFF232527), Color(0xFF0C0D0E), Color.Black),
                         center = Offset(0.50f, 0.55f),
@@ -190,20 +192,36 @@ fun FlipButton(
                     )
                 }
 
-                Text(
-                    text = activeLabel,
-                    color = Color(0xFF0A0B0C),
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 44.sp
-                )
+                if (psShape != null) {
+                    PlayStationSymbol(
+                        shape = psShape,
+                        color = Color(0xFF0A0B0C),
+                        size = 38.dp
+                    )
+                } else {
+                    Text(
+                        text = activeLabel,
+                        color = Color(0xFF0A0B0C),
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 44.sp
+                    )
+                }
             } else {
                 // FRONT FACE (.fl-f.a): neon glowing letter
-                Text(
-                    text = activeLabel,
-                    color = buttonColor,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 44.sp
-                )
+                if (psShape != null) {
+                    PlayStationSymbol(
+                        shape = psShape,
+                        color = effectiveColor,
+                        size = 38.dp
+                    )
+                } else {
+                    Text(
+                        text = activeLabel,
+                        color = effectiveColor,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 44.sp
+                    )
+                }
             }
         }
 
@@ -235,12 +253,12 @@ fun FlipButton(
             // Neon ring
             val ringRadius = r - 3.dp.toPx()
             drawCircle(
-                color = buttonColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
+                color = effectiveColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
                 radius = ringRadius,
                 style = Stroke(width = 4.dp.toPx())
             )
             drawCircle(
-                color = buttonColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
+                color = effectiveColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
                 radius = ringRadius,
                 style = Stroke(width = 2.dp.toPx())
             )
@@ -289,13 +307,8 @@ internal fun StaticFlipButton(
     modifier: Modifier = Modifier
 ) {
     val displayLabel = CategoryManager.getLabelForStyle(controlKey, labelStyle)
-    val buttonColor = when (controlKey.uppercase()) {
-        "A" -> Color(0xFF3FD25A)
-        "B" -> Color(0xFFE6474E)
-        "X" -> Color(0xFF3F8FE0)
-        "Y" -> Color(0xFFE0A03F)
-        else -> Color(0xFF3FD25A)
-    }
+    val buttonColor = resolveButtonColor(controlKey, labelStyle, displayLabel)
+    val psShape = getPlayStationShape(displayLabel)
 
     Box(
         modifier = modifier
@@ -342,12 +355,20 @@ internal fun StaticFlipButton(
             )
         }
 
-        Text(
-            text = displayLabel,
-            color = buttonColor,
-            fontWeight = FontWeight.Medium,
-            fontSize = 44.sp
-        )
+        if (psShape != null) {
+            PlayStationSymbol(
+                shape = psShape,
+                color = buttonColor,
+                size = 38.dp
+            )
+        } else {
+            Text(
+                text = displayLabel,
+                color = buttonColor,
+                fontWeight = FontWeight.Medium,
+                fontSize = 44.sp
+            )
+        }
 
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
