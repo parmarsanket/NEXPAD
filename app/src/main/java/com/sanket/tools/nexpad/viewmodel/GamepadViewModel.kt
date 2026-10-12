@@ -221,10 +221,9 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
                     stopDiscovery()
                     _discoveredServers.value = emptyList()
                 } else {
-                    leftStickX = 0f
-                    leftStickY = 0f
-                    rightStickX = 0f
-                    rightStickY = 0f
+                    // Note: leftStickX/Y, rightStickX/Y Compose states are reset inside
+                    // updateLeftStick(0f,0f) / updateRightStick(0f,0f) called by GamepadNetworkManager
+                    // on disconnect, so we must NOT access them here (init-order NPE risk).
                     startDiscovery()
                 }
             }
