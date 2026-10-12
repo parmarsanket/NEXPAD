@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -68,7 +70,7 @@ class MainActivity : ComponentActivity() {
             addAction("com.sanket.tools.nexpad.RELOAD_REMOTE_COMPONENTS")
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
+            registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
         } else {
             registerReceiver(receiver, filter)
         }
@@ -109,7 +111,8 @@ class MainActivity : ComponentActivity() {
                         val gravZ = if (packet.gravityZ != 0f) packet.gravityZ else packet.accelZ
                         viewModel.updateLinearGesture(
                             packet.linearAccelX, packet.linearAccelY, packet.linearAccelZ,
-                            gravX, gravY, gravZ
+                            gravX, gravY, gravZ,
+                            packet.gyroX, packet.gyroY, packet.gyroZ
                         )
                     }
                     com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_RAW_UNCALIBRATED -> {
@@ -122,10 +125,7 @@ class MainActivity : ComponentActivity() {
                     else -> {
                         // Mode 0x00: Standard 6-axis IMU (gyro + raw accel) for DS4 and FPS aiming
                         viewModel.updateAccel(packet.accelX, packet.accelY, packet.accelZ)
-                        val gX = if (packet.rawGyroX != 0f) packet.rawGyroX else packet.gyroX
-                        val gY = if (packet.rawGyroY != 0f) packet.rawGyroY else packet.gyroY
-                        val gZ = if (packet.rawGyroZ != 0f) packet.rawGyroZ else packet.gyroZ
-                        viewModel.update6AxisGyro(gX, gY, gZ)
+                        viewModel.update6AxisGyro(packet.gyroX, packet.gyroY, packet.gyroZ)
                     }
                 }
             }
@@ -153,11 +153,20 @@ class MainActivity : ComponentActivity() {
         }
 
         lifecycleScope.launch {
-            viewModel.isConnected.collect { connected ->
-                if (connected) {
-                    motionSensorManager.start()
-                } else {
-                    motionSensorManager.stop()
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                kotlinx.coroutines.flow.combine(viewModel.isConnected, viewModel.isGamepadScreenActive) { connected, active ->
+                    Pair(connected, active)
+                }.collect { (connected, active) ->
+                    if (connected && active) {
+                        motionSensorManager.start()
+                    } else {
+                        motionSensorManager.stop()
+                    }
+                    if (connected) {
+                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    } else {
+                        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    }
                 }
             }
         }
@@ -172,7 +181,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         viewModel.checkAoaAccessory()
-        if (viewModel.isConnected.value) {
+        if (viewModel.isConnected.value && viewModel.isGamepadScreenActive.value) {
             motionSensorManager.start()
         }
     }

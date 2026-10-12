@@ -13,6 +13,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,11 +40,30 @@ fun ConnectionScreen(
     val context = LocalContext.current
     val isConnected by viewModel.isConnected.collectAsState()
     val connectionStats by viewModel.connectionStats.collectAsState()
+    val connectionStatus by viewModel.connectionStatus.collectAsState()
     val discoveredServers by viewModel.discoveredServers.collectAsState()
     val isAoaAttached by viewModel.isAoaAttached.collectAsState()
     val isUsbCableConnected by viewModel.isUsbCableConnected.collectAsState()
     val isAdbAvailable by viewModel.isAdbAvailable.collectAsState()
     val adbServerName by viewModel.adbServerName.collectAsState()
+
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.stopDiscovery()
+        }
+    }
+
+    LaunchedEffect(connectionStatus) {
+        val lower = connectionStatus.lowercase()
+        if (lower.contains("failed") || lower.contains("timeout") || lower.contains("error")) {
+            snackbarHostState.showSnackbar(
+                message = connectionStatus,
+                withDismissAction = true
+            )
+        }
+    }
 
     var pairedDevices by remember { mutableStateOf<List<android.bluetooth.BluetoothDevice>>(emptyList()) }
 
@@ -84,6 +105,7 @@ fun ConnectionScreen(
         isAdbAvailable = isAdbAvailable,
         adbServerName = adbServerName,
         isUsbDebuggingEnabled = viewModel.isUsbDebuggingEnabled(),
+        snackbarHostState = snackbarHostState,
         onConnectServer = { ip, port, name ->
             viewModel.connect(ip, port, name)
         },
@@ -147,6 +169,7 @@ fun ConnectionScreenContent(
     isAdbAvailable: Boolean = false,
     adbServerName: String? = null,
     isUsbDebuggingEnabled: Boolean = false,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     onConnectServer: (String, Int, String) -> Unit = { _, _, _ -> },
     onConnectAoa: () -> Unit = {},
     onConnectAdb: () -> Unit = {},
@@ -169,6 +192,7 @@ fun ConnectionScreenContent(
 ) {
     Scaffold(
         modifier = modifier,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             NexpadTopAppBar(
                 title = "CONNECTION HUB",

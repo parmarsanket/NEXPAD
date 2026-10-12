@@ -221,6 +221,10 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
                     stopDiscovery()
                     _discoveredServers.value = emptyList()
                 } else {
+                    leftStickX = 0f
+                    leftStickY = 0f
+                    rightStickX = 0f
+                    rightStickY = 0f
                     startDiscovery()
                 }
             }
@@ -266,7 +270,6 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     fun connect(ip: String, port: Int, serverName: String? = null) = networkManager.connect(ip, port, serverName)
     fun disconnect() {
         networkManager.disconnect()
-        startDiscovery()
     }
     fun switchToAoaConnection() = networkManager.switchToAoaConnection()
     fun switchToAdbConnection(serverName: String? = null) = networkManager.switchToAdbConnection(serverName ?: _adbServerName.value)
@@ -289,17 +292,32 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     fun updateGravity(x: Float, y: Float, z: Float) = sensorController.updateGravity(x, y, z)
     fun update6AxisGyro(x: Float, y: Float, z: Float) = sensorController.update6AxisGyro(x, y, z)
     fun updateGameRotation(qx: Float, qy: Float, qz: Float, qw: Float) = sensorController.updateGameRotation(qx, qy, qz, qw)
-    fun updateLinearGesture(lx: Float, ly: Float, lz: Float, gx: Float, gy: Float, gz: Float) = sensorController.updateLinearGesture(lx, ly, lz, gx, gy, gz)
+    fun updateLinearGesture(lx: Float, ly: Float, lz: Float, gx: Float, gy: Float, gz: Float, rx: Float = 0f, ry: Float = 0f, rz: Float = 0f) = sensorController.updateLinearGesture(lx, ly, lz, gx, gy, gz, rx, ry, rz)
     fun updateRawUncalibrated(rx: Float, ry: Float, rz: Float, bx: Float, by: Float, bz: Float) = sensorController.updateRawUncalibrated(rx, ry, rz, bx, by, bz)
 
     private val _isGyroEnabled = MutableStateFlow(true)
     val isGyroEnabled: StateFlow<Boolean> = _isGyroEnabled.asStateFlow()
+
+    private val _isGamepadScreenActive = MutableStateFlow(false)
+    val isGamepadScreenActive: StateFlow<Boolean> = _isGamepadScreenActive.asStateFlow()
+
+    fun onGamepadScreenActive(active: Boolean) {
+        _isGamepadScreenActive.value = active
+        if (!active) {
+            update6AxisGyro(0f, 0f, 0f)
+            updateAccel(0f, 0f, 0f)
+            updateGravity(0f, 0f, 0f)
+        }
+    }
 
     fun toggleGyro(): Boolean {
         val newState = !_isGyroEnabled.value
         _isGyroEnabled.value = newState
         if (!newState) {
             update6AxisGyro(0f, 0f, 0f)
+            inputState.rawGyroX = 0f
+            inputState.rawGyroY = 0f
+            inputState.rawGyroZ = 0f
         }
         return newState
     }
@@ -308,6 +326,9 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
         _isGyroEnabled.value = enabled
         if (!enabled) {
             update6AxisGyro(0f, 0f, 0f)
+            inputState.rawGyroX = 0f
+            inputState.rawGyroY = 0f
+            inputState.rawGyroZ = 0f
         }
     }
     

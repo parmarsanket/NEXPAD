@@ -113,7 +113,11 @@ abstract class BaseStreamConnection : IGamepadConnection {
     }
 
     protected fun stopStreamWorkers() {
-        if (!isConnected && rxThread == null) return
+        if (!isConnected && rxThread == null) {
+            onConnectionStateChanged?.invoke(false)
+            onStatusChanged?.invoke("Disconnected")
+            return
+        }
         isConnected = false
         try { inputStream?.close() } catch (_: Exception) {}
         try { outputStream?.close() } catch (_: Exception) {}
@@ -131,56 +135,61 @@ abstract class BaseStreamConnection : IGamepadConnection {
     }
 
     private fun runRxLoop(tag: String) {
-        android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO)
-        rxAccumulated = 0
-        var handshakeParsed = false
+        try {
+            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO)
+            rxAccumulated = 0
+            var handshakeParsed = false
 
-        while (isConnected) {
-            val stream = inputStream ?: break
-            val bytesRead = try {
-                stream.read(rxChunkBuffer)
-            } catch (e: IOException) {
-                if (isConnected) {
-                    Log.d(tag, "$tag RX stream closed: ${e.message}")
-                    disconnect()
+            while (isConnected) {
+                val stream = inputStream ?: break
+                val bytesRead = try {
+                    stream.read(rxChunkBuffer)
+                } catch (e: IOException) {
+                    if (isConnected) {
+                        Log.d(tag, "$tag RX stream closed: ${e.message}")
+                        disconnect()
+                    }
+                    break
                 }
-                break
-            }
 
-            if (bytesRead < 0) {
-                if (isConnected) disconnect()
-                break
-            }
+                if (bytesRead < 0) {
+                    if (isConnected) disconnect()
+                    break
+                }
 
-            var offset = 0
-            if (!handshakeParsed) {
-                if (bytesRead >= 2 && rxChunkBuffer[0] == NexpadProtocol.PACKET_TYPE_CONNECTED) {
-                    val nameLen = rxChunkBuffer[1].toInt() and 0xFF
-                    if (bytesRead >= 2 + nameLen) {
-                        val pcName = String(rxChunkBuffer, 2, nameLen, Charsets.UTF_8).trim()
-                        if (pcName.isNotEmpty()) {
-                            onServerNameResolved?.invoke(pcName)
+                var offset = 0
+                if (!handshakeParsed) {
+                    if (bytesRead >= 2 && rxChunkBuffer[0] == NexpadProtocol.PACKET_TYPE_CONNECTED) {
+                        val nameLen = rxChunkBuffer[1].toInt() and 0xFF
+                        if (bytesRead >= 2 + nameLen) {
+                            val pcName = String(rxChunkBuffer, 2, nameLen, Charsets.UTF_8).trim()
+                            if (pcName.isNotEmpty()) {
+                                onServerNameResolved?.invoke(pcName)
+                            }
+                            offset = 2 + nameLen
+                            handshakeParsed = true
                         }
-                        offset = 2 + nameLen
+                    } else if (bytesRead > 0 && rxChunkBuffer[0] == NexpadProtocol.PROTOCOL_VERSION) {
                         handshakeParsed = true
                     }
-                } else if (bytesRead > 0 && rxChunkBuffer[0] == NexpadProtocol.PROTOCOL_VERSION) {
-                    handshakeParsed = true
+                }
+
+                while (offset < bytesRead) {
+                    val needed = FEEDBACK_PACKET_SIZE - rxAccumulated
+                    val toCopy = minOf(needed, bytesRead - offset)
+                    System.arraycopy(rxChunkBuffer, offset, rxAccumulator, rxAccumulated, toCopy)
+                    rxAccumulated += toCopy
+                    offset += toCopy
+
+                    if (rxAccumulated == FEEDBACK_PACKET_SIZE) {
+                        handleFeedbackPacket(rxAccumulator)
+                        rxAccumulated = 0
+                    }
                 }
             }
-
-            while (offset < bytesRead) {
-                val needed = FEEDBACK_PACKET_SIZE - rxAccumulated
-                val toCopy = minOf(needed, bytesRead - offset)
-                System.arraycopy(rxChunkBuffer, offset, rxAccumulator, rxAccumulated, toCopy)
-                rxAccumulated += toCopy
-                offset += toCopy
-
-                if (rxAccumulated == FEEDBACK_PACKET_SIZE) {
-                    handleFeedbackPacket(rxAccumulator)
-                    rxAccumulated = 0
-                }
-            }
+        } catch (t: Throwable) {
+            Log.e(tag, "Fatal error in $tag RX loop", t)
+            disconnect()
         }
     }
 

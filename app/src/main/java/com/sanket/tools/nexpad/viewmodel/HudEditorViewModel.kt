@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Single source of truth for HUD Layout Editing sessions.
@@ -89,20 +90,6 @@ class HudEditorViewModel(
         }
 
         return false
-    }
-
-    fun isSkinCompatible(
-        componentDefaultControl: String,
-        componentCategory: String,
-        componentId: String,
-        targetControlKey: String
-    ): Boolean {
-        if (targetControlKey.equals("GYRO", ignoreCase = true)) {
-            return componentDefaultControl.equals("GYRO", ignoreCase = true) ||
-                   componentCategory.equals("SPECIAL", ignoreCase = true)
-        }
-        val targetSpec = CategoryManager.getControl(targetControlKey) ?: return false
-        return isSkinCompatible(componentDefaultControl, componentCategory, componentId, targetSpec)
     }
 
     /**
@@ -258,6 +245,7 @@ class HudEditorViewModel(
     }
 
     fun nudge(controlKey: String, dxRatio: Float, dyRatio: Float) {
+        if (!dxRatio.isFinite() || !dyRatio.isFinite()) return
         val targetKey = resolveElementKey(controlKey)
         val current = elements[targetKey] ?: return
         val newX = (current.transform.xRatio + dxRatio).coerceIn(0.0f, 1.0f)
@@ -286,7 +274,6 @@ class HudEditorViewModel(
         )
         elements[targetKey] = updated
         _hasUnsavedChanges.value = true
-        layoutManager.updateTouchpadSensitivity(targetKey, clamped)
     }
 
     fun setHeightScale(controlKey: String, newHeightScale: Float) {
@@ -314,7 +301,8 @@ class HudEditorViewModel(
         val targetKey = resolveElementKey(controlKey)
         val current = elements[targetKey] ?: return
         val newLocked = !current.transform.isLocked
-        val newMode = if (newLocked) "LOCKED" else "BOX"
+        val currentMode = current.transform.joystickMode.takeIf { it.isNotEmpty() } ?: "BOX"
+        val newMode = if (newLocked) "LOCKED" else (currentMode.takeIf { it != "LOCKED" } ?: "BOX")
         val updated = current.copy(
             transform = current.transform.copy(
                 isLocked = newLocked,
@@ -328,7 +316,8 @@ class HudEditorViewModel(
     fun setLock(controlKey: String, isLocked: Boolean) {
         val targetKey = resolveElementKey(controlKey)
         val current = elements[targetKey] ?: return
-        val newMode = if (isLocked) "LOCKED" else "BOX"
+        val currentMode = current.transform.joystickMode.takeIf { it.isNotEmpty() } ?: "BOX"
+        val newMode = if (isLocked) "LOCKED" else (currentMode.takeIf { it != "LOCKED" } ?: "BOX")
         val updated = current.copy(
             transform = current.transform.copy(
                 isLocked = isLocked,
@@ -581,7 +570,10 @@ class HudEditorViewModel(
     /**
      * Persists layout changes asynchronously to SharedPreferences on Dispatchers.IO.
      */
-    fun saveProfile(onSaved: () -> Unit = {}) {
+    fun saveProfile(
+        onFailure: (Throwable) -> Unit = {},
+        onSaved: () -> Unit = {}
+    ) {
         val profile = _currentProfile.value
         val elementsSnapshot = elements.values.toList()
         val positionMap = mutableMapOf<String, Position>()
@@ -597,13 +589,23 @@ class HudEditorViewModel(
             try {
                 val wasActive = layoutManager.getActiveProfile().name.equals(updatedProfile.name, ignoreCase = true)
                 layoutManager.saveProfile(updatedProfile, activate = wasActive)
-                _currentProfile.value = updatedProfile
-                _hasUnsavedChanges.value = false
-                launch(Dispatchers.Main) {
+                // Persist any updated touchpad sensitivities
+                elementsSnapshot.forEach { element ->
+                    val key = element.controlKey
+                    if (key.equals("LTP", ignoreCase = true) || key.equals("RTP", ignoreCase = true)) {
+                        layoutManager.updateTouchpadSensitivity(key, element.transform.sensitivity)
+                    }
+                }
+                withContext(Dispatchers.Main) {
+                    _currentProfile.value = updatedProfile
+                    _hasUnsavedChanges.value = false
                     onSaved()
                 }
             } catch (e: Exception) {
                 android.util.Log.e("HudEditorViewModel", "Failed to save profile: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    onFailure(e)
+                }
             }
         }
     }

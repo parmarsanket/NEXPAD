@@ -18,6 +18,8 @@ import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -26,9 +28,11 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -58,6 +62,7 @@ fun HomeScreen(
     navigationViewModel: NavigationViewModel? = null
 ) {
     val isConnected by viewModel.isConnected.collectAsState()
+    val connectionStatus by viewModel.connectionStatus.collectAsState()
     val discoveredServers by viewModel.discoveredServers.collectAsState()
     val connectionStats by viewModel.connectionStats.collectAsState()
     val isAoaAttached by viewModel.isAoaAttached.collectAsState()
@@ -66,6 +71,18 @@ fun HomeScreen(
     val adbServerName by viewModel.adbServerName.collectAsState()
     val profiles by layoutManager.profilesFlow.collectAsState()
     val activeProfileName by layoutManager.activeProfileNameFlow.collectAsState()
+
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(connectionStatus) {
+        val lower = connectionStatus.lowercase()
+        if (lower.contains("failed") || lower.contains("timeout") || lower.contains("error")) {
+            snackbarHostState.showSnackbar(
+                message = connectionStatus,
+                withDismissAction = true
+            )
+        }
+    }
 
     LaunchedEffect(isConnected) {
         if (!isConnected) {
@@ -81,6 +98,8 @@ fun HomeScreen(
 
     HomeScreenContent(
         isConnected = isConnected,
+        connectionStatus = connectionStatus,
+        snackbarHostState = snackbarHostState,
         discoveredServers = discoveredServers,
         connectionStats = connectionStats,
         isAoaAttached = isAoaAttached && isUsbCableConnected,
@@ -140,12 +159,15 @@ fun HomeScreenContent(
     onNavigateConnections: () -> Unit = {},
     onNavigateButtonStudio: () -> Unit = {},
     onNavigateSettings: () -> Unit = {},
+    connectionStatus: String = "Disconnected",
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
 
     Scaffold(
         modifier = modifier,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -209,7 +231,7 @@ fun HomeScreenContent(
                             .fillMaxHeight(),
                         verticalArrangement = Arrangement.spacedBy(layout.contentSpacing)
                     ) {
-                        HeaderRow(isConnected = isConnected)
+                        HeaderRow(isConnected = isConnected, connectionStatus = connectionStatus)
 
                         VShapedPanel(
                             profiles = profiles,
@@ -284,7 +306,7 @@ fun HomeScreenContent(
                         .padding(horizontal = layout.horizontalPadding, vertical = layout.verticalPadding),
                     verticalArrangement = Arrangement.spacedBy(layout.contentSpacing)
                 ) {
-                    HeaderRow(isConnected = isConnected)
+                    HeaderRow(isConnected = isConnected, connectionStatus = connectionStatus)
 
                     VShapedPanel(
                         profiles = profiles,
@@ -387,6 +409,7 @@ fun CommandCenterButtons(
 @Composable
 fun HeaderRow(
     isConnected: Boolean,
+    connectionStatus: String? = null,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -394,11 +417,23 @@ fun HeaderRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Bottom
     ) {
-        Text(
-            text = "Ready to Play",
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onBackground
-        )
+        Column {
+            Text(
+                text = "Ready to Play",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            if (!isConnected && connectionStatus != null) {
+                val lower = connectionStatus.lowercase()
+                if (lower.contains("failed") || lower.contains("timeout") || lower.contains("error")) {
+                    Text(
+                        text = connectionStatus,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFFFF5252)
+                    )
+                }
+            }
+        }
 
         HeaderStatusPill(
             isConnected = isConnected

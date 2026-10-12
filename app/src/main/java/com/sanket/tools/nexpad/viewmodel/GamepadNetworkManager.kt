@@ -7,10 +7,13 @@ import com.sanket.tools.nexpad.network.IGamepadConnection
 import com.sanket.tools.nexpad.network.NetworkClient
 import com.sanket.tools.nexpad.network.AoaAccessoryConnection
 import com.sanket.tools.nexpad.network.NxprcSyncServer
+import java.util.concurrent.RejectedExecutionException
 import kotlinx.coroutines.CoroutineScope
 import android.net.wifi.WifiManager
 import android.os.PowerManager
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +23,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.asCoroutineDispatcher
 enum class ConnectionType(val displayName: String) {
     WIFI("Wi-Fi"),
     USB_TETHERING("USB Tethering"),
@@ -85,6 +87,8 @@ class GamepadNetworkManager(
     private val context: Context,
     private val inputState: GamepadInput
 ) {
+    @Volatile
+    private var isClosed = false
     @Volatile
     private var connection: IGamepadConnection = NetworkClient()
     @Volatile
@@ -169,7 +173,7 @@ class GamepadNetworkManager(
         scope.launch { connection.connect(deviceAddress, 0) }
     }
     
-    private val _feedbackFlow = MutableSharedFlow<GamepadFeedback>()
+    private val _feedbackFlow = MutableSharedFlow<GamepadFeedback>(extraBufferCapacity = 64, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     val feedbackFlow: SharedFlow<GamepadFeedback> = _feedbackFlow.asSharedFlow()
 
     private var transmitJob: Job? = null
@@ -195,9 +199,7 @@ class GamepadNetworkManager(
 
     private fun setupConnectionCallbacks() {
         connection.onFeedbackReceived = { feedback: GamepadFeedback ->
-            scope.launch {
-                _feedbackFlow.emit(feedback)
-            }
+            _feedbackFlow.tryEmit(feedback)
         }
         connection.onConnectionStateChanged = { connected: Boolean ->
             scope.launch {
@@ -217,6 +219,8 @@ class GamepadNetworkManager(
                     signalPollJob?.cancel()
                     _connectedServerName.value = null
                     _connectionStats.value = ConnectionStats()
+                    _connectionStatus.value = "Disconnected"
+                    resetInputState()
                 }
             }
         }
@@ -303,9 +307,11 @@ class GamepadNetworkManager(
         _isConnected.value = false
         _connectionStats.value = ConnectionStats()
         _connectionStatus.value = "Disconnected"
+        resetInputState()
     }
 
     fun close() {
+        isClosed = true
         transmitJob?.cancel()
         transmitJob = null
         transmitThread = null
@@ -315,15 +321,17 @@ class GamepadNetworkManager(
         connection.close()
         syncServer.stop()
         _isConnected.value = false
+        resetInputState()
         gamepadDispatcher.close()
     }
 
     fun sendImmediate() {
-        if (_isConnected.value) {
-            val thread = transmitThread
-            if (thread != null) {
-                java.util.concurrent.locks.LockSupport.unpark(thread)
-            } else {
+        if (isClosed || !_isConnected.value) return
+        val thread = transmitThread
+        if (thread != null) {
+            java.util.concurrent.locks.LockSupport.unpark(thread)
+        } else {
+            try {
                 scope.launch(gamepadDispatcher) {
                     try {
                         connection.sendInput(inputState)
@@ -331,8 +339,65 @@ class GamepadNetworkManager(
                         // Ignore silent drops
                     }
                 }
+            } catch (e: RejectedExecutionException) {
+                return
             }
         }
+    }
+
+    private fun resetInputState() {
+        inputState.btnA = false
+        inputState.btnB = false
+        inputState.btnX = false
+        inputState.btnY = false
+        inputState.dpadUp = false
+        inputState.dpadDown = false
+        inputState.dpadLeft = false
+        inputState.dpadRight = false
+        inputState.btnL1 = false
+        inputState.btnR1 = false
+        inputState.btnL3 = false
+        inputState.btnR3 = false
+        inputState.btnStart = false
+        inputState.btnSelect = false
+        inputState.btnGuide = false
+        inputState.btnShare = false
+        inputState.btnScreenshot = false
+        inputState.btnM1 = false
+        inputState.btnM2 = false
+        inputState.btnM3 = false
+        inputState.btnM4 = false
+        inputState.btnProfile = false
+        inputState.btnTurbo = false
+        inputState.triggerL2 = 0f
+        inputState.triggerR2 = 0f
+        inputState.leftStickX = 0f
+        inputState.leftStickY = 0f
+        inputState.rightStickX = 0f
+        inputState.rightStickY = 0f
+        inputState.gyroX = 0f
+        inputState.gyroY = 0f
+        inputState.gyroZ = 0f
+        inputState.accelX = 0f
+        inputState.accelY = 0f
+        inputState.accelZ = 0f
+        inputState.gravityX = 0f
+        inputState.gravityY = 0f
+        inputState.gravityZ = 0f
+        inputState.quatX = 0f
+        inputState.quatY = 0f
+        inputState.quatZ = 0f
+        inputState.quatW = 1f
+        inputState.linearAccelX = 0f
+        inputState.linearAccelY = 0f
+        inputState.linearAccelZ = 0f
+        inputState.rawGyroX = 0f
+        inputState.rawGyroY = 0f
+        inputState.rawGyroZ = 0f
+        inputState.gyroBiasX = 0f
+        inputState.gyroBiasY = 0f
+        inputState.gyroBiasZ = 0f
+        inputState.sensorFlags = 0
     }
     
     private val gamepadDispatcher = java.util.concurrent.Executors.newSingleThreadExecutor { r ->

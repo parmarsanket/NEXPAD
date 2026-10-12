@@ -29,12 +29,12 @@ class HapticFeedbackHelper(context: Context) {
         appContext.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
     }
 
-    private val vibrator: Vibrator by lazy {
+    private val vibrator: Vibrator? by lazy {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibratorManager = appContext.getSystemService(VibratorManager::class.java)
-            vibratorManager?.defaultVibrator ?: appContext.getSystemService(Vibrator::class.java)!!
+            vibratorManager?.defaultVibrator ?: appContext.getSystemService(Vibrator::class.java)
         } else {
-            appContext.getSystemService(Vibrator::class.java)!!
+            appContext.getSystemService(Vibrator::class.java)
         }
     }
 
@@ -55,6 +55,7 @@ class HapticFeedbackHelper(context: Context) {
      * Prevents button clicks from overriding active PC game motor rumble.
      */
     fun canVibrate(isConnected: Boolean, isRumbling: Boolean): Boolean {
+        if (vibrator?.hasVibrator() != true) return false
         if (isRumbling) return false
         if (!isButtonHapticsEnabled) return false
         if (!isConnected && !isOfflineHapticsEnabled) return false
@@ -77,6 +78,7 @@ class HapticFeedbackHelper(context: Context) {
     }
 
     private fun triggerImpulse(style: String, rawStrength: Float) {
+        if (vibrator?.hasVibrator() != true) return
         val strength = rawStrength.coerceIn(0.1f, 1.0f)
 
         try {
@@ -89,7 +91,7 @@ class HapticFeedbackHelper(context: Context) {
                 }
 
                 val isSupported = try {
-                    vibrator.areAllPrimitivesSupported(primitive)
+                    vibrator?.areAllPrimitivesSupported(primitive) == true
                 } catch (_: Exception) {
                     false
                 }
@@ -98,7 +100,7 @@ class HapticFeedbackHelper(context: Context) {
                     val composition = VibrationEffect.startComposition()
                         .addPrimitive(primitive, strength)
                         .compose()
-                    vibrator.vibrate(composition)
+                    vibrator?.vibrate(composition)
                     return
                 }
             }
@@ -109,12 +111,12 @@ class HapticFeedbackHelper(context: Context) {
                 STYLE_SOFT -> VibrationEffect.EFFECT_TICK
                 else -> VibrationEffect.EFFECT_CLICK
             }
-            vibrator.vibrate(VibrationEffect.createPredefined(predefinedEffect))
+            vibrator?.vibrate(VibrationEffect.createPredefined(predefinedEffect))
         } catch (_: Exception) {
             // Precision micro-impulse fallback (12ms) with amplitude scaling
             try {
                 val amplitude = (strength * 255).toInt().coerceIn(1, 255)
-                vibrator.vibrate(VibrationEffect.createOneShot(12, amplitude))
+                vibrator?.vibrate(VibrationEffect.createOneShot(12, amplitude))
             } catch (_: Exception) {
                 // Motor unavailable or hardware busy
             }

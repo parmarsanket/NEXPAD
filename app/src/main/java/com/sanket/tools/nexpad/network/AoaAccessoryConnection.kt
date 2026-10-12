@@ -44,6 +44,12 @@ class AoaAccessoryConnection(private val context: Context) : BaseStreamConnectio
                         onStatusChanged?.invoke("USB permission denied")
                         Log.e(TAG, "Permission denied for accessory $accessory")
                     }
+                    if (isReceiverRegistered) {
+                        try {
+                            context.unregisterReceiver(this)
+                        } catch (_: Exception) {}
+                        isReceiverRegistered = false
+                    }
                 }
             }
         }

@@ -16,7 +16,9 @@ import kotlinx.serialization.json.Json
 class LayoutManager(context: Context) {
     private val appContext = context.applicationContext
     private val prefs = appContext.getSharedPreferences("NEXPAD_LAYOUTS_V3", Context.MODE_PRIVATE)
-    private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+    private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true; allowSpecialFloatingPointValues = true }
+
+    private val LAYOUT_MIGRATION_VERSION = 3
 
     private val _profilesFlow = MutableStateFlow<List<LayoutProfile>>(emptyList())
     val profilesFlow: StateFlow<List<LayoutProfile>> = _profilesFlow.asStateFlow()
@@ -30,64 +32,39 @@ class LayoutManager(context: Context) {
 
     init {
         // Migration & Cache Cleanup:
-        // Always purge cached default layouts if they contain obsolete paddles (M1-M4) or old cutouts (0.055, 0.080)
+        // Purge cached default layouts if they contain obsolete paddles (M1-M4) or missing GYRO
         val defaults = getDefaultLayoutProfiles()
         val defaultNames = defaults.map { it.name.trim().lowercase() }.toSet()
         val editor = prefs.edit()
         var needsCommit = false
 
-        // 1. Purge obsolete default profiles saved in prefs
-        defaults.forEach { defaultProfile ->
-            val savedJson = prefs.getString("profile_${defaultProfile.name}", null)
-            if (savedJson != null) {
-                if ((defaultProfile.name == "Standard Elite" && !savedJson.contains("\"GYRO\"")) ||
-                    savedJson.contains("\"M1\"") || savedJson.contains("\"M2\"") ||
-                    savedJson.contains("\"M3\"") || savedJson.contains("\"M4\"") ||
-                    savedJson.contains("0.055") || savedJson.contains("0.080") ||
-                    savedJson.contains("0.280") ||
-                    savedJson.contains("0.265") || savedJson.contains("0.645") ||
-                    savedJson.contains("0.165") || savedJson.contains("0.335") ||
-                    savedJson.contains("0.125") || savedJson.contains("0.820") ||
-                    // Layout 2 (DualSense) old values
-                    savedJson.contains("0.300") || savedJson.contains("0.385") ||
-                    savedJson.contains("0.615") ||
-                    // Layout 3 (FPS Tactical) old values
-                    savedJson.contains("0.120") ||
-                    // Layout 4 (Retro Arcade) old values
-                    savedJson.contains("0.190") || savedJson.contains("0.640") ||
-                    savedJson.contains("0.340") || savedJson.contains("0.415") ||
-                    savedJson.contains("0.665") ||
-                    // Layout 5 (Sim Racing) old values
-                    savedJson.contains("0.095") || savedJson.contains("0.145") ||
-                    savedJson.contains("0.905") || savedJson.contains("0.350") ||
-                    savedJson.contains("0.185") || savedJson.contains("0.680") ||
-                    savedJson.contains("0.815") ||
-                    // Layout 6 (Grand MOBA) old values
-                    savedJson.contains("0.670") || savedJson.contains("0.900") ||
-                    // Fresh retune old coordinates for all 5 non-elite layouts
-                    savedJson.contains("0.770") || savedJson.contains("0.840") ||
-                    savedJson.contains("0.730") || savedJson.contains("0.850") ||
-                    savedJson.contains("0.530") || savedJson.contains("0.555") ||
-                    savedJson.contains("0.480") || savedJson.contains("0.590") ||
-                    savedJson.contains("0.890") || savedJson.contains("0.780") ||
-                    savedJson.contains("0.800") || savedJson.contains("0.660") ||
-                    savedJson.contains("0.775") || savedJson.contains("0.885") ||
-                    savedJson.contains("0.700") || savedJson.contains("0.810") ||
-                    savedJson.contains("0.230") || savedJson.contains("0.380") ||
-                    savedJson.contains("0.440")
-                ) {
-                    editor.remove("profile_${defaultProfile.name}")
-                    needsCommit = true
+        val savedVersion = prefs.getInt("layout_migration_version", 0)
+        if (savedVersion < LAYOUT_MIGRATION_VERSION) {
+            // 1. Purge obsolete default profiles saved in prefs
+            defaults.forEach { defaultProfile ->
+                val savedJson = prefs.getString("profile_${defaultProfile.name}", null)
+                if (savedJson != null) {
+                    if ((defaultProfile.name == "Standard Elite" && !savedJson.contains("\"GYRO\"")) ||
+                        savedJson.contains("\"M1\"") || savedJson.contains("\"M2\"") ||
+                        savedJson.contains("\"M3\"") || savedJson.contains("\"M4\"")
+                    ) {
+                        editor.remove("profile_${defaultProfile.name}")
+                        needsCommit = true
+                    }
                 }
             }
+            editor.putInt("layout_migration_version", LAYOUT_MIGRATION_VERSION)
+            needsCommit = true
         }
 
         // 2. Sanitize custom_profile_names to ensure no default layout is ever treated as custom
-        val rawCustomNames = prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()
-        val cleanedCustomNames = rawCustomNames.filterNot { defaultNames.contains(it.trim().lowercase()) }.toSet()
-        if (cleanedCustomNames.size != rawCustomNames.size) {
-            editor.putStringSet("custom_profile_names", HashSet(cleanedCustomNames))
-            needsCommit = true
+        synchronized(this) {
+            val rawCustomNames = prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()
+            val cleanedCustomNames = rawCustomNames.filterNot { defaultNames.contains(it.trim().lowercase()) }.toSet()
+            if (cleanedCustomNames.size != rawCustomNames.size) {
+                editor.putStringSet("custom_profile_names", HashSet(cleanedCustomNames))
+                needsCommit = true
+            }
         }
 
         if (needsCommit) {
@@ -117,7 +94,7 @@ class LayoutManager(context: Context) {
         val defaults = getDefaultLayoutProfiles()
         val result = mutableListOf<LayoutProfile>()
 
-        // 1. Load default profiles (preserving user skins/labels, but ALWAYS using factory positions from code)
+        // 1. Load default profiles (preserving user customizations, falling back to factory positions for missing keys)
         for (defaultProfile in defaults) {
             val savedJson = prefs.getString("profile_${defaultProfile.name}", null)
             if (savedJson != null) {
@@ -125,9 +102,7 @@ class LayoutManager(context: Context) {
                     val loaded = json.decodeFromString<LayoutProfile>(savedJson)
                     val mergedPositions = defaultProfile.canonicalPositions().toMutableMap()
                     loaded.canonicalPositions().forEach { (k, v) ->
-                        if (mergedPositions.containsKey(k) && v.customComponentId != null) {
-                            mergedPositions[k] = mergedPositions[k]!!.copy(customComponentId = v.customComponentId)
-                        }
+                        mergedPositions[k] = v
                     }
                     result.add(
                         defaultProfile.copy(
@@ -199,17 +174,20 @@ class LayoutManager(context: Context) {
     fun saveProfile(profile: LayoutProfile, activate: Boolean = false) {
         val canonicalProfile = profile.copy(positions = profile.canonicalPositions())
         val jsonString = json.encodeToString(canonicalProfile)
-        val editor = prefs.edit()
-        editor.putString("profile_${canonicalProfile.name}", jsonString)
 
-        if (!canonicalProfile.isDefault) {
-            val rawCustomNames = prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()
-            val customNames = HashSet(rawCustomNames)
-            customNames.removeAll { it.trim().equals(canonicalProfile.name.trim(), ignoreCase = true) }
-            customNames.add(canonicalProfile.name)
-            editor.putStringSet("custom_profile_names", customNames)
+        synchronized(this) {
+            val editor = prefs.edit()
+            editor.putString("profile_${canonicalProfile.name}", jsonString)
+
+            if (!canonicalProfile.isDefault) {
+                val rawCustomNames = prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()
+                val customNames = HashSet(rawCustomNames)
+                customNames.removeAll { it.trim().equals(canonicalProfile.name.trim(), ignoreCase = true) }
+                customNames.add(canonicalProfile.name)
+                editor.putStringSet("custom_profile_names", customNames)
+            }
+            editor.apply()
         }
-        editor.apply()
 
         if (activate) {
             setActiveProfile(canonicalProfile.name)
@@ -231,9 +209,7 @@ class LayoutManager(context: Context) {
                     val loaded = json.decodeFromString<LayoutProfile>(savedJson)
                     val mergedPositions = defaultProfile.canonicalPositions().toMutableMap()
                     loaded.canonicalPositions().forEach { (k, v) ->
-                        if (mergedPositions.containsKey(k) && v.customComponentId != null) {
-                            mergedPositions[k] = mergedPositions[k]!!.copy(customComponentId = v.customComponentId)
-                        }
+                        mergedPositions[k] = v
                     }
                     defaultProfile.copy(
                         isDefault = true,
@@ -271,33 +247,36 @@ class LayoutManager(context: Context) {
             return false
         }
 
-        val rawCustomNames = prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()
-        val customNames = HashSet(rawCustomNames)
-        val removed = customNames.removeAll { it.trim().equals(trimmedName, ignoreCase = true) }
+        val removed = synchronized(this) {
+            val rawCustomNames = prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()
+            val customNames = HashSet(rawCustomNames)
+            val wasRemoved = customNames.removeAll { it.trim().equals(trimmedName, ignoreCase = true) }
 
-        val editor = prefs.edit()
-            .putStringSet("custom_profile_names", customNames)
-            .remove("profile_$trimmedName")
-            .remove("profile_$name")
+            val editor = prefs.edit()
+                .putStringSet("custom_profile_names", customNames)
+                .remove("profile_$trimmedName")
+                .remove("profile_$name")
 
-        // Also remove any key starting with "profile_" matching trimmedName case-insensitively
-        prefs.all.keys.forEach { key ->
-            if (key.startsWith("profile_") && key.substringAfter("profile_").trim().equals(trimmedName, ignoreCase = true)) {
-                editor.remove(key)
-            }
-        }
-
-        // Also update saved profile_order
-        val savedOrderJson = prefs.getString("profile_order", null)
-        if (savedOrderJson != null) {
-            try {
-                val orderList = json.decodeFromString<List<String>>(savedOrderJson).toMutableList()
-                if (orderList.removeAll { it.trim().equals(trimmedName, ignoreCase = true) }) {
-                    editor.putString("profile_order", json.encodeToString(orderList))
+            // Also remove any key starting with "profile_" matching trimmedName case-insensitively
+            prefs.all.keys.forEach { key ->
+                if (key.startsWith("profile_") && key.substringAfter("profile_").trim().equals(trimmedName, ignoreCase = true)) {
+                    editor.remove(key)
                 }
-            } catch (_: Exception) {}
+            }
+
+            // Also update saved profile_order
+            val savedOrderJson = prefs.getString("profile_order", null)
+            if (savedOrderJson != null) {
+                try {
+                    val orderList = json.decodeFromString<List<String>>(savedOrderJson).toMutableList()
+                    if (orderList.removeAll { it.trim().equals(trimmedName, ignoreCase = true) }) {
+                        editor.putString("profile_order", json.encodeToString(orderList))
+                    }
+                } catch (_: Exception) {}
+            }
+            editor.apply()
+            wasRemoved
         }
-        editor.apply()
 
         // If the deleted profile was active, switch to Default 1 (Standard Elite)
         val activeName = prefs.getString("active_profile", "Standard Elite")
@@ -307,7 +286,7 @@ class LayoutManager(context: Context) {
             refreshProfilesFlow()
         }
 
-        return removed || true
+        return removed
     }
 
     /**
@@ -329,40 +308,42 @@ class LayoutManager(context: Context) {
         val existing = loadProfile(trimmedOld) ?: return false
         val wasActive = getActiveProfile().name.trim().equals(trimmedOld, ignoreCase = true)
 
-        val rawCustomNames = prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()
-        val customNames = HashSet(rawCustomNames)
-        customNames.removeAll { it.trim().equals(trimmedOld, ignoreCase = true) }
-        customNames.add(trimmedNew)
+        synchronized(this) {
+            val rawCustomNames = prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()
+            val customNames = HashSet(rawCustomNames)
+            customNames.removeAll { it.trim().equals(trimmedOld, ignoreCase = true) }
+            customNames.add(trimmedNew)
 
-        val renamed = existing.copy(name = trimmedNew, isDefault = false)
-        val canonicalProfile = renamed.copy(positions = renamed.canonicalPositions())
-        val jsonString = json.encodeToString(canonicalProfile)
+            val renamed = existing.copy(name = trimmedNew, isDefault = false)
+            val canonicalProfile = renamed.copy(positions = renamed.canonicalPositions())
+            val jsonString = json.encodeToString(canonicalProfile)
 
-        val renameEditor = prefs.edit()
-            .putStringSet("custom_profile_names", customNames)
-            .remove("profile_$trimmedOld")
-            .remove("profile_$oldName")
-            .putString("profile_$trimmedNew", jsonString)
+            val renameEditor = prefs.edit()
+                .putStringSet("custom_profile_names", customNames)
+                .remove("profile_$trimmedOld")
+                .remove("profile_$oldName")
+                .putString("profile_$trimmedNew", jsonString)
 
-        prefs.all.keys.forEach { key ->
-            if (key.startsWith("profile_") && key.substringAfter("profile_").trim().equals(trimmedOld, ignoreCase = true)) {
-                renameEditor.remove(key)
-            }
-        }
-
-        // Also update saved profile_order
-        val savedOrderJson = prefs.getString("profile_order", null)
-        if (savedOrderJson != null) {
-            try {
-                val orderList = json.decodeFromString<List<String>>(savedOrderJson).toMutableList()
-                val idx = orderList.indexOfFirst { it.trim().equals(trimmedOld, ignoreCase = true) }
-                if (idx != -1) {
-                    orderList[idx] = trimmedNew
-                    renameEditor.putString("profile_order", json.encodeToString(orderList))
+            prefs.all.keys.forEach { key ->
+                if (key.startsWith("profile_") && key.substringAfter("profile_").trim().equals(trimmedOld, ignoreCase = true)) {
+                    renameEditor.remove(key)
                 }
-            } catch (_: Exception) {}
+            }
+
+            // Also update saved profile_order
+            val savedOrderJson = prefs.getString("profile_order", null)
+            if (savedOrderJson != null) {
+                try {
+                    val orderList = json.decodeFromString<List<String>>(savedOrderJson).toMutableList()
+                    val idx = orderList.indexOfFirst { it.trim().equals(trimmedOld, ignoreCase = true) }
+                    if (idx != -1) {
+                        orderList[idx] = trimmedNew
+                        renameEditor.putString("profile_order", json.encodeToString(orderList))
+                    }
+                } catch (_: Exception) {}
+            }
+            renameEditor.apply()
         }
-        renameEditor.apply()
 
         if (wasActive) {
             setActiveProfile(trimmedNew)
@@ -433,7 +414,7 @@ class LayoutManager(context: Context) {
     /** Set the active layout profile. */
     fun setActiveProfile(name: String) {
         val effectiveName = if (name.trim().equals("Standard", ignoreCase = true)) "Standard Elite" else name.trim()
-        prefs.edit().putString("active_profile", effectiveName).commit()
+        prefs.edit().putString("active_profile", effectiveName).apply()
         _activeProfileNameFlow.value = effectiveName
         refreshProfilesFlow()
     }

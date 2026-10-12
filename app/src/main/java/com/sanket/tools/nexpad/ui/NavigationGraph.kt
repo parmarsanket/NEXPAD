@@ -1,7 +1,6 @@
 package com.sanket.tools.nexpad.ui
 
 import android.content.Context
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -57,11 +56,6 @@ fun NavigationGraph(
 
     val stateDecorator = rememberSaveableStateHolderNavEntryDecorator<NavKey>()
     val vmDecorator = rememberViewModelStoreNavEntryDecorator<NavKey>()
-
-    // Intercept system/hardware back button when on nested screens
-    BackHandler(enabled = backStack.size > 1) {
-        navigator.popBackStack()
-    }
 
     NavDisplay(
         backStack = backStack,
@@ -120,7 +114,6 @@ fun NavigationGraph(
                         navigationViewModel = navigationViewModel,
                         overrideProfileName = key.layoutProfileName,
                         onBack = { navigator.popBackStack() },
-                        onVibrate = onVibrate,
                         sharedPref = sharedPref
                     )
                 }

@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import com.sanket.tools.nexpad.ui.AppNavigator
@@ -82,11 +83,12 @@ fun HudEditorScreen(
     val compatibleSkins by viewModel.compatibleSkins.collectAsState()
     val hasUnsavedChanges by viewModel.hasUnsavedChanges.collectAsState()
 
+    val owner = LocalViewModelStoreOwner.current ?: error("No ViewModelStoreOwner")
     val effectiveGamepadViewModel: GamepadViewModel = gamepadViewModel ?: remember(context) {
         (context as? androidx.activity.ComponentActivity)?.let { activity ->
             androidx.lifecycle.ViewModelProvider(activity)[GamepadViewModel::class.java]
         }
-    } ?: viewModel<GamepadViewModel>(context as androidx.lifecycle.ViewModelStoreOwner)
+    } ?: viewModel<GamepadViewModel>(owner)
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
 
     // Unsaved-changes guard: show dialog before leaving if edits exist
@@ -104,7 +106,7 @@ fun HudEditorScreen(
     // Load the correct profile on entry.
     // If initialProfileName is provided (e.g. launched from VirtualController),
     // load that specific profile. Otherwise fall back to the current active profile.
-    LaunchedEffect(initialProfileName) {
+    LaunchedEffect(initialProfileName, initialControlKey) {
         if (!initialProfileName.isNullOrBlank()) {
             viewModel.loadProfileByName(initialProfileName)
         } else {
@@ -159,6 +161,7 @@ fun HudEditorScreen(
         val screenHeightPx = constraints.maxHeight.toFloat()
         val density = LocalDensity.current
         val coroutineScope = rememberCoroutineScope()
+        val snackbarHostState = remember { SnackbarHostState() }
 
         // Auto-Dodge Coordinator for intelligent collision-avoidance overlay physics
         val defaultTopBarHeightPx = with(density) { 56.dp.toPx() }
@@ -219,10 +222,19 @@ fun HudEditorScreen(
             onBack = handleBack,
             onOpenPalette = { showAddDialog = true },
             onSave = {
-                viewModel.saveProfile {
-                    Toast.makeText(context, "Layout '${profile.name}' saved!", Toast.LENGTH_SHORT).show()
-                    navController.popBackStack()
-                }
+                viewModel.saveProfile(
+                    onFailure = { error ->
+                        val msg = "Save failed: ${error.message ?: "Unknown error"}"
+                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar(msg)
+                        }
+                    },
+                    onSaved = {
+                        Toast.makeText(context, "Layout '${profile.name}' saved!", Toast.LENGTH_SHORT).show()
+                        navController.popBackStack()
+                    }
+                )
             },
             labelStyle = profile.controllerLabelStyle,
             onUpdateLabelStyle = { newStyle ->
@@ -379,11 +391,20 @@ fun HudEditorScreen(
                 confirmButton = {
                     Button(
                         onClick = {
-                            viewModel.saveProfile {
-                                Toast.makeText(context, "Layout '${profile.name}' saved!", Toast.LENGTH_SHORT).show()
-                                showUnsavedDialog = false
-                                navController.popBackStack()
-                            }
+                            viewModel.saveProfile(
+                                onFailure = { error ->
+                                    val msg = "Save failed: ${error.message ?: "Unknown error"}"
+                                    Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar(msg)
+                                    }
+                                },
+                                onSaved = {
+                                    Toast.makeText(context, "Layout '${profile.name}' saved!", Toast.LENGTH_SHORT).show()
+                                    showUnsavedDialog = false
+                                    navController.popBackStack()
+                                }
+                            )
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan)
                     ) {
@@ -408,5 +429,12 @@ fun HudEditorScreen(
                 containerColor = MaterialTheme.colorScheme.surface
             )
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp)
+        )
     }
 }

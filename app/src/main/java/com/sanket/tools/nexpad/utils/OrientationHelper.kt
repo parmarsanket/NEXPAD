@@ -60,7 +60,8 @@ fun ImmersiveSystemBars() {
 
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(lifecycleObserver)
-            view.viewTreeObserver.removeOnWindowFocusChangeListener(focusListener)
+            val vto = if (view.viewTreeObserver.isAlive) view.viewTreeObserver else view.rootView.viewTreeObserver
+            vto.removeOnWindowFocusChangeListener(focusListener)
             windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
             windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
         }

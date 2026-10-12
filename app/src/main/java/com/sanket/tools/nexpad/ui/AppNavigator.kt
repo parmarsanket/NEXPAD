@@ -20,6 +20,7 @@ class Nav3AppNavigator(
     override val backStack: List<NavKey> get() = backStackState
 
     override fun navigate(route: Route) {
+        if (backStackState.lastOrNull() == route) return
         backStackState.add(route)
     }
 

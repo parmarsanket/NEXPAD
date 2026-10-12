@@ -80,13 +80,16 @@ class NetworkClient : IGamepadConnection {
         receiveJob?.cancel()
         connectionScope?.cancel()
 
+        var connected = false
         withContext(Dispatchers.IO) {
             try {
                 serverAddress = InetSocketAddress(address, port)
                 channel = DatagramChannel.open().apply {
                     configureBlocking(true)
                     // 0xB8 = (46 << 2) = DSCP EF (Expedited Forwarding) -> maps to WMM AC_VO (Voice) Queue
-                    setOption(java.net.StandardSocketOptions.IP_TOS, 0xB8)
+                    try {
+                        setOption(java.net.StandardSocketOptions.IP_TOS, 0xB8)
+                    } catch (_: Exception) {}
                     socket().sendBufferSize = 65536
                     socket().receiveBufferSize = 65536
                     socket().bind(InetSocketAddress(0)) // Bind to any local port
@@ -96,12 +99,17 @@ class NetworkClient : IGamepadConnection {
                 Log.d("NEXPAD", "📡 Connecting to UDP Server at $address:$port...")
                 onStatusChanged?.invoke("Connecting to $address:$port...")
                 isHandshakeComplete = false
+                connected = true
             } catch (e: Exception) {
                 onConnectionStateChanged?.invoke(false)
                 onStatusChanged?.invoke("Connection failed: ${e.message}")
                 Log.e("NEXPAD", "❌ Connection failed: ${e.message}")
                 return@withContext
             }
+        }
+
+        if (!connected || channel == null || channel?.isOpen != true) {
+            return
         }
         
         val myChannel = channel
@@ -150,6 +158,7 @@ class NetworkClient : IGamepadConnection {
                 if (handshakeAttempts >= 30) {
                     onConnectionStateChanged?.invoke(false)
                     onStatusChanged?.invoke("Connection Timeout")
+                    disconnect()
                     return@launch
                 }
                 try {

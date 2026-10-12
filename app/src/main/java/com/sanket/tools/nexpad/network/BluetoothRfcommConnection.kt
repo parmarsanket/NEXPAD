@@ -24,6 +24,7 @@ class BluetoothRfcommConnection(private val context: Context) : BaseStreamConnec
     }
 
     private var bluetoothSocket: BluetoothSocket? = null
+    @Volatile private var connectingSocket: BluetoothSocket? = null
 
     @androidx.annotation.RequiresPermission(android.Manifest.permission.BLUETOOTH_CONNECT)
     override suspend fun connect(address: String, port: Int) {
@@ -34,12 +35,24 @@ class BluetoothRfcommConnection(private val context: Context) : BaseStreamConnec
             Log.d(TAG, "Attempting Bluetooth RFCOMM connection to address: $address")
 
             val bluetoothManager = context.getSystemService(BluetoothManager::class.java)
-            val adapter = bluetoothManager?.adapter
+            val adapter = try {
+                bluetoothManager?.adapter
+            } catch (e: SecurityException) {
+                onStatusChanged?.invoke("Bluetooth permission denied")
+                onConnectionStateChanged?.invoke(false)
+                return@withContext
+            }
 
-            if (adapter == null || !adapter.isEnabled) {
-                val msg = "Bluetooth is disabled or unavailable"
-                Log.e(TAG, msg)
-                onStatusChanged?.invoke(msg)
+            try {
+                if (adapter == null || !adapter.isEnabled) {
+                    val msg = "Bluetooth is disabled or unavailable"
+                    Log.e(TAG, msg)
+                    onStatusChanged?.invoke(msg)
+                    return@withContext
+                }
+            } catch (e: SecurityException) {
+                onStatusChanged?.invoke("Bluetooth permission denied")
+                onConnectionStateChanged?.invoke(false)
                 return@withContext
             }
 
@@ -50,7 +63,13 @@ class BluetoothRfcommConnection(private val context: Context) : BaseStreamConnec
                     // BLUETOOTH_SCAN not required for connecting to known paired device
                 } catch (_: Exception) {}
 
-                val device: BluetoothDevice = adapter.getRemoteDevice(address)
+                val device: BluetoothDevice = try {
+                    adapter.getRemoteDevice(address)
+                } catch (e: SecurityException) {
+                    onStatusChanged?.invoke("Bluetooth permission denied")
+                    onConnectionStateChanged?.invoke(false)
+                    return@withContext
+                }
 
                 var socket: BluetoothSocket? = null
                 var lastException: Exception? = null
@@ -59,10 +78,12 @@ class BluetoothRfcommConnection(private val context: Context) : BaseStreamConnec
                 try {
                     Log.d(TAG, "Trying Tier 1: createInsecureRfcommSocketToServiceRecord(NEXPAD_UUID)")
                     socket = device.createInsecureRfcommSocketToServiceRecord(UUID.fromString(NEXPAD_BT_UUID_STRING))
+                    connectingSocket = socket
                     socket.connect()
                 } catch (e: Exception) {
                     lastException = e
                     Log.w(TAG, "Tier 1 connection failed: ${e.message}. Trying Tier 2 (Secure)...")
+                    connectingSocket = null
                     try { socket?.close() } catch (_: Exception) {}
                     socket = null
                 }
@@ -72,10 +93,12 @@ class BluetoothRfcommConnection(private val context: Context) : BaseStreamConnec
                     try {
                         Log.d(TAG, "Trying Tier 2: createRfcommSocketToServiceRecord(NEXPAD_UUID)")
                         socket = device.createRfcommSocketToServiceRecord(UUID.fromString(NEXPAD_BT_UUID_STRING))
+                        connectingSocket = socket
                         socket.connect()
                     } catch (e: Exception) {
                         lastException = e
                         Log.w(TAG, "Tier 2 connection failed: ${e.message}. Trying Tier 3 (Standard SPP)...")
+                        connectingSocket = null
                         try { socket?.close() } catch (_: Exception) {}
                         socket = null
                     }
@@ -86,10 +109,12 @@ class BluetoothRfcommConnection(private val context: Context) : BaseStreamConnec
                     try {
                         Log.d(TAG, "Trying Tier 3: createInsecureRfcommSocketToServiceRecord(SPP_UUID)")
                         socket = device.createInsecureRfcommSocketToServiceRecord(UUID.fromString(STANDARD_SPP_UUID_STRING))
+                        connectingSocket = socket
                         socket.connect()
                     } catch (e: Exception) {
                         lastException = e
                         Log.w(TAG, "Tier 3 connection failed: ${e.message}. Trying Tier 4 (Reflection Port)...")
+                        connectingSocket = null
                         try { socket?.close() } catch (_: Exception) {}
                         socket = null
                     }
@@ -102,14 +127,18 @@ class BluetoothRfcommConnection(private val context: Context) : BaseStreamConnec
                         Log.d(TAG, "Trying Tier 4: reflection createInsecureRfcommSocket(channel $targetChannel)")
                         val m = device.javaClass.getMethod("createInsecureRfcommSocket", Int::class.javaPrimitiveType)
                         socket = m.invoke(device, targetChannel) as BluetoothSocket
+                        connectingSocket = socket
                         socket.connect()
                     } catch (e: Exception) {
                         lastException = e
                         Log.e(TAG, "Tier 4 reflection connection failed: ${e.message}")
+                        connectingSocket = null
                         try { socket?.close() } catch (_: Exception) {}
                         socket = null
                     }
                 }
+
+                connectingSocket = null
 
                 if (socket == null || !socket.isConnected) {
                     throw lastException ?: IOException("Failed to establish Bluetooth RFCOMM connection")
@@ -149,8 +178,11 @@ class BluetoothRfcommConnection(private val context: Context) : BaseStreamConnec
     }
 
     override fun disconnect() {
-        if (!isConnected && bluetoothSocket == null) return
+        if (!isConnected && bluetoothSocket == null && connectingSocket == null) return
         stopStreamWorkers()
+
+        try { connectingSocket?.close() } catch (_: Exception) {}
+        connectingSocket = null
 
         try { bluetoothSocket?.close() } catch (_: Exception) {}
         bluetoothSocket = null

@@ -302,25 +302,25 @@ fun HudDockedInspector(
                     horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     IconButton(
-                        onClick = { onNudge(-1f / screenWidthPx, 0f) },
+                        onClick = { if (screenWidthPx > 0f) onNudge(-1f / screenWidthPx, 0f) },
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Nudge Left", tint = Color.White, modifier = Modifier.size(16.dp))
                     }
                     IconButton(
-                        onClick = { onNudge(0f, -1f / screenHeightPx) },
+                        onClick = { if (screenHeightPx > 0f) onNudge(0f, -1f / screenHeightPx) },
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(Icons.Rounded.ArrowUpward, contentDescription = "Nudge Up", tint = Color.White, modifier = Modifier.size(16.dp))
                     }
                     IconButton(
-                        onClick = { onNudge(0f, 1f / screenHeightPx) },
+                        onClick = { if (screenHeightPx > 0f) onNudge(0f, 1f / screenHeightPx) },
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(Icons.Rounded.ArrowDownward, contentDescription = "Nudge Down", tint = Color.White, modifier = Modifier.size(16.dp))
                     }
                     IconButton(
-                        onClick = { onNudge(1f / screenWidthPx, 0f) },
+                        onClick = { if (screenWidthPx > 0f) onNudge(1f / screenWidthPx, 0f) },
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = "Nudge Right", tint = Color.White, modifier = Modifier.size(16.dp))

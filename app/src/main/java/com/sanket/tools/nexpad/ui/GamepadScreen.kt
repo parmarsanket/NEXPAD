@@ -63,7 +63,6 @@ fun GamepadScreen(
     navigationViewModel: NavigationViewModel? = null,
     overrideProfileName: String? = null,
     onBack: () -> Unit,
-    onVibrate: () -> Unit,
     sharedPref: SharedPreferences? = null
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -77,7 +76,11 @@ fun GamepadScreen(
     var backToast by remember { mutableStateOf<Toast?>(null) }
 
     DisposableEffect(Unit) {
+        viewModel.onGamepadScreenActive(true)
         onDispose {
+            viewModel.onGamepadScreenActive(false)
+            viewModel.updateLeftStick(0f, 0f)
+            viewModel.updateRightStick(0f, 0f)
             backToast?.cancel()
             com.sanket.tools.nexpad.runtime.engine.clearNxprcRenderCaches()
         }
@@ -513,8 +516,10 @@ fun GamepadScreenContent(
                 modifier = Modifier
                     .layout { measurable, childConstraints ->
                         val placeable = measurable.measure(childConstraints)
-                        val x = (position.xRatio * screenWidthPx - placeable.width / 2f).roundToInt()
-                        val y = (position.yRatio * screenHeightPx - placeable.height / 2f).roundToInt()
+                        val safeX = if (position.xRatio.isFinite()) position.xRatio else 0f
+                        val safeY = if (position.yRatio.isFinite()) position.yRatio else 0f
+                        val x = (safeX * screenWidthPx - placeable.width / 2f).roundToInt()
+                        val y = (safeY * screenHeightPx - placeable.height / 2f).roundToInt()
                         layout(placeable.width, placeable.height) {
                             placeable.placeRelative(x, y)
                         }
@@ -540,8 +545,10 @@ fun GamepadScreenContent(
                         val placeable = measurable.measure(childConstraints)
                         val extraX = if (isLs) lsFloatX.value else if (isRs) rsFloatX.value else 0f
                         val extraY = if (isLs) lsFloatY.value else if (isRs) rsFloatY.value else 0f
-                        val x = (position.xRatio * screenWidthPx - placeable.width / 2f + extraX).roundToInt()
-                        val y = (position.yRatio * screenHeightPx - placeable.height / 2f + extraY).roundToInt()
+                        val safeX = if (position.xRatio.isFinite()) position.xRatio else 0f
+                        val safeY = if (position.yRatio.isFinite()) position.yRatio else 0f
+                        val x = (safeX * screenWidthPx - placeable.width / 2f + extraX).roundToInt()
+                        val y = (safeY * screenHeightPx - placeable.height / 2f + extraY).roundToInt()
                         layout(placeable.width, placeable.height) {
                             placeable.placeRelative(x, y)
                         }
@@ -626,8 +633,10 @@ fun GamepadScreenContent(
                 modifier = Modifier
                     .layout { measurable, childConstraints ->
                         val placeable = measurable.measure(childConstraints)
-                        val x = (position.xRatio * screenWidthPx - placeable.width / 2f).roundToInt()
-                        val y = (position.yRatio * screenHeightPx - placeable.height / 2f).roundToInt()
+                        val safeX = if (position.xRatio.isFinite()) position.xRatio else 0f
+                        val safeY = if (position.yRatio.isFinite()) position.yRatio else 0f
+                        val x = (safeX * screenWidthPx - placeable.width / 2f).roundToInt()
+                        val y = (safeY * screenHeightPx - placeable.height / 2f).roundToInt()
                         layout(placeable.width, placeable.height) {
                             placeable.placeRelative(x, y)
                         }

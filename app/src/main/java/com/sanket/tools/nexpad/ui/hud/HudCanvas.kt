@@ -78,8 +78,10 @@ fun HudCanvas(
                         modifier = Modifier
                             .layout { measurable, childConstraints ->
                                 val placeable = measurable.measure(childConstraints)
-                                val x = (element.transform.xRatio * screenWidthPx - placeable.width / 2f).roundToInt()
-                                val y = (element.transform.yRatio * screenHeightPx - placeable.height / 2f).roundToInt()
+                                val safeX = if (element.transform.xRatio.isFinite()) element.transform.xRatio else 0f
+                                val safeY = if (element.transform.yRatio.isFinite()) element.transform.yRatio else 0f
+                                val x = (safeX * screenWidthPx - placeable.width / 2f).roundToInt()
+                                val y = (safeY * screenHeightPx - placeable.height / 2f).roundToInt()
                                 layout(placeable.width, placeable.height) {
                                     placeable.placeRelative(x, y)
                                 }
@@ -142,8 +144,10 @@ fun HudCanvas(
                     modifier = Modifier
                         .layout { measurable, childConstraints ->
                             val placeable = measurable.measure(childConstraints)
-                            val x = (element.transform.xRatio * screenWidthPx - placeable.width / 2f).roundToInt()
-                            val y = (element.transform.yRatio * screenHeightPx - placeable.height / 2f).roundToInt()
+                            val safeX = if (element.transform.xRatio.isFinite()) element.transform.xRatio else 0f
+                            val safeY = if (element.transform.yRatio.isFinite()) element.transform.yRatio else 0f
+                            val x = (safeX * screenWidthPx - placeable.width / 2f).roundToInt()
+                            val y = (safeY * screenHeightPx - placeable.height / 2f).roundToInt()
                             layout(placeable.width, placeable.height) {
                                 placeable.placeRelative(x, y)
                             }

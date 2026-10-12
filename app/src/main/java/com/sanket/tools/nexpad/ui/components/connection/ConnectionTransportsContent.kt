@@ -230,7 +230,7 @@ fun ConnectionTransportsContent(
                 }
             } else {
                 pairedDevices.forEach { device ->
-                    val devName = device.name ?: "Unknown Device"
+                    val devName = try { device.name } catch (_: SecurityException) { null } ?: "Unknown Device"
                     val devAddress = device.address
 
                     BluetoothDeviceCard(
