@@ -76,8 +76,14 @@ class LayoutManager(context: Context) {
         refreshProfilesFlow()
     }
 
+    @Volatile
+    private var cachedProfiles: List<LayoutProfile>? = null
+
     private fun refreshProfilesFlow() {
-        _profilesFlow.value = getAllProfiles()
+        cachedProfiles = null
+        val loaded = getAllProfiles()
+        cachedProfiles = loaded
+        _profilesFlow.value = loaded
     }
 
     /** Applies a button skin (or default) to the active profile. */
@@ -91,6 +97,7 @@ class LayoutManager(context: Context) {
 
     /** Returns all available profiles: default layouts (using factory positions) plus user custom layouts. */
     fun getAllProfiles(): List<LayoutProfile> {
+        cachedProfiles?.let { return it }
         val defaults = getDefaultLayoutProfiles()
         val result = mutableListOf<LayoutProfile>()
 
@@ -154,12 +161,14 @@ class LayoutManager(context: Context) {
                         orderedResult.add(profile)
                     }
                 }
+                cachedProfiles = orderedResult
                 return orderedResult
             } catch (e: Exception) {
                 // Fallback to un-ordered result on decode issue
             }
         }
 
+        cachedProfiles = result
         return result
     }
 
@@ -425,7 +434,7 @@ class LayoutManager(context: Context) {
         // Handle legacy "Standard" name mapping to "Standard Elite"
         val effectiveName = if (activeName.trim().equals("Standard", ignoreCase = true)) "Standard Elite" else activeName.trim()
 
-        val all = getAllProfiles()
+        val all = cachedProfiles ?: _profilesFlow.value.ifEmpty { getAllProfiles() }
         return all.find { it.name.trim().equals(effectiveName, ignoreCase = true) }
             ?: all.firstOrNull()
             ?: LayoutProfile(name = effectiveName)

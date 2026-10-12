@@ -125,13 +125,13 @@ fun GamepadScreen(
     )
     ImmersiveSystemBars()
 
-    // Initialize vibrator ONCE
-    val vibrator = remember {
+    // Initialize vibrator ONCE safely
+    val vibrator: android.os.Vibrator? = remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibratorManager = context.getSystemService(android.os.VibratorManager::class.java)
-            vibratorManager?.defaultVibrator ?: context.getSystemService(android.os.Vibrator::class.java)!!
+            vibratorManager?.defaultVibrator ?: context.getSystemService(android.os.Vibrator::class.java)
         } else {
-            context.getSystemService(android.os.Vibrator::class.java)!!
+            context.getSystemService(android.os.Vibrator::class.java)
         }
     }
 
@@ -157,15 +157,15 @@ fun GamepadScreen(
     
     val motorProfile = remember {
         val hasAmplitude = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.hasAmplitudeControl()
+            vibrator?.hasAmplitudeControl() == true
         } else false
         
         val hasPrimitives = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             // PRIMITIVE_CLICK is universally supported on LRA phones
             try {
-                vibrator.arePrimitivesSupported(
+                vibrator?.arePrimitivesSupported(
                     android.os.VibrationEffect.Composition.PRIMITIVE_CLICK
-                )[0]
+                )?.getOrNull(0) == true
             } catch (e: Exception) { false }
         } else false
         
@@ -290,13 +290,13 @@ fun GamepadScreen(
                     when (motorProfile.tier) {
                         1 -> {
                             // Tier 1: No amplitude control. Binary vibration only.
-                            vibrator.vibrate(
+                            vibrator?.vibrate(
                                 VibrationEffect.createWaveform(longArrayOf(0, 10000), 0)
                             )
                         }
                         else -> {
                             // Tier 2 & 3: Full amplitude waveform
-                            vibrator.vibrate(
+                            vibrator?.vibrate(
                                 VibrationEffect.createWaveform(
                                     longArrayOf(0, 10000), intArrayOf(0, band), 0
                                 )
@@ -316,13 +316,13 @@ fun GamepadScreen(
                             delay(minBurstMs - elapsed)
                             lastAppliedBand = 0
                             isRumbling = false
-                            vibrator.cancel()
+                            vibrator?.cancel()
                         }
                     } else {
                         rumbleStopJob?.cancel()
                         lastAppliedBand = 0
                         isRumbling = false
-                        vibrator.cancel()
+                        vibrator?.cancel()
                     }
                 }
             }
@@ -336,7 +336,7 @@ fun GamepadScreen(
                         rumbleStopJob?.cancel()
                         lastAppliedBand = 0
                         isRumbling = false
-                        vibrator.cancel()
+                        vibrator?.cancel()
                     }
                 }
             }
@@ -347,7 +347,7 @@ fun GamepadScreen(
         onDispose {
             rumbleStopJob?.cancel()
             rumbleResetJob?.cancel()
-            vibrator.cancel()
+            vibrator?.cancel()
             navigationViewModel?.clearGamepadSession()
         }
     }

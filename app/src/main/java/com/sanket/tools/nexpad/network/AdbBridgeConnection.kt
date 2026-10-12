@@ -29,13 +29,13 @@ class AdbBridgeConnection(private val context: Context) : BaseStreamConnection()
 
             try {
                 val socket = LocalSocket()
+                localSocket = socket
                 socket.connect(LocalSocketAddress(ABSTRACT_SOCKET_NAME, LocalSocketAddress.Namespace.ABSTRACT))
                 try {
                     socket.sendBufferSize = 65536
                     socket.receiveBufferSize = 65536
                 } catch (_: Exception) {}
 
-                localSocket = socket
                 startStreamWorkers(socket.inputStream, socket.outputStream, "ADB")
                 onStatusChanged?.invoke("Connected via USB (ADB)")
                 Log.d(TAG, "Connected to ADB Bridge successfully")

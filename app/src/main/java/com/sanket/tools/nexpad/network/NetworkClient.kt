@@ -101,6 +101,8 @@ class NetworkClient : IGamepadConnection {
                 isHandshakeComplete = false
                 connected = true
             } catch (e: Exception) {
+                try { channel?.close() } catch (_: Exception) {}
+                channel = null
                 onConnectionStateChanged?.invoke(false)
                 onStatusChanged?.invoke("Connection failed: ${e.message}")
                 Log.e("NEXPAD", "❌ Connection failed: ${e.message}")
