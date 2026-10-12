@@ -1,0 +1,126 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="160dp"
+    android:height="160dp"
+    android:viewportWidth="160"
+    android:viewportHeight="160">
+
+    <!-- Outer Ambient Glow Circle -->
+    <path
+        android:pathData="M80,80m-70,0a70,70 0 1,1 140,0a70,70 0 1,1 -140,0">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:centerX="80"
+                android:centerY="80"
+                android:gradientRadius="70"
+                android:type="radial">
+                <item android:color="#3300E5FF" android:offset="0.0" />
+                <item android:color="#1A00E5FF" android:offset="0.6" />
+                <item android:color="#00070B14" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Sleek Futuristic Gamepad Body -->
+    <path
+        android:pathData="M48,52 C36,52 26,62 26,76 C26,94 36,114 44,116 C50,117 56,108 64,96 C70,88 90,88 96,96 C104,108 110,117 116,116 C124,114 134,94 134,76 C134,62 124,52 112,52 L48,52 Z"
+        android:strokeWidth="3.5"
+        android:strokeColor="#00E5FF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="26"
+                android:startY="52"
+                android:endX="134"
+                android:endY="116"
+                android:type="linear">
+                <item android:color="#FF0D1527" android:offset="0.0" />
+                <item android:color="#FF070B14" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Top Accent Bar (Cyan to Purple) -->
+    <path
+        android:pathData="M56,58 L104,58"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="56"
+                android:startY="58"
+                android:endX="104"
+                android:endY="58"
+                android:type="linear">
+                <item android:color="#FF00E5FF" android:offset="0.0" />
+                <item android:color="#FFB400FF" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Left D-Pad Emblem -->
+    <!-- Vertical Bar -->
+    <path
+        android:pathData="M50,68 L50,86"
+        android:strokeWidth="3"
+        android:strokeColor="#00E5FF"
+        android:strokeLineCap="round" />
+    <!-- Horizontal Bar -->
+    <path
+        android:pathData="M41,77 L59,77"
+        android:strokeWidth="3"
+        android:strokeColor="#00E5FF"
+        android:strokeLineCap="round" />
+
+    <!-- Center Cyber Pulse Diamond / Core -->
+    <path
+        android:pathData="M80,68 L86,77 L80,86 L74,77 Z"
+        android:strokeWidth="2"
+        android:strokeColor="#00E5FF">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="74"
+                android:startY="68"
+                android:endX="86"
+                android:endY="86"
+                android:type="linear">
+                <item android:color="#FF00E5FF" android:offset="0.0" />
+                <item android:color="#FFB400FF" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Right Face Buttons (Diamond points) -->
+    <!-- Top (Triangle / Y) -->
+    <path
+        android:pathData="M110,68m-3,0a3,3 0 1,1 6,0a3,3 0 1,1 -6,0"
+        android:fillColor="#3FD25A" />
+    <!-- Right (Circle / B) -->
+    <path
+        android:pathData="M119,77m-3,0a3,3 0 1,1 6,0a3,3 0 1,1 -6,0"
+        android:fillColor="#E6474E" />
+    <!-- Bottom (Cross / A) -->
+    <path
+        android:pathData="M110,86m-3,0a3,3 0 1,1 6,0a3,3 0 1,1 -6,0"
+        android:fillColor="#3F8FE0" />
+    <!-- Left (Square / X) -->
+    <path
+        android:pathData="M101,77m-3,0a3,3 0 1,1 6,0a3,3 0 1,1 -6,0"
+        android:fillColor="#E055B8" />
+
+    <!-- Left Thumbstick Ring -->
+    <path
+        android:pathData="M60,94m-6,0a6,6 0 1,1 12,0a6,6 0 1,1 -12,0"
+        android:strokeWidth="2"
+        android:strokeColor="#8000E5FF"
+        android:fillColor="#2600E5FF" />
+
+    <!-- Right Thumbstick Ring -->
+    <path
+        android:pathData="M100,94m-6,0a6,6 0 1,1 12,0a6,6 0 1,1 -12,0"
+        android:strokeWidth="2"
+        android:strokeColor="#80B400FF"
+        android:fillColor="#26B400FF" />
+
+</vector>

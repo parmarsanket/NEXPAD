@@ -35,6 +35,7 @@ fun NavigationGraph(
         configuration = SavedStateConfiguration {
             serializersModule = SerializersModule {
                 polymorphic(NavKey::class) {
+                    subclass(Route.Splash::class, Route.Splash.serializer())
                     subclass(Route.Home::class, Route.Home.serializer())
                     subclass(Route.Settings::class, Route.Settings.serializer())
                     subclass(Route.Connections::class, Route.Connections.serializer())
@@ -45,7 +46,7 @@ fun NavigationGraph(
                 }
             }
         },
-        Route.Home
+        Route.Splash
     )
     val navigator = remember(backStack) { Nav3AppNavigator(backStack) }
     val sharedPref = remember(context) { context.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE) }
@@ -76,6 +77,14 @@ fun NavigationGraph(
     ) { key ->
         NavEntry(key) {
             when (key) {
+                is Route.Splash -> {
+                    SplashScreen(
+                        onSplashFinished = {
+                            navigator.replaceRoot(Route.Home)
+                        },
+                        onVibrate = onVibrate
+                    )
+                }
                 is Route.Home -> {
                     HomeScreen(
                         navController = navigator,

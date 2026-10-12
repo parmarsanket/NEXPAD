@@ -12,6 +12,7 @@ interface AppNavigator {
     val backStack: List<NavKey>
     fun navigate(route: Route)
     fun popBackStack(): Boolean
+    fun replaceRoot(route: Route)
 }
 
 class Nav3AppNavigator(
@@ -21,6 +22,11 @@ class Nav3AppNavigator(
 
     override fun navigate(route: Route) {
         if (backStackState.lastOrNull() == route) return
+        backStackState.add(route)
+    }
+
+    override fun replaceRoot(route: Route) {
+        backStackState.clear()
         backStackState.add(route)
     }
 
