@@ -8,7 +8,6 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -18,6 +17,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -40,12 +40,11 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.sanket.tools.nexpad.R
 import com.sanket.tools.nexpad.ui.components.effects.CyberGrid
+import com.sanket.tools.nexpad.ui.components.splash.MakeInIndiaWalkingLion
 import kotlinx.coroutines.delay
 
 @Composable
@@ -63,27 +62,28 @@ fun SplashScreen(
         }
     }
 
-    // Entrance Animations
-    val logoScale = remember { Animatable(0.75f) }
-    val logoAlpha = remember { Animatable(0f) }
+    // Entrance and Underline Animators
+    val lionScale = remember { Animatable(0.8f) }
+    val lionAlpha = remember { Animatable(0f) }
     val textAlpha = remember { Animatable(0f) }
+    val underlineWidthFraction = remember { Animatable(0f) }
 
-    // Pulsing Neon Halo Animation
+    // Pulsing Neon Ambient Halo
     val infiniteTransition = rememberInfiniteTransition(label = "SplashNeonPulse")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 0.95f,
         targetValue = 1.15f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1100, easing = FastOutSlowInEasing),
+            animation = tween(1200, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "PulseScale"
     )
     val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.35f,
-        targetValue = 0.75f,
+        initialValue = 0.25f,
+        targetValue = 0.55f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1100, easing = LinearEasing),
+            animation = tween(1200, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "PulseAlpha"
@@ -93,24 +93,30 @@ fun SplashScreen(
         // Trigger subtle haptic entrance
         try { onVibrate?.invoke() } catch (_: Exception) {}
 
-        // Animate emblem in
-        logoScale.animateTo(
+        // 1. Entrance of Make in India Lion
+        lionScale.animateTo(
             targetValue = 1.0f,
             animationSpec = tween(500, easing = FastOutSlowInEasing)
         )
-        logoAlpha.animateTo(
+        lionAlpha.animateTo(
             targetValue = 1.0f,
-            animationSpec = tween(400)
+            animationSpec = tween(450)
         )
 
-        // Fade in title & badge
+        // 2. Fade in Brand & Developer Name
         textAlpha.animateTo(
             targetValue = 1.0f,
             animationSpec = tween(400)
         )
 
-        // Total display duration: ~1.2s then transition to Home
-        delay(700)
+        // 3. Animate the glowing underline expanding beneath "Sanket Dev"
+        underlineWidthFraction.animateTo(
+            targetValue = 1.0f,
+            animationSpec = tween(650, easing = FastOutSlowInEasing)
+        )
+
+        // 4. Hold for user appreciation (~2.0s total) then proceed to Home
+        delay(850)
         finishSplash()
     }
 
@@ -125,23 +131,24 @@ fun SplashScreen(
             },
         contentAlignment = Alignment.Center
     ) {
-        // Background Cyber Grid
+        // Futuristic Cyber Grid Matrix
         CyberGrid(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Radial Background Gradient Bloom
+        // Radial Background Gradient Bloom (Saffron / Cyan / Purple)
         Box(
             modifier = Modifier
-                .size(320.dp)
+                .size(340.dp)
                 .scale(pulseScale)
                 .alpha(pulseAlpha)
-                .blur(48.dp)
+                .blur(56.dp)
                 .background(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            Color(0xFF00E5FF).copy(alpha = 0.4f),
-                            Color(0xFFB400FF).copy(alpha = 0.25f),
+                            Color(0xFFFF9933).copy(alpha = 0.35f), // Saffron
+                            Color(0xFF00E5FF).copy(alpha = 0.25f), // Cyber Cyan
+                            Color(0xFFB400FF).copy(alpha = 0.15f), // Purple
                             Color.Transparent
                         )
                     ),
@@ -155,50 +162,13 @@ fun SplashScreen(
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.padding(horizontal = 24.dp)
         ) {
-            // Glowing Emblem Container
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(140.dp)
-                    .scale(logoScale.value)
-                    .alpha(logoAlpha.value)
-            ) {
-                // Outer Cyan/Purple Pulsing Halo Ring
-                Box(
-                    modifier = Modifier
-                        .size(136.dp)
-                        .scale(pulseScale)
-                        .alpha(pulseAlpha)
-                        .border(
-                            width = 2.dp,
-                            brush = Brush.sweepGradient(
-                                listOf(
-                                    Color(0xFF00E5FF),
-                                    Color(0xFFB400FF),
-                                    Color(0xFF00E5FF)
-                                )
-                            ),
-                            shape = CircleShape
-                        )
-                )
-
-                // Neon Emblem Graphic
-                Image(
-                    painter = painterResource(id = R.drawable.ic_splash_logo),
-                    contentDescription = "NEXPAD Logo",
-                    modifier = Modifier.size(110.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Brand Title: NEXPAD with Cyber Gradient
+            // App Title Header
             Text(
                 text = "NEXPAD",
                 style = MaterialTheme.typography.displayLarge.copy(
-                    fontSize = 42.sp,
+                    fontSize = 34.sp,
                     fontWeight = FontWeight.Black,
-                    letterSpacing = 4.sp,
+                    letterSpacing = 5.sp,
                     brush = Brush.linearGradient(
                         colors = listOf(
                             Color(0xFFFFFFFF),
@@ -211,7 +181,7 @@ fun SplashScreen(
                 modifier = Modifier.alpha(textAlpha.value)
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             // Subtitle Badge
             Box(
@@ -219,37 +189,163 @@ fun SplashScreen(
                     .alpha(textAlpha.value)
                     .background(
                         color = Color(0xFF0E1524),
-                        shape = RoundedCornerShape(20.dp)
+                        shape = RoundedCornerShape(16.dp)
                     )
                     .border(
                         width = 1.dp,
                         brush = Brush.horizontalGradient(
                             listOf(
-                                Color(0xFF00E5FF).copy(alpha = 0.6f),
-                                Color(0xFFB400FF).copy(alpha = 0.6f)
+                                Color(0xFF00E5FF).copy(alpha = 0.5f),
+                                Color(0xFFB400FF).copy(alpha = 0.5f)
                             )
                         ),
-                        shape = RoundedCornerShape(20.dp)
+                        shape = RoundedCornerShape(16.dp)
                     )
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .padding(horizontal = 14.dp, vertical = 4.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(7.dp)
-                            .background(Color(0xFF00E5FF), CircleShape)
+                Text(
+                    text = "NEXT-GEN VIRTUAL GAMEPAD",
+                    color = Color(0xFF859398),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.2.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            // ── Make in India Mechanical Walking Lion ──────────────────────
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(240.dp, 150.dp)
+                    .scale(lionScale.value)
+                    .alpha(lionAlpha.value)
+            ) {
+                MakeInIndiaWalkingLion(
+                    size = 230.dp,
+                    primaryColor = Color(0xFFFFFFFF),
+                    accentColor = Color(0xFFFF9933), // Authentic Saffron
+                    secondaryAccent = Color(0xFF00E5FF) // High-Tech Cyan
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // ── "MAKE IN INDIA" Text with Tricolor Accents ──────────────────
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.alpha(textAlpha.value)
+            ) {
+                // Saffron Dot
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .background(Color(0xFFFF9933), CircleShape)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                // White Dot
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .background(Color(0xFFFFFFFF), CircleShape)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                // Green Dot
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .background(Color(0xFF138808), CircleShape)
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Text(
+                    text = "MAKE IN INDIA",
+                    color = Color(0xFFFFFFFF),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 3.5.sp
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // Green Dot
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .background(Color(0xFF138808), CircleShape)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                // White Dot
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .background(Color(0xFFFFFFFF), CircleShape)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                // Saffron Dot
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .background(Color(0xFFFF9933), CircleShape)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(26.dp))
+
+            // ── "Sanket Dev" with Animated Underline ────────────────────────
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.alpha(textAlpha.value)
+            ) {
+                Text(
+                    text = "DEVELOPED BY",
+                    color = Color(0xFF859398),
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 2.sp
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = "Sanket Dev",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.5.sp,
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                Color(0xFFFFFFFF),
+                                Color(0xFF00E5FF),
+                                Color(0xFFFF9933)
+                            )
+                        )
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "ULTRA-LOW LATENCY VIRTUAL GAMEPAD",
-                        color = Color(0xFFC4C7D0),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.2.sp
-                    )
-                }
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Dynamic Animated Underline (expanding smoothly under name)
+                Box(
+                    modifier = Modifier
+                        .width(140.dp * underlineWidthFraction.value)
+                        .height(2.5.dp)
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Color(0xFF00E5FF),
+                                    Color(0xFFFF9933),
+                                    Color(0xFFB400FF),
+                                    Color.Transparent
+                                )
+                            ),
+                            shape = RoundedCornerShape(2.dp)
+                        )
+                )
             }
         }
 
@@ -257,8 +353,8 @@ fun SplashScreen(
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 36.dp)
-                .alpha(textAlpha.value * 0.5f)
+                .padding(bottom = 28.dp)
+                .alpha(textAlpha.value * 0.45f)
         ) {
             Text(
                 text = "TAP ANYWHERE TO SKIP",
