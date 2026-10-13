@@ -3,23 +3,41 @@ package com.sanket.tools.nexpad.ui
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.DesktopWindows
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.sanket.tools.nexpad.ui.AppNavigator
 import com.sanket.tools.nexpad.ui.components.badge.HeaderStatusPill
@@ -30,7 +48,10 @@ import com.sanket.tools.nexpad.ui.components.connection.ConnectionTransportsCont
 import com.sanket.tools.nexpad.ui.components.effects.CyberGrid
 import com.sanket.tools.nexpad.ui.components.effects.ScanLine
 import com.sanket.tools.nexpad.ui.layout.adaptiveLayoutSpec
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
+
+const val NEXPAD_DESKTOP_DOWNLOAD_URL = "https://github.com/parmarsanket/NEXPAD-Desktop"
 
 @Composable
 fun ConnectionScreen(
@@ -154,6 +175,16 @@ fun ConnectionScreen(
             } catch (_: Exception) {}
         },
         onDisconnect = { viewModel.disconnect() },
+        onDownloadDesktop = {
+            try {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(NEXPAD_DESKTOP_DOWNLOAD_URL)).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+            } catch (_: Exception) {
+                Toast.makeText(context, "Could not open browser", Toast.LENGTH_SHORT).show()
+            }
+        },
         onBack = { navController.popBackStack() }
     )
 }
@@ -180,6 +211,7 @@ fun ConnectionScreenContent(
     onReloadBluetoothDevices: () -> Unit = {},
     onOpenBluetoothSettings: () -> Unit = {},
     onDisconnect: () -> Unit = {},
+    onDownloadDesktop: () -> Unit = {},
     onBack: () -> Unit = {},
     modifier: Modifier = Modifier,
     // Optional compatibility parameters
@@ -237,7 +269,8 @@ fun ConnectionScreenContent(
                     onOpenDeveloperSettings = onOpenDeveloperSettings,
                     onOpenTetheringSettings = onOpenTetheringSettings,
                     onReloadBluetoothDevices = onReloadBluetoothDevices,
-                    onOpenBluetoothSettings = onOpenBluetoothSettings
+                    onOpenBluetoothSettings = onOpenBluetoothSettings,
+                    onDownloadDesktop = onDownloadDesktop
                 )
             }
 
@@ -281,6 +314,8 @@ fun ConnectionScreenContent(
                         verticalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
                         transportsComposable()
+                        ConnectionDesktopDownloadCard(onDownload = onDownloadDesktop)
+                        Spacer(Modifier.height(16.dp))
                     }
                 }
             } else {
@@ -308,8 +343,97 @@ fun ConnectionScreenContent(
                         )
                     }
                     transportsComposable()
+                    ConnectionDesktopDownloadCard(onDownload = onDownloadDesktop)
+                    Spacer(Modifier.height(16.dp))
                 }
             }
         }
     }
 }
+
+@Composable
+fun ConnectionDesktopDownloadCard(
+    onDownload: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = Color(0xFF0F1523).copy(alpha = 0.85f),
+        border = BorderStroke(
+            1.dp,
+            Brush.horizontalGradient(
+                listOf(
+                    NeonPalette.Cyan.copy(alpha = 0.45f),
+                    NeonPalette.Purple.copy(alpha = 0.25f),
+                    Color.White.copy(alpha = 0.05f)
+                )
+            )
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(NeonPalette.Cyan.copy(alpha = 0.12f))
+                    .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.35f), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.DesktopWindows,
+                    contentDescription = null,
+                    tint = NeonPalette.Cyan,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Need PC Server?",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
+                    )
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "Download NEXPAD Desktop companion for Windows PC",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = Color(0xFF94A3B8),
+                        fontSize = 11.5.sp
+                    )
+                )
+            }
+
+            OutlinedButton(
+                onClick = onDownload,
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = NeonPalette.Cyan,
+                    containerColor = NeonPalette.Cyan.copy(alpha = 0.08f)
+                ),
+                border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.6f)),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = "Download",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                )
+            }
+        }
+    }
+}
+

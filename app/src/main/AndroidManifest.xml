@@ -37,7 +37,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.App.Starting"
+            android:theme="@style/Theme.NEXPAD"
             android:launchMode="singleTask"
             android:taskAffinity="com.sanket.tools.nexpad"
 

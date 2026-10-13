@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.ui.components.effects.CyberGrid
 import com.sanket.tools.nexpad.ui.components.splash.MakeInIndiaWalkingLion
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun SplashScreen(
@@ -94,29 +95,39 @@ fun SplashScreen(
         try { onVibrate?.invoke() } catch (_: Exception) {}
 
         // 1. Entrance of Make in India Lion
-        lionScale.animateTo(
-            targetValue = 1.0f,
-            animationSpec = tween(500, easing = FastOutSlowInEasing)
-        )
-        lionAlpha.animateTo(
-            targetValue = 1.0f,
-            animationSpec = tween(450)
-        )
+        launch {
+            lionScale.animateTo(
+                targetValue = 1.0f,
+                animationSpec = tween(450, easing = FastOutSlowInEasing)
+            )
+        }
+        launch {
+            lionAlpha.animateTo(
+                targetValue = 1.0f,
+                animationSpec = tween(400)
+            )
+        }
 
         // 2. Fade in Brand & Developer Name
-        textAlpha.animateTo(
-            targetValue = 1.0f,
-            animationSpec = tween(400)
-        )
+        launch {
+            delay(120)
+            textAlpha.animateTo(
+                targetValue = 1.0f,
+                animationSpec = tween(400)
+            )
+        }
 
         // 3. Animate the glowing underline expanding beneath "Sanket Dev"
-        underlineWidthFraction.animateTo(
-            targetValue = 1.0f,
-            animationSpec = tween(650, easing = FastOutSlowInEasing)
-        )
+        launch {
+            delay(250)
+            underlineWidthFraction.animateTo(
+                targetValue = 1.0f,
+                animationSpec = tween(650, easing = FastOutSlowInEasing)
+            )
+        }
 
-        // 4. Hold for user appreciation (~2.0s total) then proceed to Home
-        delay(850)
+        // 4. Exactly 2 seconds total splash screen duration while shine sweeps left-to-right
+        delay(2000L)
         finishSplash()
     }
 
@@ -218,12 +229,12 @@ fun SplashScreen(
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .size(240.dp, 150.dp)
+                    .size(280.dp, 140.dp)
                     .scale(lionScale.value)
                     .alpha(lionAlpha.value)
             ) {
                 MakeInIndiaWalkingLion(
-                    size = 230.dp,
+                    size = 280.dp,
                     primaryColor = Color(0xFFFFFFFF),
                     accentColor = Color(0xFFFF9933), // Authentic Saffron
                     secondaryAccent = Color(0xFF00E5FF) // High-Tech Cyan

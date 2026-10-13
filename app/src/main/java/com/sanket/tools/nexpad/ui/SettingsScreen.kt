@@ -1,6 +1,10 @@
 package com.sanket.tools.nexpad.ui
 
+import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,8 +26,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.DesktopWindows
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.SmartDisplay
 import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -62,6 +71,9 @@ import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
 const val PREF_DOUBLE_TAP_BACK_EXIT = "DOUBLE_TAP_BACK_EXIT"
+const val NEXPAD_DESKTOP_GITHUB_URL = "https://github.com/parmarsanket/NEXPAD-Desktop"
+const val DEV_LINKEDIN_URL = "https://www.linkedin.com/in/sanket-parmar-571b00323"
+const val DEV_YOUTUBE_URL = "https://www.youtube.com/channel/UCwZYa5I4rn7I5LmCZmx9RdQ"
 
 @Composable
 fun SettingsScreen(
@@ -145,6 +157,20 @@ fun SettingsScreen(
             doubleTapBackExitEnabled = it
             sharedPref.edit().putBoolean(PREF_DOUBLE_TAP_BACK_EXIT, it).apply()
         },
+        onOpenUrl = { url ->
+            if (url.isNullOrBlank()) {
+                Toast.makeText(context, "YouTube channel link coming soon!", Toast.LENGTH_SHORT).show()
+            } else {
+                try {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                } catch (_: Exception) {
+                    Toast.makeText(context, "Could not open link", Toast.LENGTH_SHORT).show()
+                }
+            }
+        },
         onBack = { navController.popBackStack() }
     )
 }
@@ -168,6 +194,7 @@ fun SettingsScreenContent(
     onHapticStyleChange: (String) -> Unit = {},
     onRumbleModeChange: (String) -> Unit = {},
     onDoubleTapBackExitChange: (Boolean) -> Unit = {},
+    onOpenUrl: (String?) -> Unit = {},
     onBack: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -326,6 +353,110 @@ fun SettingsScreenContent(
                     SettingsInfoRow(label = "Transports Supported", value = "USB AOA 2.0 • ADB • Wi-Fi UDP", accentColor = NeonPalette.Purple)
                     SettingsInfoRow(label = "Haptic Pipeline", value = "Direct LRA Primitive Composition", accentColor = NeonPalette.Amber)
                     SettingsInfoRow(label = "Touch Surface", value = "Dedicated Multitouch Trackpad Engine", accentColor = NeonPalette.Magenta)
+                }
+
+                // ── Card 6: Developer & Links ─────────────────────────────────────
+                SettingsSectionCard(
+                    accentColor = NeonPalette.Cyan,
+                    title = "DEVELOPER & COMMUNITY",
+                    subtitle = "Project repository, creator links & official channels",
+                    icon = Icons.Rounded.Code
+                ) {
+                    // Developer Profile Banner
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF070B14).copy(alpha = 0.8f))
+                            .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    Brush.linearGradient(
+                                        listOf(
+                                            Color(0xFFFF9933).copy(alpha = 0.35f),
+                                            NeonPalette.Cyan.copy(alpha = 0.35f)
+                                        )
+                                    )
+                                )
+                                .border(
+                                    1.dp,
+                                    Brush.linearGradient(
+                                        listOf(Color(0xFFFF9933), NeonPalette.Cyan)
+                                    ),
+                                    RoundedCornerShape(12.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Person,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Sanket Parmar",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.5.sp
+                                )
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Independent Developer & Creator of NEXPAD",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = Color(0xFF94A3B8),
+                                    fontSize = 11.5.sp
+                                )
+                            )
+                        }
+                    }
+
+                    // 1. NEXPAD Desktop Link
+                    SettingsLinkRow(
+                        title = "NEXPAD Desktop Server",
+                        subtitle = "github.com/parmarsanket/NEXPAD-Desktop",
+                        description = "Windows companion server, low-latency driver & input bridge",
+                        icon = Icons.Rounded.DesktopWindows,
+                        accentColor = NeonPalette.Cyan,
+                        badgeText = "GitHub",
+                        url = NEXPAD_DESKTOP_GITHUB_URL,
+                        onOpenUrl = onOpenUrl
+                    )
+
+                    // 2. Developer LinkedIn
+                    SettingsLinkRow(
+                        title = "Developer LinkedIn",
+                        subtitle = "linkedin.com/in/sanket-parmar-571b00323",
+                        description = "Connect with Sanket Parmar for professional networking",
+                        icon = Icons.AutoMirrored.Rounded.OpenInNew,
+                        accentColor = NeonPalette.Blue,
+                        badgeText = "LinkedIn",
+                        url = DEV_LINKEDIN_URL,
+                        onOpenUrl = onOpenUrl
+                    )
+
+                    // 3. YouTube Channel
+                    SettingsLinkRow(
+                        title = "YouTube Channel",
+                        subtitle = "youtube.com/channel/UCwZYa5I4rn7I5LmCZmx9RdQ",
+                        description = "Official setup walkthroughs & gameplay demos",
+                        icon = Icons.Rounded.SmartDisplay,
+                        accentColor = NeonPalette.Red,
+                        badgeText = "YouTube",
+                        url = DEV_YOUTUBE_URL,
+                        onOpenUrl = onOpenUrl
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -674,3 +805,102 @@ private fun SettingsInfoRow(
         )
     }
 }
+
+@Composable
+private fun SettingsLinkRow(
+    title: String,
+    subtitle: String,
+    description: String,
+    icon: ImageVector,
+    accentColor: Color,
+    badgeText: String,
+    url: String?,
+    onOpenUrl: (String?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = { onOpenUrl(url) },
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xFF070B14).copy(alpha = 0.65f),
+        border = BorderStroke(1.dp, accentColor.copy(alpha = 0.22f)),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(accentColor.copy(alpha = 0.12f))
+                    .border(1.dp, accentColor.copy(alpha = 0.35f), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = accentColor.copy(alpha = 0.14f),
+                        border = BorderStroke(1.dp, accentColor.copy(alpha = 0.35f))
+                    ) {
+                        Text(
+                            text = badgeText,
+                            color = accentColor,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = accentColor.copy(alpha = 0.85f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                )
+                if (description.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(1.dp))
+                    Text(
+                        text = description,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = Color(0xFF94A3B8),
+                            fontSize = 10.5.sp,
+                            lineHeight = 14.sp
+                        )
+                    )
+                }
+            }
+
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+                contentDescription = "Open Link",
+                tint = if (url.isNullOrBlank()) Color(0xFF475569) else accentColor,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}
+

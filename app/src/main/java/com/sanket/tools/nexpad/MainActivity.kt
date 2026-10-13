@@ -27,8 +27,6 @@ import com.sanket.tools.nexpad.ui.theme.NEXPADTheme
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-
 class MainActivity : ComponentActivity() {
     
     private lateinit var viewModel: GamepadViewModel
@@ -38,7 +36,6 @@ class MainActivity : ComponentActivity() {
     private var reloadReceiver: android.content.BroadcastReceiver? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Bluetooth
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Usb
@@ -57,6 +58,7 @@ fun ConnectionTransportsContent(
     onOpenTetheringSettings: () -> Unit,
     onReloadBluetoothDevices: () -> Unit,
     onOpenBluetoothSettings: () -> Unit,
+    onDownloadDesktop: () -> Unit = {},
     modifier: Modifier = Modifier,
     // Optional compatibility parameters (kept with default values)
     manualIp: String = "",
@@ -101,18 +103,37 @@ fun ConnectionTransportsContent(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        OutlinedButton(
-                            onClick = onRescanNetwork,
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = NeonPalette.Cyan,
-                                containerColor = NeonPalette.Cyan.copy(alpha = 0.06f)
-                            ),
-                            border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f)),
-                            shape = RoundedCornerShape(10.dp)
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Rescan Network", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                            OutlinedButton(
+                                onClick = onRescanNetwork,
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = NeonPalette.Cyan,
+                                    containerColor = NeonPalette.Cyan.copy(alpha = 0.06f)
+                                ),
+                                border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f)),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Rescan Network", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                            }
+
+                            OutlinedButton(
+                                onClick = onDownloadDesktop,
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = Color.White,
+                                    containerColor = Color.White.copy(alpha = 0.04f)
+                                ),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Get PC Server", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                            }
                         }
                     }
                 }

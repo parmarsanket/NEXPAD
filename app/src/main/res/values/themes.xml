@@ -7,14 +7,4 @@
         <item name="android:navigationBarColor">@color/splash_background</item>
         <item name="android:windowLightStatusBar">false</item>
     </style>
-
-    <!-- Starting Theme (Android 12+ and backported Splash Screen) -->
-    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
-        <!-- Background color of the splash screen -->
-        <item name="windowSplashScreenBackground">@color/splash_background</item>
-        <!-- Center emblem icon -->
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
-        <!-- Post splash theme to apply once app window is ready -->
-        <item name="postSplashScreenTheme">@style/Theme.NEXPAD</item>
-    </style>
 </resources>
