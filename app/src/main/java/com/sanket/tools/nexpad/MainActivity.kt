@@ -5,6 +5,7 @@ import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.core.content.ContextCompat
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
@@ -69,11 +70,12 @@ class MainActivity : ComponentActivity() {
             addAction("com.sanket.tools.nexpad.RELOAD_COMPONENTS")
             addAction("com.sanket.tools.nexpad.RELOAD_REMOTE_COMPONENTS")
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(receiver, filter)
-        }
+        ContextCompat.registerReceiver(
+            this,
+            receiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
 
         val sharedPref = getSharedPreferences("nexpad_prefs", MODE_PRIVATE)
         // Ensure Joystick RS defaults to true analog stick behavior, keeping Touchpads (RTP) dedicated
@@ -180,6 +182,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        viewModel.cancelScreenOffDisconnectTimer()
         viewModel.checkAoaAccessory()
         if (viewModel.isConnected.value && viewModel.isGamepadScreenActive.value) {
             motionSensorManager.start()
@@ -189,6 +192,11 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         motionSensorManager.stop()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        viewModel.startScreenOffDisconnectTimer()
     }
 
     override fun onNewIntent(intent: android.content.Intent) {

@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import java.util.concurrent.ConcurrentHashMap
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.sanket.tools.nexpad.model.GamepadInput
@@ -155,11 +156,12 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
             addAction("com.sanket.tools.nexpad.ADB_DEVICE_READY")
             addAction("com.sanket.tools.nexpad.ADB_DEVICE_DISCONNECTED")
         }
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            getApplication<Application>().registerReceiver(usbReceiver, filter, Context.RECEIVER_EXPORTED)
-        } else {
-            getApplication<Application>().registerReceiver(usbReceiver, filter)
-        }
+        ContextCompat.registerReceiver(
+            getApplication<Application>(),
+            usbReceiver,
+            filter,
+            ContextCompat.RECEIVER_EXPORTED
+        )
 
         // Monitor network connectivity in real-time to purge disconnected interfaces immediately
         val cm = getApplication<Application>().getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
@@ -266,8 +268,40 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
         discoveryClient.stopDiscovery()
     }
 
+    private var screenOffDisconnectJob: kotlinx.coroutines.Job? = null
+
+    /**
+     * Starts a 10-minute idle disconnect countdown when the screen is OFF or app is backgrounded.
+     * If user does not return within 10 minutes, cleanly disconnects to save battery & CPU.
+     */
+    fun startScreenOffDisconnectTimer() {
+        if (!isConnected.value) return
+        if (screenOffDisconnectJob?.isActive == true) return
+        screenOffDisconnectJob = viewModelScope.launch(Dispatchers.Default) {
+            networkManager.refreshWakeLock(10 * 60 * 1000L)
+            android.util.Log.d("NEXPAD", "🌙 Screen OFF / Background: 10-minute idle disconnect countdown started.")
+            delay(10 * 60 * 1000L)
+            if (isConnected.value) {
+                android.util.Log.i("NEXPAD", "⏰ Screen OFF for 10 minutes! Disconnecting session to conserve CPU & battery.")
+                disconnect()
+            }
+        }
+    }
+
+    /**
+     * Cancels the screen-off idle timer when the user returns to the app and turns the screen ON.
+     */
+    fun cancelScreenOffDisconnectTimer() {
+        if (screenOffDisconnectJob != null) {
+            screenOffDisconnectJob?.cancel()
+            screenOffDisconnectJob = null
+            android.util.Log.d("NEXPAD", "☀️ Screen ON / Foreground: Screen-off idle timer cancelled. Session active.")
+        }
+    }
+
     fun connect(ip: String, port: Int, serverName: String? = null) = networkManager.connect(ip, port, serverName)
     fun disconnect() {
+        cancelScreenOffDisconnectTimer()
         networkManager.disconnect()
     }
     fun switchToAoaConnection() = networkManager.switchToAoaConnection()

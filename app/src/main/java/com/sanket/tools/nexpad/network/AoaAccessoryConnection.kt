@@ -10,6 +10,7 @@ import android.hardware.usb.UsbManager
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
+import androidx.core.content.ContextCompat
 import androidx.core.content.IntentCompat
 import com.sanket.tools.nexpad.model.GamepadInput
 import kotlinx.coroutines.launch
@@ -69,11 +70,12 @@ class AoaAccessoryConnection(private val context: Context) : BaseStreamConnectio
             onStatusChanged?.invoke("Requesting USB permission...")
             val filter = IntentFilter(ACTION_USB_PERMISSION)
             if (!isReceiverRegistered) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    context.registerReceiver(permissionReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-                } else {
-                    context.registerReceiver(permissionReceiver, filter)
-                }
+                ContextCompat.registerReceiver(
+                    context,
+                    permissionReceiver,
+                    filter,
+                    ContextCompat.RECEIVER_NOT_EXPORTED
+                )
                 isReceiverRegistered = true
             }
             val permissionIntent = Intent(ACTION_USB_PERMISSION).apply {

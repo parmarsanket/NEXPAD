@@ -524,12 +524,28 @@ class GamepadNetworkManager(
                 val powerManager = context.applicationContext.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
                 wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "Nexpad:WakeLock").apply {
                     setReferenceCounted(false)
-                    acquire()
+                    acquire(10 * 60 * 1000L)
                 }
-                android.util.Log.d("NEXPAD", "🔒 WakeLock Acquired (Partial)")
+                android.util.Log.d("NEXPAD", "🔒 WakeLock Acquired (Partial, 10-min safety timeout)")
             }
         } catch (e: Exception) {
             android.util.Log.e("NEXPAD", "❌ Failed to acquire locks: ${e.message}")
+        }
+    }
+
+    fun refreshWakeLock(timeoutMs: Long = 10 * 60 * 1000L) {
+        try {
+            if (wakeLock?.isHeld == true) {
+                wakeLock?.release()
+            }
+            val powerManager = context.applicationContext.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+            wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "Nexpad:WakeLock").apply {
+                setReferenceCounted(false)
+                acquire(timeoutMs)
+            }
+            android.util.Log.d("NEXPAD", "🔒 WakeLock Refreshed (Partial, ${timeoutMs / 60000}m timeout)")
+        } catch (e: Exception) {
+            android.util.Log.e("NEXPAD", "❌ Failed to refresh WakeLock: ${e.message}")
         }
     }
 

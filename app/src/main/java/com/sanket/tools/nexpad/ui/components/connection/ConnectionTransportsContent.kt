@@ -39,7 +39,6 @@ import com.sanket.tools.nexpad.ui.theme.NeonPalette
  * Modular container for connection transports: Network Discovery (Wi-Fi / Tethering),
  * USB Hardware Links (AOA, ADB, Tethering), and Bluetooth Classic.
  */
-@androidx.annotation.RequiresPermission(android.Manifest.permission.BLUETOOTH_CONNECT)
 @Composable
 fun ConnectionTransportsContent(
     discoveredServers: List<DiscoveredServer>,

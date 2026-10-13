@@ -61,8 +61,9 @@ class DiscoveryClient {
         try {
             channel = DatagramChannel.open().apply {
                 socket().broadcast = true
+                socket().soTimeout = 1500
                 bind(null)
-                configureBlocking(false)
+                configureBlocking(true)
             }
 
             // Start listening for responses
@@ -97,12 +98,18 @@ class DiscoveryClient {
                                     }
                                 }
                             }
-                        } else {
-                            delay(50)
                         }
+                    } catch (_: java.net.SocketTimeoutException) {
+                        // Expected timeout when no server responds within 1500ms; continue listening
+                    } catch (_: java.nio.channels.ClosedChannelException) {
+                        break
+                    } catch (_: java.nio.channels.AsynchronousCloseException) {
+                        break
                     } catch (e: Exception) {
-                        e.printStackTrace()
-                        delay(1000) // Back off if network is temporarily down
+                        if (isActive) {
+                            e.printStackTrace()
+                            delay(1000) // Back off if network is temporarily down
+                        }
                     }
                 }
             }
