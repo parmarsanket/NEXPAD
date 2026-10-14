@@ -129,6 +129,20 @@ fun RealisticDPad(
         )
     }
 
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val bevelStroke = remember(density) { Stroke(width = 1.5f * density) }
+    val socketColors = remember { listOf(Color(0xFF0D1017), Color(0xFF06080B)) }
+    val bevelColors = remember { listOf(Color(0xFF4A5568).copy(alpha = 0.6f), Color(0xFF1A202C).copy(alpha = 0.8f)) }
+    val hubBloomColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val beamGlowColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent)
+    }
+    val beamCoreColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(140.dp)
@@ -145,13 +159,12 @@ fun RealisticDPad(
                     val armLen = size.minDimension * 0.62f
 
                     // 1. Central hub bloom
+                    hubBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * 0.50f)
+                    hubBloomColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.18f)
+                    hubBloomColors[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.50f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.18f),
-                                Color.Transparent
-                            ),
+                            colors = hubBloomColors,
                             center = center,
                             radius = size.minDimension * 0.55f
                         ),
@@ -169,9 +182,11 @@ fun RealisticDPad(
                         val beamAlpha = if (isActive) rgbBloomAlpha * 0.90f else (if (hasActivePress) 0.18f else 0.38f)
                         val endPt = Offset(center.x + dx * armLen, center.y + dy * armLen)
                         // Diffuse beam glow
+                        beamGlowColors[0] = neonColor.copy(alpha = beamAlpha * 0.7f)
+                        beamGlowColors[1] = Color.Transparent
                         drawLine(
                             brush = Brush.linearGradient(
-                                colors = listOf(neonColor.copy(alpha = beamAlpha * 0.7f), Color.Transparent),
+                                colors = beamGlowColors,
                                 start = center,
                                 end = endPt
                             ),
@@ -180,9 +195,11 @@ fun RealisticDPad(
                             strokeWidth = halfArmW * (if (isActive) 1.6f else 1.0f)
                         )
                         // Laser core
+                        beamCoreColors[0] = (if (isActive) Color.White else neonColor).copy(alpha = beamAlpha)
+                        beamCoreColors[1] = Color.Transparent
                         drawLine(
                             brush = Brush.linearGradient(
-                                colors = listOf((if (isActive) Color.White else neonColor).copy(alpha = beamAlpha), Color.Transparent),
+                                colors = beamCoreColors,
                                 start = center,
                                 end = endPt
                             ),
@@ -201,7 +218,7 @@ fun RealisticDPad(
                 // Recessed circular chassis socket
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(Color(0xFF0D1017), Color(0xFF06080B)),
+                        colors = socketColors,
                         center = center,
                         radius = socketRadius
                     ),
@@ -212,11 +229,11 @@ fun RealisticDPad(
                 // Outer metallic bevel rim
                 drawCircle(
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color(0xFF4A5568).copy(alpha = 0.6f), Color(0xFF1A202C).copy(alpha = 0.8f))
+                        colors = bevelColors
                     ),
                     radius = socketRadius,
                     center = center,
-                    style = Stroke(width = 1.5.dp.toPx())
+                    style = bevelStroke
                 )
             }
             .graphicsLayer {
@@ -483,19 +500,22 @@ fun RealisticDPadButton(
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
 
+    val dpadBtnBloomColors = remember(themeColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(72.dp)
             .drawBehind {
                 if (isRgbEnabled) {
                     val pad = 8.dp.toPx()
+                    dpadBtnBloomColors[0] = themeColor.copy(alpha = rgbBloomAlpha * 0.50f)
+                    dpadBtnBloomColors[1] = themeColor.copy(alpha = rgbBloomAlpha * 0.20f)
+                    dpadBtnBloomColors[2] = Color.Transparent
                     drawRoundRect(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                themeColor.copy(alpha = rgbBloomAlpha * 0.50f),
-                                themeColor.copy(alpha = rgbBloomAlpha * 0.20f),
-                                Color.Transparent
-                            ),
+                            colors = dpadBtnBloomColors,
                             center = center,
                             radius = size.width * 0.85f
                         ),

@@ -165,19 +165,22 @@ fun CapsuleKey(
     val capsuleWidth = if (isVertical) 46.dp else 68.dp
     val capsuleHeight = if (isVertical) 68.dp else 46.dp
 
+    val btnBloomColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(capsuleWidth, capsuleHeight)
             .drawBehind {
                 if (isRgbEnabled) {
                     val pad = 6.dp.toPx()
+                    btnBloomColors[0] = glowColor.copy(alpha = keyBloomAlpha * 0.50f)
+                    btnBloomColors[1] = glowColor.copy(alpha = keyBloomAlpha * 0.20f)
+                    btnBloomColors[2] = Color.Transparent
                     drawRoundRect(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                glowColor.copy(alpha = keyBloomAlpha * 0.50f),
-                                glowColor.copy(alpha = keyBloomAlpha * 0.20f),
-                                Color.Transparent
-                            ),
+                            colors = btnBloomColors,
                             center = center,
                             radius = size.minDimension * 0.90f
                         ),
@@ -398,6 +401,17 @@ fun CapsulesDPad(
         )
     }
 
+    val hubBloomColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent)
+    }
+    val plumeStops = remember(neonColor) {
+        arrayOf(
+            0.00f to Color.Transparent,
+            0.45f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
+    }
+
     Box(
         modifier = modifier
             .size(170.dp)
@@ -407,12 +421,11 @@ fun CapsulesDPad(
                     val h = size.height
 
                     // 1. Central pivot hub containment aura
+                    hubBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * 0.42f)
+                    hubBloomColors[1] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.42f),
-                                Color.Transparent
-                            ),
+                            colors = hubBloomColors,
                             center = center,
                             radius = size.minDimension * 0.35f
                         ),
@@ -428,13 +441,13 @@ fun CapsulesDPad(
                         val pad = if (isPressed) 14.dp.toPx() else 8.dp.toPx()
                         val cr = (if (isVertical) plumeW else plumeH) / 2f + pad
 
+                        plumeStops[0] = 0.00f to (if (isPressed) Color.White else neonColor).copy(alpha = plumeAlpha * 0.65f)
+                        plumeStops[1] = 0.45f to neonColor.copy(alpha = plumeAlpha * 0.30f)
+                        plumeStops[2] = 1.00f to Color.Transparent
+
                         drawRoundRect(
                             brush = Brush.radialGradient(
-                                colorStops = arrayOf(
-                                    0.00f to (if (isPressed) Color.White else neonColor).copy(alpha = plumeAlpha * 0.65f),
-                                    0.45f to neonColor.copy(alpha = plumeAlpha * 0.30f),
-                                    1.00f to Color.Transparent
-                                ),
+                                colorStops = plumeStops,
                                 center = Offset(cx, cy),
                                 radius = (plumeH.coerceAtLeast(plumeW) / 2f) + pad * 1.5f
                             ),

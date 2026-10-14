@@ -81,6 +81,18 @@ fun RealisticJoystick(
     }
 
     val density = LocalDensity.current.density
+    val knurledGripStroke = remember {
+        Stroke(
+            width = 4f,
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f), 0f)
+        )
+    }
+    val concaveDishStroke = remember { Stroke(width = 5f) }
+    val topSpecularStroke = remember { Stroke(width = 1.5f) }
+    val topSpecularHighlightColors = remember {
+        listOf(Color.White.copy(alpha = 0.25f), Color.Transparent)
+    }
+
     val baseGradient = Brush.radialGradient(
         colors = listOf(Color(0xFF1F1F1F), Color(0xFF080808)),
         center = Offset(0.5f, 0.5f),
@@ -112,6 +124,20 @@ fun RealisticJoystick(
         spotColor = if (isRgbEnabled) neonColor else Color.Black
     )
 
+    val baseBloomColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val plumeStops = remember(neonColor) {
+        arrayOf(
+            0.00f to Color.Transparent,
+            0.40f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
+    }
+    val capBloomColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(150.dp)
@@ -123,13 +149,12 @@ fun RealisticJoystick(
                     val dispFraction = (disp / maxR).coerceIn(0f, 1f)
 
                     // 1. Base socket containment bloom
+                    baseBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * 0.35f)
+                    baseBloomColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.12f)
+                    baseBloomColors[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.35f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.12f),
-                                Color.Transparent
-                            ),
+                            colors = baseBloomColors,
                             center = center,
                             radius = size.minDimension * 0.55f
                         ),
@@ -143,13 +168,12 @@ fun RealisticJoystick(
                         center.y + effY * 0.65f
                     )
                     val plumeRadius = size.minDimension * (0.40f + 0.35f * dispFraction)
+                    plumeStops[0] = 0.00f to (if (dispFraction > 0.4f) Color.White else neonColor).copy(alpha = rgbBloomAlpha * (0.50f + 0.35f * dispFraction))
+                    plumeStops[1] = 0.40f to neonColor.copy(alpha = rgbBloomAlpha * (0.30f + 0.25f * dispFraction))
+                    plumeStops[2] = 1.00f to Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colorStops = arrayOf(
-                                0.00f to (if (dispFraction > 0.4f) Color.White else neonColor).copy(alpha = rgbBloomAlpha * (0.50f + 0.35f * dispFraction)),
-                                0.40f to neonColor.copy(alpha = rgbBloomAlpha * (0.30f + 0.25f * dispFraction)),
-                                1.00f to Color.Transparent
-                            ),
+                            colorStops = plumeStops,
                             center = plumeCenter,
                             radius = plumeRadius
                         ),
@@ -159,13 +183,12 @@ fun RealisticJoystick(
 
                     // 3. High-energy thumbstick cap beacon bloom
                     val capBloomR = 48.dp.toPx() + (12.dp.toPx() * dispFraction)
+                    capBloomColors[0] = (if (dispFraction > 0.6f) Color.White else neonColor).copy(alpha = rgbBloomAlpha * 0.70f)
+                    capBloomColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.25f)
+                    capBloomColors[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                (if (dispFraction > 0.6f) Color.White else neonColor).copy(alpha = rgbBloomAlpha * 0.70f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.25f),
-                                Color.Transparent
-                            ),
+                            colors = capBloomColors,
                             center = capPos,
                             radius = capBloomR
                         ),
@@ -418,26 +441,23 @@ fun RealisticJoystick(
                 drawCircle(
                     color = Color.Black.copy(alpha = 0.45f),
                     radius = minDim / 2.3f,
-                    style = Stroke(
-                        width = 4f,
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f), 0f)
-                    )
+                    style = knurledGripStroke
                 )
 
                 // Inner concave dish shadow ring
                 drawCircle(
                     color = Color.Black.copy(alpha = 0.60f),
                     radius = minDim / 2.7f,
-                    style = Stroke(width = 5f)
+                    style = concaveDishStroke
                 )
 
                 // Top specular highlight arc
                 drawCircle(
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color.White.copy(alpha = 0.25f), Color.Transparent)
+                        colors = topSpecularHighlightColors
                     ),
                     radius = minDim / 2.1f,
-                    style = Stroke(width = 1.5f)
+                    style = topSpecularStroke
                 )
 
                 // 4 Ergonomic Directional Grip Nibs (12, 3, 6, 9 o'clock)
@@ -494,25 +514,50 @@ fun RealisticStickButton(
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
 
-    val baseGradient = remember(isPressed) {
+    val baseGradientPressed = remember {
         Brush.radialGradient(
-            colors = listOf(
-                if (isPressed) Color(0xFF222834) else Color(0xFF333E4D),
-                if (isPressed) Color(0xFF0D1017) else Color(0xFF141923)
-            ),
+            colors = listOf(Color(0xFF222834), Color(0xFF0D1017)),
+            center = Offset(0.35f, 0.35f),
+            radius = 160f
+        )
+    }
+    val baseGradientNormal = remember {
+        Brush.radialGradient(
+            colors = listOf(Color(0xFF333E4D), Color(0xFF141923)),
             center = Offset(0.35f, 0.35f),
             radius = 160f
         )
     }
 
-    val dishGradient = remember(isPressed) {
+    val dishGradientPressed = remember {
         Brush.radialGradient(
-            colors = listOf(
-                if (isPressed) Color(0xFF10141C) else Color(0xFF212836),
-                if (isPressed) Color(0xFF000000) else Color(0xFF0F131A)
-            ),
+            colors = listOf(Color(0xFF10141C), Color(0xFF000000)),
             center = Offset(0.5f, 0.5f),
             radius = 90f
+        )
+    }
+    val dishGradientNormal = remember {
+        Brush.radialGradient(
+            colors = listOf(Color(0xFF212836), Color(0xFF0F131A)),
+            center = Offset(0.5f, 0.5f),
+            radius = 90f
+        )
+    }
+
+    val borderBrushPressed = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color(0xFF718096).copy(alpha = 0.35f),
+                Color(0xFF1A202C)
+            )
+        )
+    }
+    val borderBrushNormal = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color(0xFF718096).copy(alpha = 0.70f),
+                Color(0xFF1A202C)
+            )
         )
     }
 
@@ -524,12 +569,36 @@ fun RealisticStickButton(
     )
     val accentColor = neonColor
 
+    val guideRingStroke = remember {
+        Stroke(
+            width = 2.0f,
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f), 0f)
+        )
+    }
+    val bevelRimStroke = remember { Stroke(width = 3f) }
+    val knurledGripBtnStroke = remember {
+        Stroke(
+            width = 3.5f,
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 5f), 0f)
+        )
+    }
+    val dishShadowStroke = remember { Stroke(width = 2f) }
+
     val rgbShadow = Modifier.shadow(
         elevation = if (isPressed) 3.dp else 8.dp,
         shape = CircleShape,
         ambientColor = if (isRgbEnabled) neonColor else Color.Black,
         spotColor = if (isRgbEnabled) neonColor else Color.Black
     )
+
+    val clickBloomStops = remember(neonColor) {
+        arrayOf(
+            0.00f to Color.Transparent,
+            0.35f to Color.Transparent,
+            0.75f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
+    }
 
     Box(
         modifier = modifier
@@ -543,14 +612,13 @@ fun RealisticStickButton(
                 if (isRgbEnabled) {
                     val clickBloomR = size.minDimension * (if (isPressed) 1.05f else 0.85f)
                     // 1. Tactile click pulse bloom
+                    clickBloomStops[0] = 0.00f to (if (isPressed) Color.White else neonColor).copy(alpha = rgbBloomAlpha * 0.65f)
+                    clickBloomStops[1] = 0.35f to neonColor.copy(alpha = rgbBloomAlpha * 0.30f)
+                    clickBloomStops[2] = 0.75f to neonColor.copy(alpha = rgbBloomAlpha * 0.10f)
+                    clickBloomStops[3] = 1.00f to Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colorStops = arrayOf(
-                                0.00f to (if (isPressed) Color.White else neonColor).copy(alpha = rgbBloomAlpha * 0.65f),
-                                0.35f to neonColor.copy(alpha = rgbBloomAlpha * 0.30f),
-                                0.75f to neonColor.copy(alpha = rgbBloomAlpha * 0.10f),
-                                1.00f to Color.Transparent
-                            ),
+                            colorStops = clickBloomStops,
                             center = center,
                             radius = clickBloomR
                         ),
@@ -563,24 +631,16 @@ fun RealisticStickButton(
                         color = neonColor.copy(alpha = if (isPressed) 0.60f else 0.25f),
                         radius = size.minDimension * 0.52f,
                         center = center,
-                        style = androidx.compose.ui.graphics.drawscope.Stroke(
-                            width = 2.0f,
-                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f), 0f)
-                        )
+                        style = guideRingStroke
                     )
                 }
             }
             .then(rgbShadow)
             .clip(CircleShape)
-            .background(baseGradient)
+            .background(if (isPressed) baseGradientPressed else baseGradientNormal)
             .border(
                 width = 1.5.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF718096).copy(alpha = if (isPressed) 0.35f else 0.70f),
-                        Color(0xFF1A202C)
-                    )
-                ),
+                brush = if (isPressed) borderBrushPressed else borderBrushNormal,
                 shape = CircleShape
             )
             .pointerInput(key) {
@@ -604,24 +664,21 @@ fun RealisticStickButton(
             drawCircle(
                 color = Color.White.copy(alpha = if (isPressed) 0.15f else 0.35f),
                 radius = minDim / 2f - 2f,
-                style = Stroke(width = 3f)
+                style = bevelRimStroke
             )
 
             // Dashed knurled grip ring
             drawCircle(
                 color = Color.Black.copy(alpha = 0.6f),
                 radius = minDim / 2f - 6f,
-                style = Stroke(
-                    width = 3.5f,
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 5f), 0f)
-                )
+                style = knurledGripBtnStroke
             )
 
             // Inner concave dish shadow ring
             drawCircle(
                 color = accentColor.copy(alpha = if (isPressed) 0.8f else 0.35f),
                 radius = minDim / 2f - 12f,
-                style = Stroke(width = 2f)
+                style = dishShadowStroke
             )
         }
 
@@ -630,7 +687,7 @@ fun RealisticStickButton(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(dishGradient),
+                .background(if (isPressed) dishGradientPressed else dishGradientNormal),
             contentAlignment = Alignment.Center
         ) {
             Text(

@@ -116,6 +116,15 @@ fun BloomTrigger(
         )
     }
 
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val strokeRim = remember(density) { Stroke(width = 1.5f * density) }
+    val pupilBloomColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val petalColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(buttonSize)
@@ -131,14 +140,13 @@ fun BloomTrigger(
                     val outerBloomR = size.minDimension * bloomExpansion
 
                     // 1. Radiant central pupil bloom
+                    pupilBloomColors[0] = Color.White.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.80f else 0.40f))
+                    pupilBloomColors[1] = glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.65f else 0.30f))
+                    pupilBloomColors[2] = glowColor.copy(alpha = rgbBloomAlpha * 0.15f)
+                    pupilBloomColors[3] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.80f else 0.40f)),
-                                glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.65f else 0.30f)),
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.15f),
-                                Color.Transparent
-                            ),
+                            colors = pupilBloomColors,
                             center = center,
                             radius = outerBloomR
                         ),
@@ -162,13 +170,12 @@ fun BloomTrigger(
                         val endPt = Offset(center.x + (petalStartR + petalLength) * cosP, center.y + (petalStartR + petalLength) * sinP)
                         val petalAlpha = rgbBloomAlpha * (0.35f + 0.55f * fillProgress)
 
+                        petalColors[0] = glowColor.copy(alpha = petalAlpha)
+                        petalColors[1] = Color.White.copy(alpha = petalAlpha * 0.90f)
+                        petalColors[2] = Color.Transparent
                         drawLine(
                             brush = Brush.linearGradient(
-                                colors = listOf(
-                                    glowColor.copy(alpha = petalAlpha),
-                                    Color.White.copy(alpha = petalAlpha * 0.90f),
-                                    Color.Transparent
-                                ),
+                                colors = petalColors,
                                 start = startPt,
                                 end = endPt
                             ),
@@ -183,7 +190,7 @@ fun BloomTrigger(
                         color = glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.90f else 0.50f)),
                         radius = baseR + 4.dp.toPx() + 8.dp.toPx() * fillProgress,
                         center = center,
-                        style = Stroke(width = 1.5.dp.toPx())
+                        style = strokeRim
                     )
                 }
             }

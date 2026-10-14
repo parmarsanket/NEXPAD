@@ -139,6 +139,48 @@ fun RealisticBumper(
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
 
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val ringPath = remember(density, isLeft) {
+        val w = 154f * density
+        val h = 48f * density
+        val ringInset = 2.5f * density
+        Path().apply {
+            addRoundRect(
+                RoundRect(
+                    rect = Rect(ringInset, ringInset, w - ringInset, h - ringInset),
+                    topLeft = CornerRadius(if (isLeft) 7.5f * density else 23.5f * density),
+                    topRight = CornerRadius(if (isLeft) 23.5f * density else 7.5f * density),
+                    bottomRight = CornerRadius(if (isLeft) 23.5f * density else 7.5f * density),
+                    bottomLeft = CornerRadius(if (isLeft) 7.5f * density else 23.5f * density)
+                )
+            )
+        }
+    }
+
+    val topEdgeColors = remember { listOf(Color.White.copy(alpha = 0.07f), Color.Transparent) }
+    val undercutColors = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)) }
+    val pressedColors = remember { listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent) }
+    val lensEdgeColors = remember { listOf(Color.White.copy(alpha = 0.10f), Color.Transparent) }
+    val windowTopShadowColors = remember { listOf(Color.Black.copy(alpha = 0.90f), Color.Transparent) }
+    val windowBgColors = remember { listOf(Color(0xFF050506), Color(0xFF121314)) }
+
+    val flareWidthPressed = remember(density) { 3.5f * density }
+    val flareWidthNormal = remember(density) { 2f * density }
+    val innerFlareRadiusPressed = remember(density) { 20f * density }
+    val innerFlareRadiusNormal = remember(density) { 12f * density }
+    val flareLenPressed = remember(density) { 16f * density }
+    val flareLenNormal = remember(density) { 8f * density }
+
+    val stadiumBloomColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val outerFlareColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent)
+    }
+    val innerFlareColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(154.dp, 48.dp)
@@ -148,13 +190,12 @@ fun RealisticBumper(
                     val padY = 8.dp.toPx()
 
                     // 1. Asymmetrical shoulder stadium aura
+                    stadiumBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.55f else 0.35f))
+                    stadiumBloomColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.15f)
+                    stadiumBloomColors[2] = Color.Transparent
                     drawRoundRect(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.55f else 0.35f)),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.15f),
-                                Color.Transparent
-                            ),
+                            colors = stadiumBloomColors,
                             center = center,
                             radius = size.width * 0.55f
                         ),
@@ -165,7 +206,7 @@ fun RealisticBumper(
 
                     // 2. Dual corner edge shoulder flares
                     val flareY = center.y
-                    val flareLen = if (isPressed) 16.dp.toPx() else 8.dp.toPx()
+                    val flareLen = if (isPressed) flareLenPressed else flareLenNormal
                     val flareAlpha = rgbBloomAlpha * (if (isPressed) 0.85f else 0.45f)
 
                     val outerX = if (isLeft) 6.dp.toPx() else size.width - 6.dp.toPx()
@@ -173,29 +214,31 @@ fun RealisticBumper(
                     val outerDir = if (isLeft) -1f else 1f
 
                     // Outer shoulder laser flare
+                    outerFlareColors[0] = neonColor.copy(alpha = flareAlpha)
+                    outerFlareColors[1] = Color.Transparent
                     drawLine(
                         brush = Brush.linearGradient(
-                            colors = listOf(neonColor.copy(alpha = flareAlpha), Color.Transparent),
+                            colors = outerFlareColors,
                             start = Offset(outerX, flareY),
                             end = Offset(outerX + outerDir * flareLen, flareY)
                         ),
                         start = Offset(outerX, flareY),
                         end = Offset(outerX + outerDir * flareLen, flareY),
-                        strokeWidth = if (isPressed) 3.5.dp.toPx() else 2.dp.toPx()
+                        strokeWidth = if (isPressed) flareWidthPressed else flareWidthNormal
                     )
 
                     // Inner rounded shoulder arc flare
+                    val innerR = if (isPressed) innerFlareRadiusPressed else innerFlareRadiusNormal
+                    innerFlareColors[0] = neonColor.copy(alpha = flareAlpha * 0.80f)
+                    innerFlareColors[1] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = flareAlpha * 0.80f),
-                                Color.Transparent
-                            ),
+                            colors = innerFlareColors,
                             center = Offset(innerX, flareY),
-                            radius = if (isPressed) 20.dp.toPx() else 12.dp.toPx()
+                            radius = innerR
                         ),
                         center = Offset(innerX, flareY),
-                        radius = if (isPressed) 20.dp.toPx() else 12.dp.toPx()
+                        radius = innerR
                     )
                 }
             }
@@ -245,7 +288,7 @@ fun RealisticBumper(
                 // Top edge highlight: linear-gradient(180deg, rgba(255,255,255,0.07), transparent 42%)
                 drawRect(
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color.White.copy(alpha = 0.07f), Color.Transparent),
+                        colors = topEdgeColors,
                         startY = 0f,
                         endY = h * 0.42f
                     ),
@@ -256,7 +299,7 @@ fun RealisticBumper(
                 val undercutH = h * 0.40f
                 drawRect(
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
+                        colors = undercutColors,
                         startY = h - undercutH,
                         endY = h
                     ),
@@ -269,7 +312,7 @@ fun RealisticBumper(
                     val pressedH = h * 0.40f
                     drawRect(
                         brush = Brush.verticalGradient(
-                            colors = listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent),
+                            colors = pressedColors,
                             startY = 0f,
                             endY = pressedH
                         ),
@@ -293,7 +336,7 @@ fun RealisticBumper(
                     // Window background: radial-gradient(ellipse at 50% 60%, #050506 0%, #121314 100%)
                     drawRect(
                         brush = Brush.radialGradient(
-                            colors = listOf(Color(0xFF050506), Color(0xFF121314)),
+                            colors = windowBgColors,
                             center = Offset(winW * 0.50f, winH * 0.60f),
                             radius = winW * 0.60f
                         ),
@@ -303,7 +346,7 @@ fun RealisticBumper(
                     // Inset top shadow: inset 0 2.5px 5px rgba(0,0,0,0.9)
                     drawRect(
                         brush = Brush.verticalGradient(
-                            colors = listOf(Color.Black.copy(alpha = 0.90f), Color.Transparent),
+                            colors = windowTopShadowColors,
                             startY = 0f,
                             endY = 8.dp.toPx()
                         ),
@@ -349,19 +392,6 @@ fun RealisticBumper(
             val h = size.height
 
             // --- Layer 4: Neon Ring (.lx-ring) ---
-            val ringInset = 2.5.dp.toPx()
-            val ringPath = Path().apply {
-                addRoundRect(
-                    RoundRect(
-                        rect = Rect(ringInset, ringInset, w - ringInset, h - ringInset),
-                        topLeft = CornerRadius(if (isLeft) 7.5.dp.toPx() else 23.5.dp.toPx()),
-                        topRight = CornerRadius(if (isLeft) 23.5.dp.toPx() else 7.5.dp.toPx()),
-                        bottomRight = CornerRadius(if (isLeft) 23.5.dp.toPx() else 7.5.dp.toPx()),
-                        bottomLeft = CornerRadius(if (isLeft) 7.5.dp.toPx() else 23.5.dp.toPx())
-                    )
-                )
-            }
-
             // Outer bloom pass
             drawPath(
                 path = ringPath,
@@ -398,7 +428,7 @@ fun RealisticBumper(
             // Top specular edge highlight: inset 0 2px 2px rgba(255,255,255,0.10)
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.10f), Color.Transparent),
+                    colors = lensEdgeColors,
                     startY = 0f,
                     endY = 3.5.dp.toPx()
                 ),

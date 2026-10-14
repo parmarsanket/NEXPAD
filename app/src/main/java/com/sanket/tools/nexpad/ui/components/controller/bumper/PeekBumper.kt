@@ -144,6 +144,18 @@ fun PeekBumper(
         )
     }
 
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val strokeIrisPressed = remember(density) { Stroke(width = 2.5f * density) }
+    val strokeIrisNormal = remember(density) { Stroke(width = 1.5f * density) }
+    val strokeIrisOuter = remember(density) { Stroke(width = 1f * density) }
+
+    val stadiumBloomColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val apertureBloomColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(154.dp, 54.dp)
@@ -158,13 +170,12 @@ fun PeekBumper(
                     val padY = 8.dp.toPx()
 
                     // 1. Stadium ambient base wash
+                    stadiumBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.50f else 0.30f))
+                    stadiumBloomColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.12f)
+                    stadiumBloomColors[2] = Color.Transparent
                     drawRoundRect(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.50f else 0.30f)),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.12f),
-                                Color.Transparent
-                            ),
+                            colors = stadiumBloomColors,
                             center = center,
                             radius = size.width * 0.55f
                         ),
@@ -175,13 +186,12 @@ fun PeekBumper(
 
                     // 2. Keyhole Aperture Spotlight Beam expanding with glyph zoom
                     val apertureRadius = (22.dp * glyphScaleAnim).toPx()
+                    apertureBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.85f else 0.45f))
+                    apertureBloomColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.25f)
+                    apertureBloomColors[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.85f else 0.45f)),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.25f),
-                                Color.Transparent
-                            ),
+                            colors = apertureBloomColors,
                             center = center,
                             radius = apertureRadius * 1.6f
                         ),
@@ -194,13 +204,13 @@ fun PeekBumper(
                         color = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.90f else 0.50f)),
                         radius = apertureRadius,
                         center = center,
-                        style = Stroke(width = if (isPressed) 2.5.dp.toPx() else 1.5.dp.toPx())
+                        style = if (isPressed) strokeIrisPressed else strokeIrisNormal
                     )
                     drawCircle(
                         color = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.50f else 0.20f)),
                         radius = apertureRadius + 6.dp.toPx(),
                         center = center,
-                        style = Stroke(width = 1.dp.toPx())
+                        style = strokeIrisOuter
                     )
 
                     // 4. Cardinal aperture alignment pips

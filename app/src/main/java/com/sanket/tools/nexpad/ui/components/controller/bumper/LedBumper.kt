@@ -183,6 +183,13 @@ fun LedBumper(
         )
     }
 
+    val stadiumBloomColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val ledBeamColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(154.dp, 54.dp)
@@ -197,13 +204,12 @@ fun LedBumper(
                     val padY = 8.dp.toPx()
 
                     // 1. Asymmetrical stadium glow
+                    stadiumBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.52f else 0.32f))
+                    stadiumBloomColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.12f)
+                    stadiumBloomColors[2] = Color.Transparent
                     drawRoundRect(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.52f else 0.32f)),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.12f),
-                                Color.Transparent
-                            ),
+                            colors = stadiumBloomColors,
                             center = center,
                             radius = size.width * 0.55f
                         ),
@@ -222,15 +228,14 @@ fun LedBumper(
                         val barX = ledStartX + i * ledPitch
                         val beamAlpha = rgbBloomAlpha * barAlpha * (if (isPressed) 0.85f else 0.40f)
 
+                        ledBeamColors[0] = Color.Transparent
+                        ledBeamColors[1] = neonColor.copy(alpha = beamAlpha * 0.40f)
+                        ledBeamColors[2] = neonColor.copy(alpha = beamAlpha)
+                        ledBeamColors[3] = neonColor.copy(alpha = beamAlpha * 0.40f)
+                        ledBeamColors[4] = Color.Transparent
                         drawLine(
                             brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    neonColor.copy(alpha = beamAlpha * 0.40f),
-                                    neonColor.copy(alpha = beamAlpha),
-                                    neonColor.copy(alpha = beamAlpha * 0.40f),
-                                    Color.Transparent
-                                ),
+                                colors = ledBeamColors,
                                 startY = center.y - beamHalfH,
                                 endY = center.y + beamHalfH
                             ),
@@ -483,6 +488,13 @@ private fun LedBarGroup(
         verticalAlignment = Alignment.CenterVertically
     ) {
         alphas.forEach { alpha ->
+            val barBloomColors = remember(neonColor, alpha) {
+                listOf(
+                    neonColor.copy(alpha = alpha * 0.50f),
+                    neonColor.copy(alpha = alpha * 0.15f),
+                    Color.Transparent
+                )
+            }
             Box(
                 modifier = Modifier
                     .size(9.dp, 22.dp)
@@ -491,11 +503,7 @@ private fun LedBarGroup(
                             val pad = 3.dp.toPx()
                             drawRoundRect(
                                 brush = Brush.radialGradient(
-                                    colors = listOf(
-                                        neonColor.copy(alpha = alpha * 0.50f),
-                                        neonColor.copy(alpha = alpha * 0.15f),
-                                        Color.Transparent
-                                    ),
+                                    colors = barBloomColors,
                                     center = center,
                                     radius = size.height * 0.70f
                                 ),

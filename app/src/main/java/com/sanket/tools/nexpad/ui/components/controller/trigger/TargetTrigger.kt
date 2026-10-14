@@ -132,6 +132,24 @@ fun TargetTrigger(
     val triggerShape = CircleShape
     val windowShape = CircleShape
 
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val strokeOuterReticle = remember(density) {
+        Stroke(
+            width = 1.5f * density,
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f * density, 4f * density), 0f)
+        )
+    }
+    val strokeInnerReticle = remember(density) { Stroke(width = 1f * density) }
+    val targetHaloColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val crosshairColorsIn = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent)
+    }
+    val crosshairColorsOut = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(92.dp, 92.dp)
@@ -145,13 +163,12 @@ fun TargetTrigger(
                     val baseRadius = size.minDimension * 0.5f
 
                     // 1. Ambient tactical target halo
+                    targetHaloColors[0] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.55f else 0.35f))
+                    targetHaloColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.15f)
+                    targetHaloColors[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.55f else 0.35f)),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.15f),
-                                Color.Transparent
-                            ),
+                            colors = targetHaloColors,
                             center = center,
                             radius = size.minDimension * 0.75f
                         ),
@@ -168,16 +185,13 @@ fun TargetTrigger(
                         color = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.85f else 0.45f)),
                         radius = outerReticleR,
                         center = center,
-                        style = Stroke(
-                            width = 1.5.dp.toPx(),
-                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx()), 0f)
-                        )
+                        style = strokeOuterReticle
                     )
                     drawCircle(
                         color = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.95f else 0.60f)),
                         radius = innerReticleR,
                         center = center,
-                        style = Stroke(width = 1.dp.toPx())
+                        style = strokeInnerReticle
                     )
 
                     // 3. 4-Axis Laser Crosshair Beams (N, S, E, W)
@@ -186,10 +200,15 @@ fun TargetTrigger(
                     val crosshairEnd = crosshairStart + crosshairLen
                     val crosshairAlpha = rgbBloomAlpha * (if (isPressed) 0.90f else 0.50f)
 
+                    crosshairColorsIn[0] = Color.Transparent
+                    crosshairColorsIn[1] = neonColor.copy(alpha = crosshairAlpha)
+                    crosshairColorsOut[0] = neonColor.copy(alpha = crosshairAlpha)
+                    crosshairColorsOut[1] = Color.Transparent
+
                     // North & South
                     drawLine(
                         brush = Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, neonColor.copy(alpha = crosshairAlpha)),
+                            colors = crosshairColorsIn,
                             startY = center.y - crosshairEnd,
                             endY = center.y - crosshairStart
                         ),
@@ -199,7 +218,7 @@ fun TargetTrigger(
                     )
                     drawLine(
                         brush = Brush.verticalGradient(
-                            colors = listOf(neonColor.copy(alpha = crosshairAlpha), Color.Transparent),
+                            colors = crosshairColorsOut,
                             startY = center.y + crosshairStart,
                             endY = center.y + crosshairEnd
                         ),
@@ -211,7 +230,7 @@ fun TargetTrigger(
                     // West & East
                     drawLine(
                         brush = Brush.horizontalGradient(
-                            colors = listOf(Color.Transparent, neonColor.copy(alpha = crosshairAlpha)),
+                            colors = crosshairColorsIn,
                             startX = center.x - crosshairEnd,
                             endX = center.x - crosshairStart
                         ),
@@ -221,7 +240,7 @@ fun TargetTrigger(
                     )
                     drawLine(
                         brush = Brush.horizontalGradient(
-                            colors = listOf(neonColor.copy(alpha = crosshairAlpha), Color.Transparent),
+                            colors = crosshairColorsOut,
                             startX = center.x + crosshairStart,
                             endX = center.x + crosshairEnd
                         ),

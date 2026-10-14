@@ -147,6 +147,16 @@ fun VuSlabsTrigger(
     }
     val windowShape = remember { RoundedCornerShape(12.dp) }
 
+    val hullAuraColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val leftWingColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent)
+    }
+    val rightWingColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(100.dp, 92.dp)
@@ -167,13 +177,12 @@ fun VuSlabsTrigger(
                     }
 
                     // 1. Tapered Hull Aura with VU color shifting
+                    hullAuraColors[0] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.50f else 0.30f))
+                    hullAuraColors[1] = activeVuColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.75f else 0.40f))
+                    hullAuraColors[2] = Color.Transparent
                     drawRoundRect(
                         brush = Brush.verticalGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.50f else 0.30f)),
-                                activeVuColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.75f else 0.40f)),
-                                Color.Transparent
-                            ),
+                            colors = hullAuraColors,
                             startY = -padY,
                             endY = size.height + padY + 12.dp.toPx() * fillProgress
                         ),
@@ -199,9 +208,11 @@ fun VuSlabsTrigger(
                                 val barAlpha = rgbBloomAlpha * wingFrac * 0.85f
 
                                 // Left wing
+                                leftWingColors[0] = Color.Transparent
+                                leftWingColors[1] = barColor.copy(alpha = barAlpha)
                                 drawLine(
                                     brush = Brush.horizontalGradient(
-                                        colors = listOf(Color.Transparent, barColor.copy(alpha = barAlpha)),
+                                        colors = leftWingColors,
                                         startX = -padX - wingLen,
                                         endX = -padX
                                     ),
@@ -211,9 +222,11 @@ fun VuSlabsTrigger(
                                 )
 
                                 // Right wing
+                                rightWingColors[0] = barColor.copy(alpha = barAlpha)
+                                rightWingColors[1] = Color.Transparent
                                 drawLine(
                                     brush = Brush.horizontalGradient(
-                                        colors = listOf(barColor.copy(alpha = barAlpha), Color.Transparent),
+                                        colors = rightWingColors,
                                         startX = size.width + padX,
                                         endX = size.width + padX + wingLen
                                     ),

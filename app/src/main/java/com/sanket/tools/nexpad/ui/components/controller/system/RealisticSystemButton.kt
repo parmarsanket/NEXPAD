@@ -208,13 +208,34 @@ fun RealisticSystemButton(
     val buttonSize = if (isGuide) 74.dp else 60.dp
     val iconSize = if (isGuide) 36.dp else 24.dp
 
-    // Optical Lens radial dome: #232527 0%, #0c0d0e 75%, #000 100%
     val domeGradient = remember {
         Brush.radialGradient(
             colors = listOf(Color(0xFF232527), Color(0xFF0C0D0E), Color(0xFF000000)),
             center = Offset(0.50f, 0.55f),
             radius = 160f
         )
+    }
+
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val borderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.50f),
+                Color.Black.copy(alpha = 0.85f)
+            )
+        )
+    }
+    val stroke1dp = remember(density) { Stroke(width = 1f * density) }
+    val stroke1_2dp = remember(density) { Stroke(width = 1.2f * density) }
+    val stroke2dp = remember(density) { Stroke(width = 2f * density) }
+    val stroke4dp = remember(density) { Stroke(width = 4f * density) }
+    val insetShadowColorsPressed = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)) }
+    val insetShadowColorsNormal = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)) }
+    val lensColorsPressed = remember { listOf(Color.White.copy(alpha = 0.08f), Color.Transparent) }
+    val lensColorsNormal = remember { listOf(Color.White.copy(alpha = 0.16f), Color.Transparent) }
+    val specularSheenColors = remember { listOf(Color.White.copy(alpha = 0.07f), Color.Transparent) }
+    val bloomColorsList = remember(auraColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
 
     Box(
@@ -230,13 +251,12 @@ fun RealisticSystemButton(
                     val baseR = size.minDimension * 0.5f
 
                     // 1. Precision tactical circular halo
+                    bloomColorsList[0] = auraColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.65f else 0.35f))
+                    bloomColorsList[1] = auraColor.copy(alpha = rgbBloomAlpha * 0.15f)
+                    bloomColorsList[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                auraColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.65f else 0.35f)),
-                                auraColor.copy(alpha = rgbBloomAlpha * 0.15f),
-                                Color.Transparent
-                            ),
+                            colors = bloomColorsList,
                             center = center,
                             radius = size.minDimension * 0.75f
                         ),
@@ -249,13 +269,13 @@ fun RealisticSystemButton(
                         color = auraColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.85f else 0.45f)),
                         radius = baseR + 3.dp.toPx(),
                         center = center,
-                        style = Stroke(width = 1.2.dp.toPx())
+                        style = stroke1_2dp
                     )
                     drawCircle(
                         color = auraColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.50f else 0.20f)),
                         radius = baseR + 7.dp.toPx(),
                         center = center,
-                        style = Stroke(width = 1.dp.toPx())
+                        style = stroke1dp
                     )
 
                     // 3. 4 Cardinal Telemetry Calibration Pips
@@ -280,12 +300,7 @@ fun RealisticSystemButton(
             .background(domeGradient)
             .border(
                 width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.50f),
-                        Color.Black.copy(alpha = 0.85f)
-                    )
-                ),
+                brush = borderBrush,
                 shape = CircleShape
             )
             .pointerInput(key) {
@@ -311,7 +326,7 @@ fun RealisticSystemButton(
             val botShadowH = h * 0.38f
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (isPressed) 0.85f else 0.70f)),
+                    colors = if (isPressed) insetShadowColorsPressed else insetShadowColorsNormal,
                     startY = h - botShadowH,
                     endY = h
                 ),
@@ -324,12 +339,12 @@ fun RealisticSystemButton(
             drawCircle(
                 color = auraColor.copy(alpha = if (isPressed) 0.60f else 0.30f),
                 radius = ringR,
-                style = Stroke(width = 4.dp.toPx())
+                style = stroke4dp
             )
             drawCircle(
                 color = auraColor.copy(alpha = rgbBloomAlpha),
                 radius = ringR,
-                style = Stroke(width = 2.dp.toPx())
+                style = stroke2dp
             )
 
             // Layer 3: Home secondary inner telemetry ring (.lx-home .lx-ring2, inset 14px)
@@ -338,7 +353,7 @@ fun RealisticSystemButton(
                 drawCircle(
                     color = auraColor.copy(alpha = if (isPressed) 0.70f else 0.30f),
                     radius = ring2R,
-                    style = Stroke(width = 1.dp.toPx())
+                    style = stroke1dp
                 )
             }
 
@@ -364,7 +379,7 @@ fun RealisticSystemButton(
             // Layer 5: Top Specular Glass Crescent Arc (.lx-lens)
             drawArc(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color.White.copy(alpha = if (isPressed) 0.08f else 0.16f), Color.Transparent),
+                    colors = if (isPressed) lensColorsPressed else lensColorsNormal,
                     startY = 0f,
                     endY = h * 0.38f
                 ),
@@ -373,13 +388,13 @@ fun RealisticSystemButton(
                 useCenter = false,
                 topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
                 size = Size(w - 3.dp.toPx(), h - 3.dp.toPx()),
-                style = Stroke(width = 1.2.dp.toPx())
+                style = stroke1_2dp
             )
 
             // Layer 6: Lens Sheen Reflection Oval (radial-gradient at 70% 78%)
             drawOval(
                 brush = Brush.radialGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.07f), Color.Transparent),
+                    colors = specularSheenColors,
                     center = Offset(w * 0.70f, h * 0.78f),
                     radius = w * 0.28f
                 ),

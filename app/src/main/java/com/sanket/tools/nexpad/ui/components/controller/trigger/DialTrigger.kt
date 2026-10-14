@@ -131,6 +131,18 @@ fun DialTrigger(
     val triggerShape = CircleShape
     val windowShape = RoundedCornerShape(13.dp)
 
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val strokeGauge = remember(density) { Stroke(width = 4f * density, cap = StrokeCap.Round) }
+    val ambientHaloColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val gaugeColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val pointerFlareColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(92.dp, 92.dp)
@@ -140,13 +152,12 @@ fun DialTrigger(
                     val curPull = fillProgress
 
                     // 1. Ambient dial circular halo
+                    ambientHaloColors[0] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.55f else 0.35f))
+                    ambientHaloColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.15f)
+                    ambientHaloColors[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.55f else 0.35f)),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.15f),
-                                Color.Transparent
-                            ),
+                            colors = ambientHaloColors,
                             center = center,
                             radius = size.minDimension * 0.75f
                         ),
@@ -178,13 +189,12 @@ fun DialTrigger(
                     val gaugeTotalSweep = 270f
                     if (curPull > 0.02f) {
                         val activeSweep = gaugeTotalSweep * curPull
+                        gaugeColors[0] = Color.White.copy(alpha = rgbBloomAlpha * curPull * 0.70f)
+                        gaugeColors[1] = neonColor.copy(alpha = rgbBloomAlpha * curPull * 0.85f)
+                        gaugeColors[2] = Color.Transparent
                         drawArc(
                             brush = Brush.radialGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = rgbBloomAlpha * curPull * 0.70f),
-                                    neonColor.copy(alpha = rgbBloomAlpha * curPull * 0.85f),
-                                    Color.Transparent
-                                ),
+                                colors = gaugeColors,
                                 center = center,
                                 radius = baseR + 8.dp.toPx()
                             ),
@@ -193,7 +203,7 @@ fun DialTrigger(
                             useCenter = false,
                             topLeft = Offset(center.x - (baseR + 8.dp.toPx()), center.y - (baseR + 8.dp.toPx())),
                             size = Size((baseR + 8.dp.toPx()) * 2f, (baseR + 8.dp.toPx()) * 2f),
-                            style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
+                            style = strokeGauge
                         )
 
                         // 4. Pointer Beacon Flare at leading edge of rotary gauge
@@ -204,13 +214,12 @@ fun DialTrigger(
                         val ptrX = center.x + (baseR + 8.dp.toPx()) * cosP
                         val ptrY = center.y + (baseR + 8.dp.toPx()) * sinP
 
+                        pointerFlareColors[0] = Color.White.copy(alpha = rgbBloomAlpha * 0.95f)
+                        pointerFlareColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.80f)
+                        pointerFlareColors[2] = Color.Transparent
                         drawCircle(
                             brush = Brush.radialGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = rgbBloomAlpha * 0.95f),
-                                    neonColor.copy(alpha = rgbBloomAlpha * 0.80f),
-                                    Color.Transparent
-                                ),
+                                colors = pointerFlareColors,
                                 center = Offset(ptrX, ptrY),
                                 radius = (if (isPressed) 14.dp else 9.dp).toPx()
                             ),

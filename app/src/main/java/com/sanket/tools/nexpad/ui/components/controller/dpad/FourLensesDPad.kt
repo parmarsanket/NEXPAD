@@ -175,18 +175,21 @@ fun FourLensesKey(
         )
     }
 
+    val btnBloomColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(54.dp)
             .drawBehind {
                 if (isRgbEnabled) {
+                    btnBloomColors[0] = glowColor.copy(alpha = keyBloomAlpha * 0.50f)
+                    btnBloomColors[1] = glowColor.copy(alpha = keyBloomAlpha * 0.20f)
+                    btnBloomColors[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                glowColor.copy(alpha = keyBloomAlpha * 0.50f),
-                                glowColor.copy(alpha = keyBloomAlpha * 0.20f),
-                                Color.Transparent
-                            ),
+                            colors = btnBloomColors,
                             center = center,
                             radius = size.minDimension * 0.85f
                         ),
@@ -441,6 +444,16 @@ fun FourLensesDPad(
         )
     }
 
+    val hubBloomColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent)
+    }
+    val filamentColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent)
+    }
+    val podBloomColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(164.dp)
@@ -453,12 +466,11 @@ fun FourLensesDPad(
                     val rightCenter = Offset(size.width - podR, center.y)
 
                     // 1. Central constellation node bloom
+                    hubBloomColors[0] = glowColor.copy(alpha = rgbBloomAlpha * 0.45f)
+                    hubBloomColors[1] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.45f),
-                                Color.Transparent
-                            ),
+                            colors = hubBloomColors,
                             center = center,
                             radius = size.minDimension * 0.35f
                         ),
@@ -469,9 +481,11 @@ fun FourLensesDPad(
                     // 2. Connective energy filaments from central hub to satellites
                     fun drawFilament(target: Offset, isPressed: Boolean) {
                         val filamentAlpha = if (isPressed) rgbBloomAlpha * 0.90f else (if (hasActivePress) 0.18f else 0.40f)
+                        filamentColors[0] = glowColor.copy(alpha = filamentAlpha * 0.5f)
+                        filamentColors[1] = glowColor.copy(alpha = filamentAlpha)
                         drawLine(
                             brush = Brush.linearGradient(
-                                colors = listOf(glowColor.copy(alpha = filamentAlpha * 0.5f), glowColor.copy(alpha = filamentAlpha)),
+                                colors = filamentColors,
                                 start = center,
                                 end = target
                             ),
@@ -488,13 +502,12 @@ fun FourLensesDPad(
                     // 3. Discrete satellite lens pod blooms
                     fun drawPodBloom(podCenter: Offset, isPressed: Boolean) {
                         val podBloomR = podR * (if (isPressed) 1.55f else 1.25f)
+                        podBloomColors[0] = (if (isPressed) Color.White else glowColor).copy(alpha = if (isPressed) 0.85f else 0.40f)
+                        podBloomColors[1] = glowColor.copy(alpha = if (isPressed) 0.40f else 0.15f)
+                        podBloomColors[2] = Color.Transparent
                         drawCircle(
                             brush = Brush.radialGradient(
-                                colors = listOf(
-                                    (if (isPressed) Color.White else glowColor).copy(alpha = if (isPressed) 0.85f else 0.40f),
-                                    glowColor.copy(alpha = if (isPressed) 0.40f else 0.15f),
-                                    Color.Transparent
-                                ),
+                                colors = podBloomColors,
                                 center = podCenter,
                                 radius = podBloomR
                             ),

@@ -85,7 +85,7 @@ fun CapsulesButton(
     val psShape = getPlayStationShape(activeLabel)
     val effectiveColor = if (psShape != null) getPlayStationColor(psShape) else buttonColor
 
-    val pillShape = RoundedCornerShape(26.dp)
+    val pillShape = remember { RoundedCornerShape(26.dp) }
     val isVertical = key.uppercase() == ControlKey.Y.key || key.uppercase() == ControlKey.A.key
     val pillW = if (isVertical) 52.dp else 84.dp
     val pillH = if (isVertical) 84.dp else 52.dp
@@ -106,13 +106,26 @@ fun CapsulesButton(
         )
     }
 
-    val domeBrush = Brush.radialGradient(
-        colors = listOf(
-            Color(0xFF232527),
-            Color(0xFF0C0D0E),
-            Color(0xFF000000)
+    val domeBrush = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF232527),
+                Color(0xFF0C0D0E),
+                Color(0xFF000000)
+            )
         )
-    )
+    }
+
+    val capsuleBloomStops = remember(effectiveColor) {
+        arrayOf(
+            0.00f to Color.Transparent,
+            0.45f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
+    }
+    val nodeBloomColors = remember(effectiveColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
 
     Box(
         modifier = modifier
@@ -129,13 +142,12 @@ fun CapsulesButton(
                         val capR = 26.dp.toPx()
 
                         // 1. Elongated stadium capsule aura
+                        capsuleBloomStops[0] = 0.00f to effectiveColor.copy(alpha = rgbBloomAlpha * 0.55f)
+                        capsuleBloomStops[1] = 0.45f to effectiveColor.copy(alpha = rgbBloomAlpha * 0.22f)
+                        capsuleBloomStops[2] = 1.00f to Color.Transparent
                         drawRoundRect(
                             brush = Brush.radialGradient(
-                                colorStops = arrayOf(
-                                    0.00f to effectiveColor.copy(alpha = rgbBloomAlpha * 0.55f),
-                                    0.45f to effectiveColor.copy(alpha = rgbBloomAlpha * 0.22f),
-                                    1.00f to Color.Transparent
-                                ),
+                                colorStops = capsuleBloomStops,
                                 center = center,
                                 radius = size.maxDimension * 0.70f
                             ),
@@ -149,13 +161,12 @@ fun CapsulesButton(
                         val node2 = if (isVertical) Offset(center.x, size.height - capR) else Offset(size.width - capR, center.y)
                         val nodeRadius = capR * 1.2f
 
+                        nodeBloomColors[0] = (if (isPressed) Color.White else effectiveColor).copy(alpha = rgbBloomAlpha * 0.70f)
+                        nodeBloomColors[1] = effectiveColor.copy(alpha = rgbBloomAlpha * 0.25f)
+                        nodeBloomColors[2] = Color.Transparent
                         drawCircle(
                             brush = Brush.radialGradient(
-                                colors = listOf(
-                                    (if (isPressed) Color.White else effectiveColor).copy(alpha = rgbBloomAlpha * 0.70f),
-                                    effectiveColor.copy(alpha = rgbBloomAlpha * 0.25f),
-                                    Color.Transparent
-                                ),
+                                colors = nodeBloomColors,
                                 center = node1,
                                 radius = nodeRadius
                             ),
@@ -164,11 +175,7 @@ fun CapsulesButton(
                         )
                         drawCircle(
                             brush = Brush.radialGradient(
-                                colors = listOf(
-                                    (if (isPressed) Color.White else effectiveColor).copy(alpha = rgbBloomAlpha * 0.70f),
-                                    effectiveColor.copy(alpha = rgbBloomAlpha * 0.25f),
-                                    Color.Transparent
-                                ),
+                                colors = nodeBloomColors,
                                 center = node2,
                                 radius = nodeRadius
                             ),
@@ -243,13 +250,22 @@ internal fun StaticCapsulesButton(
     val pillW = if (isVertical) 52.dp else 84.dp
     val pillH = if (isVertical) 84.dp else 52.dp
 
-    val domeBrush = Brush.radialGradient(
-        colors = listOf(
-            Color(0xFF232527),
-            Color(0xFF0C0D0E),
-            Color(0xFF000000)
+    val domeBrush = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF232527),
+                Color(0xFF0C0D0E),
+                Color(0xFF000000)
+            )
         )
-    )
+    }
+    val previewBloomColors = remember(buttonColor) {
+        listOf(
+            buttonColor.copy(alpha = 0.45f * 0.50f),
+            buttonColor.copy(alpha = 0.45f * 0.20f),
+            Color.Transparent
+        )
+    }
 
     Box(
         modifier = modifier.size(80.dp),
@@ -263,11 +279,7 @@ internal fun StaticCapsulesButton(
                     val pad = 10.dp.toPx()
                     drawRoundRect(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                buttonColor.copy(alpha = 0.45f * 0.50f),
-                                buttonColor.copy(alpha = 0.45f * 0.20f),
-                                Color.Transparent
-                            ),
+                            colors = previewBloomColors,
                             center = center,
                             radius = size.minDimension * 0.95f
                         ),

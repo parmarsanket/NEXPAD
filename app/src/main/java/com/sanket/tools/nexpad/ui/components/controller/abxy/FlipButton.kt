@@ -78,6 +78,56 @@ fun FlipButton(
     val psShape = getPlayStationShape(activeLabel)
     val effectiveColor = if (psShape != null) getPlayStationColor(psShape) else buttonColor
 
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val borderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.50f),
+                Color.Black.copy(alpha = 0.85f)
+            )
+        )
+    }
+    val frontFaceBrush = remember {
+        Brush.radialGradient(
+            colors = listOf(Color(0xFF232527), Color(0xFF0C0D0E), Color.Black),
+            center = Offset(0.50f, 0.55f),
+            radius = 240f
+        )
+    }
+    val stroke1dp = remember(density) { Stroke(width = 1f * density) }
+    val stroke2dp = remember(density) { Stroke(width = 2f * density) }
+    val stroke4dp = remember(density) { Stroke(width = 4f * density) }
+    val insetShadowColorsPressed = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)) }
+    val insetShadowColorsNormal = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)) }
+    val lensColorsPressed = remember {
+        listOf(
+            Color.White.copy(alpha = 0.06f),
+            Color.White.copy(alpha = 0.02f),
+            Color.Transparent
+        )
+    }
+    val lensColorsNormal = remember {
+        listOf(
+            Color.White.copy(alpha = 0.14f),
+            Color.White.copy(alpha = 0.05f),
+            Color.Transparent
+        )
+    }
+    val backFaceSheenColors = remember {
+        listOf(Color.White.copy(alpha = 0.45f), Color.Transparent)
+    }
+    val specularSheenColors = remember {
+        listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)
+    }
+
+    val flipBloomStops = remember(effectiveColor) {
+        arrayOf(
+            0.00f to Color.Transparent,
+            0.40f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
+    }
+
     val isBackFace = flipAngle > 90f
 
     Box(
@@ -92,13 +142,12 @@ fun FlipButton(
                     val auraSize = Size(squashedWidth, auraHeight)
 
                     // 1. 3D squashed anamorphic aura oval tracking flipAngle
+                    flipBloomStops[0] = 0.00f to (if (isBackFace) Color.White else effectiveColor).copy(alpha = rgbBloomAlpha * 0.60f)
+                    flipBloomStops[1] = 0.40f to effectiveColor.copy(alpha = rgbBloomAlpha * 0.30f)
+                    flipBloomStops[2] = 1.00f to Color.Transparent
                     drawOval(
                         brush = Brush.radialGradient(
-                            colorStops = arrayOf(
-                                0.00f to (if (isBackFace) Color.White else effectiveColor).copy(alpha = rgbBloomAlpha * 0.60f),
-                                0.40f to effectiveColor.copy(alpha = rgbBloomAlpha * 0.30f),
-                                1.00f to Color.Transparent
-                            ),
+                            colorStops = flipBloomStops,
                             center = center,
                             radius = (auraHeight / 2f).coerceAtLeast(1f)
                         ),
@@ -135,12 +184,7 @@ fun FlipButton(
             .background(Color(0xFF0C0D0E))
             .border(
                 width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.50f),
-                        Color.Black.copy(alpha = 0.85f)
-                    )
-                ),
+                brush = borderBrush,
                 shape = CircleShape
             )
             .pointerInput(key) {
@@ -168,11 +212,7 @@ fun FlipButton(
                 .clip(CircleShape)
                 .background(
                     if (isBackFace) SolidColor(effectiveColor)
-                    else Brush.radialGradient(
-                        colors = listOf(Color(0xFF232527), Color(0xFF0C0D0E), Color.Black),
-                        center = Offset(0.50f, 0.55f),
-                        radius = 240f
-                    )
+                    else frontFaceBrush
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -183,7 +223,7 @@ fun FlipButton(
                     val h = size.height
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(Color.White.copy(alpha = 0.45f), Color.Transparent),
+                            colors = backFaceSheenColors,
                             center = Offset(w * 0.50f, h * 0.35f),
                             radius = w * 0.45f
                         ),
@@ -235,7 +275,7 @@ fun FlipButton(
             val insetH = h * 0.32f
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (isPressed) 0.85f else 0.70f)),
+                    colors = if (isPressed) insetShadowColorsPressed else insetShadowColorsNormal,
                     startY = h - insetH,
                     endY = h
                 ),
@@ -247,7 +287,7 @@ fun FlipButton(
             drawCircle(
                 color = Color.Black.copy(alpha = 0.50f),
                 radius = r - 0.5.dp.toPx(),
-                style = Stroke(width = 1.dp.toPx())
+                style = stroke1dp
             )
 
             // Neon ring
@@ -255,23 +295,19 @@ fun FlipButton(
             drawCircle(
                 color = effectiveColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
                 radius = ringRadius,
-                style = Stroke(width = 4.dp.toPx())
+                style = stroke4dp
             )
             drawCircle(
                 color = effectiveColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
                 radius = ringRadius,
-                style = Stroke(width = 2.dp.toPx())
+                style = stroke2dp
             )
 
             // Glass lens
             val lensInset = 1.dp.toPx()
             drawArc(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isPressed) 0.06f else 0.14f),
-                        Color.White.copy(alpha = if (isPressed) 0.02f else 0.05f),
-                        Color.Transparent
-                    ),
+                    colors = if (isPressed) lensColorsPressed else lensColorsNormal,
                     startY = 0f,
                     endY = h * 0.40f
                 ),
@@ -280,13 +316,13 @@ fun FlipButton(
                 useCenter = false,
                 topLeft = Offset(lensInset, lensInset),
                 size = Size(w - lensInset * 2f, h - lensInset * 2f),
-                style = Stroke(width = 1.dp.toPx())
+                style = stroke1dp
             )
 
             // Specular sheen
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                    colors = specularSheenColors,
                     center = Offset(w * 0.70f, h * 0.78f),
                     radius = w * 0.25f
                 ),

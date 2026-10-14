@@ -148,6 +148,13 @@ fun TestTubeTrigger(
         )
     }
 
+    val tubeCapsuleColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val reservoirPoolColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(widthDp, heightDp)
@@ -162,13 +169,12 @@ fun TestTubeTrigger(
                     val padY = 8.dp.toPx()
 
                     // 1. Elongated Test Tube Capsule Aura
+                    tubeCapsuleColors[0] = glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.35f else 0.15f))
+                    tubeCapsuleColors[1] = glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.70f else 0.40f))
+                    tubeCapsuleColors[2] = Color.Transparent
                     drawRoundRect(
                         brush = Brush.verticalGradient(
-                            colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.35f else 0.15f)),
-                                glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.70f else 0.40f)),
-                                Color.Transparent
-                            ),
+                            colors = tubeCapsuleColors,
                             startY = -padY,
                             endY = size.height + padY
                         ),
@@ -181,13 +187,12 @@ fun TestTubeTrigger(
                     if (fillProgress > 0.05f) {
                         val poolH = (size.height * 0.70f) * fillProgress
                         val poolTop = size.height - poolH
+                        reservoirPoolColors[0] = glowColor.copy(alpha = rgbBloomAlpha * fillProgress * 0.85f)
+                        reservoirPoolColors[1] = glowColor.copy(alpha = rgbBloomAlpha * fillProgress * 0.30f)
+                        reservoirPoolColors[2] = Color.Transparent
                         drawRoundRect(
                             brush = Brush.radialGradient(
-                                colors = listOf(
-                                    glowColor.copy(alpha = rgbBloomAlpha * fillProgress * 0.85f),
-                                    glowColor.copy(alpha = rgbBloomAlpha * fillProgress * 0.30f),
-                                    Color.Transparent
-                                ),
+                                colors = reservoirPoolColors,
                                 center = Offset(center.x, size.height - poolH * 0.5f),
                                 radius = size.width * 0.80f
                             ),

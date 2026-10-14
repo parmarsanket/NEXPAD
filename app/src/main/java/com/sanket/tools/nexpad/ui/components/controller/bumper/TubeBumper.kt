@@ -144,6 +144,16 @@ fun TubeBumper(
         )
     }
 
+    val stadiumBloomColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val tubeBloomColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val nodeBloomColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(154.dp, 54.dp)
@@ -158,13 +168,12 @@ fun TubeBumper(
                     val padY = 8.dp.toPx()
 
                     // 1. Ambient stadium floor aura
+                    stadiumBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.50f else 0.30f))
+                    stadiumBloomColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.12f)
+                    stadiumBloomColors[2] = Color.Transparent
                     drawRoundRect(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.50f else 0.30f)),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.12f),
-                                Color.Transparent
-                            ),
+                            colors = stadiumBloomColors,
                             center = center,
                             radius = size.width * 0.55f
                         ),
@@ -178,13 +187,12 @@ fun TubeBumper(
                     val tubeW = (size.width - 24.dp.toPx()) * (0.45f + 0.55f * liquidProgress)
                     val tubeLeft = center.x - tubeW / 2f
 
+                    tubeBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.80f else 0.40f))
+                    tubeBloomColors[1] = Color.White.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.95f else 0.55f))
+                    tubeBloomColors[2] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.80f else 0.40f))
                     drawRoundRect(
                         brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.80f else 0.40f)),
-                                Color.White.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.95f else 0.55f)),
-                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.80f else 0.40f))
-                            ),
+                            colors = tubeBloomColors,
                             startX = tubeLeft,
                             endX = tubeLeft + tubeW
                         ),
@@ -199,13 +207,12 @@ fun TubeBumper(
                     val leftNodeX = tubeLeft
                     val rightNodeX = tubeLeft + tubeW
 
+                    nodeBloomColors[0] = Color.White.copy(alpha = nodeAlpha)
+                    nodeBloomColors[1] = neonColor.copy(alpha = nodeAlpha * 0.70f)
+                    nodeBloomColors[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = nodeAlpha),
-                                neonColor.copy(alpha = nodeAlpha * 0.70f),
-                                Color.Transparent
-                            ),
+                            colors = nodeBloomColors,
                             center = Offset(leftNodeX, center.y),
                             radius = nodeRadius
                         ),
@@ -215,11 +222,7 @@ fun TubeBumper(
 
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = nodeAlpha),
-                                neonColor.copy(alpha = nodeAlpha * 0.70f),
-                                Color.Transparent
-                            ),
+                            colors = nodeBloomColors,
                             center = Offset(rightNodeX, center.y),
                             radius = nodeRadius
                         ),

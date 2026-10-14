@@ -194,6 +194,17 @@ fun OrbJoystick(
         label = "orb_joystick_bloom"
     )
 
+    val strokeCoronaRing = remember { androidx.compose.ui.graphics.drawscope.Stroke(width = 2.2f) }
+    val prominenceColors = remember { listOf(Color.White.copy(alpha = 0.8f), Color.Transparent) }
+    val coronaStops = remember(glowColor) {
+        arrayOf(
+            0.00f to Color.Transparent,
+            0.35f to Color.Transparent,
+            0.75f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
+    }
+
     Box(
         modifier = modifier
             .size(150.dp)
@@ -206,14 +217,13 @@ fun OrbJoystick(
                     val coronaRadius = size.minDimension * 0.54f
 
                     // 1. Levitating plasma containment sphere corona
+                    coronaStops[0] = 0.00f to Color.White.copy(alpha = rgbBloomAlpha * 0.60f)
+                    coronaStops[1] = 0.35f to glowColor.copy(alpha = rgbBloomAlpha * 0.40f)
+                    coronaStops[2] = 0.75f to glowColor.copy(alpha = rgbBloomAlpha * 0.14f)
+                    coronaStops[3] = 1.00f to Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colorStops = arrayOf(
-                                0.00f to Color.White.copy(alpha = rgbBloomAlpha * 0.60f),
-                                0.35f to glowColor.copy(alpha = rgbBloomAlpha * 0.40f),
-                                0.75f to glowColor.copy(alpha = rgbBloomAlpha * 0.14f),
-                                1.00f to Color.Transparent
-                            ),
+                            colorStops = coronaStops,
                             center = plasmaCenter,
                             radius = size.minDimension * 0.70f
                         ),
@@ -226,7 +236,7 @@ fun OrbJoystick(
                         color = glowColor.copy(alpha = if (deflectionFraction > 0.3f) 0.85f else 0.45f),
                         radius = coronaRadius,
                         center = plasmaCenter,
-                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.2f)
+                        style = strokeCoronaRing
                     )
 
                     // 3. Solar prominences (6 flaring coronal plasma arcs)
@@ -238,7 +248,7 @@ fun OrbJoystick(
                         val promLen = 8.dp.toPx() + (6.dp.toPx() * deflectionFraction)
                         drawLine(
                             brush = Brush.linearGradient(
-                                colors = listOf(Color.White.copy(alpha = 0.8f), Color.Transparent),
+                                colors = prominenceColors,
                                 start = Offset(plasmaCenter.x + coronaRadius * cosA, plasmaCenter.y + coronaRadius * sinA),
                                 end = Offset(plasmaCenter.x + (coronaRadius + promLen) * cosA, plasmaCenter.y + (coronaRadius + promLen) * sinA)
                             ),
@@ -852,6 +862,16 @@ fun OrbStickButton(
         label = "orb_stick_btn_bloom"
     )
 
+    val strokeCausticRing = remember { androidx.compose.ui.graphics.drawscope.Stroke(width = 1.8f) }
+    val btnFlareStops = remember(glowColor) {
+        arrayOf(
+            0.00f to Color.Transparent,
+            0.35f to Color.Transparent,
+            0.75f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
+    }
+
     Box(
         modifier = modifier
             .size(70.dp)
@@ -864,14 +884,13 @@ fun OrbStickButton(
                 if (isRgbEnabled) {
                     val flareR = size.minDimension * (if (isPressed) 1.05f else 0.85f)
                     // 1. Plasma caustic core flare
+                    btnFlareStops[0] = 0.00f to (if (isPressed) Color.White else glowColor).copy(alpha = rgbBloomAlpha * 0.70f)
+                    btnFlareStops[1] = 0.35f to glowColor.copy(alpha = rgbBloomAlpha * 0.35f)
+                    btnFlareStops[2] = 0.75f to glowColor.copy(alpha = rgbBloomAlpha * 0.12f)
+                    btnFlareStops[3] = 1.00f to Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colorStops = arrayOf(
-                                0.00f to (if (isPressed) Color.White else glowColor).copy(alpha = rgbBloomAlpha * 0.70f),
-                                0.35f to glowColor.copy(alpha = rgbBloomAlpha * 0.35f),
-                                0.75f to glowColor.copy(alpha = rgbBloomAlpha * 0.12f),
-                                1.00f to Color.Transparent
-                            ),
+                            colorStops = btnFlareStops,
                             center = center,
                             radius = flareR
                         ),
@@ -884,7 +903,7 @@ fun OrbStickButton(
                         color = glowColor.copy(alpha = if (isPressed) 0.65f else 0.28f),
                         radius = size.minDimension * 0.52f,
                         center = center,
-                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.8f)
+                        style = strokeCausticRing
                     )
                 }
             }

@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -96,6 +97,65 @@ fun EclipseButton(
     val psShape = getPlayStationShape(activeLabel)
     val effectiveColor = if (psShape != null) getPlayStationColor(psShape) else buttonColor
 
+    val density = LocalDensity.current.density
+    val stroke2_5 = remember { Stroke(width = 2.5f) }
+    val stroke1dp = remember(density) { Stroke(width = 1f * density) }
+    val stroke2dp = remember(density) { Stroke(width = 2f * density) }
+    val stroke4dp = remember(density) { Stroke(width = 4f * density) }
+
+    val borderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.50f),
+                Color.Black.copy(alpha = 0.85f)
+            )
+        )
+    }
+
+    val moonDiscBrush = remember {
+        Brush.radialGradient(
+            colors = listOf(Color(0xFF202224), Color(0xFF08090A)),
+            center = Offset(0.50f, 0.40f),
+            radius = 240f
+        )
+    }
+
+    val insetShadowColorsPressed = remember {
+        listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f))
+    }
+    val insetShadowColorsNormal = remember {
+        listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f))
+    }
+    val lensColorsPressed = remember {
+        listOf(
+            Color.White.copy(alpha = 0.06f),
+            Color.White.copy(alpha = 0.02f),
+            Color.Transparent
+        )
+    }
+    val lensColorsNormal = remember {
+        listOf(
+            Color.White.copy(alpha = 0.14f),
+            Color.White.copy(alpha = 0.05f),
+            Color.Transparent
+        )
+    }
+    val specularSheenColors = remember {
+        listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)
+    }
+
+    val penumbraStops = remember(effectiveColor) {
+        arrayOf(
+            0.00f to Color.Transparent,
+            0.25f to Color.Transparent,
+            0.65f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
+    }
+    val diamondFlareColors = remember(effectiveColor) {
+        listOf(Color.White, effectiveColor, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(80.dp)
@@ -112,14 +172,13 @@ fun EclipseButton(
                         center.y - slideOffset * 0.55f
                     )
                     val penumbraRadius = size.minDimension * 0.95f
+                    penumbraStops[0] = 0.00f to Color.White.copy(alpha = if (isPressed) 0.65f else 0.20f)
+                    penumbraStops[1] = 0.25f to effectiveColor.copy(alpha = rgbBloomAlpha * 0.70f)
+                    penumbraStops[2] = 0.65f to effectiveColor.copy(alpha = rgbBloomAlpha * 0.20f)
+                    penumbraStops[3] = 1.00f to Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colorStops = arrayOf(
-                                0.00f to Color.White.copy(alpha = if (isPressed) 0.65f else 0.20f),
-                                0.25f to effectiveColor.copy(alpha = rgbBloomAlpha * 0.70f),
-                                0.65f to effectiveColor.copy(alpha = rgbBloomAlpha * 0.20f),
-                                1.00f to Color.Transparent
-                            ),
+                            colorStops = penumbraStops,
                             center = penumbraCenter,
                             radius = penumbraRadius
                         ),
@@ -132,7 +191,7 @@ fun EclipseButton(
                         color = effectiveColor.copy(alpha = if (isPressed) 0.55f else 0.22f),
                         radius = size.minDimension * 0.52f,
                         center = center,
-                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.5f)
+                        style = stroke2_5
                     )
 
                     // 3. Diamond Ring flare spike on press at 135° limb
@@ -144,7 +203,7 @@ fun EclipseButton(
                         // Brilliant diamond core
                         drawCircle(
                             brush = Brush.radialGradient(
-                                colors = listOf(Color.White, effectiveColor, Color.Transparent),
+                                colors = diamondFlareColors,
                                 center = flareCenter,
                                 radius = 22f
                             ),
@@ -178,12 +237,7 @@ fun EclipseButton(
             .background(Color(0xFF040405))
             .border(
                 width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.50f),
-                        Color.Black.copy(alpha = 0.85f)
-                    )
-                ),
+                brush = borderBrush,
                 shape = CircleShape
             )
             .pointerInput(key) {
@@ -235,13 +289,7 @@ fun EclipseButton(
                     ambientColor = Color.Black
                 )
                 .clip(CircleShape)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(Color(0xFF202224), Color(0xFF08090A)),
-                        center = Offset(0.50f, 0.40f),
-                        radius = 240f
-                    )
-                ),
+                .background(moonDiscBrush),
             contentAlignment = Alignment.Center
         ) {
             if (psShape != null) {
@@ -270,7 +318,7 @@ fun EclipseButton(
             val insetH = h * 0.32f
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (isPressed) 0.85f else 0.70f)),
+                    colors = if (isPressed) insetShadowColorsPressed else insetShadowColorsNormal,
                     startY = h - insetH,
                     endY = h
                 ),
@@ -282,7 +330,7 @@ fun EclipseButton(
             drawCircle(
                 color = Color.Black.copy(alpha = 0.50f),
                 radius = r - 0.5.dp.toPx(),
-                style = Stroke(width = 1.dp.toPx())
+                style = stroke1dp
             )
 
             // Neon ring (.lx-ring): inset 3px, 2px core + 4px bloom
@@ -290,23 +338,19 @@ fun EclipseButton(
             drawCircle(
                 color = effectiveColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
                 radius = ringRadius,
-                style = Stroke(width = 4.dp.toPx())
+                style = stroke4dp
             )
             drawCircle(
                 color = effectiveColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
                 radius = ringRadius,
-                style = Stroke(width = 2.dp.toPx())
+                style = stroke2dp
             )
 
             // Glass lens (.lx-lens): top crescent arc highlight
             val lensInset = 1.dp.toPx()
             drawArc(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isPressed) 0.06f else 0.14f),
-                        Color.White.copy(alpha = if (isPressed) 0.02f else 0.05f),
-                        Color.Transparent
-                    ),
+                    colors = if (isPressed) lensColorsPressed else lensColorsNormal,
                     startY = 0f,
                     endY = h * 0.40f
                 ),
@@ -315,13 +359,13 @@ fun EclipseButton(
                 useCenter = false,
                 topLeft = Offset(lensInset, lensInset),
                 size = Size(w - lensInset * 2f, h - lensInset * 2f),
-                style = Stroke(width = 1.dp.toPx())
+                style = stroke1dp
             )
 
             // Bottom-right specular glint
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                    colors = specularSheenColors,
                     center = Offset(w * 0.70f, h * 0.78f),
                     radius = w * 0.25f
                 ),
@@ -345,6 +389,13 @@ internal fun StaticEclipseButton(
     val displayLabel = CategoryManager.getLabelForStyle(controlKey, labelStyle)
     val buttonColor = resolveButtonColor(controlKey, labelStyle, displayLabel)
     val psShape = getPlayStationShape(displayLabel)
+    val previewBloomColors = remember(buttonColor) {
+        listOf(
+            buttonColor.copy(alpha = 0.45f * 0.55f),
+            buttonColor.copy(alpha = 0.45f * 0.22f),
+            Color.Transparent
+        )
+    }
 
     Box(
         modifier = modifier
@@ -352,11 +403,7 @@ internal fun StaticEclipseButton(
             .drawBehind {
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(
-                            buttonColor.copy(alpha = 0.45f * 0.55f),
-                            buttonColor.copy(alpha = 0.45f * 0.22f),
-                            Color.Transparent
-                        ),
+                        colors = previewBloomColors,
                         center = center,
                         radius = size.minDimension * 1f
                     ),

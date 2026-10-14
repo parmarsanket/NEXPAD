@@ -184,6 +184,25 @@ fun CompassJoystick(
         label = "compass_joystick_bloom"
     )
 
+    val strokeAzimuth = remember {
+        androidx.compose.ui.graphics.drawscope.Stroke(
+            width = 1.8f,
+            pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(3f, 7f), 0f)
+        )
+    }
+    val coreBloomColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val northSouthColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val eastWestColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val beaconColors = remember(glowColor) {
+        arrayListOf(Color.White, glowColor, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(150.dp)
@@ -196,13 +215,12 @@ fun CompassJoystick(
                     val defFraction = (curDist / maxTravelPx).coerceIn(0f, 1f)
 
                     // 1. Ambient navigational core bloom
+                    coreBloomColors[0] = glowColor.copy(alpha = rgbBloomAlpha * 0.40f)
+                    coreBloomColors[1] = glowColor.copy(alpha = rgbBloomAlpha * 0.15f)
+                    coreBloomColors[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.40f),
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.15f),
-                                Color.Transparent
-                            ),
+                            colors = coreBloomColors,
                             center = center,
                             radius = size.minDimension * 0.55f
                         ),
@@ -215,19 +233,19 @@ fun CompassJoystick(
                         color = glowColor.copy(alpha = if (defFraction > 0.3f) 0.65f else 0.35f),
                         radius = azimuthR,
                         center = center,
-                        style = androidx.compose.ui.graphics.drawscope.Stroke(
-                            width = 1.8f,
-                            pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(3f, 7f), 0f)
-                        )
+                        style = strokeAzimuth
                     )
 
                     // 3. 4 Cardinal Compass Rose Star Flares (N, S, E, W)
                     val starLen = size.minDimension * 0.60f
                     val starColor = glowColor.copy(alpha = if (defFraction > 0.4f) 0.85f else 0.45f)
                     // North/South ray
+                    northSouthColors[0] = Color.Transparent
+                    northSouthColors[1] = if (curY < -10f) Color.White else starColor
+                    northSouthColors[2] = Color.Transparent
                     drawLine(
                         brush = Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, (if (curY < -10f) Color.White else starColor), Color.Transparent),
+                            colors = northSouthColors,
                             startY = center.y - starLen,
                             endY = center.y + starLen
                         ),
@@ -236,9 +254,12 @@ fun CompassJoystick(
                         strokeWidth = 2.0f
                     )
                     // East/West ray
+                    eastWestColors[0] = Color.Transparent
+                    eastWestColors[1] = if (curX.let { kotlin.math.abs(it) > 10f }) Color.White else starColor
+                    eastWestColors[2] = Color.Transparent
                     drawLine(
                         brush = Brush.horizontalGradient(
-                            colors = listOf(Color.Transparent, (if (curX.let { kotlin.math.abs(it) > 10f }) Color.White else starColor), Color.Transparent),
+                            colors = eastWestColors,
                             startX = center.x - starLen,
                             endX = center.x + starLen
                         ),
@@ -255,9 +276,10 @@ fun CompassJoystick(
                             center.x + azimuthR * kotlin.math.cos(headingRad).toFloat(),
                             center.y + azimuthR * kotlin.math.sin(headingRad).toFloat()
                         )
+                        beaconColors[1] = glowColor
                         drawCircle(
                             brush = Brush.radialGradient(
-                                colors = listOf(Color.White, glowColor, Color.Transparent),
+                                colors = beaconColors,
                                 center = beaconPos,
                                 radius = 24.dp.toPx()
                             ),
@@ -931,6 +953,15 @@ fun CompassStickButton(
         label = "compass_stick_btn_bloom"
     )
 
+    val btnCoreBloomStops = remember(glowColor) {
+        arrayOf(
+            0.00f to Color.Transparent,
+            0.35f to Color.Transparent,
+            0.75f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
+    }
+
     Box(
         modifier = modifier
             .size(70.dp)
@@ -943,14 +974,13 @@ fun CompassStickButton(
                 if (isRgbEnabled) {
                     val coreR = size.minDimension * (if (isPressed) 1.05f else 0.85f)
                     // 1. Core azimuth beacon bloom
+                    btnCoreBloomStops[0] = 0.00f to (if (isPressed) Color.White else glowColor).copy(alpha = rgbBloomAlpha * 0.65f)
+                    btnCoreBloomStops[1] = 0.35f to glowColor.copy(alpha = rgbBloomAlpha * 0.30f)
+                    btnCoreBloomStops[2] = 0.75f to glowColor.copy(alpha = rgbBloomAlpha * 0.10f)
+                    btnCoreBloomStops[3] = 1.00f to Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colorStops = arrayOf(
-                                0.00f to (if (isPressed) Color.White else glowColor).copy(alpha = rgbBloomAlpha * 0.65f),
-                                0.35f to glowColor.copy(alpha = rgbBloomAlpha * 0.30f),
-                                0.75f to glowColor.copy(alpha = rgbBloomAlpha * 0.10f),
-                                1.00f to Color.Transparent
-                            ),
+                            colorStops = btnCoreBloomStops,
                             center = center,
                             radius = coreR
                         ),

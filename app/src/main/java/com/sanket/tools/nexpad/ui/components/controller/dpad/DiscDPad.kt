@@ -266,6 +266,19 @@ fun DiscDPad(
         )
     }
 
+    val baseBloomColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val strokeRim = remember { androidx.compose.ui.graphics.drawscope.Stroke(width = 2.0f) }
+    val strokeBeaconArc = remember { androidx.compose.ui.graphics.drawscope.Stroke(width = 4.0f) }
+    val wedgeFlareStops = remember(neonColor) {
+        arrayOf(
+            0.00f to Color.Transparent,
+            0.40f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
+    }
+
     Box(
         modifier = modifier
             .size(160.dp)
@@ -274,13 +287,12 @@ fun DiscDPad(
                     val rimRadius = size.minDimension * 0.52f
 
                     // 1. Holographic turntable base bloom
+                    baseBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * 0.45f)
+                    baseBloomColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.16f)
+                    baseBloomColors[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.45f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.16f),
-                                Color.Transparent
-                            ),
+                            colors = baseBloomColors,
                             center = center,
                             radius = size.minDimension * 0.95f
                         ),
@@ -293,7 +305,7 @@ fun DiscDPad(
                         color = neonColor.copy(alpha = if (isAnyPressed) 0.60f else 0.25f),
                         radius = rimRadius,
                         center = center,
-                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.0f)
+                        style = strokeRim
                     )
 
                     // 3. Directional angular sweep wedge flare following tilt / gate angle
@@ -301,13 +313,12 @@ fun DiscDPad(
                     if (isAnyPressed && activeGate != null) {
                         val flareRadius = size.minDimension * 0.62f
                         val flareWedgeStart = activeGate - 35f
+                        wedgeFlareStops[0] = 0.00f to Color.White.copy(alpha = 0.85f * gateAlphaAnim)
+                        wedgeFlareStops[1] = 0.40f to neonColor.copy(alpha = 0.65f * gateAlphaAnim)
+                        wedgeFlareStops[2] = 1.00f to Color.Transparent
                         drawArc(
                             brush = Brush.radialGradient(
-                                colorStops = arrayOf(
-                                    0.00f to Color.White.copy(alpha = 0.85f * gateAlphaAnim),
-                                    0.40f to neonColor.copy(alpha = 0.65f * gateAlphaAnim),
-                                    1.00f to Color.Transparent
-                                ),
+                                colorStops = wedgeFlareStops,
                                 center = center,
                                 radius = flareRadius
                             ),
@@ -326,7 +337,7 @@ fun DiscDPad(
                             useCenter = false,
                             topLeft = Offset(center.x - rimRadius, center.y - rimRadius),
                             size = Size(rimRadius * 2f, rimRadius * 2f),
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4.0f)
+                            style = strokeBeaconArc
                         )
                     }
                 }

@@ -158,6 +158,15 @@ fun LiquidOrbTrigger(
     val triggerShape = CircleShape
     val windowShape = RoundedCornerShape(13.dp)
 
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val strokeCorona = remember(density) { Stroke(width = 1.5f * density) }
+    val poolBloomColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val meniscusColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(92.dp, 92.dp)
@@ -176,13 +185,12 @@ fun LiquidOrbTrigger(
                     val dropletW = size.width * (0.80f + 0.15f * swayScaleY)
                     val dropletH = fluidH + 16.dp.toPx()
 
+                    poolBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.65f else 0.35f))
+                    poolBloomColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.18f)
+                    poolBloomColors[2] = Color.Transparent
                     drawOval(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.65f else 0.35f)),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.18f),
-                                Color.Transparent
-                            ),
+                            colors = poolBloomColors,
                             center = Offset(center.x + swayOffsetX, poolCenterY),
                             radius = size.minDimension * 0.65f
                         ),
@@ -195,13 +203,12 @@ fun LiquidOrbTrigger(
                     val meniscusW = size.width * 0.70f
                     val meniscusH = 10.dp.toPx() * swayScaleY
 
+                    meniscusColors[0] = Color.White.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.80f else 0.40f))
+                    meniscusColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.60f)
+                    meniscusColors[2] = Color.Transparent
                     drawOval(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.80f else 0.40f)),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.60f),
-                                Color.Transparent
-                            ),
+                            colors = meniscusColors,
                             center = Offset(center.x + swayOffsetX, meniscusY),
                             radius = meniscusW * 0.50f
                         ),
@@ -214,7 +221,7 @@ fun LiquidOrbTrigger(
                         color = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.70f else 0.35f)),
                         radius = baseR + 3.dp.toPx(),
                         center = center,
-                        style = Stroke(width = 1.5.dp.toPx())
+                        style = strokeCorona
                     )
                 }
             }

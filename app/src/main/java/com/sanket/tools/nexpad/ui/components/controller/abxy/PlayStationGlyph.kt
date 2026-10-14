@@ -3,7 +3,9 @@ package com.sanket.tools.nexpad.ui.components.controller.abxy
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -173,9 +175,43 @@ fun PlayStationSymbol(
     size: Dp = 28.dp,
     strokeWidth: Dp? = null
 ) {
+    val density = LocalDensity.current
+    val strokeStyle = remember(size, strokeWidth, density) {
+        val boxPx = with(density) { size.toPx() }
+        val strokePx = strokeWidth?.let { with(density) { it.toPx() } } ?: (boxPx * 0.11f).coerceAtLeast(1.5f * density.density)
+        Stroke(width = strokePx)
+    }
+    val roundSquareStrokeStyle = remember(size, strokeWidth, density) {
+        val boxPx = with(density) { size.toPx() }
+        val strokePx = strokeWidth?.let { with(density) { it.toPx() } } ?: (boxPx * 0.11f).coerceAtLeast(1.5f * density.density)
+        Stroke(width = strokePx, join = StrokeJoin.Round)
+    }
+    val triangleStrokeStyle = remember(size, strokeWidth, density) {
+        val boxPx = with(density) { size.toPx() }
+        val strokePx = strokeWidth?.let { with(density) { it.toPx() } } ?: (boxPx * 0.11f).coerceAtLeast(1.5f * density.density)
+        Stroke(width = strokePx, cap = StrokeCap.Round, join = StrokeJoin.Round)
+    }
+    val trianglePath = remember(size, strokeWidth, density) {
+        if (shape == PlayStationShape.TRIANGLE) {
+            val boxPx = with(density) { size.toPx() }
+            val strokePx = strokeWidth?.let { with(density) { it.toPx() } } ?: (boxPx * 0.11f).coerceAtLeast(1.5f * density.density)
+            val center = Offset(boxPx / 2f, boxPx / 2f)
+            val R = (boxPx * 0.44f).coerceAtLeast(strokePx)
+            val Rtri = R * 1.06f
+            val effR = (Rtri - (strokePx / 2f)).coerceAtLeast(1f)
+            val yShift = R * 0.08f
+            Path().apply {
+                moveTo(center.x, center.y - effR + yShift)
+                lineTo(center.x + (effR * 0.8660f), center.y + (effR * 0.50f) + yShift)
+                lineTo(center.x - (effR * 0.8660f), center.y + (effR * 0.50f) + yShift)
+                close()
+            }
+        } else null
+    }
+
     Canvas(modifier = modifier.size(size)) {
         val boxSize = this.size.minDimension
-        val strokePx = strokeWidth?.toPx() ?: (boxSize * 0.11f).coerceAtLeast(1.5f * density)
+        val strokePx = strokeWidth?.toPx() ?: (boxSize * 0.11f).coerceAtLeast(1.5f * density.density)
         val center = Offset(this.size.width / 2f, this.size.height / 2f)
 
         // Master optical envelope radius: every shape is mathematically harmonized around R
@@ -208,7 +244,7 @@ fun PlayStationSymbol(
                     color = color,
                     radius = radius,
                     center = center,
-                    style = Stroke(width = strokePx)
+                    style = strokeStyle
                 )
             }
             PlayStationShape.SQUARE -> {
@@ -220,33 +256,17 @@ fun PlayStationSymbol(
                     topLeft = Offset(center.x - halfSide, center.y - halfSide),
                     size = Size(halfSide * 2f, halfSide * 2f),
                     cornerRadius = cornerRadius,
-                    style = Stroke(width = strokePx, join = StrokeJoin.Round)
+                    style = roundSquareStrokeStyle
                 )
             }
             PlayStationShape.TRIANGLE -> {
-                // Equilateral triangle harmonized with R and optically centered
-                val Rtri = R * 1.06f
-                val effR = (Rtri - (strokePx / 2f)).coerceAtLeast(1f)
-                val yShift = R * 0.08f // Optical center compensation for apex vs flat base
-
-                val path = Path().apply {
-                    // Top apex
-                    moveTo(center.x, center.y - effR + yShift)
-                    // Bottom-right vertex
-                    lineTo(center.x + (effR * 0.8660f), center.y + (effR * 0.50f) + yShift)
-                    // Bottom-left vertex
-                    lineTo(center.x - (effR * 0.8660f), center.y + (effR * 0.50f) + yShift)
-                    close()
-                }
-                drawPath(
-                    path = path,
-                    color = color,
-                    style = Stroke(
-                        width = strokePx,
-                        cap = StrokeCap.Round,
-                        join = StrokeJoin.Round
+                trianglePath?.let {
+                    drawPath(
+                        path = it,
+                        color = color,
+                        style = triangleStrokeStyle
                     )
-                )
+                }
             }
         }
     }

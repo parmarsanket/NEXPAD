@@ -128,6 +128,22 @@ fun SliderTrigger(
 
     val density = LocalDensity.current
 
+    val channelCapsuleColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val trackGuideColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val beaconFlareColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val wingSpikeColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val puckBloomColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(widthDp, totalHeightDp)
@@ -139,13 +155,12 @@ fun SliderTrigger(
                     val curPull = fillAnim.value
 
                     // 1. Vertical Track Channel Capsule Aura
+                    channelCapsuleColors[0] = glowColor.copy(alpha = rgbBloomAlpha * (if (isDragging) 0.50f else 0.30f))
+                    channelCapsuleColors[1] = glowColor.copy(alpha = rgbBloomAlpha * 0.12f)
+                    channelCapsuleColors[2] = Color.Transparent
                     drawRoundRect(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * (if (isDragging) 0.50f else 0.30f)),
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.12f),
-                                Color.Transparent
-                            ),
+                            colors = channelCapsuleColors,
                             center = center,
                             radius = size.height * 0.55f
                         ),
@@ -160,14 +175,13 @@ fun SliderTrigger(
                     val bottomRestPx = topRestPx + travelSpanPx
                     val puckY = if (isFlipped) bottomRestPx - curPull * travelSpanPx else topRestPx + curPull * travelSpanPx
 
+                    trackGuideColors[0] = Color.Transparent
+                    trackGuideColors[1] = glowColor.copy(alpha = rgbBloomAlpha * 0.40f)
+                    trackGuideColors[2] = glowColor.copy(alpha = rgbBloomAlpha * 0.40f)
+                    trackGuideColors[3] = Color.Transparent
                     drawLine(
                         brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.40f),
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.40f),
-                                Color.Transparent
-                            ),
+                            colors = trackGuideColors,
                             startY = topRestPx - 10.dp.toPx(),
                             endY = bottomRestPx + 10.dp.toPx()
                         ),
@@ -180,13 +194,12 @@ fun SliderTrigger(
                     val beaconRadius = (if (isDragging) 18.dp else 12.dp).toPx()
                     val beaconAlpha = rgbBloomAlpha * (if (isDragging) 0.90f else 0.55f)
 
+                    beaconFlareColors[0] = Color.White.copy(alpha = beaconAlpha)
+                    beaconFlareColors[1] = glowColor.copy(alpha = beaconAlpha * 0.85f)
+                    beaconFlareColors[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = beaconAlpha),
-                                glowColor.copy(alpha = beaconAlpha * 0.85f),
-                                Color.Transparent
-                            ),
+                            colors = beaconFlareColors,
                             center = Offset(center.x, puckY),
                             radius = beaconRadius
                         ),
@@ -196,9 +209,12 @@ fun SliderTrigger(
 
                     // Lateral flare wing spikes
                     val wingLen = (if (isDragging) 14.dp else 8.dp).toPx()
+                    wingSpikeColors[0] = Color.Transparent
+                    wingSpikeColors[1] = glowColor.copy(alpha = beaconAlpha)
+                    wingSpikeColors[2] = Color.Transparent
                     drawLine(
                         brush = Brush.horizontalGradient(
-                            colors = listOf(Color.Transparent, glowColor.copy(alpha = beaconAlpha), Color.Transparent),
+                            colors = wingSpikeColors,
                             startX = center.x - wingLen,
                             endX = center.x + wingLen
                         ),
@@ -355,13 +371,12 @@ fun SliderTrigger(
                 // Active puck bloom
                 .drawBehind {
                     if (isRgbEnabled) {
+                        puckBloomColors[0] = glowColor.copy(alpha = rgbBloomAlpha * 0.60f)
+                        puckBloomColors[1] = glowColor.copy(alpha = rgbBloomAlpha * 0.25f)
+                        puckBloomColors[2] = Color.Transparent
                         drawCircle(
                             brush = Brush.radialGradient(
-                                colors = listOf(
-                                    glowColor.copy(alpha = rgbBloomAlpha * 0.60f),
-                                    glowColor.copy(alpha = rgbBloomAlpha * 0.25f),
-                                    Color.Transparent
-                                ),
+                                colors = puckBloomColors,
                                 center = center,
                                 radius = size.minDimension * 0.85f
                             ),

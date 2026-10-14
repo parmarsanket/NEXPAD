@@ -51,6 +51,14 @@ fun GamepadButton(
     )
 
     val primaryColor = MaterialTheme.colorScheme.primary
+    val bloomStops = remember(primaryColor) {
+        arrayOf(
+            0.00f to Color.Transparent,
+            0.35f to Color.Transparent,
+            0.75f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
+    }
 
     Box(
         modifier = modifier
@@ -63,14 +71,13 @@ fun GamepadButton(
             .drawBehind {
                 val auraRadius = size.minDimension * (if (isPressed) 1.05f else 0.90f)
                 // Dual-layer primary neon pulse in drawBehind
+                bloomStops[0] = 0.00f to (if (isPressed) Color.White else primaryColor).copy(alpha = bloomAlpha * 0.65f)
+                bloomStops[1] = 0.35f to primaryColor.copy(alpha = bloomAlpha * 0.35f)
+                bloomStops[2] = 0.75f to primaryColor.copy(alpha = bloomAlpha * 0.12f)
+                bloomStops[3] = 1.00f to Color.Transparent
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colorStops = arrayOf(
-                            0.00f to (if (isPressed) Color.White else primaryColor).copy(alpha = bloomAlpha * 0.65f),
-                            0.35f to primaryColor.copy(alpha = bloomAlpha * 0.35f),
-                            0.75f to primaryColor.copy(alpha = bloomAlpha * 0.12f),
-                            1.00f to Color.Transparent
-                        ),
+                        colorStops = bloomStops,
                         center = center,
                         radius = auraRadius
                     ),

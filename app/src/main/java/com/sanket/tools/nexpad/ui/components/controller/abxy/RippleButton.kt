@@ -131,6 +131,42 @@ fun RippleButton(
         )
     }
 
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val borderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.50f),
+                Color.Black.copy(alpha = 0.85f)
+            )
+        )
+    }
+    val stroke1dp = remember(density) { Stroke(width = 1f * density) }
+    val stroke2dp = remember(density) { Stroke(width = 2f * density) }
+    val stroke4dp = remember(density) { Stroke(width = 4f * density) }
+    val stroke4_5dp = remember(density) { Stroke(width = 4.5f * density) }
+    val insetShadowColorsPressed = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)) }
+    val insetShadowColorsNormal = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)) }
+    val lensColorsPressed = remember {
+        listOf(
+            Color.White.copy(alpha = 0.06f),
+            Color.White.copy(alpha = 0.02f),
+            Color.Transparent
+        )
+    }
+    val lensColorsNormal = remember {
+        listOf(
+            Color.White.copy(alpha = 0.14f),
+            Color.White.copy(alpha = 0.05f),
+            Color.Transparent
+        )
+    }
+    val specularSheenColors = remember {
+        listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)
+    }
+    val bloomColorsList = remember(effectiveColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(80.dp)
@@ -138,13 +174,12 @@ fun RippleButton(
                 if (isRgbEnabled) {
                     // 1. Acoustic shockwave epicenter bloom
                     val epicenterRadius = size.minDimension * 0.95f
+                    bloomColorsList[0] = effectiveColor.copy(alpha = rgbBloomAlpha * 0.45f)
+                    bloomColorsList[1] = effectiveColor.copy(alpha = rgbBloomAlpha * 0.16f)
+                    bloomColorsList[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                effectiveColor.copy(alpha = rgbBloomAlpha * 0.45f),
-                                effectiveColor.copy(alpha = rgbBloomAlpha * 0.16f),
-                                Color.Transparent
-                            ),
+                            colors = bloomColorsList,
                             center = center,
                             radius = epicenterRadius
                         ),
@@ -167,14 +202,14 @@ fun RippleButton(
                             color = effectiveColor.copy(alpha = currentAlpha * 0.35f),
                             radius = ringR,
                             center = rippleCenter,
-                            style = Stroke(width = 4.5.dp.toPx())
+                            style = stroke4_5dp
                         )
                         // Sharp energetic core wavefront
                         drawCircle(
                             color = (if (progress < 0.25f) Color.White else effectiveColor).copy(alpha = currentAlpha),
                             radius = ringR,
                             center = rippleCenter,
-                            style = Stroke(width = 2.dp.toPx())
+                            style = stroke2dp
                         )
                     }
                 }
@@ -198,12 +233,7 @@ fun RippleButton(
             .background(baseDomeGradient)
             .border(
                 width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.50f),
-                        Color.Black.copy(alpha = 0.85f)
-                    )
-                ),
+                brush = borderBrush,
                 shape = CircleShape
             )
             .pointerInput(key) {
@@ -229,7 +259,7 @@ fun RippleButton(
             val insetH = h * 0.32f
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (isPressed) 0.85f else 0.70f)),
+                    colors = if (isPressed) insetShadowColorsPressed else insetShadowColorsNormal,
                     startY = h - insetH,
                     endY = h
                 ),
@@ -270,7 +300,7 @@ fun RippleButton(
             drawCircle(
                 color = Color.Black.copy(alpha = 0.50f),
                 radius = r - 0.5.dp.toPx(),
-                style = Stroke(width = 1.dp.toPx())
+                style = stroke1dp
             )
 
             // Neon ring
@@ -278,23 +308,19 @@ fun RippleButton(
             drawCircle(
                 color = effectiveColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
                 radius = ringRadius,
-                style = Stroke(width = 4.dp.toPx())
+                style = stroke4dp
             )
             drawCircle(
                 color = effectiveColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
                 radius = ringRadius,
-                style = Stroke(width = 2.dp.toPx())
+                style = stroke2dp
             )
 
             // Glass lens
             val lensInset = 1.dp.toPx()
             drawArc(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isPressed) 0.06f else 0.14f),
-                        Color.White.copy(alpha = if (isPressed) 0.02f else 0.05f),
-                        Color.Transparent
-                    ),
+                    colors = if (isPressed) lensColorsPressed else lensColorsNormal,
                     startY = 0f,
                     endY = h * 0.40f
                 ),
@@ -303,13 +329,13 @@ fun RippleButton(
                 useCenter = false,
                 topLeft = Offset(lensInset, lensInset),
                 size = Size(w - lensInset * 2f, h - lensInset * 2f),
-                style = Stroke(width = 1.dp.toPx())
+                style = stroke1dp
             )
 
             // Specular sheen
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                    colors = specularSheenColors,
                     center = Offset(w * 0.70f, h * 0.78f),
                     radius = w * 0.25f
                 ),
@@ -332,6 +358,13 @@ internal fun StaticRippleButton(
     val displayLabel = CategoryManager.getLabelForStyle(controlKey, labelStyle)
     val buttonColor = resolveButtonColor(controlKey, labelStyle, displayLabel)
     val psShape = getPlayStationShape(displayLabel)
+    val previewBloomColors = remember(buttonColor) {
+        listOf(
+            buttonColor.copy(alpha = 0.45f * 0.55f),
+            buttonColor.copy(alpha = 0.45f * 0.22f),
+            Color.Transparent
+        )
+    }
 
     Box(
         modifier = modifier
@@ -339,11 +372,7 @@ internal fun StaticRippleButton(
             .drawBehind {
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(
-                            buttonColor.copy(alpha = 0.45f * 0.55f),
-                            buttonColor.copy(alpha = 0.45f * 0.22f),
-                            Color.Transparent
-                        ),
+                        colors = previewBloomColors,
                         center = center,
                         radius = size.minDimension * 1f
                     ),

@@ -134,6 +134,53 @@ fun LiquidButton(
         )
     }
 
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val borderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.50f),
+                Color.Black.copy(alpha = 0.85f)
+            )
+        )
+    }
+    val stroke1dp = remember(density) { Stroke(width = 1f * density) }
+    val stroke2dp = remember(density) { Stroke(width = 2f * density) }
+    val stroke4dp = remember(density) { Stroke(width = 4f * density) }
+    val liquidSheenColors = remember {
+        listOf(
+            Color.White.copy(alpha = 0.35f),
+            Color.Transparent
+        )
+    }
+    val insetShadowColorsPressed = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)) }
+    val insetShadowColorsNormal = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)) }
+    val lensColorsPressed = remember {
+        listOf(
+            Color.White.copy(alpha = 0.06f),
+            Color.White.copy(alpha = 0.02f),
+            Color.Transparent
+        )
+    }
+    val lensColorsNormal = remember {
+        listOf(
+            Color.White.copy(alpha = 0.14f),
+            Color.White.copy(alpha = 0.05f),
+            Color.Transparent
+        )
+    }
+    val specularSheenColors = remember {
+        listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)
+    }
+
+    val poolBloomStops = remember(effectiveColor) {
+        arrayOf(
+            0.00f to Color.Transparent,
+            0.35f to Color.Transparent,
+            0.75f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
+    }
+
     Box(
         modifier = modifier
             .size(80.dp)
@@ -146,14 +193,13 @@ fun LiquidButton(
                     val poolCenter = Offset(poolCenterX, poolCenterY)
                     val poolRadius = size.minDimension * (0.68f + 0.32f * clampedFill)
 
+                    poolBloomStops[0] = 0.00f to (if (isPressed) Color.White else effectiveColor).copy(alpha = rgbBloomAlpha * 0.55f)
+                    poolBloomStops[1] = 0.35f to effectiveColor.copy(alpha = rgbBloomAlpha * (0.35f + 0.35f * clampedFill))
+                    poolBloomStops[2] = 0.75f to effectiveColor.copy(alpha = rgbBloomAlpha * 0.15f)
+                    poolBloomStops[3] = 1.00f to Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colorStops = arrayOf(
-                                0.00f to (if (isPressed) Color.White else effectiveColor).copy(alpha = rgbBloomAlpha * 0.55f),
-                                0.35f to effectiveColor.copy(alpha = rgbBloomAlpha * (0.35f + 0.35f * clampedFill)),
-                                0.75f to effectiveColor.copy(alpha = rgbBloomAlpha * 0.15f),
-                                1.00f to Color.Transparent
-                            ),
+                            colorStops = poolBloomStops,
                             center = poolCenter,
                             radius = poolRadius
                         ),
@@ -197,12 +243,7 @@ fun LiquidButton(
             .background(baseDomeGradient)
             .border(
                 width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.50f),
-                        Color.Black.copy(alpha = 0.85f)
-                    )
-                ),
+                brush = borderBrush,
                 shape = CircleShape
             )
             .pointerInput(key) {
@@ -259,10 +300,7 @@ fun LiquidButton(
                     // Liquid volumetric surface sheen (.lq::after): linear-gradient(180deg, rgba(255,255,255,0.35), transparent 50%)
                     drawRect(
                         brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.35f),
-                                Color.Transparent
-                            ),
+                            colors = liquidSheenColors,
                             startY = fillTop,
                             endY = fillTop + fillH * 0.55f
                         ),
@@ -281,7 +319,7 @@ fun LiquidButton(
             val insetH = h * 0.32f
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (isPressed) 0.85f else 0.70f)),
+                    colors = if (isPressed) insetShadowColorsPressed else insetShadowColorsNormal,
                     startY = h - insetH,
                     endY = h
                 ),
@@ -331,7 +369,7 @@ fun LiquidButton(
             drawCircle(
                 color = Color.Black.copy(alpha = 0.50f),
                 radius = r - 0.5.dp.toPx(),
-                style = Stroke(width = 1.dp.toPx())
+                style = stroke1dp
             )
 
             // Neon ring
@@ -339,23 +377,19 @@ fun LiquidButton(
             drawCircle(
                 color = effectiveColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
                 radius = ringRadius,
-                style = Stroke(width = 4.dp.toPx())
+                style = stroke4dp
             )
             drawCircle(
                 color = effectiveColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
                 radius = ringRadius,
-                style = Stroke(width = 2.dp.toPx())
+                style = stroke2dp
             )
 
             // Glass lens
             val lensInset = 1.dp.toPx()
             drawArc(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isPressed) 0.06f else 0.14f),
-                        Color.White.copy(alpha = if (isPressed) 0.02f else 0.05f),
-                        Color.Transparent
-                    ),
+                    colors = if (isPressed) lensColorsPressed else lensColorsNormal,
                     startY = 0f,
                     endY = h * 0.40f
                 ),
@@ -364,13 +398,13 @@ fun LiquidButton(
                 useCenter = false,
                 topLeft = Offset(lensInset, lensInset),
                 size = Size(w - lensInset * 2f, h - lensInset * 2f),
-                style = Stroke(width = 1.dp.toPx())
+                style = stroke1dp
             )
 
             // Specular sheen
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                    colors = specularSheenColors,
                     center = Offset(w * 0.70f, h * 0.78f),
                     radius = w * 0.25f
                 ),
@@ -393,6 +427,13 @@ internal fun StaticLiquidButton(
     val displayLabel = CategoryManager.getLabelForStyle(controlKey, labelStyle)
     val buttonColor = resolveButtonColor(controlKey, labelStyle, displayLabel)
     val psShape = getPlayStationShape(displayLabel)
+    val previewBloomColors = remember(buttonColor) {
+        listOf(
+            buttonColor.copy(alpha = 0.45f * 0.55f),
+            buttonColor.copy(alpha = 0.45f * 0.22f),
+            Color.Transparent
+        )
+    }
 
     Box(
         modifier = modifier
@@ -400,11 +441,7 @@ internal fun StaticLiquidButton(
             .drawBehind {
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(
-                            buttonColor.copy(alpha = 0.45f * 0.55f),
-                            buttonColor.copy(alpha = 0.45f * 0.22f),
-                            Color.Transparent
-                        ),
+                        colors = previewBloomColors,
                         center = center,
                         radius = size.minDimension * 1f
                     ),

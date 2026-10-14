@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -112,6 +113,45 @@ fun GyroToggleButton(
         )
     }
 
+    val density = LocalDensity.current.density
+    val gimbalStroke = remember(density) {
+        Stroke(
+            width = 1.5f * density,
+            pathEffect = PathEffect.dashPathEffect(
+                floatArrayOf(6f * density, 4f * density), 0f
+            )
+        )
+    }
+    val stroke1_2dp = remember(density) { Stroke(width = 1.2f * density) }
+
+    val borderBrushOn = remember(activeAccentColor) {
+        Brush.verticalGradient(
+            colors = listOf(
+                activeAccentColor.copy(alpha = 0.85f),
+                activeAccentColor.copy(alpha = 0.30f)
+            )
+        )
+    }
+    val borderBrushOff = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.20f),
+                Color.Black.copy(alpha = 0.60f)
+            )
+        )
+    }
+
+    val lensColorsPressed = remember {
+        listOf(Color.White.copy(alpha = 0.08f), Color.Transparent)
+    }
+    val lensColorsNormal = remember {
+        listOf(Color.White.copy(alpha = 0.22f), Color.Transparent)
+    }
+
+    val bloomColorsList = remember(activeAccentColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(76.dp),
@@ -128,13 +168,12 @@ fun GyroToggleButton(
                 }
                 .drawBehind {
                     if (isRgbEnabled && isGyroEnabled) {
+                        bloomColorsList[0] = activeAccentColor.copy(alpha = rgbBloomAlpha * 0.45f)
+                        bloomColorsList[1] = activeAccentColor.copy(alpha = rgbBloomAlpha * 0.15f)
+                        bloomColorsList[2] = Color.Transparent
                         drawCircle(
                             brush = Brush.radialGradient(
-                                colors = listOf(
-                                    activeAccentColor.copy(alpha = rgbBloomAlpha * 0.45f),
-                                    activeAccentColor.copy(alpha = rgbBloomAlpha * 0.15f),
-                                    Color.Transparent
-                                ),
+                                colors = bloomColorsList,
                                 center = center,
                                 radius = size.minDimension * 0.95f
                             ),
@@ -152,19 +191,7 @@ fun GyroToggleButton(
                 .background(domeBrush)
                 .border(
                     width = 1.5.dp,
-                    brush = Brush.verticalGradient(
-                        colors = if (isGyroEnabled) {
-                            listOf(
-                                activeAccentColor.copy(alpha = 0.85f),
-                                activeAccentColor.copy(alpha = 0.30f)
-                            )
-                        } else {
-                            listOf(
-                                Color.White.copy(alpha = 0.20f),
-                                Color.Black.copy(alpha = 0.60f)
-                            )
-                        }
-                    ),
+                    brush = if (isGyroEnabled) borderBrushOn else borderBrushOff,
                     shape = CircleShape
                 )
                 .pointerInput(Unit) {
@@ -192,12 +219,7 @@ fun GyroToggleButton(
                     color = activeAccentColor.copy(alpha = if (isGyroEnabled) 0.65f else 0.25f),
                     radius = gimbalRadius,
                     center = Offset(cx, cy),
-                    style = Stroke(
-                        width = 1.5.dp.toPx(),
-                        pathEffect = PathEffect.dashPathEffect(
-                            floatArrayOf(6.dp.toPx(), 4.dp.toPx()), 0f
-                        )
-                    )
+                    style = gimbalStroke
                 )
 
                 // Inner Crosshairs / Horizon Guidelines
@@ -221,10 +243,7 @@ fun GyroToggleButton(
                 // Specular Acrylic Lens Glare Arc (Top Edge)
                 drawArc(
                     brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = if (isPressed) 0.08f else 0.22f),
-                            Color.Transparent
-                        ),
+                        colors = if (isPressed) lensColorsPressed else lensColorsNormal,
                         startY = 0f,
                         endY = size.height * 0.35f
                     ),
@@ -233,7 +252,7 @@ fun GyroToggleButton(
                     useCenter = false,
                     topLeft = Offset(2.dp.toPx(), 2.dp.toPx()),
                     size = Size(size.width - 4.dp.toPx(), size.height - 4.dp.toPx()),
-                    style = Stroke(width = 1.2.dp.toPx())
+                    style = stroke1_2dp
                 )
             }
 
@@ -295,6 +314,13 @@ fun StaticGyroToggleButton(
         )
     }
 
+    val previewBloomColors = remember(activeAccentColor) {
+        listOf(
+            activeAccentColor.copy(alpha = 0.25f),
+            Color.Transparent
+        )
+    }
+
     Box(
         modifier = modifier.size(76.dp),
         contentAlignment = Alignment.Center
@@ -306,10 +332,7 @@ fun StaticGyroToggleButton(
                     if (isRgbEnabled) {
                         drawCircle(
                             brush = Brush.radialGradient(
-                                colors = listOf(
-                                    activeAccentColor.copy(alpha = 0.25f),
-                                    Color.Transparent
-                                ),
+                                colors = previewBloomColors,
                                 center = center,
                                 radius = size.minDimension * 0.95f
                             ),

@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -223,19 +224,70 @@ fun RealisticButton(
         )
     }
 
+    val recessColors = remember {
+        listOf(
+            Color.White.copy(alpha = 0.07f),
+            Color.White.copy(alpha = 0.018f),
+            Color(0xFF080A0B).copy(alpha = 0.18f),
+            Color.Black.copy(alpha = 0.52f),
+            Color.Black.copy(alpha = 0.86f)
+        )
+    }
+
+    val sheenColors = remember {
+        listOf(
+            Color.White.copy(alpha = 0.06f),
+            Color.Transparent
+        )
+    }
+
+    val lensColorsPressed = remember {
+        listOf(
+            Color.White.copy(alpha = 0.06f),
+            Color.White.copy(alpha = 0.02f),
+            Color.Transparent
+        )
+    }
+
+    val lensColorsNormal = remember {
+        listOf(
+            Color.White.copy(alpha = 0.14f),
+            Color.White.copy(alpha = 0.05f),
+            Color.Transparent
+        )
+    }
+
+    val insetShadowColorsPressed = remember {
+        listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f))
+    }
+
+    val insetShadowColorsNormal = remember {
+        listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f))
+    }
+
+    val density = LocalDensity.current.density
+    val stroke1dp = remember(density) { Stroke(width = 1f * density) }
+    val stroke2dp = remember(density) { Stroke(width = 2f * density) }
+    val stroke3dp = remember(density) { Stroke(width = 3f * density) }
+    val stroke3_5dp = remember(density) { Stroke(width = 3.5f * density) }
+    val stroke4dp = remember(density) { Stroke(width = 4f * density) }
+
+    val bloomColorsList = remember(effectiveColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(80.dp)
             // Ambient RGB Bloom behind button socket
             .drawBehind {
                 if (isRgbEnabled) {
+                    bloomColorsList[0] = effectiveColor.copy(alpha = rgbBloomAlpha * 0.55f)
+                    bloomColorsList[1] = effectiveColor.copy(alpha = rgbBloomAlpha * 0.22f)
+                    bloomColorsList[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                effectiveColor.copy(alpha = rgbBloomAlpha * 0.55f),
-                                effectiveColor.copy(alpha = rgbBloomAlpha * 0.22f),
-                                Color.Transparent
-                            ),
+                            colors = bloomColorsList,
                             center = center,
                             radius = size.minDimension * 1f
                         ),
@@ -281,14 +333,14 @@ fun RealisticButton(
             drawCircle(
                 color = Color.Black.copy(alpha = 0.50f),
                 radius = r - 0.5.dp.toPx(),
-                style = Stroke(width = 1.dp.toPx())
+                style = stroke1dp
             )
 
             // Inset bottom shadow: inset 0 -6px 9px rgba(0, 0, 0, 0.70)
             val insetShadowH = h * 0.35f
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (isPressed) 0.85f else 0.70f)),
+                    colors = if (isPressed) insetShadowColorsPressed else insetShadowColorsNormal,
                     startY = h - insetShadowH,
                     endY = h
                 ),
@@ -307,13 +359,7 @@ fun RealisticButton(
 
                     drawOval(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.07f),
-                                Color.White.copy(alpha = 0.018f),
-                                Color(0xFF080A0B).copy(alpha = 0.18f),
-                                Color.Black.copy(alpha = 0.52f),
-                                Color.Black.copy(alpha = 0.86f)
-                            ),
+                            colors = recessColors,
                             center = Offset(w * 0.5f, recessTop + recessH * 0.05f),
                             radius = recessW * 0.5f
                         ),
@@ -329,13 +375,7 @@ fun RealisticButton(
 
                     drawOval(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.07f),
-                                Color.White.copy(alpha = 0.018f),
-                                Color(0xFF080A0B).copy(alpha = 0.18f),
-                                Color.Black.copy(alpha = 0.52f),
-                                Color.Black.copy(alpha = 0.86f)
-                            ),
+                            colors = recessColors,
                             center = Offset(w * 0.5f, recessTop + recessH * 0.95f),
                             radius = recessW * 0.5f
                         ),
@@ -351,13 +391,7 @@ fun RealisticButton(
 
                     drawOval(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.07f),
-                                Color.White.copy(alpha = 0.018f),
-                                Color(0xFF080A0B).copy(alpha = 0.18f),
-                                Color.Black.copy(alpha = 0.52f),
-                                Color.Black.copy(alpha = 0.86f)
-                            ),
+                            colors = recessColors,
                             center = Offset(recessLeft + recessW * 0.95f, h * 0.5f),
                             radius = recessH * 0.5f
                         ),
@@ -373,13 +407,7 @@ fun RealisticButton(
 
                     drawOval(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.07f),
-                                Color.White.copy(alpha = 0.018f),
-                                Color(0xFF080A0B).copy(alpha = 0.18f),
-                                Color.Black.copy(alpha = 0.52f),
-                                Color.Black.copy(alpha = 0.86f)
-                            ),
+                            colors = recessColors,
                             center = Offset(recessLeft + recessW * 0.05f, h * 0.5f),
                             radius = recessH * 0.5f
                         ),
@@ -391,7 +419,7 @@ fun RealisticButton(
                     drawCircle(
                         color = Color.Black.copy(alpha = if (isPressed) 0.60f else 0.35f),
                         radius = r - 2.dp.toPx(),
-                        style = Stroke(width = 3.dp.toPx())
+                        style = stroke3dp
                     )
                 }
             }
@@ -402,31 +430,27 @@ fun RealisticButton(
             drawCircle(
                 color = effectiveColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
                 radius = ringRadius,
-                style = Stroke(width = 4.dp.toPx())
+                style = stroke4dp
             )
             // Core crisp ring
             drawCircle(
                 color = effectiveColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
                 radius = ringRadius,
-                style = Stroke(width = 2.dp.toPx())
+                style = stroke2dp
             )
 
             // Layer #6: Socket Bevel Rim — outside neon ring
             drawCircle(
                 color = effectiveColor.copy(alpha = if (isPressed) 0.35f else 0.12f),
                 radius = ringRadius + 1.5.dp.toPx(),
-                style = Stroke(width = if (isPressed) 3.5.dp.toPx() else 2.dp.toPx())
+                style = if (isPressed) stroke3_5dp else stroke2dp
             )
 
             // .lens: Acrylic Glass Lens Specular Reflections
             val lensInset = 1.dp.toPx()
             drawArc(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isPressed) 0.06f else 0.14f),
-                        Color.White.copy(alpha = if (isPressed) 0.02f else 0.05f),
-                        Color.Transparent
-                    ),
+                    colors = if (isPressed) lensColorsPressed else lensColorsNormal,
                     startY = 0f,
                     endY = h * 0.40f
                 ),
@@ -435,16 +459,13 @@ fun RealisticButton(
                 useCenter = false,
                 topLeft = Offset(lensInset, lensInset),
                 size = Size(w - lensInset * 2f, h - lensInset * 2f),
-                style = Stroke(width = 1.dp.toPx())
+                style = stroke1dp
             )
 
             // Bottom-right specular sheen
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.06f),
-                        Color.Transparent
-                    ),
+                    colors = sheenColors,
                     center = Offset(w * 0.70f, h * 0.78f),
                     radius = w * 0.25f
                 ),

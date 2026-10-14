@@ -1025,6 +1025,23 @@ fun NxprcCanvasRenderer(
         }
     }
 
+    val stickBaseBloomColors = remember {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val stickPlumeStops = remember {
+        arrayOf(
+            0.00f to Color.Transparent,
+            0.40f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
+    }
+    val stickCapBloomColors = remember {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val buttonAuraColors = remember {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(widthDp.dp, heightDp.dp)
@@ -1052,13 +1069,12 @@ fun NxprcCanvasRenderer(
 
                     // 1. Base socket containment bloom
                     val baseBloomR = size.minDimension * 0.75f
+                    stickBaseBloomColors[0] = baseColor.copy(alpha = effAlpha * 0.35f)
+                    stickBaseBloomColors[1] = baseColor.copy(alpha = effAlpha * 0.12f)
+                    stickBaseBloomColors[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                baseColor.copy(alpha = effAlpha * 0.35f),
-                                baseColor.copy(alpha = effAlpha * 0.12f),
-                                Color.Transparent
-                            ),
+                            colors = stickBaseBloomColors,
                             center = center,
                             radius = baseBloomR
                         ),
@@ -1072,13 +1088,12 @@ fun NxprcCanvasRenderer(
                         center.y + thumbOffsetY * 0.65f
                     )
                     val plumeRadius = size.minDimension * (0.40f + 0.35f * dispFraction)
+                    stickPlumeStops[0] = 0.00f to (if (dispFraction > 0.4f) Color.White else baseColor).copy(alpha = effAlpha * (0.50f + 0.35f * dispFraction))
+                    stickPlumeStops[1] = 0.40f to baseColor.copy(alpha = effAlpha * (0.30f + 0.25f * dispFraction))
+                    stickPlumeStops[2] = 1.00f to Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colorStops = arrayOf(
-                                0.00f to (if (dispFraction > 0.4f) Color.White else baseColor).copy(alpha = effAlpha * (0.50f + 0.35f * dispFraction)),
-                                0.40f to baseColor.copy(alpha = effAlpha * (0.30f + 0.25f * dispFraction)),
-                                1.00f to Color.Transparent
-                            ),
+                            colorStops = stickPlumeStops,
                             center = plumeCenter,
                             radius = plumeRadius
                         ),
@@ -1089,13 +1104,12 @@ fun NxprcCanvasRenderer(
                     // 3. High-energy thumbstick cap beacon bloom
                     val capPos = Offset(center.x + thumbOffsetX, center.y + thumbOffsetY)
                     val capBloomR = (size.minDimension * 0.32f) + (size.minDimension * 0.08f * dispFraction)
+                    stickCapBloomColors[0] = baseColor.copy(alpha = effAlpha * 0.45f)
+                    stickCapBloomColors[1] = baseColor.copy(alpha = effAlpha * 0.15f)
+                    stickCapBloomColors[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                baseColor.copy(alpha = effAlpha * 0.45f),
-                                baseColor.copy(alpha = effAlpha * 0.15f),
-                                Color.Transparent
-                            ),
+                            colors = stickCapBloomColors,
                             center = capPos,
                             radius = capBloomR
                         ),
@@ -1107,13 +1121,12 @@ fun NxprcCanvasRenderer(
                     val isSymmetricCircle = rootIsOval && kotlin.math.abs(size.width - size.height) < 4f
                     if (isSymmetricCircle) {
                         val auraRadius = size.minDimension * 0.85f
+                        buttonAuraColors[0] = baseColor.copy(alpha = effAlpha * 0.50f)
+                        buttonAuraColors[1] = baseColor.copy(alpha = effAlpha * 0.20f)
+                        buttonAuraColors[2] = Color.Transparent
                         drawCircle(
                             brush = Brush.radialGradient(
-                                colors = listOf(
-                                    baseColor.copy(alpha = effAlpha * 0.50f),
-                                    baseColor.copy(alpha = effAlpha * 0.20f),
-                                    Color.Transparent
-                                ),
+                                colors = buttonAuraColors,
                                 center = center,
                                 radius = auraRadius
                             ),
@@ -1299,16 +1312,18 @@ fun NxprcCanvasRenderer(
                                     val elementPath = getOrCreateBoxPath(boxLeft, boxTop, boxWidth, boxHeight, tl, tr, br, bl, isOval)
 
                                     // 1. Outset box shadows (drawn bottom-to-top per CSS spec)
-                                    layer.boxShadows.filter { !it.isInset }.reversed().forEach { shadow ->
+                                    for (i in layer.boxShadows.indices.reversed()) {
+                                        val shadow = layer.boxShadows[i]
+                                        if (shadow.isInset) continue
                                         if (glowRing != null && shadow.color == glowRing.glowColor && shadow.blurRadius == glowRing.blurRadius) {
-                                            return@forEach
+                                            continue
                                         }
                                         val shadowOffset = Offset(shadow.offsetX * pxPerUnit, shadow.offsetY * pxPerUnit)
                                         val sColor = Color(shadow.color)
                                         val spreadPx = shadow.spreadRadius * pxPerUnit
                                         val blurPx = shadow.blurRadius * pxPerUnit
                                         val effAlpha = (sColor.alpha * subAlpha).coerceIn(0f, 1f)
-                                        if (effAlpha <= 0.001f) return@forEach
+                                        if (effAlpha <= 0.001f) continue
                                         val shadowColorArgb = sColor.copy(alpha = effAlpha).toArgb()
 
                                         val sLeft = boxLeft + shadowOffset.x - spreadPx
@@ -1344,13 +1359,7 @@ fun NxprcCanvasRenderer(
                                     }
 
                                     // 2. Main surface fills (stacked bottom-to-top per CSS painter's algorithm)
-                                    val allBrushes = if (layer.fills.isNotEmpty()) {
-                                        layer.fills.map { createBrush(it, Size(boxWidth, boxHeight), Offset(boxLeft, boxTop)) }
-                                    } else {
-                                        listOf(createBrush(layer.fill, Size(boxWidth, boxHeight), Offset(boxLeft, boxTop)))
-                                    }
-
-                                    allBrushes.forEach { b ->
+                                    val renderFill: (Brush) -> Unit = { b ->
                                         if (isPolygon && isOval) {
                                             clipPath(ovalClipPath) {
                                                 drawPath(polygonPath, brush = b, alpha = subAlpha)
@@ -1379,6 +1388,14 @@ fun NxprcCanvasRenderer(
                                                 alpha = subAlpha
                                             )
                                         }
+                                    }
+
+                                    if (layer.fills.isNotEmpty()) {
+                                        for (f in layer.fills) {
+                                            renderFill(createBrush(f, Size(boxWidth, boxHeight), Offset(boxLeft, boxTop)))
+                                        }
+                                    } else {
+                                        renderFill(createBrush(layer.fill, Size(boxWidth, boxHeight), Offset(boxLeft, boxTop)))
                                     }
 
                                     // 3. Stroke / Border
@@ -1433,46 +1450,44 @@ fun NxprcCanvasRenderer(
                                     }
 
                                     // 4. Inset box shadows
-                                    val insets = layer.boxShadows.filter { it.isInset }
-                                    if (insets.isNotEmpty()) {
-                                        insets.forEach { shadow ->
-                                            val inColor = Color(shadow.color)
-                                            val inAlpha = (inColor.alpha * subAlpha).coerceIn(0f, 1f)
-                                            if (inAlpha <= 0.001f) return@forEach
-                                            val shadowColorArgb = inColor.copy(alpha = inAlpha).toArgb()
+                                    for (shadow in layer.boxShadows) {
+                                        if (!shadow.isInset) continue
+                                        val inColor = Color(shadow.color)
+                                        val inAlpha = (inColor.alpha * subAlpha).coerceIn(0f, 1f)
+                                        if (inAlpha <= 0.001f) continue
+                                        val shadowColorArgb = inColor.copy(alpha = inAlpha).toArgb()
 
-                                            val sOffset = Offset(shadow.offsetX * pxPerUnit, shadow.offsetY * pxPerUnit)
-                                            val spreadPx = shadow.spreadRadius * pxPerUnit
-                                            val blurPx = shadow.blurRadius * pxPerUnit
+                                        val sOffset = Offset(shadow.offsetX * pxPerUnit, shadow.offsetY * pxPerUnit)
+                                        val spreadPx = shadow.spreadRadius * pxPerUnit
+                                        val blurPx = shadow.blurRadius * pxPerUnit
 
-                                            val hLeft = boxLeft + sOffset.x + spreadPx
-                                            val hTop = boxTop + sOffset.y + spreadPx
-                                            val hWidth = (boxWidth - spreadPx * 2f).coerceAtLeast(0f)
-                                            val hHeight = (boxHeight - spreadPx * 2f).coerceAtLeast(0f)
-                                            val hTl = (tl - spreadPx).coerceAtLeast(0f)
-                                            val hTr = (tr - spreadPx).coerceAtLeast(0f)
-                                            val hBr = (br - spreadPx).coerceAtLeast(0f)
-                                            val hBl = (bl - spreadPx).coerceAtLeast(0f)
+                                        val hLeft = boxLeft + sOffset.x + spreadPx
+                                        val hTop = boxTop + sOffset.y + spreadPx
+                                        val hWidth = (boxWidth - spreadPx * 2f).coerceAtLeast(0f)
+                                        val hHeight = (boxHeight - spreadPx * 2f).coerceAtLeast(0f)
+                                        val hTl = (tl - spreadPx).coerceAtLeast(0f)
+                                        val hTr = (tr - spreadPx).coerceAtLeast(0f)
+                                        val hBr = (br - spreadPx).coerceAtLeast(0f)
+                                        val hBl = (bl - spreadPx).coerceAtLeast(0f)
 
-                                            val margin = blurPx * 3f + kotlin.math.abs(sOffset.x) + kotlin.math.abs(sOffset.y) + 32f
-                                            val holeKey = BoxPathKey(hLeft, hTop, hWidth, hHeight, hTl, hTr, hBr, hBl, isOval)
-                                            val insetPath = getOrCreateInsetPath(boxLeft, boxTop, boxWidth, boxHeight, margin, holeKey)
+                                        val margin = blurPx * 3f + kotlin.math.abs(sOffset.x) + kotlin.math.abs(sOffset.y) + 32f
+                                        val holeKey = BoxPathKey(hLeft, hTop, hWidth, hHeight, hTl, hTr, hBr, hBl, isOval)
+                                        val insetPath = getOrCreateInsetPath(boxLeft, boxTop, boxWidth, boxHeight, margin, holeKey)
 
-                                            val nativeCanvas = drawContext.canvas.nativeCanvas
-                                            val paint = localShadowPaint.get()!!.apply {
-                                                reset()
-                                                isAntiAlias = true
-                                                color = shadowColorArgb
-                                                maskFilter = if (blurPx > 0f) getCachedBlurMaskFilter(blurPx / 2f) else null
-                                            }
+                                        val nativeCanvas = drawContext.canvas.nativeCanvas
+                                        val paint = localShadowPaint.get()!!.apply {
+                                            reset()
+                                            isAntiAlias = true
+                                            color = shadowColorArgb
+                                            maskFilter = if (blurPx > 0f) getCachedBlurMaskFilter(blurPx / 2f) else null
+                                        }
 
-                                            nativeCanvas.save()
-                                            try {
-                                                nativeCanvas.clipPath(elementPath)
-                                                nativeCanvas.drawPath(insetPath, paint)
-                                            } finally {
-                                                nativeCanvas.restore()
-                                            }
+                                        nativeCanvas.save()
+                                        try {
+                                            nativeCanvas.clipPath(elementPath)
+                                            nativeCanvas.drawPath(insetPath, paint)
+                                        } finally {
+                                            nativeCanvas.restore()
                                         }
                                     }
                                 }
@@ -1716,31 +1731,51 @@ fun NxprcCanvasRenderer(
                             }
 
                             val elementPath = createInnerPath(buttonLeft, buttonTop, buttonW, buttonH, rootTl, rootIsOval)
-
-                            val shadows = listOf(
-                                Triple(Color(layer.highlightColor), Offset(0f, layer.strokeWidth * pxPerUnit * 0.6f), layer.strokeWidth * pxPerUnit * 1.0f),
-                                Triple(Color(layer.shadowColor), Offset(0f, -layer.strokeWidth * pxPerUnit * 1.4f), layer.strokeWidth * pxPerUnit * 2.0f)
-                            )
-
                             val nativeCanvas = drawContext.canvas.nativeCanvas
-                            shadows.forEach { (color, sOffset, blurPx) ->
-                                val effAlpha = color.alpha
-                                if (effAlpha <= 0.001f) return@forEach
-                                val shadowColorArgb = color.toArgb()
 
-                                val hLeft = buttonLeft + sOffset.x
-                                val hTop = buttonTop + sOffset.y
-                                val margin = blurPx * 3f + kotlin.math.abs(sOffset.y) + 32f
+                            // 1. Highlight pass
+                            val hiColor = Color(layer.highlightColor)
+                            if (hiColor.alpha > 0.001f) {
+                                val hiOffset = Offset(0f, layer.strokeWidth * pxPerUnit * 0.6f)
+                                val hiBlurPx = layer.strokeWidth * pxPerUnit * 1.0f
+                                val hLeft = buttonLeft + hiOffset.x
+                                val hTop = buttonTop + hiOffset.y
+                                val margin = hiBlurPx * 3f + kotlin.math.abs(hiOffset.y) + 32f
                                 val holeKey = BoxPathKey(hLeft, hTop, buttonW, buttonH, rootTl, rootTl, rootTl, rootTl, rootIsOval)
                                 val insetPath = getOrCreateInsetPath(buttonLeft, buttonTop, buttonW, buttonH, margin, holeKey)
 
                                 val paint = localShadowPaint.get()!!.apply {
                                     reset()
                                     isAntiAlias = true
-                                    this.color = shadowColorArgb
-                                    maskFilter = if (blurPx > 0f) getCachedBlurMaskFilter(blurPx / 2f) else null
+                                    this.color = hiColor.toArgb()
+                                    maskFilter = if (hiBlurPx > 0f) getCachedBlurMaskFilter(hiBlurPx / 2f) else null
                                 }
+                                nativeCanvas.save()
+                                try {
+                                    nativeCanvas.clipPath(elementPath)
+                                    nativeCanvas.drawPath(insetPath, paint)
+                                } finally {
+                                    nativeCanvas.restore()
+                                }
+                            }
 
+                            // 2. Shadow pass
+                            val shColor = Color(layer.shadowColor)
+                            if (shColor.alpha > 0.001f) {
+                                val shOffset = Offset(0f, -layer.strokeWidth * pxPerUnit * 1.4f)
+                                val shBlurPx = layer.strokeWidth * pxPerUnit * 2.0f
+                                val hLeft = buttonLeft + shOffset.x
+                                val hTop = buttonTop + shOffset.y
+                                val margin = shBlurPx * 3f + kotlin.math.abs(shOffset.y) + 32f
+                                val holeKey = BoxPathKey(hLeft, hTop, buttonW, buttonH, rootTl, rootTl, rootTl, rootTl, rootIsOval)
+                                val insetPath = getOrCreateInsetPath(buttonLeft, buttonTop, buttonW, buttonH, margin, holeKey)
+
+                                val paint = localShadowPaint.get()!!.apply {
+                                    reset()
+                                    isAntiAlias = true
+                                    this.color = shColor.toArgb()
+                                    maskFilter = if (shBlurPx > 0f) getCachedBlurMaskFilter(shBlurPx / 2f) else null
+                                }
                                 nativeCanvas.save()
                                 try {
                                     nativeCanvas.clipPath(elementPath)

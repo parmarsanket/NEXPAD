@@ -238,6 +238,20 @@ fun MetaballsDPad(
         )
     }
 
+    val coreBloomColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val bridgeColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent)
+    }
+    val satBloomStops = remember(neonColor) {
+        arrayOf(
+            0.00f to Color.Transparent,
+            0.45f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
+    }
+
     Box(
         modifier = modifier
             .size(172.dp)
@@ -245,13 +259,12 @@ fun MetaballsDPad(
                 if (isRgbEnabled) {
                     // 1. Central viscous fluid reservoir
                     val coreRadius = size.minDimension * 0.42f
+                    coreBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * 0.50f)
+                    coreBloomColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.18f)
+                    coreBloomColors[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.50f),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.18f),
-                                Color.Transparent
-                            ),
+                            colors = coreBloomColors,
                             center = center,
                             radius = coreRadius
                         ),
@@ -272,9 +285,11 @@ fun MetaballsDPad(
 
                         // Viscous connecting bridge to center
                         if (isPlunging) {
+                            bridgeColors[0] = neonColor.copy(alpha = satAlpha * 0.7f)
+                            bridgeColors[1] = Color.White.copy(alpha = satAlpha * 0.85f)
                             drawLine(
                                 brush = Brush.linearGradient(
-                                    colors = listOf(neonColor.copy(alpha = satAlpha * 0.7f), Color.White.copy(alpha = satAlpha * 0.85f)),
+                                    colors = bridgeColors,
                                     start = center,
                                     end = satPos
                                 ),
@@ -285,13 +300,12 @@ fun MetaballsDPad(
                         }
 
                         // Swelling satellite blob aura
+                        satBloomStops[0] = 0.00f to (if (isPlunging) Color.White else neonColor).copy(alpha = satAlpha * 0.70f)
+                        satBloomStops[1] = 0.45f to neonColor.copy(alpha = satAlpha * 0.35f)
+                        satBloomStops[2] = 1.00f to Color.Transparent
                         drawCircle(
                             brush = Brush.radialGradient(
-                                colorStops = arrayOf(
-                                    0.00f to (if (isPlunging) Color.White else neonColor).copy(alpha = satAlpha * 0.70f),
-                                    0.45f to neonColor.copy(alpha = satAlpha * 0.35f),
-                                    1.00f to Color.Transparent
-                                ),
+                                colorStops = satBloomStops,
                                 center = satPos,
                                 radius = satR * 1.35f
                             ),

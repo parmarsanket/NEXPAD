@@ -144,6 +144,16 @@ fun UnderglowBumper(
         )
     }
 
+    val stadiumBloomColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val puddleBloomColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val coreSlitColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(154.dp, 54.dp)
@@ -158,13 +168,12 @@ fun UnderglowBumper(
                     val padY = 6.dp.toPx()
 
                     // 1. Ambient upper hull aura
+                    stadiumBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.45f else 0.25f))
+                    stadiumBloomColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.10f)
+                    stadiumBloomColors[2] = Color.Transparent
                     drawRoundRect(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.45f else 0.25f)),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.10f),
-                                Color.Transparent
-                            ),
+                            colors = stadiumBloomColors,
                             center = center,
                             radius = size.width * 0.55f
                         ),
@@ -181,13 +190,12 @@ fun UnderglowBumper(
                     val puddleAlpha = rgbBloomAlpha * underglowBloomAlpha * (if (isPressed) 0.90f else 0.60f)
 
                     // Soft diffuse ground reflection oval
+                    puddleBloomColors[0] = neonColor.copy(alpha = puddleAlpha * 0.85f)
+                    puddleBloomColors[1] = neonColor.copy(alpha = puddleAlpha * 0.35f)
+                    puddleBloomColors[2] = Color.Transparent
                     drawOval(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = puddleAlpha * 0.85f),
-                                neonColor.copy(alpha = puddleAlpha * 0.35f),
-                                Color.Transparent
-                            ),
+                            colors = puddleBloomColors,
                             center = Offset(center.x, puddleCenterY),
                             radius = puddleW * 0.55f
                         ),
@@ -198,15 +206,14 @@ fun UnderglowBumper(
                     // High-intensity core underglow slit reflection
                     val coreSlitW = puddleW * 0.65f
                     val coreSlitLeft = center.x - coreSlitW / 2f
+                    coreSlitColors[0] = Color.Transparent
+                    coreSlitColors[1] = Color.White.copy(alpha = puddleAlpha * 0.90f)
+                    coreSlitColors[2] = neonColor.copy(alpha = puddleAlpha * 0.95f)
+                    coreSlitColors[3] = Color.White.copy(alpha = puddleAlpha * 0.90f)
+                    coreSlitColors[4] = Color.Transparent
                     drawLine(
                         brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                Color.White.copy(alpha = puddleAlpha * 0.90f),
-                                neonColor.copy(alpha = puddleAlpha * 0.95f),
-                                Color.White.copy(alpha = puddleAlpha * 0.90f),
-                                Color.Transparent
-                            ),
+                            colors = coreSlitColors,
                             startX = coreSlitLeft,
                             endX = coreSlitLeft + coreSlitW
                         ),

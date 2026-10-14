@@ -285,6 +285,29 @@ fun RailsDPad(
         )
     }
 
+    val baseBloomColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent)
+    }
+    val horizBeamColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val horizCoreColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val vertBeamColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val vertCoreColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val puckStops = remember(neonColor) {
+        arrayOf(
+            0.00f to Color.Transparent,
+            0.45f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
+    }
+
     Box(
         modifier = modifier
             .size(160.dp)
@@ -294,12 +317,11 @@ fun RailsDPad(
                     val h = size.height
 
                     // 1. Central intersection base bloom
+                    baseBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * 0.40f)
+                    baseBloomColors[1] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.40f),
-                                Color.Transparent
-                            ),
+                            colors = baseBloomColors,
                             center = center,
                             radius = size.minDimension * 0.45f
                         ),
@@ -313,17 +335,23 @@ fun RailsDPad(
 
                     // Horizontal laser track
                     val horizAlpha = if (isHorizActive) rgbBloomAlpha * 0.90f else (if (isAnyPressed) 0.20f else 0.40f)
+                    horizBeamColors[0] = Color.Transparent
+                    horizBeamColors[1] = neonColor.copy(alpha = horizAlpha * 0.65f)
+                    horizBeamColors[2] = Color.Transparent
                     drawLine(
                         brush = Brush.horizontalGradient(
-                            colors = listOf(Color.Transparent, neonColor.copy(alpha = horizAlpha * 0.65f), Color.Transparent)
+                            colors = horizBeamColors
                         ),
                         start = Offset(0f, center.y),
                         end = Offset(w, center.y),
                         strokeWidth = 6.dp.toPx()
                     )
+                    horizCoreColors[0] = Color.Transparent
+                    horizCoreColors[1] = (if (isHorizActive) Color.White else neonColor).copy(alpha = horizAlpha)
+                    horizCoreColors[2] = Color.Transparent
                     drawLine(
                         brush = Brush.horizontalGradient(
-                            colors = listOf(Color.Transparent, (if (isHorizActive) Color.White else neonColor).copy(alpha = horizAlpha), Color.Transparent)
+                            colors = horizCoreColors
                         ),
                         start = Offset(0f, center.y),
                         end = Offset(w, center.y),
@@ -332,17 +360,23 @@ fun RailsDPad(
 
                     // Vertical laser track
                     val vertAlpha = if (isVertActive) rgbBloomAlpha * 0.90f else (if (isAnyPressed) 0.20f else 0.40f)
+                    vertBeamColors[0] = Color.Transparent
+                    vertBeamColors[1] = neonColor.copy(alpha = vertAlpha * 0.65f)
+                    vertBeamColors[2] = Color.Transparent
                     drawLine(
                         brush = Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, neonColor.copy(alpha = vertAlpha * 0.65f), Color.Transparent)
+                            colors = vertBeamColors
                         ),
                         start = Offset(center.x, 0f),
                         end = Offset(center.x, h),
                         strokeWidth = 6.dp.toPx()
                     )
+                    vertCoreColors[0] = Color.Transparent
+                    vertCoreColors[1] = (if (isVertActive) Color.White else neonColor).copy(alpha = vertAlpha)
+                    vertCoreColors[2] = Color.Transparent
                     drawLine(
                         brush = Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, (if (isVertActive) Color.White else neonColor).copy(alpha = vertAlpha), Color.Transparent)
+                            colors = vertCoreColors
                         ),
                         start = Offset(center.x, 0f),
                         end = Offset(center.x, h),
@@ -352,13 +386,12 @@ fun RailsDPad(
                     // 3. Travelling sliding puck beacon flare
                     val puckPos = Offset(center.x + puckOffsetXAnim, center.y + puckOffsetYAnim)
                     val puckBloomR = if (isAnyPressed) 32.dp.toPx() else 20.dp.toPx()
+                    puckStops[0] = 0.00f to (if (isAnyPressed) Color.White else neonColor).copy(alpha = rgbBloomAlpha * 0.75f)
+                    puckStops[1] = 0.45f to neonColor.copy(alpha = rgbBloomAlpha * 0.35f)
+                    puckStops[2] = 1.00f to Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colorStops = arrayOf(
-                                0.00f to (if (isAnyPressed) Color.White else neonColor).copy(alpha = rgbBloomAlpha * 0.75f),
-                                0.45f to neonColor.copy(alpha = rgbBloomAlpha * 0.35f),
-                                1.00f to Color.Transparent
-                            ),
+                            colorStops = puckStops,
                             center = puckPos,
                             radius = puckBloomR
                         ),

@@ -169,6 +169,12 @@ fun GyroJoystick(
         label = "gyro_joystick_bloom"
     )
 
+    val strokeOuterGimbal = remember { Stroke(width = 2.0f) }
+    val strokeInnerGimbal = remember { Stroke(width = 1.6f) }
+    val coreBloomColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(150.dp)
@@ -181,13 +187,12 @@ fun GyroJoystick(
                     val stickAngleDeg = Math.toDegrees(atan2(curY.toDouble(), curX.toDouble())).toFloat()
 
                     // 1. Ambient gyroscope core bloom
+                    coreBloomColors[0] = glowColor.copy(alpha = rgbBloomAlpha * 0.40f)
+                    coreBloomColors[1] = glowColor.copy(alpha = rgbBloomAlpha * 0.15f)
+                    coreBloomColors[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.40f),
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.15f),
-                                Color.Transparent
-                            ),
+                            colors = coreBloomColors,
                             center = center,
                             radius = size.minDimension * 0.55f
                         ),
@@ -204,7 +209,7 @@ fun GyroJoystick(
                             color = glowColor.copy(alpha = if (defFraction > 0.3f) 0.75f else 0.40f),
                             topLeft = Offset(center.x - outerGimbalR, center.y - squashedH),
                             size = Size(outerGimbalR * 2f, squashedH * 2f),
-                            style = Stroke(width = 2.0f)
+                            style = strokeOuterGimbal
                         )
                     }
 
@@ -216,7 +221,7 @@ fun GyroJoystick(
                             color = (if (defFraction > 0.5f) Color.White else glowColor).copy(alpha = if (defFraction > 0.3f) 0.85f else 0.30f),
                             topLeft = Offset(center.x - squashedW, center.y - innerGimbalR),
                             size = Size(squashedW * 2f, innerGimbalR * 2f),
-                            style = Stroke(width = 1.6f)
+                            style = strokeInnerGimbal
                         )
                     }
                 }
@@ -859,6 +864,22 @@ fun GyroStickButton(
         label = "gyro_stick_btn_bloom"
     )
 
+    val strokeGimbal1 = remember { androidx.compose.ui.graphics.drawscope.Stroke(width = 1.8f) }
+    val strokeGimbal2 = remember {
+        androidx.compose.ui.graphics.drawscope.Stroke(
+            width = 1.2f,
+            pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(4f, 6f), 0f)
+        )
+    }
+    val btnCoreBloomStops = remember(glowColor) {
+        arrayOf(
+            0.00f to Color.Transparent,
+            0.35f to Color.Transparent,
+            0.75f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
+    }
+
     Box(
         modifier = modifier
             .size(70.dp)
@@ -871,14 +892,13 @@ fun GyroStickButton(
                 if (isRgbEnabled) {
                     val coreR = size.minDimension * (if (isPressed) 1.05f else 0.85f)
                     // 1. Gyro gimbal core beacon
+                    btnCoreBloomStops[0] = 0.00f to (if (isPressed) Color.White else glowColor).copy(alpha = rgbBloomAlpha * 0.65f)
+                    btnCoreBloomStops[1] = 0.35f to glowColor.copy(alpha = rgbBloomAlpha * 0.30f)
+                    btnCoreBloomStops[2] = 0.75f to glowColor.copy(alpha = rgbBloomAlpha * 0.10f)
+                    btnCoreBloomStops[3] = 1.00f to Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colorStops = arrayOf(
-                                0.00f to (if (isPressed) Color.White else glowColor).copy(alpha = rgbBloomAlpha * 0.65f),
-                                0.35f to glowColor.copy(alpha = rgbBloomAlpha * 0.30f),
-                                0.75f to glowColor.copy(alpha = rgbBloomAlpha * 0.10f),
-                                1.00f to Color.Transparent
-                            ),
+                            colorStops = btnCoreBloomStops,
                             center = center,
                             radius = coreR
                         ),
@@ -893,16 +913,13 @@ fun GyroStickButton(
                         color = glowColor.copy(alpha = if (isPressed) 0.70f else 0.30f),
                         radius = gimbalR1,
                         center = center,
-                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.8f)
+                        style = strokeGimbal1
                     )
                     drawCircle(
                         color = (if (isPressed) Color.White else glowColor).copy(alpha = if (isPressed) 0.85f else 0.25f),
                         radius = gimbalR2,
                         center = center,
-                        style = androidx.compose.ui.graphics.drawscope.Stroke(
-                            width = 1.2f,
-                            pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(4f, 6f), 0f)
-                        )
+                        style = strokeGimbal2
                     )
                 }
             }

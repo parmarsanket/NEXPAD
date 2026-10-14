@@ -166,6 +166,16 @@ fun SpotlightJoystick(
         label = "spotlight_joystick_bloom"
     )
 
+    val socketGlowColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val coneColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val coreBeamColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(150.dp)
@@ -177,13 +187,12 @@ fun SpotlightJoystick(
                     val defFraction = (curDist / maxTravelPx).coerceIn(0f, 1f)
 
                     // 1. Ambient projector socket glow
+                    socketGlowColors[0] = glowColor.copy(alpha = rgbBloomAlpha * 0.35f)
+                    socketGlowColors[1] = glowColor.copy(alpha = rgbBloomAlpha * 0.12f)
+                    socketGlowColors[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.35f),
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.12f),
-                                Color.Transparent
-                            ),
+                            colors = socketGlowColors,
                             center = center,
                             radius = size.minDimension * 0.58f
                         ),
@@ -215,13 +224,12 @@ fun SpotlightJoystick(
                         val beamStart = beamAngleDeg - coneSpread / 2f
                         val beamLength = size.minDimension * (0.55f + 0.25f * defFraction)
 
+                        coneColors[0] = glowColor.copy(alpha = rgbBloomAlpha * (0.60f + 0.35f * defFraction))
+                        coneColors[1] = glowColor.copy(alpha = rgbBloomAlpha * 0.20f)
+                        coneColors[2] = Color.Transparent
                         drawArc(
                             brush = Brush.radialGradient(
-                                colors = listOf(
-                                    glowColor.copy(alpha = rgbBloomAlpha * (0.60f + 0.35f * defFraction)),
-                                    glowColor.copy(alpha = rgbBloomAlpha * 0.20f),
-                                    Color.Transparent
-                                ),
+                                colors = coneColors,
                                 center = center,
                                 radius = beamLength
                             ),
@@ -236,13 +244,12 @@ fun SpotlightJoystick(
                         val beamRad = Math.toRadians(beamAngleDeg.toDouble())
                         val cosB = cos(beamRad).toFloat()
                         val sinB = sin(beamRad).toFloat()
+                        coreBeamColors[0] = Color.White.copy(alpha = rgbBloomAlpha * 0.90f)
+                        coreBeamColors[1] = glowColor.copy(alpha = rgbBloomAlpha * 0.50f)
+                        coreBeamColors[2] = Color.Transparent
                         drawLine(
                             brush = Brush.linearGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = rgbBloomAlpha * 0.90f),
-                                    glowColor.copy(alpha = rgbBloomAlpha * 0.50f),
-                                    Color.Transparent
-                                ),
+                                colors = coreBeamColors,
                                 start = center,
                                 end = Offset(center.x + beamLength * cosB, center.y + beamLength * sinB)
                             ),
@@ -835,6 +842,13 @@ fun SpotlightStickButton(
         label = "spotlight_stick_btn_bloom"
     )
 
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val strokeRing1 = remember(density) { Stroke(width = 1.5f * density) }
+    val strokeRing2 = remember(density) { Stroke(width = 1f * density) }
+    val flareColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(70.dp)
@@ -848,13 +862,12 @@ fun SpotlightStickButton(
                     val buttonR = size.minDimension * 0.5f
 
                     // 1. Reflector dish parabolic ambient flare
+                    flareColors[0] = glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.65f else 0.35f))
+                    flareColors[1] = glowColor.copy(alpha = rgbBloomAlpha * 0.15f)
+                    flareColors[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.65f else 0.35f)),
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.15f),
-                                Color.Transparent
-                            ),
+                            colors = flareColors,
                             center = center,
                             radius = size.minDimension * 0.70f
                         ),
@@ -865,12 +878,12 @@ fun SpotlightStickButton(
                     drawCircle(
                         color = glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.80f else 0.40f)),
                         radius = buttonR + 3.dp.toPx(),
-                        style = Stroke(width = 1.5.dp.toPx())
+                        style = strokeRing1
                     )
                     drawCircle(
                         color = glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.50f else 0.22f)),
                         radius = buttonR + 7.dp.toPx(),
-                        style = Stroke(width = 1.dp.toPx())
+                        style = strokeRing2
                     )
 
                     // 3. 4 Orthogonal projector alignment notches

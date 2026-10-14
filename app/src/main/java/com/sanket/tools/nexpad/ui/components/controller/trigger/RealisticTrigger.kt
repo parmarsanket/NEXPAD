@@ -132,6 +132,69 @@ fun RealisticTrigger(
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
 
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+
+    val meterPath = remember(density) {
+        val w = 100f * density
+        val h = 92f * density
+        val mInset = 7f * density
+        val meterTopR = 11f * density
+        val meterBotR = 38f * density
+        Path().apply {
+            addRoundRect(
+                androidx.compose.ui.geometry.RoundRect(
+                    left = mInset,
+                    top = mInset,
+                    right = w - mInset,
+                    bottom = h - mInset,
+                    topLeftCornerRadius = CornerRadius(meterTopR, meterTopR),
+                    topRightCornerRadius = CornerRadius(meterTopR, meterTopR),
+                    bottomLeftCornerRadius = CornerRadius(meterBotR, meterBotR),
+                    bottomRightCornerRadius = CornerRadius(meterBotR, meterBotR)
+                )
+            )
+        }
+    }
+
+    val ringPath = remember(density) {
+        val w = 100f * density
+        val h = 92f * density
+        val ringInset = 2.5f * density
+        val ringTopR = 13.5f * density
+        val ringBotR = 43.5f * density
+        Path().apply {
+            addRoundRect(
+                androidx.compose.ui.geometry.RoundRect(
+                    left = ringInset,
+                    top = ringInset,
+                    right = w - ringInset,
+                    bottom = h - ringInset,
+                    topLeftCornerRadius = CornerRadius(ringTopR, ringTopR),
+                    topRightCornerRadius = CornerRadius(ringTopR, ringTopR),
+                    bottomLeftCornerRadius = CornerRadius(ringBotR, ringBotR),
+                    bottomRightCornerRadius = CornerRadius(ringBotR, ringBotR)
+                )
+            )
+        }
+    }
+
+    val insetShadowColorsPressed = remember {
+        listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f))
+    }
+    val insetShadowColorsNormal = remember {
+        listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f))
+    }
+    val specularSheenColors = remember {
+        listOf(Color.White.copy(alpha = 0.05f), Color.Transparent)
+    }
+
+    val shieldAuraColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val thrusterPlumeColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(100.dp, 92.dp)
@@ -147,13 +210,12 @@ fun RealisticTrigger(
                     val padBottom = (10.dp + 16.dp * fillProgress).toPx()
 
                     // 1. Asymmetric Trigger Shield Aura matching trigger contour
+                    shieldAuraColors[0] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.55f else 0.32f))
+                    shieldAuraColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.15f)
+                    shieldAuraColors[2] = Color.Transparent
                     drawRoundRect(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.55f else 0.32f)),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.15f),
-                                Color.Transparent
-                            ),
+                            colors = shieldAuraColors,
                             center = Offset(center.x, center.y + 6.dp.toPx() * fillProgress),
                             radius = size.width * 0.65f
                         ),
@@ -167,13 +229,12 @@ fun RealisticTrigger(
                         val plumeW = size.width * 0.70f
                         val plumeH = 20.dp.toPx() * fillProgress
                         val plumeY = size.height + 2.dp.toPx()
+                        thrusterPlumeColors[0] = Color.White.copy(alpha = rgbBloomAlpha * fillProgress * 0.70f)
+                        thrusterPlumeColors[1] = neonColor.copy(alpha = rgbBloomAlpha * fillProgress * 0.90f)
+                        thrusterPlumeColors[2] = Color.Transparent
                         drawOval(
                             brush = Brush.radialGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = rgbBloomAlpha * fillProgress * 0.70f),
-                                    neonColor.copy(alpha = rgbBloomAlpha * fillProgress * 0.90f),
-                                    Color.Transparent
-                                ),
+                                colors = thrusterPlumeColors,
                                 center = Offset(center.x, plumeY),
                                 radius = plumeW * 0.50f
                             ),
@@ -227,10 +288,7 @@ fun RealisticTrigger(
             val insetH = h * 0.32f
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Transparent,
-                        Color.Black.copy(alpha = if (isPressed) 0.85f else 0.70f)
-                    ),
+                    colors = if (isPressed) insetShadowColorsPressed else insetShadowColorsNormal,
                     startY = h - insetH,
                     endY = h
                 ),
@@ -242,23 +300,6 @@ fun RealisticTrigger(
             val mInset = 7.dp.toPx()
             val mw = w - mInset * 2f
             val mh = h - mInset * 2f
-            val meterTopR = 11.dp.toPx()
-            val meterBotR = 38.dp.toPx()
-
-            val meterPath = Path().apply {
-                addRoundRect(
-                    androidx.compose.ui.geometry.RoundRect(
-                        left = mInset,
-                        top = mInset,
-                        right = w - mInset,
-                        bottom = h - mInset,
-                        topLeftCornerRadius = CornerRadius(meterTopR, meterTopR),
-                        topRightCornerRadius = CornerRadius(meterTopR, meterTopR),
-                        bottomLeftCornerRadius = CornerRadius(meterBotR, meterBotR),
-                        bottomRightCornerRadius = CornerRadius(meterBotR, meterBotR)
-                    )
-                )
-            }
 
             // Meter fluid surging upward from bottom hull on press
             if (fillProgress > 0.001f) {
@@ -298,24 +339,6 @@ fun RealisticTrigger(
             }
 
             // 3. Neon Lens Ring (.lx-ring): inset 2.5dp, dual-pass stroke bloom
-            val ringInset = 2.5.dp.toPx()
-            val ringTopR = 13.5.dp.toPx()
-            val ringBotR = 43.5.dp.toPx()
-            val ringPath = Path().apply {
-                addRoundRect(
-                    androidx.compose.ui.geometry.RoundRect(
-                        left = ringInset,
-                        top = ringInset,
-                        right = w - ringInset,
-                        bottom = h - ringInset,
-                        topLeftCornerRadius = CornerRadius(ringTopR, ringTopR),
-                        topRightCornerRadius = CornerRadius(ringTopR, ringTopR),
-                        bottomLeftCornerRadius = CornerRadius(ringBotR, ringBotR),
-                        bottomRightCornerRadius = CornerRadius(ringBotR, ringBotR)
-                    )
-                )
-            }
-
             // Outer atmospheric bloom stroke
             drawPath(
                 path = ringPath,
@@ -347,10 +370,7 @@ fun RealisticTrigger(
             // Bottom-right specular sheen circle in the lower hull
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.06f),
-                        Color.Transparent
-                    ),
+                    colors = specularSheenColors,
                     center = Offset(w * 0.68f, h * 0.75f),
                     radius = w * 0.24f
                 ),

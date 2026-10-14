@@ -186,6 +186,15 @@ fun FluxJoystick(
         label = "flux_joystick_bloom"
     )
 
+    val strokeMagneticFlare = remember(density) { androidx.compose.ui.graphics.drawscope.Stroke(width = 8f * density) }
+    val strokeElectricArc = remember { androidx.compose.ui.graphics.drawscope.Stroke(width = 2.5f) }
+    val coreBloomColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val magneticFlareColors = remember(glowColor) {
+        arrayListOf(Color.White, glowColor, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(150.dp)
@@ -198,13 +207,12 @@ fun FluxJoystick(
                     val defFraction = (curDist / maxTravelPx).coerceIn(0f, 1f)
 
                     // 1. Ambient reactor plasma core bloom
+                    coreBloomColors[0] = glowColor.copy(alpha = rgbBloomAlpha * 0.40f)
+                    coreBloomColors[1] = glowColor.copy(alpha = rgbBloomAlpha * 0.15f)
+                    coreBloomColors[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.40f),
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.15f),
-                                Color.Transparent
-                            ),
+                            colors = coreBloomColors,
                             center = center,
                             radius = size.minDimension * 0.60f
                         ),
@@ -234,9 +242,10 @@ fun FluxJoystick(
                         val arcStart = defAngleDeg - arcSweep / 2f
 
                         // Outer diffuse magnetic flare
+                        magneticFlareColors[1] = glowColor
                         drawArc(
                             brush = Brush.radialGradient(
-                                colors = listOf(Color.White, glowColor, Color.Transparent),
+                                colors = magneticFlareColors,
                                 center = Offset(center.x + curX * 0.5f, center.y + curY * 0.5f),
                                 radius = size.minDimension * 0.65f
                             ),
@@ -245,7 +254,7 @@ fun FluxJoystick(
                             useCenter = false,
                             topLeft = Offset(center.x - fluxRadius - 6f, center.y - fluxRadius - 6f),
                             size = Size((fluxRadius + 6f) * 2f, (fluxRadius + 6f) * 2f),
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 8.dp.toPx())
+                            style = strokeMagneticFlare
                         )
                         // Core electric arc line
                         drawArc(
@@ -255,7 +264,7 @@ fun FluxJoystick(
                             useCenter = false,
                             topLeft = Offset(center.x - fluxRadius, center.y - fluxRadius),
                             size = Size(fluxRadius * 2f, fluxRadius * 2f),
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.5f)
+                            style = strokeElectricArc
                         )
                     }
                 }
@@ -903,6 +912,15 @@ fun FluxStickButton(
         label = "flux_stick_btn_bloom"
     )
 
+    val btnCoreBloomStops = remember(glowColor) {
+        arrayOf(
+            0.00f to Color.Transparent,
+            0.35f to Color.Transparent,
+            0.75f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
+    }
+
     Box(
         modifier = modifier
             .size(70.dp)
@@ -915,14 +933,13 @@ fun FluxStickButton(
                 if (isRgbEnabled) {
                     val coreR = size.minDimension * (if (isPressed) 1.05f else 0.85f)
                     // 1. Turbine core halo
+                    btnCoreBloomStops[0] = 0.00f to (if (isPressed) Color.White else glowColor).copy(alpha = rgbBloomAlpha * 0.65f)
+                    btnCoreBloomStops[1] = 0.35f to glowColor.copy(alpha = rgbBloomAlpha * 0.30f)
+                    btnCoreBloomStops[2] = 0.75f to glowColor.copy(alpha = rgbBloomAlpha * 0.10f)
+                    btnCoreBloomStops[3] = 1.00f to Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colorStops = arrayOf(
-                                0.00f to (if (isPressed) Color.White else glowColor).copy(alpha = rgbBloomAlpha * 0.65f),
-                                0.35f to glowColor.copy(alpha = rgbBloomAlpha * 0.30f),
-                                0.75f to glowColor.copy(alpha = rgbBloomAlpha * 0.10f),
-                                1.00f to Color.Transparent
-                            ),
+                            colorStops = btnCoreBloomStops,
                             center = center,
                             radius = coreR
                         ),

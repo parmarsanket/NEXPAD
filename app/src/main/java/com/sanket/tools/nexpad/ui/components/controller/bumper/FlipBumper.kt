@@ -136,6 +136,29 @@ fun FlipBumper(
         )
     }
 
+    val auraColorsList = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val laserSlitColorsList = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val insetShadowColors = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)) }
+    val lensSpecularColors = remember {
+        listOf(
+            Color.White.copy(alpha = 0.14f),
+            Color.White.copy(alpha = 0.04f),
+            Color.Transparent
+        )
+    }
+    val windowInsetColors = remember { listOf(Color.Black.copy(alpha = 0.90f), Color.Transparent) }
+    val plateGlareColors = remember {
+        listOf(
+            Color.White.copy(alpha = 0.45f),
+            Color.White.copy(alpha = 0.10f),
+            Color.Transparent
+        )
+    }
+
     Box(
         modifier = modifier
             .size(154.dp, 54.dp)
@@ -148,21 +171,18 @@ fun FlipBumper(
                     // 1. 3D anamorphic vertically-squashed stadium aura
                     val padX = 14.dp.toPx()
                     val halfH = (size.height / 2f + 8.dp.toPx()) * cosFactor
+                    if (isBackFace) {
+                        auraColorsList[0] = neonColor.copy(alpha = rgbBloomAlpha * 0.70f)
+                        auraColorsList[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.25f)
+                        auraColorsList[2] = Color.Transparent
+                    } else {
+                        auraColorsList[0] = neonColor.copy(alpha = rgbBloomAlpha * 0.45f)
+                        auraColorsList[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.12f)
+                        auraColorsList[2] = Color.Transparent
+                    }
                     drawRoundRect(
                         brush = Brush.radialGradient(
-                            colors = if (isBackFace) {
-                                listOf(
-                                    neonColor.copy(alpha = rgbBloomAlpha * 0.70f),
-                                    neonColor.copy(alpha = rgbBloomAlpha * 0.25f),
-                                    Color.Transparent
-                                )
-                            } else {
-                                listOf(
-                                    neonColor.copy(alpha = rgbBloomAlpha * 0.45f),
-                                    neonColor.copy(alpha = rgbBloomAlpha * 0.12f),
-                                    Color.Transparent
-                                )
-                            },
+                            colors = auraColorsList,
                             center = center,
                             radius = size.width * 0.55f
                         ),
@@ -178,15 +198,14 @@ fun FlipBumper(
                         val slitStartX = center.x - slitLength / 2f
                         val slitEndX = center.x + slitLength / 2f
 
+                        laserSlitColorsList[0] = Color.Transparent
+                        laserSlitColorsList[1] = neonColor.copy(alpha = rgbBloomAlpha * edgeOnIntensity * 0.85f)
+                        laserSlitColorsList[2] = Color.White.copy(alpha = rgbBloomAlpha * edgeOnIntensity * 0.95f)
+                        laserSlitColorsList[3] = neonColor.copy(alpha = rgbBloomAlpha * edgeOnIntensity * 0.85f)
+                        laserSlitColorsList[4] = Color.Transparent
                         drawLine(
                             brush = Brush.horizontalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    neonColor.copy(alpha = rgbBloomAlpha * edgeOnIntensity * 0.85f),
-                                    Color.White.copy(alpha = rgbBloomAlpha * edgeOnIntensity * 0.95f),
-                                    neonColor.copy(alpha = rgbBloomAlpha * edgeOnIntensity * 0.85f),
-                                    Color.Transparent
-                                ),
+                                colors = laserSlitColorsList,
                                 startX = slitStartX,
                                 endX = slitEndX
                             ),
@@ -259,7 +278,7 @@ fun FlipBumper(
                         val insetH = h * 0.40f
                         drawRect(
                             brush = Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
+                                colors = insetShadowColors,
                                 startY = h - insetH,
                                 endY = h
                             ),
@@ -271,11 +290,7 @@ fun FlipBumper(
                         val sheenH = h * 0.40f
                         drawRect(
                             brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = 0.14f),
-                                    Color.White.copy(alpha = 0.04f),
-                                    Color.Transparent
-                                ),
+                                colors = lensSpecularColors,
                                 startY = 0f,
                                 endY = sheenH
                             ),
@@ -311,7 +326,7 @@ fun FlipBumper(
                             // Inset top shadow
                             drawRect(
                                 brush = Brush.verticalGradient(
-                                    colors = listOf(Color.Black.copy(alpha = 0.90f), Color.Transparent),
+                                    colors = windowInsetColors,
                                     startY = 0f,
                                     endY = 6.dp.toPx()
                                 ),
@@ -362,11 +377,7 @@ fun FlipBumper(
                         // Specular glass glare reflection across golden plate
                         drawRect(
                             brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = 0.45f),
-                                    Color.White.copy(alpha = 0.10f),
-                                    Color.Transparent
-                                ),
+                                colors = plateGlareColors,
                                 startY = 0f,
                                 endY = h * 0.50f
                             ),

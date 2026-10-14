@@ -99,6 +99,27 @@ fun ArcBumper(
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
 
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val s = remember(density) {
+        val w = 154f * density
+        val h = 56f * density
+        min(w / 230f, h / 84f)
+    }
+    val strokeRibbonPressed = remember(s) { Stroke(width = 76f * s, cap = StrokeCap.Round, join = StrokeJoin.Round) }
+    val strokeRibbonNormal = remember(s) { Stroke(width = 64f * s, cap = StrokeCap.Round, join = StrokeJoin.Round) }
+    val strokeBeamPressed = remember(s) { Stroke(width = 58f * s, cap = StrokeCap.Round, join = StrokeJoin.Round) }
+    val strokeBeamNormal = remember(s) { Stroke(width = 52f * s, cap = StrokeCap.Round, join = StrokeJoin.Round) }
+    val apexRadiusPressed = remember(density) { 24f * density }
+    val apexRadiusNormal = remember(density) { 14f * density }
+
+    val arcPath = remember { Path() }
+    val ribbonBloomColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val apexBloomColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(154.dp, 56.dp)
@@ -111,59 +132,48 @@ fun ArcBumper(
                 if (isRgbEnabled) {
                     val w = size.width
                     val h = size.height
-                    val s = min(w / 230f, h / 84f)
                     val ox = (w - 230f * s) / 2f
                     val oy = (h - 84f * s) / 2f
 
-                    val arcPath = Path().apply {
-                        moveTo(ox + 24f * s, oy + 62f * s)
-                        quadraticTo(ox + 115f * s, oy - 10f * s, ox + 206f * s, oy + 62f * s)
-                    }
+                    arcPath.reset()
+                    arcPath.moveTo(ox + 24f * s, oy + 62f * s)
+                    arcPath.quadraticTo(ox + 115f * s, oy - 10f * s, ox + 206f * s, oy + 62f * s)
 
                     // 1. Broad outer crescent ribbon bloom
+                    ribbonBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.55f else 0.35f))
+                    ribbonBloomColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.15f)
+                    ribbonBloomColors[2] = Color.Transparent
                     drawPath(
                         path = arcPath,
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.55f else 0.35f)),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.15f),
-                                Color.Transparent
-                            ),
+                            colors = ribbonBloomColors,
                             center = Offset(w / 2f, oy + 20f * s),
                             radius = w * 0.60f
                         ),
-                        style = Stroke(
-                            width = (if (isPressed) 76f else 64f) * s,
-                            cap = StrokeCap.Round,
-                            join = StrokeJoin.Round
-                        )
+                        style = if (isPressed) strokeRibbonPressed else strokeRibbonNormal
                     )
 
                     // 2. Focused parabolic neon beam
                     drawPath(
                         path = arcPath,
                         color = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.85f else 0.50f)),
-                        style = Stroke(
-                            width = (if (isPressed) 58f else 52f) * s,
-                            cap = StrokeCap.Round,
-                            join = StrokeJoin.Round
-                        )
+                        style = if (isPressed) strokeBeamPressed else strokeBeamNormal
                     )
 
                     // 3. Arc apex focal crown flare
                     val apexX = ox + 115f * s
                     val apexY = oy - 10f * s
+                    val apexRadius = if (isPressed) apexRadiusPressed else apexRadiusNormal
+                    apexBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.90f else 0.55f))
+                    apexBloomColors[1] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.90f else 0.55f)),
-                                Color.Transparent
-                            ),
+                            colors = apexBloomColors,
                             center = Offset(apexX, apexY),
-                            radius = if (isPressed) 24.dp.toPx() else 14.dp.toPx()
+                            radius = apexRadius
                         ),
                         center = Offset(apexX, apexY),
-                        radius = if (isPressed) 24.dp.toPx() else 14.dp.toPx()
+                        radius = apexRadius
                     )
                 }
             }

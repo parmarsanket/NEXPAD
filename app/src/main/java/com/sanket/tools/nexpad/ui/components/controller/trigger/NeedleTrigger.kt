@@ -123,6 +123,19 @@ fun NeedleTrigger(
         )
     }
 
+    val domeAuraColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val tachoTrackColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent)
+    }
+    val sectorPlumeColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val tipBeaconColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(widthDp, heightDp)
@@ -138,13 +151,12 @@ fun NeedleTrigger(
                     val curPull = fillProgress
 
                     // 1. Arched Dome Chassis Aura (54dp top curve, 14dp bottom)
+                    domeAuraColors[0] = glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.50f else 0.30f))
+                    domeAuraColors[1] = glowColor.copy(alpha = rgbBloomAlpha * 0.12f)
+                    domeAuraColors[2] = Color.Transparent
                     drawRoundRect(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.50f else 0.30f)),
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.12f),
-                                Color.Transparent
-                            ),
+                            colors = domeAuraColors,
                             center = center,
                             radius = size.width * 0.55f
                         ),
@@ -161,12 +173,11 @@ fun NeedleTrigger(
                     val sweepTotal = 140f
 
                     // Base tachometer track glow
+                    tachoTrackColors[0] = glowColor.copy(alpha = rgbBloomAlpha * 0.25f)
+                    tachoTrackColors[1] = Color.Transparent
                     drawArc(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                glowColor.copy(alpha = rgbBloomAlpha * 0.25f),
-                                Color.Transparent
-                            ),
+                            colors = tachoTrackColors,
                             center = Offset(pivotX, pivotY),
                             radius = arcR + 10.dp.toPx()
                         ),
@@ -180,13 +191,12 @@ fun NeedleTrigger(
                     // Active sweeping sector plume
                     if (curPull > 0.02f) {
                         val activeSweep = sweepTotal * curPull
+                        sectorPlumeColors[0] = Color.White.copy(alpha = rgbBloomAlpha * curPull * 0.70f)
+                        sectorPlumeColors[1] = glowColor.copy(alpha = rgbBloomAlpha * curPull * 0.85f)
+                        sectorPlumeColors[2] = Color.Transparent
                         drawArc(
                             brush = Brush.radialGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = rgbBloomAlpha * curPull * 0.70f),
-                                    glowColor.copy(alpha = rgbBloomAlpha * curPull * 0.85f),
-                                    Color.Transparent
-                                ),
+                                colors = sectorPlumeColors,
                                 center = Offset(pivotX, pivotY),
                                 radius = arcR + 12.dp.toPx()
                             ),
@@ -205,13 +215,12 @@ fun NeedleTrigger(
                         val tipX = pivotX + (arcR + 4.dp.toPx()) * cosN
                         val tipY = pivotY + (arcR + 4.dp.toPx()) * sinN
 
+                        tipBeaconColors[0] = Color.White.copy(alpha = rgbBloomAlpha * 0.90f)
+                        tipBeaconColors[1] = glowColor.copy(alpha = rgbBloomAlpha * 0.80f)
+                        tipBeaconColors[2] = Color.Transparent
                         drawCircle(
                             brush = Brush.radialGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = rgbBloomAlpha * 0.90f),
-                                    glowColor.copy(alpha = rgbBloomAlpha * 0.80f),
-                                    Color.Transparent
-                                ),
+                                colors = tipBeaconColors,
                                 center = Offset(tipX, tipY),
                                 radius = (if (isPressed) 16.dp else 10.dp).toPx()
                             ),

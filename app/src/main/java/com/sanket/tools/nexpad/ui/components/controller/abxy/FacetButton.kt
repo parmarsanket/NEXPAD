@@ -101,6 +101,35 @@ fun FacetButton(
     val psShape = getPlayStationShape(activeLabel)
     val effectiveColor = if (psShape != null) getPlayStationColor(psShape) else buttonColor
     val gemShape = remember { RoundedCornerShape(14.dp) }
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val insetColorsPressed = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)) }
+    val insetColorsNormal = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)) }
+    val crystalGlintColors = remember { listOf(Color.White.copy(alpha = 0.8f), Color.Transparent) }
+    val innerGlowStroke = remember(density) { Stroke(width = 4f * density) }
+    val innerCoreStroke = remember(density) { Stroke(width = 1.5f * density) }
+    val gemBackgroundBrush = remember {
+        Brush.radialGradient(
+            colors = listOf(Color(0xFF232527), Color(0xFF0C0D0E), Color.Black),
+            center = Offset(0.5f, 0.55f),
+            radius = 180f
+        )
+    }
+    val gemBorderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.50f),
+                Color.Black.copy(alpha = 0.85f)
+            )
+        )
+    }
+
+    val diamondBloomStops = remember(effectiveColor) {
+        arrayOf(
+            0.00f to Color.Transparent,
+            0.45f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
+    }
 
     Box(
         modifier = modifier
@@ -113,13 +142,12 @@ fun FacetButton(
 
                     // 1. Rotating crystalline diamond aura (tracks 45° chassis + innerRotAnim spring)
                     rotate(degrees = 45f + innerRotAnim * 0.5f, pivot = center) {
+                        diamondBloomStops[0] = 0.00f to effectiveColor.copy(alpha = rgbBloomAlpha * 0.60f)
+                        diamondBloomStops[1] = 0.45f to effectiveColor.copy(alpha = rgbBloomAlpha * 0.22f)
+                        diamondBloomStops[2] = 1.00f to Color.Transparent
                         drawRoundRect(
                             brush = Brush.radialGradient(
-                                colorStops = arrayOf(
-                                    0.00f to effectiveColor.copy(alpha = rgbBloomAlpha * 0.60f),
-                                    0.45f to effectiveColor.copy(alpha = rgbBloomAlpha * 0.22f),
-                                    1.00f to Color.Transparent
-                                ),
+                                colorStops = diamondBloomStops,
                                 center = center,
                                 radius = size.minDimension * 0.65f
                             ),
@@ -166,7 +194,7 @@ fun FacetButton(
                     if (isPressed) {
                         drawCircle(
                             brush = Brush.radialGradient(
-                                colors = listOf(Color.White.copy(alpha = 0.8f), Color.Transparent),
+                                colors = crystalGlintColors,
                                 center = center,
                                 radius = 16f
                             ),
@@ -194,21 +222,10 @@ fun FacetButton(
                     ambientColor = if (isRgbEnabled) effectiveColor else Color.Black
                 )
                 .clip(gemShape)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(Color(0xFF232527), Color(0xFF0C0D0E), Color.Black),
-                        center = Offset(0.5f, 0.55f),
-                        radius = 180f
-                    )
-                )
+                .background(gemBackgroundBrush)
                 .border(
                     width = 1.dp,
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.50f),
-                            Color.Black.copy(alpha = 0.85f)
-                        )
-                    ),
+                    brush = gemBorderBrush,
                     shape = gemShape
                 )
                 .pointerInput(key) {
@@ -244,7 +261,7 @@ fun FacetButton(
                 val insetH = h * 0.35f
                 drawRect(
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (isPressed) 0.85f else 0.70f)),
+                        colors = if (isPressed) insetColorsPressed else insetColorsNormal,
                         startY = h - insetH,
                         endY = h
                     ),
@@ -266,7 +283,7 @@ fun FacetButton(
                             topLeft = Offset(inset - 1.5.dp.toPx(), inset - 1.5.dp.toPx()),
                             size = Size(innerW + 3.dp.toPx(), innerH + 3.dp.toPx()),
                             cornerRadius = CornerRadius(cr + 1.5.dp.toPx(), cr + 1.5.dp.toPx()),
-                            style = Stroke(width = 4.dp.toPx())
+                            style = innerGlowStroke
                         )
                         // Inner diamond core stroke
                         drawRoundRect(
@@ -274,7 +291,7 @@ fun FacetButton(
                             topLeft = Offset(inset, inset),
                             size = Size(innerW, innerH),
                             cornerRadius = CornerRadius(cr, cr),
-                            style = Stroke(width = 1.5.dp.toPx())
+                            style = innerCoreStroke
                         )
                     }
                 }
@@ -369,6 +386,13 @@ internal fun StaticFacetButton(
     val buttonColor = resolveButtonColor(controlKey, labelStyle, displayLabel)
     val psShape = getPlayStationShape(displayLabel)
     val gemShape = remember { RoundedCornerShape(14.dp) }
+    val previewBloomColors = remember(buttonColor) {
+        listOf(
+            buttonColor.copy(alpha = 0.45f * 0.55f),
+            buttonColor.copy(alpha = 0.45f * 0.22f),
+            Color.Transparent
+        )
+    }
 
     Box(
         modifier = modifier
@@ -376,11 +400,7 @@ internal fun StaticFacetButton(
             .drawBehind {
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(
-                            buttonColor.copy(alpha = 0.45f * 0.55f),
-                            buttonColor.copy(alpha = 0.45f * 0.22f),
-                            Color.Transparent
-                        ),
+                        colors = previewBloomColors,
                         center = center,
                         radius = size.minDimension * 0.95f
                     ),

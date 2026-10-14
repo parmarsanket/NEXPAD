@@ -152,6 +152,16 @@ fun RibbedBumper(
         )
     }
 
+    val stadiumBloomColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val washBloomColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent)
+    }
+    val teethColorsList = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(154.dp, 54.dp)
@@ -166,13 +176,12 @@ fun RibbedBumper(
                     val padY = 8.dp.toPx()
 
                     // 1. Base stadium glow
+                    stadiumBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.52f else 0.32f))
+                    stadiumBloomColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.12f)
+                    stadiumBloomColors[2] = Color.Transparent
                     drawRoundRect(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.52f else 0.32f)),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.12f),
-                                Color.Transparent
-                            ),
+                            colors = stadiumBloomColors,
                             center = center,
                             radius = size.width * 0.55f
                         ),
@@ -190,12 +199,11 @@ fun RibbedBumper(
                     val ribSpikeH = (if (isPressed) 14.dp else 7.dp).toPx()
 
                     // Diffuse bottom light curtain wash
+                    washBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * stripAlphaAnim * (if (isPressed) 0.70f else 0.35f))
+                    washBloomColors[1] = Color.Transparent
                     drawRect(
                         brush = Brush.verticalGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * stripAlphaAnim * (if (isPressed) 0.70f else 0.35f)),
-                                Color.Transparent
-                            ),
+                            colors = washBloomColors,
                             startY = stripY,
                             endY = stripY + ribSpikeH * 1.5f
                         ),
@@ -210,13 +218,12 @@ fun RibbedBumper(
                         val teethH = if (isMajorRib) ribSpikeH else ribSpikeH * 0.65f
                         val teethAlpha = rgbBloomAlpha * stripAlphaAnim * (if (isMajorRib) 0.85f else 0.50f)
 
+                        teethColorsList[0] = Color.White.copy(alpha = teethAlpha)
+                        teethColorsList[1] = neonColor.copy(alpha = teethAlpha * 0.80f)
+                        teethColorsList[2] = Color.Transparent
                         drawLine(
                             brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = teethAlpha),
-                                    neonColor.copy(alpha = teethAlpha * 0.80f),
-                                    Color.Transparent
-                                ),
+                                colors = teethColorsList,
                                 startY = stripY,
                                 endY = stripY + teethH
                             ),

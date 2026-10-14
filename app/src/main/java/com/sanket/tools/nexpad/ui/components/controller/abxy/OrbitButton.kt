@@ -122,6 +122,79 @@ fun OrbitButton(
         )
     }
 
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val borderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.50f),
+                Color.Black.copy(alpha = 0.85f)
+            )
+        )
+    }
+    val stroke1dp = remember(density) { Stroke(width = 1f * density) }
+    val stroke2dp = remember(density) { Stroke(width = 2f * density) }
+    val stroke4dp = remember(density) { Stroke(width = 4f * density) }
+    val outerOrbitAuraStroke = remember {
+        Stroke(
+            width = 2.5f,
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f), 0f)
+        )
+    }
+    val innerOrbitAuraStroke = remember {
+        Stroke(
+            width = 1.8f,
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 7f), 0f)
+        )
+    }
+    val orbit1Stroke = remember(density) {
+        val maxR = 40f * density
+        val r1 = (30f / 39f) * maxR
+        val c1 = (2f * Math.PI.toFloat() * r1)
+        val stroke1Px = (3.5f / 39f) * maxR
+        val dash1 = (0.26f * c1 - stroke1Px).coerceAtLeast(1f)
+        val gap1 = 0.0733f * c1 + stroke1Px
+        Stroke(
+            width = stroke1Px,
+            cap = StrokeCap.Round,
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash1, gap1), 0f)
+        )
+    }
+    val orbit2Stroke = remember(density) {
+        val maxR = 40f * density
+        val r2 = (24f / 39f) * maxR
+        val c2 = (2f * Math.PI.toFloat() * r2)
+        val stroke2Px = (2f / 39f) * maxR
+        val pipGap = (c2 / 16.67f) - 0.1f
+        Stroke(
+            width = stroke2Px,
+            cap = StrokeCap.Round,
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(0.1f, pipGap), 0f)
+        )
+    }
+    val insetShadowColorsPressed = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)) }
+    val insetShadowColorsNormal = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)) }
+    val lensColorsPressed = remember {
+        listOf(
+            Color.White.copy(alpha = 0.06f),
+            Color.White.copy(alpha = 0.02f),
+            Color.Transparent
+        )
+    }
+    val lensColorsNormal = remember {
+        listOf(
+            Color.White.copy(alpha = 0.14f),
+            Color.White.copy(alpha = 0.05f),
+            Color.Transparent
+        )
+    }
+    val specularSheenColors = remember {
+        listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)
+    }
+
+    val bloomColorsList = remember(effectiveColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
     Box(
         modifier = modifier
             .size(80.dp)
@@ -134,13 +207,12 @@ fun OrbitButton(
                 if (isRgbEnabled) {
                     // 1. Ambient planetary core bloom
                     val coreRadius = size.minDimension * 0.95f
+                    bloomColorsList[0] = effectiveColor.copy(alpha = rgbBloomAlpha * 0.50f)
+                    bloomColorsList[1] = effectiveColor.copy(alpha = rgbBloomAlpha * 0.18f)
+                    bloomColorsList[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                effectiveColor.copy(alpha = rgbBloomAlpha * 0.50f),
-                                effectiveColor.copy(alpha = rgbBloomAlpha * 0.18f),
-                                Color.Transparent
-                            ),
+                            colors = bloomColorsList,
                             center = center,
                             radius = coreRadius
                         ),
@@ -155,10 +227,7 @@ fun OrbitButton(
                             color = effectiveColor.copy(alpha = if (isPressed) 0.85f else 0.40f),
                             radius = r1,
                             center = center,
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(
-                                width = 2.5f,
-                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f), 0f)
-                            )
+                            style = outerOrbitAuraStroke
                         )
                     }
                     // Orbiting photon spark pip 1 at leading tip
@@ -185,10 +254,7 @@ fun OrbitButton(
                             color = effectiveColor.copy(alpha = if (isPressed) 0.70f else 0.30f),
                             radius = r2,
                             center = center,
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(
-                                width = 1.8f,
-                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 7f), 0f)
-                            )
+                            style = innerOrbitAuraStroke
                         )
                     }
                     // Counter-orbiting photon spark pip 2
@@ -214,12 +280,7 @@ fun OrbitButton(
             .background(baseDomeGradient)
             .border(
                 width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.50f),
-                        Color.Black.copy(alpha = 0.85f)
-                    )
-                ),
+                brush = borderBrush,
                 shape = CircleShape
             )
             .pointerInput(key) {
@@ -248,7 +309,7 @@ fun OrbitButton(
             val insetH = h * 0.32f
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (isPressed) 0.85f else 0.70f)),
+                    colors = if (isPressed) insetShadowColorsPressed else insetShadowColorsNormal,
                     startY = h - insetH,
                     endY = h
                 ),
@@ -268,30 +329,19 @@ fun OrbitButton(
                     color = effectiveColor.copy(alpha = orbit1Alpha),
                     radius = r1,
                     center = Offset(cx, cy),
-                    style = Stroke(
-                        width = stroke1Px,
-                        cap = StrokeCap.Round,
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash1, gap1), 0f)
-                    )
+                    style = orbit1Stroke
                 )
             }
 
             // Inner Orbit 2: r = 24 / 39 * maxR, stroke-width = 2, dasharray = 1.2 4.8 (dotted pips)
             val r2 = (24f / 39f) * maxR
-            val c2 = (2f * PI * r2).toFloat()
-            val stroke2Px = (2f / 39f) * maxR
-            val pipGap = (c2 / 16.67f) - 0.1f
 
             rotate(degrees = rotation2, pivot = Offset(cx, cy)) {
                 drawCircle(
                     color = effectiveColor.copy(alpha = orbit2Alpha),
                     radius = r2,
                     center = Offset(cx, cy),
-                    style = Stroke(
-                        width = stroke2Px,
-                        cap = StrokeCap.Round,
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(0.1f, pipGap), 0f)
-                    )
+                    style = orbit2Stroke
                 )
             }
         }
@@ -322,7 +372,7 @@ fun OrbitButton(
             drawCircle(
                 color = Color.Black.copy(alpha = 0.50f),
                 radius = r - 0.5.dp.toPx(),
-                style = Stroke(width = 1.dp.toPx())
+                style = stroke1dp
             )
 
             // Neon ring (.lx-ring)
@@ -330,23 +380,19 @@ fun OrbitButton(
             drawCircle(
                 color = effectiveColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
                 radius = ringRadius,
-                style = Stroke(width = 4.dp.toPx())
+                style = stroke4dp
             )
             drawCircle(
                 color = effectiveColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
                 radius = ringRadius,
-                style = Stroke(width = 2.dp.toPx())
+                style = stroke2dp
             )
 
             // Glass lens (.lx-lens)
             val lensInset = 1.dp.toPx()
             drawArc(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isPressed) 0.06f else 0.14f),
-                        Color.White.copy(alpha = if (isPressed) 0.02f else 0.05f),
-                        Color.Transparent
-                    ),
+                    colors = if (isPressed) lensColorsPressed else lensColorsNormal,
                     startY = 0f,
                     endY = h * 0.40f
                 ),
@@ -355,13 +401,13 @@ fun OrbitButton(
                 useCenter = false,
                 topLeft = Offset(lensInset, lensInset),
                 size = Size(w - lensInset * 2f, h - lensInset * 2f),
-                style = Stroke(width = 1.dp.toPx())
+                style = stroke1dp
             )
 
             // Specular sheen
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                    colors = specularSheenColors,
                     center = Offset(w * 0.70f, h * 0.78f),
                     radius = w * 0.25f
                 ),
@@ -384,6 +430,13 @@ internal fun StaticOrbitButton(
     val displayLabel = CategoryManager.getLabelForStyle(controlKey, labelStyle)
     val buttonColor = resolveButtonColor(controlKey, labelStyle, displayLabel)
     val psShape = getPlayStationShape(displayLabel)
+    val previewBloomColors = remember(buttonColor) {
+        listOf(
+            buttonColor.copy(alpha = 0.45f * 0.55f),
+            buttonColor.copy(alpha = 0.45f * 0.22f),
+            Color.Transparent
+        )
+    }
 
     Box(
         modifier = modifier
@@ -391,11 +444,7 @@ internal fun StaticOrbitButton(
             .drawBehind {
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(
-                            buttonColor.copy(alpha = 0.45f * 0.55f),
-                            buttonColor.copy(alpha = 0.45f * 0.22f),
-                            Color.Transparent
-                        ),
+                        colors = previewBloomColors,
                         center = center,
                         radius = size.minDimension * 1f
                     ),

@@ -62,7 +62,7 @@ fun RealisticMacroButton(
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
 
-    val shape = RoundedCornerShape(16.dp)
+    val shape = remember { RoundedCornerShape(16.dp) }
 
     val rgbBloomAlpha by animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 0.40f,
@@ -74,14 +74,43 @@ fun RealisticMacroButton(
         if (key.contains("3") || key.contains("4")) Color(0xFF00E5FF) else Color(0xFFFFD600)
     }
 
-    val baseGradient = remember(isPressed) {
+    val baseGradientPressed = remember {
         Brush.verticalGradient(
-            colors = if (isPressed) {
-                listOf(Color(0xFF1E2633), Color(0xFF0F141C))
-            } else {
-                listOf(Color(0xFF333E4D), Color(0xFF1F2631), Color(0xFF12161E))
-            }
+            colors = listOf(Color(0xFF1E2633), Color(0xFF0F141C))
         )
+    }
+    val baseGradientNormal = remember {
+        Brush.verticalGradient(
+            colors = listOf(Color(0xFF333E4D), Color(0xFF1F2631), Color(0xFF12161E))
+        )
+    }
+
+    val borderTopColor = remember(isRgbEnabled, auraColor) {
+        if (isRgbEnabled) auraColor else Color(0xFF718096)
+    }
+    val borderBrushPressed = remember(borderTopColor) {
+        Brush.verticalGradient(
+            colors = listOf(borderTopColor.copy(alpha = 0.40f), Color(0xFF1A202C))
+        )
+    }
+    val borderBrushNormal = remember(borderTopColor) {
+        Brush.verticalGradient(
+            colors = listOf(borderTopColor.copy(alpha = 0.70f), Color(0xFF1A202C))
+        )
+    }
+
+    val highlightColorsPressed = remember {
+        listOf(Color.White.copy(alpha = 0.10f), Color.Transparent)
+    }
+    val highlightColorsNormal = remember {
+        listOf(Color.White.copy(alpha = 0.35f), Color.Transparent)
+    }
+
+    val bloomColorsList = remember(auraColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val slitColorsList = remember(auraColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent, Color.Transparent, Color.Transparent)
     }
 
     Box(
@@ -98,13 +127,12 @@ fun RealisticMacroButton(
                     val padY = 8.dp.toPx()
 
                     // 1. Stadium Macro Toggle Switch Aura
+                    bloomColorsList[0] = auraColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.55f else 0.32f))
+                    bloomColorsList[1] = auraColor.copy(alpha = rgbBloomAlpha * 0.12f)
+                    bloomColorsList[2] = Color.Transparent
                     drawRoundRect(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                auraColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.55f else 0.32f)),
-                                auraColor.copy(alpha = rgbBloomAlpha * 0.12f),
-                                Color.Transparent
-                            ),
+                            colors = bloomColorsList,
                             center = center,
                             radius = size.width * 0.55f
                         ),
@@ -139,15 +167,14 @@ fun RealisticMacroButton(
                     if (isPressed) {
                         val slitW = size.width * 0.75f
                         val slitLeft = center.x - slitW / 2f
+                        slitColorsList[0] = Color.Transparent
+                        slitColorsList[1] = auraColor.copy(alpha = rgbBloomAlpha * 0.85f)
+                        slitColorsList[2] = Color.White.copy(alpha = rgbBloomAlpha * 0.95f)
+                        slitColorsList[3] = auraColor.copy(alpha = rgbBloomAlpha * 0.85f)
+                        slitColorsList[4] = Color.Transparent
                         drawLine(
                             brush = Brush.horizontalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    auraColor.copy(alpha = rgbBloomAlpha * 0.85f),
-                                    Color.White.copy(alpha = rgbBloomAlpha * 0.95f),
-                                    auraColor.copy(alpha = rgbBloomAlpha * 0.85f),
-                                    Color.Transparent
-                                ),
+                                colors = slitColorsList,
                                 startX = slitLeft,
                                 endX = slitLeft + slitW
                             ),
@@ -165,15 +192,10 @@ fun RealisticMacroButton(
                 spotColor = if (isRgbEnabled) auraColor else Color.Black
             )
             .clip(shape)
-            .background(baseGradient)
+            .background(if (isPressed) baseGradientPressed else baseGradientNormal)
             .border(
                 width = 1.2.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        (if (isRgbEnabled) auraColor else Color(0xFF718096)).copy(alpha = if (isPressed) 0.40f else 0.70f),
-                        Color(0xFF1A202C)
-                    )
-                ),
+                brush = if (isPressed) borderBrushPressed else borderBrushNormal,
                 shape = shape
             )
             .pointerInput(key) {
@@ -194,10 +216,7 @@ fun RealisticMacroButton(
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawLine(
                 brush = Brush.horizontalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isPressed) 0.10f else 0.35f),
-                        Color.Transparent
-                    )
+                    colors = if (isPressed) highlightColorsPressed else highlightColorsNormal
                 ),
                 start = Offset(12f, 4f),
                 end = Offset(size.width - 12f, 4f),
