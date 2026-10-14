@@ -26,6 +26,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -110,29 +111,27 @@ private fun DrawScope.drawInbuildTouchpadGrid(
     }
 
     // Horizontal lines
+    val horizontalGridBrush = Brush.horizontalGradient(
+        colors = if (isLeft) {
+            listOf(
+                auraColor.copy(alpha = baseLineAlpha),
+                auraColor.copy(alpha = baseLineAlpha * 0.8f),
+                Color.Transparent
+            )
+        } else {
+            listOf(
+                Color.Transparent,
+                auraColor.copy(alpha = baseLineAlpha * 0.8f),
+                auraColor.copy(alpha = baseLineAlpha)
+            )
+        },
+        startX = 0f,
+        endX = w
+    )
     var y = 0f
     while (y <= h) {
-        val lineAlpha = baseLineAlpha
-        val brush = Brush.horizontalGradient(
-            colors = if (isLeft) {
-                listOf(
-                    auraColor.copy(alpha = lineAlpha),
-                    auraColor.copy(alpha = lineAlpha * 0.8f),
-                    Color.Transparent
-                )
-            } else {
-                listOf(
-                    Color.Transparent,
-                    auraColor.copy(alpha = lineAlpha * 0.8f),
-                    auraColor.copy(alpha = lineAlpha)
-                )
-            },
-            startX = 0f,
-            endX = w
-        )
-
         drawLine(
-            brush = brush,
+            brush = horizontalGridBrush,
             start = Offset(0f, y),
             end = Offset(w, y),
             strokeWidth = 1.dp.toPx()
@@ -316,13 +315,14 @@ fun InbuildTouchpadHalf(
     isLeft: Boolean,
     screenWidthPx: Float,
     screenHeightPx: Float,
-    exclusionRects: List<Rect>,
+    exclusionRects: List<Rect> = emptyList(),
     isConnected: Boolean,
     isRgbEnabled: Boolean,
     viewModel: GamepadViewModel?,
     onVibrate: () -> Unit = {},
     sensitivity: Float? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    boundsProvider: (() -> List<Rect>)? = null
 ) {
     val coroutineScope = rememberCoroutineScope()
     val auraColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
@@ -331,6 +331,8 @@ fun InbuildTouchpadHalf(
     var touchX by remember { mutableFloatStateOf(-1f) }
     var touchY by remember { mutableFloatStateOf(-1f) }
     var decayJob by remember { mutableStateOf<Job?>(null) }
+    val currentExclusionRects by androidx.compose.runtime.rememberUpdatedState(exclusionRects)
+    val currentBoundsProvider by androidx.compose.runtime.rememberUpdatedState(boundsProvider)
 
     val touchAuraAlpha by animateFloatAsState(
         targetValue = if (isTouching) 1f else 0f,
@@ -366,7 +368,7 @@ fun InbuildTouchpadHalf(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .pointerInput(isLeft, effectiveSensitivity, density, exclusionRects, screenWidthPx) {
+            .pointerInput(isLeft, effectiveSensitivity, density, screenWidthPx) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
 
@@ -380,7 +382,8 @@ fun InbuildTouchpadHalf(
                     // 2. Universal element boundary exclusion check:
                     // Dilates any shape uniformly by marginPx (16dp safety buffer zone)
                     val marginSq = marginPx * marginPx
-                    val nearButton = exclusionRects.any { rect ->
+                    val activeExclusions = currentBoundsProvider?.invoke() ?: currentExclusionRects
+                    val nearButton = activeExclusions.any { rect ->
                         val dx = maxOf(abs(screenX - rect.center.x) - rect.width / 2f, 0f)
                         val dy = maxOf(abs(screenY - rect.center.y) - rect.height / 2f, 0f)
                         (dx * dx + dy * dy) <= marginSq
@@ -512,7 +515,11 @@ fun InbuildTouchpadHalf(
                 }
             }
     ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { }
+        ) {
             // Gaming small square grid lines covering the entire half-screen
             drawInbuildTouchpadGrid(
                 isLeft = isLeft,

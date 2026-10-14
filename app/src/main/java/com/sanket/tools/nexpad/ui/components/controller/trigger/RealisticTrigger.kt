@@ -73,18 +73,18 @@ fun RealisticTrigger(
     }
 
     // Kinematics: 0.95 scale on press (zero-mobility stationary actuation)
-    val scaleAnim by animateFloatAsState(
+    val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "trigger_scale"
     )
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "trigger_rgb_bloom"
     )
     // Analog meter liquid ramp
-    val fillProgress by animateFloatAsState(
+    val fillProgressState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0f,
         animationSpec = spring(dampingRatio = 0.72f, stiffness = 380f),
         label = "trigger_meter_fill"
@@ -188,6 +188,19 @@ fun RealisticTrigger(
         listOf(Color.White.copy(alpha = 0.05f), Color.Transparent)
     }
 
+    val stroke3_5dp = remember(density) { Stroke(width = 3.5f * density) }
+    val stroke1_5dp = remember(density) { Stroke(width = 1.5f * density) }
+    val liquidPath = remember { Path() }
+
+    val chassisBorderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.50f),
+                Color.Black.copy(alpha = 0.80f)
+            )
+        )
+    }
+
     val shieldAuraColors = remember(neonColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
@@ -199,11 +212,24 @@ fun RealisticTrigger(
         modifier = modifier
             .size(100.dp, 92.dp)
             .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
+                scaleX = scaleAnimState.value
+                scaleY = scaleAnimState.value
             }
-            // Outer dynamic RGB aura
+            // Outer dynamic RGB aura + Hardware-accelerated soft drop shadow
             .drawBehind {
+                val rgbBloomAlpha = rgbBloomAlphaState.value
+                val fillProgress = fillProgressState.value
+
+                // Hardware drop shadow matching trigger contour (replaces heavy Skia tessellator & GPU blur)
+                val shadowOffsetY = if (isPressed) 2.dp.toPx() else 6.dp.toPx()
+                val shadowPad = if (isPressed) 2.dp.toPx() else 5.dp.toPx()
+                drawRoundRect(
+                    color = Color.Black.copy(alpha = if (isPressed) 0.35f else 0.55f),
+                    topLeft = Offset(-shadowPad * 0.5f, shadowOffsetY - shadowPad * 0.5f),
+                    size = Size(size.width + shadowPad, size.height + shadowPad),
+                    cornerRadius = CornerRadius(16.dp.toPx() + shadowPad, 38.dp.toPx() + shadowPad)
+                )
+
                 if (isRgbEnabled) {
                     val padX = 12.dp.toPx()
                     val padTop = 6.dp.toPx()
@@ -244,25 +270,13 @@ fun RealisticTrigger(
                     }
                 }
             }
-            // RGB-coordinated shadow
-            .shadow(
-                elevation = if (isPressed) 2.dp else 6.dp,
-                shape = triggerShape,
-                ambientColor = if (isRgbEnabled) neonColor else Color.Black,
-                spotColor = if (isRgbEnabled) neonColor else Color.Black
-            )
             .clip(triggerShape)
             // Convex dome surface
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
             // 1px chassis border outline
             .border(
                 width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.50f),
-                        Color.Black.copy(alpha = 0.80f)
-                    )
-                ),
+                brush = chassisBorderBrush,
                 shape = triggerShape
             )
             .pointerInput(key) {
@@ -281,6 +295,8 @@ fun RealisticTrigger(
     ) {
         // Multi-layer visual canvas: Meter fluid surge, undercut shadow, neon ring, specular lens
         Canvas(modifier = Modifier.fillMaxSize()) {
+            val fillProgress = fillProgressState.value
+            val rgbBloomAlpha = rgbBloomAlphaState.value
             val w = size.width
             val h = size.height
 
@@ -303,39 +319,52 @@ fun RealisticTrigger(
 
             // Meter fluid surging upward from bottom hull on press
             if (fillProgress > 0.001f) {
-                clipPath(meterPath) {
-                    val liquidH = mh * fillProgress
-                    val fluidTopY = (h - mInset) - liquidH
+                val liquidH = mh * fillProgress
+                val fluidTopY = (h - mInset) - liquidH
+                val botRadius = CornerRadius(38.dp.toPx(), 38.dp.toPx())
+                val topRadius = if (fillProgress > 0.95f) CornerRadius(11.dp.toPx(), 11.dp.toPx()) else CornerRadius.Zero
 
-                    // Fluid vertical gradient fill: glow at bottom, fading toward top
-                    drawRect(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                neonColor.copy(alpha = 0.50f * fillProgress)
-                            ),
-                            startY = fluidTopY,
-                            endY = h - mInset
+                liquidPath.reset()
+                liquidPath.addRoundRect(
+                    androidx.compose.ui.geometry.RoundRect(
+                        left = mInset,
+                        top = fluidTopY,
+                        right = w - mInset,
+                        bottom = h - mInset,
+                        topLeftCornerRadius = topRadius,
+                        topRightCornerRadius = topRadius,
+                        bottomLeftCornerRadius = botRadius,
+                        bottomRightCornerRadius = botRadius
+                    )
+                )
+
+                // Fluid vertical gradient fill: glow at bottom, fading toward top
+                drawPath(
+                    path = liquidPath,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            neonColor.copy(alpha = 0.50f * fillProgress)
                         ),
-                        topLeft = Offset(mInset, fluidTopY),
-                        size = Size(mw, liquidH)
+                        startY = fluidTopY,
+                        endY = h - mInset
                     )
+                )
 
-                    // Emissive top fluid crest line & bloom
-                    val glowWidth = 5.dp.toPx()
-                    drawLine(
-                        color = neonColor.copy(alpha = 0.55f * fillProgress),
-                        start = Offset(mInset, fluidTopY),
-                        end = Offset(w - mInset, fluidTopY),
-                        strokeWidth = glowWidth
-                    )
-                    drawLine(
-                        color = neonColor.copy(alpha = 1.0f * fillProgress),
-                        start = Offset(mInset, fluidTopY),
-                        end = Offset(w - mInset, fluidTopY),
-                        strokeWidth = 2.dp.toPx()
-                    )
-                }
+                // Emissive top fluid crest line & bloom
+                val glowWidth = 5.dp.toPx()
+                drawLine(
+                    color = neonColor.copy(alpha = 0.55f * fillProgress),
+                    start = Offset(mInset, fluidTopY),
+                    end = Offset(w - mInset, fluidTopY),
+                    strokeWidth = glowWidth
+                )
+                drawLine(
+                    color = neonColor.copy(alpha = 1.0f * fillProgress),
+                    start = Offset(mInset, fluidTopY),
+                    end = Offset(w - mInset, fluidTopY),
+                    strokeWidth = 2.dp.toPx()
+                )
             }
 
             // 3. Neon Lens Ring (.lx-ring): inset 2.5dp, dual-pass stroke bloom
@@ -343,13 +372,13 @@ fun RealisticTrigger(
             drawPath(
                 path = ringPath,
                 color = neonColor.copy(alpha = rgbBloomAlpha * 0.55f),
-                style = Stroke(width = 3.5.dp.toPx())
+                style = stroke3_5dp
             )
             // Core crisp filament stroke
             drawPath(
                 path = ringPath,
                 color = neonColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
-                style = Stroke(width = 1.5.dp.toPx())
+                style = stroke1_5dp
             )
 
             // 4. Glass Lens Highlights (.lx-lens)
@@ -384,12 +413,6 @@ fun RealisticTrigger(
             modifier = Modifier
                 .offset(y = 12.dp)
                 .size(68.dp, 30.dp)
-                .shadow(
-                    elevation = 3.dp,
-                    shape = windowShape,
-                    spotColor = Color.Black,
-                    ambientColor = Color.Black
-                )
                 .clip(windowShape)
                 .background(windowGradient)
                 .border(

@@ -106,16 +106,8 @@ fun RealisticJoystick(
     )
 
     val neonColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
-    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
-    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
-    val effX = if (isLocked) thumbOffsetX else stickX * maxRadius
-    val effY = if (isLocked) thumbOffsetY else -stickY * maxRadius
-    val deflectionFraction = (hypot(effX, effY) / maxRadius).coerceIn(0f, 1f)
-    val rgbBloomAlpha by animateFloatAsState(
-        targetValue = 0.40f + 0.55f * deflectionFraction,
-        animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
-        label = "realistic_joystick_bloom"
-    )
+    val getEffX = { if (isLocked) thumbOffsetX else (if (isLeft) viewModel.leftStickX else viewModel.rightStickX) * maxRadius }
+    val getEffY = { if (isLocked) thumbOffsetY else -(if (isLeft) viewModel.leftStickY else viewModel.rightStickY) * maxRadius }
 
     val rgbShadow = Modifier.shadow(
         elevation = 10.dp,
@@ -143,10 +135,13 @@ fun RealisticJoystick(
             .size(150.dp)
             .drawBehind {
                 if (isRgbEnabled) {
+                    val effX = getEffX()
+                    val effY = getEffY()
                     val capPos = Offset(center.x + effX, center.y + effY)
                     val disp = hypot(effX, effY)
                     val maxR = size.minDimension * 0.35f
                     val dispFraction = (disp / maxR).coerceIn(0f, 1f)
+                    val rgbBloomAlpha = 0.40f + 0.55f * dispFraction
 
                     // 1. Base socket containment bloom
                     baseBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * 0.35f)
@@ -414,7 +409,7 @@ fun RealisticJoystick(
         // Thumbstick Cap
         Box(
             modifier = Modifier
-                .offset { IntOffset(effX.roundToInt(), effY.roundToInt()) }
+                .offset { IntOffset(getEffX().roundToInt(), getEffY().roundToInt()) }
                 .size(90.dp)
                 .shadow(
                     elevation = 12.dp,
@@ -500,12 +495,13 @@ fun RealisticStickButton(
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
-    val scaleAnim by animateFloatAsState(
+    val density = LocalDensity.current.density
+    val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.89f else 1.0f,
         animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
         label = "stick_btn_scale"
     )
-    val pressOffsetYAnim by animateFloatAsState(
+    val pressOffsetYAnimState = animateFloatAsState(
         targetValue = if (isPressed) 3.5f else 0f,
         animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
         label = "stick_btn_offset"
@@ -562,7 +558,7 @@ fun RealisticStickButton(
     }
 
     val neonColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "stick_btn_rgb_bloom"
@@ -604,12 +600,13 @@ fun RealisticStickButton(
         modifier = modifier
             .size(70.dp)
             .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
+                scaleX = scaleAnimState.value
+                scaleY = scaleAnimState.value
             }
-            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
+            .offset { IntOffset(0, (pressOffsetYAnimState.value * density).roundToInt()) }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
                     val clickBloomR = size.minDimension * (if (isPressed) 1.05f else 0.85f)
                     // 1. Tactile click pulse bloom
                     clickBloomStops[0] = 0.00f to (if (isPressed) Color.White else neonColor).copy(alpha = rgbBloomAlpha * 0.65f)

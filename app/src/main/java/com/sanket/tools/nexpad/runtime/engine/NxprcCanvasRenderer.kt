@@ -29,10 +29,12 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.drawBehind
@@ -54,6 +56,32 @@ import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.pow
 import kotlin.math.sin
+
+@Suppress("NOTHING_TO_INLINE")
+internal inline fun Color.toArgbLong(): Long = (this.toArgb().toLong()) and 0xFFFFFFFFL
+
+internal enum class NxprcShapeType {
+    ROUNDED_RECT,
+    OVAL,
+    POLYGON,
+    HEXAGON,
+    OCTAGON,
+    PATH;
+
+    companion object {
+        fun from(raw: String?): NxprcShapeType = when (raw?.trim()?.uppercase()) {
+            "OVAL", "CIRCLE" -> OVAL
+            "HEXAGON" -> HEXAGON
+            "OCTAGON" -> OCTAGON
+            "POLYGON" -> POLYGON
+            "PATH" -> PATH
+            else -> ROUNDED_RECT
+        }
+    }
+}
+
+private val hueRotateMatrixCache = arrayOfNulls<ColorMatrix>(360)
+private val hueRotateFilterCache = arrayOfNulls<ColorFilter>(360)
 
 private fun createHueRotateColorMatrix(degrees: Float): ColorMatrix {
     val rad = Math.toRadians(degrees.toDouble()).toFloat()
@@ -82,25 +110,34 @@ private fun createHueRotateColorMatrix(degrees: Float): ColorMatrix {
     ))
 }
 
+private fun getHueRotateColorMatrix(degrees: Float): ColorMatrix {
+    val degNorm = (((degrees % 360f) + 360f) % 360f).roundToInt() % 360
+    var mat = hueRotateMatrixCache[degNorm]
+    if (mat == null) {
+        mat = createHueRotateColorMatrix(degNorm.toFloat())
+        hueRotateMatrixCache[degNorm] = mat
+    }
+    return mat
+}
+
+internal fun getHueRotateColorFilter(degrees: Float): ColorFilter {
+    val degNorm = (((degrees % 360f) + 360f) % 360f).roundToInt() % 360
+    var filter = hueRotateFilterCache[degNorm]
+    if (filter == null) {
+        filter = ColorFilter.colorMatrix(getHueRotateColorMatrix(degNorm.toFloat()))
+        hueRotateFilterCache[degNorm] = filter
+    }
+    return filter
+}
+
 private fun rotateHue(color: Color, degrees: Float): Color {
-    val rad = Math.toRadians(degrees.toDouble()).toFloat()
-    val cosVal = cos(rad)
-    val sinVal = sin(rad)
+    val mat = getHueRotateColorMatrix(degrees).values
     val r = color.red
     val g = color.green
     val b = color.blue
-    val lumR = 0.213f
-    val lumG = 0.715f
-    val lumB = 0.072f
-    val newR = ((lumR + cosVal * (1f - lumR) + sinVal * (-lumR)) * r +
-            (lumG + cosVal * (-lumG) + sinVal * (-lumG)) * g +
-            (lumB + cosVal * (-lumB) + sinVal * (1f - lumB)) * b).coerceIn(0f, 1f)
-    val newG = ((lumR + cosVal * (-lumR) + sinVal * 0.143f) * r +
-            (lumG + cosVal * (1f - lumG) + sinVal * 0.140f) * g +
-            (lumB + cosVal * (-lumB) + sinVal * (-0.283f)) * b).coerceIn(0f, 1f)
-    val newB = ((lumR + cosVal * (-lumR) + sinVal * (-(1f - lumR))) * r +
-            (lumG + cosVal * (-lumG) + sinVal * 0.715f) * g +
-            (lumB + cosVal * (1f - lumB) + sinVal * 0.072f) * b).coerceIn(0f, 1f)
+    val newR = (mat[0] * r + mat[1] * g + mat[2] * b).coerceIn(0f, 1f)
+    val newG = (mat[5] * r + mat[6] * g + mat[7] * b).coerceIn(0f, 1f)
+    val newB = (mat[10] * r + mat[11] * g + mat[12] * b).coerceIn(0f, 1f)
     return Color(red = newR, green = newG, blue = newB, alpha = color.alpha)
 }
 
@@ -420,7 +457,7 @@ fun NxprcCanvasRenderer(
     val currentInputTarget by rememberUpdatedState(inputTarget)
     val coroutineScope = rememberCoroutineScope()
 
-    val scaleAnim = if (isInteractive) {
+    val scaleAnimState = if (isInteractive) {
         animateFloatAsState(
             targetValue = if (isPressed) document.animations.pressScale else 1f,
             animationSpec = spring(
@@ -428,10 +465,10 @@ fun NxprcCanvasRenderer(
                 stiffness = document.animations.springStiffness
             ),
             label = "nxprc_scale"
-        ).value
-    } else 1f
+        )
+    } else null
 
-    val pressOffsetYAnim = if (isInteractive) {
+    val pressOffsetYAnimState = if (isInteractive) {
         animateFloatAsState(
             targetValue = if (isPressed) document.animations.pressOffsetY else 0f,
             animationSpec = spring(
@@ -439,8 +476,8 @@ fun NxprcCanvasRenderer(
                 stiffness = document.animations.springStiffness
             ),
             label = "nxprc_press_y"
-        ).value
-    } else 0f
+        )
+    } else null
 
     val density = androidx.compose.ui.platform.LocalDensity.current.density
 
@@ -494,17 +531,31 @@ fun NxprcCanvasRenderer(
     val trigger = assignedControl as? NexPadControl.Trigger
     val pullProgress = remember { androidx.compose.animation.core.Animatable(0f) }
 
-    val isButtonActive = isInteractive && (
-        isPressed ||
-        (isStick && (thumbOffsetX != 0f || thumbOffsetY != 0f)) ||
-        (isTrigger && pullProgress.value > 0.01f)
-    )
+    val isButtonActive by remember(isInteractive, isStick, isTrigger) {
+        derivedStateOf {
+            isInteractive && (
+                isPressed ||
+                (isStick && (thumbOffsetX != 0f || thumbOffsetY != 0f)) ||
+                (isTrigger && pullProgress.value > 0.01f)
+            )
+        }
+    }
 
     val needsPulse = isInteractive && isButtonActive && (document.animations.idleType == "PULSE" || document.canvas.layers.any { it is CanvasLayer.GlowRing && it.pulseEnabled })
     val needsRotation = isInteractive && isButtonActive && document.animations.idleType == "ROTATE"
     val needsRgbCycle = isInteractive && isButtonActive && document.animations.idleType == "RGB_CYCLE"
 
     val hasDynamicTracks = isInteractive && isButtonActive && document.animations.tracks.isNotEmpty()
+    val tracksByProperty = remember(document) {
+        document.animations.tracks.associateBy { it.property }
+    }
+    val scaleTrack = remember(tracksByProperty) { tracksByProperty[AnimatedProperty.SCALE] }
+    val rotationTrack = remember(tracksByProperty) { tracksByProperty[AnimatedProperty.ROTATION] }
+    val opacityTrack = remember(tracksByProperty) { tracksByProperty[AnimatedProperty.OPACITY] }
+    val transXTrack = remember(tracksByProperty) { tracksByProperty[AnimatedProperty.TRANSLATE_X] }
+    val transYTrack = remember(tracksByProperty) { tracksByProperty[AnimatedProperty.TRANSLATE_Y] }
+    val hueTrack = remember(tracksByProperty) { tracksByProperty[AnimatedProperty.HUE_ROTATE] }
+
     val trackDurationMs = document.animations.tracks.firstOrNull()?.durationMs ?: document.animations.idleDurationMs
     val rumbleActive = isInteractive && rumbleIntensity > 0f && document.animations.enableGameRumble
 
@@ -548,8 +599,6 @@ fun NxprcCanvasRenderer(
         )
     } else null
 
-    // Dynamic Universal Timeline Track Sampling
-
     val timelineProgressState = if (hasDynamicTracks && infiniteTransition != null) {
         infiniteTransition.animateFloat(
             initialValue = 0f,
@@ -562,37 +611,7 @@ fun NxprcCanvasRenderer(
         )
     } else null
 
-    val trackScale = if (hasDynamicTracks) {
-        document.animations.tracks.firstOrNull { it.property == AnimatedProperty.SCALE }
-            ?.let { evaluateAnimationTrack(it, timelineProgressState?.value ?: 0f) } ?: 1f
-    } else 1f
-
-    val trackRotation = if (hasDynamicTracks) {
-        document.animations.tracks.firstOrNull { it.property == AnimatedProperty.ROTATION }
-            ?.let { evaluateAnimationTrack(it, timelineProgressState?.value ?: 0f) } ?: 0f
-    } else 0f
-
-    val trackOpacity = if (hasDynamicTracks) {
-        document.animations.tracks.firstOrNull { it.property == AnimatedProperty.OPACITY }
-            ?.let { evaluateAnimationTrack(it, timelineProgressState?.value ?: 0f) } ?: 1f
-    } else 1f
-
-    val trackTranslateX = if (hasDynamicTracks) {
-        document.animations.tracks.firstOrNull { it.property == AnimatedProperty.TRANSLATE_X }
-            ?.let { evaluateAnimationTrack(it, timelineProgressState?.value ?: 0f) } ?: 0f
-    } else 0f
-
-    val trackTranslateY = if (hasDynamicTracks) {
-        document.animations.tracks.firstOrNull { it.property == AnimatedProperty.TRANSLATE_Y }
-            ?.let { evaluateAnimationTrack(it, timelineProgressState?.value ?: 0f) } ?: 0f
-    } else 0f
-
-    val trackHueAngle = if (hasDynamicTracks) {
-        document.animations.tracks.firstOrNull { it.property == AnimatedProperty.HUE_ROTATE }
-            ?.let { evaluateAnimationTrack(it, timelineProgressState?.value ?: 0f) } ?: 0f
-    } else 0f
-
-    val rumblePhase = if (rumbleActive && infiniteTransition != null) {
+    val rumblePhaseState = if (rumbleActive && infiniteTransition != null) {
         infiniteTransition.animateFloat(
             initialValue = 0f,
             targetValue = 6.28318f,
@@ -601,18 +620,14 @@ fun NxprcCanvasRenderer(
                 repeatMode = RepeatMode.Restart
             ),
             label = "rumble"
-        ).value
-    } else 0f
-    val rumbleShakeX = if (rumbleActive) (sin(rumblePhase * 3f) * 3.5f * rumbleIntensity * document.animations.rumbleIntensity) else 0f
-    val rumbleShakeY = if (rumbleActive) (cos(rumblePhase * 4f) * 3.5f * rumbleIntensity * document.animations.rumbleIntensity) else 0f
+        )
+    } else null
 
     val (rawWidthDp, rawHeightDp, renderScale) = remember(document, overrideSizeDp, sizingPolicy) {
         when (sizingPolicy) {
             is NxprcSizingPolicy.GamepadHud -> {
                 val w = (overrideSizeDp ?: document.manifest.widthDp).toFloat()
                 val h = (overrideSizeDp ?: document.manifest.heightDp).toFloat()
-                // Gamepad HUD: calibrated at 0.82x so a 96dp Nxprc button renders at 78.7dp ~ 80dp (exact parity with RealisticButton 80dp)
-                // Layout width and height match the rendered button size so bounds are tight
                 Triple(w * 0.82f, h * 0.82f, 1.0f)
             }
             is NxprcSizingPolicy.StudioGrid -> {
@@ -631,9 +646,6 @@ fun NxprcCanvasRenderer(
             }
         }
     }
-
-    // Aura boundary headroom removed: component layout bounds strictly match the component dimensions
-    val auraHeadroomDp = 0
 
     val widthDp = rawWidthDp.roundToInt()
     val heightDp = rawHeightDp.roundToInt()
@@ -662,24 +674,21 @@ fun NxprcCanvasRenderer(
     val rawAuraColor = remember(document, effectiveControlKey, labelStyle) {
         resolveAuraColor(document, effectiveControlKey, labelStyle)
     }
-    val auraBloomAlpha = if (isInteractive) {
+    val auraBloomAlphaState = if (isInteractive) {
         animateFloatAsState(
             targetValue = if (isPressed) 0.90f else 0.40f,
             animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
             label = "nxprc_aura_alpha"
-        ).value
-    } else 0.40f
-
-    val stickMaxR = rawWidthDp * 0.28f * density
-    val stickDispFraction = (hypot(thumbOffsetX, thumbOffsetY) / stickMaxR.coerceAtLeast(1f)).coerceIn(0f, 1f)
-    val stickBloomAlpha = if (isInteractive) {
-        0.40f + 0.55f * stickDispFraction
-    } else 0.40f
+        )
+    } else null
 
     val adaptedLayers = remember(document, effectiveControlKey, labelStyle) {
         if (labelStyle != ControllerLabelStyle.PLAYSTATION || effectiveControlKey !in ABXY_KEYS) {
             document.canvas.layers
         } else {
+            val recolor: (Long) -> Long = { colorLong ->
+                adaptColorForConsole(Color(colorLong), effectiveControlKey, labelStyle).toArgbLong()
+            }
             document.canvas.layers.map { layer ->
                 when (layer) {
                     is CanvasLayer.BoxLayer -> layer.copy(
@@ -688,7 +697,7 @@ fun NxprcCanvasRenderer(
                         boxShadows = layer.boxShadows.map { adaptBoxShadow(it, effectiveControlKey, labelStyle) }
                     )
                     is CanvasLayer.GlowRing -> layer.copy(
-                        glowColor = adaptColorForConsole(Color(layer.glowColor), effectiveControlKey, labelStyle).toArgb().toLong() and 0xFFFFFFFFL
+                        glowColor = recolor(layer.glowColor)
                     )
                     is CanvasLayer.GradientShape -> layer.copy(
                         fill = adaptFill(layer.fill, effectiveControlKey, labelStyle),
@@ -699,18 +708,18 @@ fun NxprcCanvasRenderer(
                         stroke = adaptStroke(layer.stroke, effectiveControlKey, labelStyle)
                     )
                     is CanvasLayer.InnerShadow -> layer.copy(
-                        highlightColor = adaptColorForConsole(Color(layer.highlightColor), effectiveControlKey, labelStyle).toArgb().toLong() and 0xFFFFFFFFL,
-                        shadowColor = adaptColorForConsole(Color(layer.shadowColor), effectiveControlKey, labelStyle).toArgb().toLong() and 0xFFFFFFFFL
+                        highlightColor = recolor(layer.highlightColor),
+                        shadowColor = recolor(layer.shadowColor)
                     )
                     is CanvasLayer.TextLayer -> layer.copy(
-                        textColor = adaptColorForConsole(Color(layer.textColor), effectiveControlKey, labelStyle).toArgb().toLong() and 0xFFFFFFFFL,
-                        textShadows = layer.textShadows.map { ts -> ts.copy(color = adaptColorForConsole(Color(ts.color), effectiveControlKey, labelStyle).toArgb().toLong() and 0xFFFFFFFFL) }
+                        textColor = recolor(layer.textColor),
+                        textShadows = layer.textShadows.map { ts -> ts.copy(color = recolor(ts.color)) }
                     )
                     is CanvasLayer.CenterGlyph -> layer.copy(
-                        textColor = adaptColorForConsole(Color(layer.textColor), effectiveControlKey, labelStyle).toArgb().toLong() and 0xFFFFFFFFL,
-                        shadowColor = layer.shadowColor?.let { adaptColorForConsole(Color(it), effectiveControlKey, labelStyle).toArgb().toLong() and 0xFFFFFFFFL },
-                        highlightColor = layer.highlightColor?.let { adaptColorForConsole(Color(it), effectiveControlKey, labelStyle).toArgb().toLong() and 0xFFFFFFFFL },
-                        textShadows = layer.textShadows.map { ts -> ts.copy(color = adaptColorForConsole(Color(ts.color), effectiveControlKey, labelStyle).toArgb().toLong() and 0xFFFFFFFFL) }
+                        textColor = recolor(layer.textColor),
+                        shadowColor = layer.shadowColor?.let(recolor),
+                        highlightColor = layer.highlightColor?.let(recolor),
+                        textShadows = layer.textShadows.map { ts -> ts.copy(color = recolor(ts.color)) }
                     )
                     else -> layer
                 }
@@ -723,10 +732,20 @@ fun NxprcCanvasRenderer(
     val glowRing = remember(adaptedLayers) { adaptedLayers.filterIsInstance<CanvasLayer.GlowRing>().firstOrNull() }
     val glyph = remember(adaptedLayers) { adaptedLayers.filterIsInstance<CanvasLayer.CenterGlyph>().firstOrNull() }
     val textLayers = remember(adaptedLayers) { adaptedLayers.filterIsInstance<CanvasLayer.TextLayer>() }
-    val rootShapeType = remember(primaryBox, primaryShape) {
-        (primaryBox?.shapeType?.uppercase() ?: primaryShape?.shapeType?.uppercase() ?: "ROUNDED_RECT")
+    val rootParsedShapeType = remember(primaryBox, primaryShape) {
+        NxprcShapeType.from(primaryBox?.shapeType ?: primaryShape?.shapeType)
     }
-    val rootIsOval = rootShapeType == "OVAL"
+    val rootIsOval = rootParsedShapeType == NxprcShapeType.OVAL
+    val rootShapeType = rootParsedShapeType.name
+    val layerShapeTypes = remember(adaptedLayers) {
+        adaptedLayers.map { layer ->
+            when (layer) {
+                is CanvasLayer.BoxLayer -> NxprcShapeType.from(layer.shapeType)
+                is CanvasLayer.GradientShape -> NxprcShapeType.from(layer.shapeType)
+                else -> NxprcShapeType.ROUNDED_RECT
+            }
+        }
+    }
 
     val gestureModifier = if (!isInteractive) {
         Modifier
@@ -1025,9 +1044,78 @@ fun NxprcCanvasRenderer(
         }
     }
 
-    val stickBaseBloomColors = remember {
-        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    class NxprcAuraBrushes {
+        private var buttonColor: Color = Color.Unspecified
+        private var buttonCenter: Offset = Offset.Unspecified
+        private var buttonRadius: Float = 0f
+        private var buttonBrush: Brush? = null
+
+        private var stickBaseColor: Color = Color.Unspecified
+        private var stickBaseCenter: Offset = Offset.Unspecified
+        private var stickBaseRadius: Float = 0f
+        private var stickBaseBrush: Brush? = null
+
+        private var stickCapColor: Color = Color.Unspecified
+        private var stickCapRadius: Float = 0f
+        private var stickCapBrush: Brush? = null
+
+        fun getButtonAuraBrush(baseColor: Color, center: Offset, radius: Float): Brush {
+            val existing = buttonBrush
+            if (existing != null && buttonColor == baseColor && buttonCenter == center && buttonRadius == radius) {
+                return existing
+            }
+            val newBrush = Brush.radialGradient(
+                0.00f to baseColor.copy(alpha = 0.50f),
+                0.40f to baseColor.copy(alpha = 0.20f),
+                1.00f to Color.Transparent,
+                center = center,
+                radius = radius
+            )
+            buttonColor = baseColor
+            buttonCenter = center
+            buttonRadius = radius
+            buttonBrush = newBrush
+            return newBrush
+        }
+
+        fun getStickBaseBrush(baseColor: Color, center: Offset, radius: Float): Brush {
+            val existing = stickBaseBrush
+            if (existing != null && stickBaseColor == baseColor && stickBaseCenter == center && stickBaseRadius == radius) {
+                return existing
+            }
+            val newBrush = Brush.radialGradient(
+                0.00f to baseColor.copy(alpha = 0.35f),
+                0.40f to baseColor.copy(alpha = 0.12f),
+                1.00f to Color.Transparent,
+                center = center,
+                radius = radius
+            )
+            stickBaseColor = baseColor
+            stickBaseCenter = center
+            stickBaseRadius = radius
+            stickBaseBrush = newBrush
+            return newBrush
+        }
+
+        fun getStickCapBrush(baseColor: Color, radius: Float): Brush {
+            val existing = stickCapBrush
+            if (existing != null && stickCapColor == baseColor && stickCapRadius == radius) {
+                return existing
+            }
+            val newBrush = Brush.radialGradient(
+                0.00f to baseColor.copy(alpha = 0.45f),
+                0.40f to baseColor.copy(alpha = 0.15f),
+                1.00f to Color.Transparent,
+                center = Offset.Zero,
+                radius = radius
+            )
+            stickCapColor = baseColor
+            stickCapRadius = radius
+            stickCapBrush = newBrush
+            return newBrush
+        }
     }
+    val auraBrushes = remember { NxprcAuraBrushes() }
     val stickPlumeStops = remember {
         arrayOf(
             0.00f to Color.Transparent,
@@ -1035,19 +1123,14 @@ fun NxprcCanvasRenderer(
             1.00f to Color.Transparent
         )
     }
-    val stickCapBloomColors = remember {
-        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
-    }
-    val buttonAuraColors = remember {
-        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
-    }
 
     Box(
         modifier = modifier
             .size(widthDp.dp, heightDp.dp)
             .drawBehind {
-                val activeHueDegrees = if (hasDynamicTracks && trackHueAngle != 0f) {
-                    trackHueAngle
+                val progress = timelineProgressState?.value ?: 0f
+                val activeHueDegrees = if (hasDynamicTracks) {
+                    hueTrack?.let { evaluateAnimationTrack(it, progress) } ?: 0f
                 } else if (needsRgbCycle && isButtonActive) {
                     rgbHueAngleState?.value ?: 0f
                 } else 0f
@@ -1056,11 +1139,14 @@ fun NxprcCanvasRenderer(
                     rotateHue(rawAuraColor, activeHueDegrees)
                 } else rawAuraColor
 
+                val auraBloomAlpha = auraBloomAlphaState?.value ?: 0.40f
                 val effAlpha = if (isButtonActive) {
+                    val stickMaxR = size.minDimension * 0.35f
+                    val stickDispFraction = (hypot(thumbOffsetX, thumbOffsetY) / stickMaxR.coerceAtLeast(1f)).coerceIn(0f, 1f)
+                    val stickBloomAlpha = if (isInteractive) 0.40f + 0.55f * stickDispFraction else 0.40f
                     (if (needsPulse) (pulseAlphaState?.value ?: 1.0f) else 1.0f) * (if (isStick) stickBloomAlpha else auraBloomAlpha)
                 } else {
-                    // Subtle static ambient aura when idle (zero frame redraws, keeps mobile cool)
-                    (if (isStick) stickBloomAlpha else auraBloomAlpha) * 0.35f
+                    auraBloomAlpha * 0.35f
                 }
 
                 if (isStick && !isTouchpad) {
@@ -1069,17 +1155,12 @@ fun NxprcCanvasRenderer(
 
                     // 1. Base socket containment bloom
                     val baseBloomR = size.minDimension * 0.75f
-                    stickBaseBloomColors[0] = baseColor.copy(alpha = effAlpha * 0.35f)
-                    stickBaseBloomColors[1] = baseColor.copy(alpha = effAlpha * 0.12f)
-                    stickBaseBloomColors[2] = Color.Transparent
+                    val baseBrush = auraBrushes.getStickBaseBrush(baseColor, center, baseBloomR)
                     drawCircle(
-                        brush = Brush.radialGradient(
-                            colors = stickBaseBloomColors,
-                            center = center,
-                            radius = baseBloomR
-                        ),
+                        brush = baseBrush,
                         radius = baseBloomR,
-                        center = center
+                        center = center,
+                        alpha = effAlpha
                     )
 
                     // 2. Deflection comet-plume trailing wake aura
@@ -1103,35 +1184,27 @@ fun NxprcCanvasRenderer(
 
                     // 3. High-energy thumbstick cap beacon bloom
                     val capPos = Offset(center.x + thumbOffsetX, center.y + thumbOffsetY)
-                    val capBloomR = (size.minDimension * 0.32f) + (size.minDimension * 0.08f * dispFraction)
-                    stickCapBloomColors[0] = baseColor.copy(alpha = effAlpha * 0.45f)
-                    stickCapBloomColors[1] = baseColor.copy(alpha = effAlpha * 0.15f)
-                    stickCapBloomColors[2] = Color.Transparent
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            colors = stickCapBloomColors,
-                            center = capPos,
-                            radius = capBloomR
-                        ),
-                        radius = capBloomR,
-                        center = capPos
-                    )
+                    val capBloomR = ((size.minDimension * 0.32f) + (size.minDimension * 0.08f * dispFraction)).roundToInt().toFloat()
+                    val capBrush = auraBrushes.getStickCapBrush(baseColor, capBloomR)
+                    translate(capPos.x, capPos.y) {
+                        drawCircle(
+                            brush = capBrush,
+                            radius = capBloomR,
+                            center = Offset.Zero,
+                            alpha = effAlpha
+                        )
+                    }
                 } else {
                     // Atmospheric ambient bloom behind button: blooms outward beyond layout bounds via .drawBehind (matching RealisticButton)
                     val isSymmetricCircle = rootIsOval && kotlin.math.abs(size.width - size.height) < 4f
                     if (isSymmetricCircle) {
                         val auraRadius = size.minDimension * 0.85f
-                        buttonAuraColors[0] = baseColor.copy(alpha = effAlpha * 0.50f)
-                        buttonAuraColors[1] = baseColor.copy(alpha = effAlpha * 0.20f)
-                        buttonAuraColors[2] = Color.Transparent
+                        val auraBrush = auraBrushes.getButtonAuraBrush(baseColor, center, auraRadius)
                         drawCircle(
-                            brush = Brush.radialGradient(
-                                colors = buttonAuraColors,
-                                center = center,
-                                radius = auraRadius
-                            ),
+                            brush = auraBrush,
                             radius = auraRadius,
-                            center = center
+                            center = center,
+                            alpha = effAlpha
                         )
                     } else {
                         // Universal outward bloom for rectangular, stadium/pill, trigger, bumper, macro & polygon shapes
@@ -1173,34 +1246,53 @@ fun NxprcCanvasRenderer(
             modifier = Modifier
                 .size(widthDp.dp, heightDp.dp)
                 .graphicsLayer {
-                    val finalScale = scaleAnim * trackScale
+                    val progress = timelineProgressState?.value ?: 0f
+                    val currentTrackScale = if (hasDynamicTracks) {
+                        scaleTrack?.let { evaluateAnimationTrack(it, progress) } ?: 1f
+                    } else 1f
+                    val currentTrackRot = if (hasDynamicTracks) {
+                        rotationTrack?.let { evaluateAnimationTrack(it, progress) } ?: 0f
+                    } else 0f
+                    val currentTrackOpacity = if (hasDynamicTracks) {
+                        opacityTrack?.let { evaluateAnimationTrack(it, progress) } ?: 1f
+                    } else 1f
+                    val currentTrackTransX = if (hasDynamicTracks) {
+                        transXTrack?.let { evaluateAnimationTrack(it, progress) } ?: 0f
+                    } else 0f
+                    val currentTrackTransY = if (hasDynamicTracks) {
+                        transYTrack?.let { evaluateAnimationTrack(it, progress) } ?: 0f
+                    } else 0f
+
+                    val rumblePhase = rumblePhaseState?.value ?: 0f
+                    val rumbleShakeX = if (rumbleActive) (sin(rumblePhase * 3f) * 3.5f * rumbleIntensity * document.animations.rumbleIntensity) else 0f
+                    val rumbleShakeY = if (rumbleActive) (cos(rumblePhase * 4f) * 3.5f * rumbleIntensity * document.animations.rumbleIntensity) else 0f
+
+                    val currentScale = scaleAnimState?.value ?: 1f
+                    val currentPressY = pressOffsetYAnimState?.value ?: 0f
+                    val finalScale = currentScale * currentTrackScale
                     scaleX = if (isTwoStageStick) 1f else finalScale
                     scaleY = if (isTwoStageStick) 1f else finalScale
-                    rotationZ = if (hasDynamicTracks) trackRotation else 0f
-                    alpha = if (hasDynamicTracks) trackOpacity.coerceIn(0f, 1f) else 1f
-                    translationX = (if (isTwoStageStick || isTouchpad) 0f else thumbOffsetX) + rumbleShakeX + (trackTranslateX * density)
-                    translationY = (if (isTwoStageStick || isTouchpad) 0f else thumbOffsetY) + (pressOffsetYAnim * density) + (pullProgress.value * document.animations.triggerMaxPullDepth * density) + rumbleShakeY + (trackTranslateY * density)
+                    rotationZ = currentTrackRot
+                    alpha = currentTrackOpacity.coerceIn(0f, 1f)
+                    translationX = (if (isTwoStageStick || isTouchpad) 0f else thumbOffsetX) + rumbleShakeX + (currentTrackTransX * density)
+                    translationY = (if (isTwoStageStick || isTouchpad) 0f else thumbOffsetY) + (currentPressY * density) + (pullProgress.value * document.animations.triggerMaxPullDepth * density) + rumbleShakeY + (currentTrackTransY * density)
 
-                    val activeHueAngle = if (hasDynamicTracks && trackHueAngle != 0f) {
-                        trackHueAngle
+                    val activeHueAngle = if (hasDynamicTracks) {
+                        hueTrack?.let { evaluateAnimationTrack(it, progress) } ?: 0f
                     } else if (needsRgbCycle) {
                         rgbHueAngleState?.value ?: 0f
                     } else 0f
 
                     if (activeHueAngle != 0f) {
-                        colorFilter = ColorFilter.colorMatrix(createHueRotateColorMatrix(activeHueAngle))
+                        colorFilter = getHueRotateColorFilter(activeHueAngle)
                     }
                 },
             contentAlignment = Alignment.Center
         ) {
             Canvas(modifier = Modifier.size(widthDp.dp, heightDp.dp)) {
-                // Safe headroom calculation: Outset shadows, glow rings, and press glows
-                // require padding around the button body so they never collide with the
-                // Canvas hardware texture boundary and get clipped into squares.
                 val viewBoxW = document.canvas.viewBoxWidth.coerceAtLeast(1f)
                 val viewBoxH = document.canvas.viewBoxHeight.coerceAtLeast(1f)
 
-                // Base scale maps viewBox to button design dimensions, scaled per sizing policy.
                 val baseScale = minOf((rawWidthDp * density) / viewBoxW, (rawHeightDp * density) / viewBoxH)
                 val viewScale = baseScale * renderScale
                 val buttonW = viewBoxW * viewScale
@@ -1212,9 +1304,7 @@ fun NxprcCanvasRenderer(
                 val pxPerUnit = viewScale
                 val scaleRatio = (pxPerUnit / density).coerceAtLeast(0.01f)
 
-                val rootShapeType = (primaryBox?.shapeType?.uppercase() ?: primaryShape?.shapeType?.uppercase() ?: "ROUNDED_RECT")
-                val rootIsOval = rootShapeType == "OVAL"
-                val rootIsPolygon = rootShapeType == "POLYGON" || rootShapeType == "PATH" || (primaryBox?.pathData?.isNotBlank() == true)
+                val rootIsPolygon = rootParsedShapeType == NxprcShapeType.POLYGON || rootParsedShapeType == NxprcShapeType.PATH || (primaryBox?.pathData?.isNotBlank() == true)
                 val rootTl = (primaryBox?.cornerRadiusTopLeft ?: primaryShape?.cornerRadius ?: 14f) * pxPerUnit
                 val rootTr = (primaryBox?.cornerRadiusTopRight ?: primaryShape?.cornerRadius ?: 14f) * pxPerUnit
                 val rootBr = (primaryBox?.cornerRadiusBottomRight ?: primaryShape?.cornerRadius ?: 14f) * pxPerUnit
@@ -1222,8 +1312,8 @@ fun NxprcCanvasRenderer(
 
                 val rootEffectiveSides = when {
                     (primaryBox?.polygonSides ?: 0) >= 3 -> primaryBox!!.polygonSides
-                    rootShapeType == "HEXAGON" -> 6
-                    rootShapeType == "OCTAGON" -> 8
+                    rootParsedShapeType == NxprcShapeType.HEXAGON -> 6
+                    rootParsedShapeType == NxprcShapeType.OCTAGON -> 8
                     else -> 0
                 }
                 val clipKey = RootClipKey(
@@ -1255,7 +1345,10 @@ fun NxprcCanvasRenderer(
                     }
                 }
 
-                val finalScale = scaleAnim * trackScale
+                val currentTrackScale = if (hasDynamicTracks) {
+                    scaleTrack?.let { evaluateAnimationTrack(it, timelineProgressState?.value ?: 0f) } ?: 1f
+                } else 1f
+                val finalScale = (scaleAnimState?.value ?: 1f) * currentTrackScale
                 val drawSingleLayer: androidx.compose.ui.graphics.drawscope.DrawScope.(CanvasLayer) -> Unit = { layer ->
                     when (layer) {
                         is CanvasLayer.BoxLayer -> {
@@ -1269,10 +1362,11 @@ fun NxprcCanvasRenderer(
                             val pivot = Offset(boxLeft + boxWidth * transform.originXRatio, boxTop + boxHeight * transform.originYRatio)
                             val rotAngle = if (transform.isRotating && document.animations.idleType == "ROTATE") (rotateAngleState?.value ?: 0f) else transform.rotationDegrees
 
-                            val isPolygon = layer.shapeType.uppercase() == "POLYGON" || layer.shapeType.uppercase() == "PATH" || layer.pathData.isNotBlank() || layer.polygonSides >= 3
-                            val isHexagon = layer.shapeType.uppercase() == "HEXAGON" || layer.polygonSides == 6
-                            val isOctagon = layer.shapeType.uppercase() == "OCTAGON" || layer.polygonSides == 8
-                            val isOval = layer.shapeType.uppercase() == "OVAL"
+                            val shapeEnum = NxprcShapeType.from(layer.shapeType)
+                            val isPolygon = shapeEnum == NxprcShapeType.POLYGON || shapeEnum == NxprcShapeType.PATH || layer.pathData.isNotBlank() || layer.polygonSides >= 3
+                            val isHexagon = shapeEnum == NxprcShapeType.HEXAGON || layer.polygonSides == 6
+                            val isOctagon = shapeEnum == NxprcShapeType.OCTAGON || layer.polygonSides == 8
+                            val isOval = shapeEnum == NxprcShapeType.OVAL
                             val layerAlpha = effects.opacity.coerceIn(0f, 1f)
                             val tl = layer.cornerRadiusTopLeft * pxPerUnit
                             val tr = layer.cornerRadiusTopRight * pxPerUnit
@@ -1511,7 +1605,7 @@ fun NxprcCanvasRenderer(
                                 }
                             }
 
-                            val isRootLayer = layer == adaptedLayers.firstOrNull() || (layer.widthRatio >= 1.0f && layer.heightRatio >= 1.0f)
+                            val isRootLayer = layer === adaptedLayers.firstOrNull() || (layer.widthRatio >= 1.0f && layer.heightRatio >= 1.0f)
                             if (!isRootLayer && (layer.clipToBounds || document.canvas.clipToBounds)) {
                                 clipPath(rootClipShape) {
                                     drawFilteredBox()
@@ -1619,11 +1713,11 @@ fun NxprcCanvasRenderer(
                             val pivot = Offset(shapeLeft + transform.originXRatio * shapeW, shapeTop + transform.originYRatio * shapeH)
 
                             val drawShape: () -> Unit = {
-                                val shapeType = layer.shapeType.uppercase()
-                                val effectiveSides = when {
-                                    shapeType == "HEXAGON" -> 6
-                                    shapeType == "OCTAGON" -> 8
-                                    shapeType == "POLYGON" -> 6
+                                val shapeEnum = NxprcShapeType.from(layer.shapeType)
+                                val effectiveSides = when (shapeEnum) {
+                                    NxprcShapeType.HEXAGON -> 6
+                                    NxprcShapeType.OCTAGON -> 8
+                                    NxprcShapeType.POLYGON -> 6
                                     else -> 0
                                 }
                                 when {
@@ -1641,7 +1735,7 @@ fun NxprcCanvasRenderer(
                                             drawPath(polyPath, color = stColor.copy(alpha = stColor.alpha * shapeAlpha), style = strokeStyle)
                                         }
                                     }
-                                    shapeType == "OVAL" -> {
+                                    shapeEnum == NxprcShapeType.OVAL -> {
                                         drawOval(brush = brush, topLeft = Offset(shapeLeft, shapeTop), size = shapeSize, alpha = shapeAlpha)
                                         layer.stroke?.let { st ->
                                             val stColor = Color(st.color)
@@ -1897,10 +1991,11 @@ fun NxprcCanvasRenderer(
                     val fontSp = (tl.fontSizeSp * scaleFactor).sp
                     val fontWeight = if (tl.fontWeight >= 900) FontWeight.Black else if (tl.fontWeight >= 700) FontWeight.Bold else FontWeight.Normal
                     val isLayerCap = isTwoStageStick && adaptedLayers.indexOf(tl).let { it != -1 && it in capIndicesSet }
-                    val stickShiftX = if (isLayerCap) (thumbOffsetX / density).dp else 0.dp
-                    val stickShiftY = if (isLayerCap) (thumbOffsetY / density).dp else 0.dp
-                    val offX = (tl.offsetXRatio * buttonW).dp + stickShiftX
-                    val offY = (tl.offsetYRatio * buttonH).dp + stickShiftY
+                    val baseOffX = (tl.offsetXRatio * buttonW).dp
+                    val baseOffY = (tl.offsetYRatio * buttonH).dp
+                    val capOffsetModifier = Modifier.offset {
+                        if (isLayerCap) IntOffset(thumbOffsetX.roundToInt(), thumbOffsetY.roundToInt()) else IntOffset.Zero
+                    }
 
                     val psShape = getPlayStationShape(resolvedText)
                     val glyphSizeDp = (tl.fontSizeSp * scaleFactor * 1.20f).dp
@@ -1911,10 +2006,12 @@ fun NxprcCanvasRenderer(
                                     shape = psShape,
                                     color = Color(ts.color),
                                     size = glyphSizeDp,
-                                    modifier = Modifier.offset(
-                                        x = offX + (ts.offsetX * scaleFactor).dp,
-                                        y = offY + (ts.offsetY * scaleFactor).dp
-                                    )
+                                    modifier = Modifier
+                                        .offset(
+                                            x = baseOffX + (ts.offsetX * scaleFactor).dp,
+                                            y = baseOffY + (ts.offsetY * scaleFactor).dp
+                                        )
+                                        .then(capOffsetModifier)
                                 )
                             }
                         }
@@ -1930,7 +2027,9 @@ fun NxprcCanvasRenderer(
                             shape = psShape,
                             color = symbolColor,
                             size = glyphSizeDp,
-                            modifier = Modifier.offset(x = offX, y = offY)
+                            modifier = Modifier
+                                .offset(x = baseOffX, y = baseOffY)
+                                .then(capOffsetModifier)
                         )
                     } else {
                         if (tl.textShadows.isNotEmpty()) {
@@ -1940,10 +2039,12 @@ fun NxprcCanvasRenderer(
                                     color = Color(ts.color),
                                     fontSize = fontSp,
                                     fontWeight = fontWeight,
-                                    modifier = Modifier.offset(
-                                        x = offX + (ts.offsetX * scaleFactor).dp,
-                                        y = offY + (ts.offsetY * scaleFactor).dp
-                                    )
+                                    modifier = Modifier
+                                        .offset(
+                                            x = baseOffX + (ts.offsetX * scaleFactor).dp,
+                                            y = baseOffY + (ts.offsetY * scaleFactor).dp
+                                        )
+                                        .then(capOffsetModifier)
                                 )
                             }
                         }
@@ -1952,7 +2053,9 @@ fun NxprcCanvasRenderer(
                             color = Color(tl.textColor),
                             fontSize = fontSp,
                             fontWeight = fontWeight,
-                            modifier = Modifier.offset(x = offX, y = offY)
+                            modifier = Modifier
+                                .offset(x = baseOffX, y = baseOffY)
+                                .then(capOffsetModifier)
                         )
                     }
                 }
@@ -1965,19 +2068,24 @@ fun NxprcCanvasRenderer(
             val fontSp = (baseFontSp * scaleFactor).sp
             val fontWeight = FontWeight.Bold
 
-            val stickShiftX = if (isTwoStageStick) (thumbOffsetX / density).dp else 0.dp
-            val stickShiftY = if (isTwoStageStick) (thumbOffsetY / density).dp else 0.dp
-            val offX = ((glyph?.offsetXRatio ?: 0f) * buttonW).dp + stickShiftX
-            val offY = ((glyph?.offsetYRatio ?: 0f) * buttonH).dp + stickShiftY
+            val baseOffX = ((glyph?.offsetXRatio ?: 0f) * buttonW).dp
+            val baseOffY = ((glyph?.offsetYRatio ?: 0f) * buttonH).dp
 
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .offset(x = offX, y = offY)
+                    .offset(x = baseOffX, y = baseOffY)
+                    .offset {
+                        if (isTwoStageStick) IntOffset(thumbOffsetX.roundToInt(), thumbOffsetY.roundToInt()) else IntOffset.Zero
+                    }
                     .graphicsLayer {
                         rotationZ = rootBox?.effectiveTransform?.rotationDegrees ?: 0f
                         if (isTwoStageStick) {
-                            val finalScale = scaleAnim * trackScale
+                            val progress = timelineProgressState?.value ?: 0f
+                            val currentTrackScale = if (hasDynamicTracks) {
+                                scaleTrack?.let { evaluateAnimationTrack(it, progress) } ?: 1f
+                            } else 1f
+                            val finalScale = (scaleAnimState?.value ?: 1f) * currentTrackScale
                             scaleX = finalScale
                             scaleY = finalScale
                         }

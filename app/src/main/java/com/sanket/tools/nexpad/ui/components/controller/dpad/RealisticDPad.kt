@@ -226,6 +226,21 @@ fun RealisticDPad(
                     center = center
                 )
 
+                // Soft hardware drop shadow
+                val shadowOffsetY = if (hasActivePress) 2.dp.toPx() else 5.dp.toPx()
+                val shadowRadius = size.minDimension * 0.44f
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        0.0f to Color.Black.copy(alpha = if (hasActivePress) 0.35f else 0.55f),
+                        0.75f to Color.Black.copy(alpha = if (hasActivePress) 0.15f else 0.25f),
+                        1.0f to Color.Transparent,
+                        center = Offset(center.x, center.y + shadowOffsetY),
+                        radius = shadowRadius
+                    ),
+                    radius = shadowRadius,
+                    center = Offset(center.x, center.y + shadowOffsetY)
+                )
+
                 // Outer metallic bevel rim
                 drawCircle(
                     brush = Brush.verticalGradient(
@@ -242,12 +257,6 @@ fun RealisticDPad(
                 scaleX = scaleAnim
                 scaleY = scaleAnim
             }
-            .shadow(
-                elevation = if (hasActivePress) 3.dp else 8.dp,
-                shape = crossShape,
-                ambientColor = if (isRgbEnabled) neonColor else Color.Black,
-                spotColor = if (isRgbEnabled) neonColor else Color.Black
-            )
             .clip(crossShape)
             .background(surfaceGradient)
             .border(

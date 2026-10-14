@@ -55,6 +55,54 @@ import com.sanket.tools.nexpad.ui.components.controller.special.InbuildTouchpadH
 import com.sanket.tools.nexpad.utils.ImmersiveSystemBars
 import com.sanket.tools.nexpad.utils.LockScreenOrientation
 import kotlin.math.pow
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.isActive
+
+data class MotorProfile(
+    val tier: Int,        // 1, 2, or 3
+    val bandSize: Int,    // Amplitude quantization step
+    val minGapMs: Long,   // Minimum time between hardware calls
+    val name: String      // For logging
+)
+
+class BoundsRegistry {
+    private val bounds = java.util.concurrent.ConcurrentHashMap<String, Rect>()
+
+    fun put(key: String, rect: Rect) {
+        bounds[key] = rect
+    }
+
+    fun remove(key: String) {
+        bounds.remove(key)
+    }
+
+    fun clear() {
+        bounds.clear()
+    }
+
+    fun isNearAny(screenX: Float, screenY: Float, marginPx: Float, isLeft: Boolean, screenWidthPx: Float): Boolean {
+        val marginSq = marginPx * marginPx
+        val midX = screenWidthPx / 2f
+        for ((_, rect) in bounds) {
+            val inHalf = if (isLeft) rect.center.x < midX else rect.center.x >= midX
+            if (!inHalf) continue
+            val dx = maxOf(abs(screenX - rect.center.x) - rect.width / 2f, 0f)
+            val dy = maxOf(abs(screenY - rect.center.y) - rect.height / 2f, 0f)
+            if ((dx * dx + dy * dy) <= marginSq) {
+                return true
+            }
+        }
+        return false
+    }
+
+    fun getExclusionRects(isLeft: Boolean, screenWidthPx: Float): List<Rect> {
+        val midX = screenWidthPx / 2f
+        return bounds.values.filter { if (isLeft) it.center.x < midX else it.center.x >= midX }
+    }
+}
 
 @Composable
 fun GamepadScreen(
@@ -147,14 +195,6 @@ fun GamepadScreen(
     // Tier 3 "LRA"     : Has amplitude control AND haptic primitives.
     //                     Linear actuator, 5-20ms response time.
     //                     (Samsung S/Note/Z, Pixel, OnePlus flagships)
-    // ────────────────────────────────────────────────────────────────────
-    data class MotorProfile(
-        val tier: Int,        // 1, 2, or 3
-        val bandSize: Int,    // Amplitude quantization step
-        val minGapMs: Long,   // Minimum time between hardware calls
-        val name: String      // For logging
-    )
-    
     val motorProfile = remember {
         val hasAmplitude = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             vibrator?.hasAmplitudeControl() == true
@@ -174,179 +214,162 @@ fun GamepadScreen(
             hasPrimitives -> MotorProfile(3, 10, 30L, "LRA (premium)")
             else          -> MotorProfile(2, 32, 100L, "ERM (mid-range)")
         }
-        // android.util.Log.d("NEXPAD_RUMBLE", "Motor detected: ${profile.name} | Tier ${profile.tier} | Band ${profile.bandSize} | MinGap ${profile.minGapMs}ms")
         profile
     }
 
     var isRumbling by remember { mutableStateOf(false) }
-    var rumbleResetJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     var rumbleStopJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     val hapticHelper = remember(context) { com.sanket.tools.nexpad.utils.HapticFeedbackHelper(context) }
-    
-    val safeOnVibrate: () -> Unit = {
-        val connected = viewModel.isConnected.value
-        if (hapticHelper.canVibrate(connected, isRumbling)) {
-            hapticHelper.performButtonClick()
+    val currentIsRumbling by rememberUpdatedState(isRumbling)
+    val currentViewModel by rememberUpdatedState(viewModel)
+
+    val safeOnVibrate: () -> Unit = remember(hapticHelper) {
+        {
+            val connected = currentViewModel.isConnected.value
+            if (hapticHelper.canVibrate(connected, currentIsRumbling)) {
+                hapticHelper.performButtonClick()
+            }
         }
     }
 
     LaunchedEffect(Unit) {
         val sharedPref = context.getSharedPreferences("nexpad_prefs", android.content.Context.MODE_PRIVATE)
         
-        // ── Haptic Streaming Engine ──────────────────────────────────────────
-        // Android has NO streaming amplitude API. Every vibrate() call forces
-        // the motor to physically brake → stop → spin up again.
-        //
-        // Solution: Quantize 0-255 into perceptual "bands" sized to match the
-        // detected motor's physical capabilities. The motor holds its current
-        // band via an infinite waveform. Band transitions are rate-limited to
-        // match the motor's spin-up time.
-        //
-        // Tier 1 (Legacy):  Binary on/off, no amplitude. bandSize=255.
-        // Tier 2 (ERM):     8 bands, 100ms gap.  Smooth on mid-range phones.
-        // Tier 3 (LRA):     25 bands, 30ms gap.   Near-HD on flagships.
-        // ─────────────────────────────────────────────────────────────────────
-        
         val bandSize = motorProfile.bandSize
         val minGapMs = motorProfile.minGapMs
         
-        var lastAppliedBand = -1
-        var lastUpdateTimeMs = 0L
-        var motorOnStartTimeMs = 0L
-        
-        viewModel.feedbackFlow.collect { feedback ->
-            val rumbleMode = sharedPref.getString("RUMBLE_MODE", "min") ?: "min"
-            
-            // ── Stage 1: Stereo-to-Mono Downmix ─────────────────────────
-            // Controller has 2 motors (heavy left, light right).
-            // Phone has 1 motor. "min" takes the subtle floor signal when downmixing to single phone motor.
-            val left = feedback.leftMotorSpeed
-            val right = feedback.rightMotorSpeed
-            
-            val combinedSpeed = when (rumbleMode) {
-                "max"   -> maxOf(left, right)
-                "smart" -> {
-                    if (left == 0 || right == 0) maxOf(left, right)
-                    else (0.7f * maxOf(left, right) + 0.3f * minOf(left, right)).roundToInt()
-                }
-                "avg"   -> (left + right) / 2
-                "min"   -> minOf(left, right)
-                else    -> minOf(left, right) // "min" default
-            }
-            
-            // Direct 1:1 game engine force translation [0..255] (In-game settings decide volume)
-            val scaledSpeed = combinedSpeed.coerceIn(0, 255)
-            
-            // ── Stage 2: Hardware Dead Zone ──────────────────────────────
-            // Phone motors can't physically produce vibration below a threshold.
-            // Instead of sending inaudible amplitude, snap to the minimum or zero.
-            val motorDeadZone = when (motorProfile.tier) {
-                1 -> 0     // Binary, no amplitude control
-                3 -> 8     // LRA: precise, low threshold
-                else -> 20 // ERM: spinning weight needs minimum voltage
-            }
-            
-            val afterDeadZone = when {
-                scaledSpeed == 0 -> 0
-                scaledSpeed < motorDeadZone -> motorDeadZone
-                else -> scaledSpeed
-            }
-            
-            // ── Stage 3: Perceptual Gamma Curve (Weber-Fechner) ──────────
-            // Human vibration perception is logarithmic. A linear 0-255 mapping
-            // wastes the bottom range (feels dead) and the top range (feels flat).
-            // Gamma 0.55 = square-root-ish curve that expands the low end and
-            // compresses the top end for even perceptual distribution.
-            val gamma = 0.55
-            val totalSpeed = if (afterDeadZone == 0) 0
-                             else (255.0 * (afterDeadZone / 255.0).pow(gamma)).roundToInt().coerceIn(1, 255)
-            
-            // ── Stage 4: Band Quantization ───────────────────────────────
-            val band = when {
-                totalSpeed == 0 -> 0
-                bandSize >= 255 -> totalSpeed.coerceIn(1, 255) // Tier 1: no quantization
-                else -> ((totalSpeed + bandSize / 2) / bandSize * bandSize).coerceIn(bandSize, 255)
-            }
-            
-            val now = System.currentTimeMillis()
-            val gap = now - lastUpdateTimeMs
-            
-            if (band > 0) {
-                rumbleStopJob?.cancel()
-                val shouldUpdate = when {
-                    lastAppliedBand <= 0 -> true // ON: always instant
-                    band != lastAppliedBand && gap >= minGapMs -> true // Band changed + motor ready
-                    else -> false
-                }
-                
-                if (shouldUpdate) {
-                    if (lastAppliedBand <= 0) {
-                        motorOnStartTimeMs = now
-                    }
-                    lastAppliedBand = band
-                    lastUpdateTimeMs = now
-                    isRumbling = true
-                    
-                    when (motorProfile.tier) {
-                        1 -> {
-                            // Tier 1: No amplitude control. Binary vibration only.
-                            vibrator?.vibrate(
-                                VibrationEffect.createWaveform(longArrayOf(0, 10000), 0)
-                            )
-                        }
-                        else -> {
-                            // Tier 2 & 3: Full amplitude waveform
-                            vibrator?.vibrate(
-                                VibrationEffect.createWaveform(
-                                    longArrayOf(0, 10000), intArrayOf(0, band), 0
-                                )
-                            )
-                        }
-                    }
-                }
-            } else {
-                // OFF: Enforce minimum burst duration (40-50ms) so fast game transients
-                // (e.g. single gunshot/punch) aren't prematurely killed before motor spins up
-                if (lastAppliedBand > 0) {
-                    val minBurstMs = if (motorProfile.tier == 3) 35L else 50L
-                    val elapsed = now - motorOnStartTimeMs
-                    if (elapsed < minBurstMs) {
-                        rumbleStopJob?.cancel()
-                        rumbleStopJob = launch {
-                            delay(minBurstMs - elapsed)
-                            lastAppliedBand = 0
-                            isRumbling = false
-                            vibrator?.cancel()
-                        }
-                    } else {
-                        rumbleStopJob?.cancel()
-                        lastAppliedBand = 0
-                        isRumbling = false
-                        vibrator?.cancel()
-                    }
-                }
-            }
+        val lastAppliedBand = AtomicInteger(0)
+        val lastUpdateTimeMs = AtomicLong(0L)
+        val motorOnStartTimeMs = AtomicLong(0L)
+        val lastPacketTimeMs = AtomicLong(0L)
 
-            // Safety watchdog: kill infinite vibration if packets stop arriving
-            if (totalSpeed > 0) {
-                rumbleResetJob?.cancel()
-                rumbleResetJob = launch {
-                    delay(250)
-                    if (lastAppliedBand != 0) {
+        // Single standing watchdog loop checking every 50ms instead of per-packet coroutine launches
+        launch(kotlinx.coroutines.Dispatchers.Default) {
+            while (isActive) {
+                delay(50)
+                val now = SystemClock.elapsedRealtime()
+                val currentBand = lastAppliedBand.get()
+                if (currentBand > 0 && (now - lastPacketTimeMs.get()) > 250) {
+                    if (lastAppliedBand.compareAndSet(currentBand, 0)) {
                         rumbleStopJob?.cancel()
-                        lastAppliedBand = 0
                         isRumbling = false
                         vibrator?.cancel()
                     }
                 }
             }
         }
+        
+        launch(kotlinx.coroutines.Dispatchers.Default) {
+            viewModel.feedbackFlow
+                .collect { feedback ->
+                    val now = SystemClock.elapsedRealtime()
+                    lastPacketTimeMs.set(now)
+                    val rumbleMode = sharedPref.getString("RUMBLE_MODE", "min") ?: "min"
+                    
+                    // ── Stage 1: Stereo-to-Mono Downmix ─────────────────────────
+                    val left = feedback.leftMotorSpeed
+                    val right = feedback.rightMotorSpeed
+                    
+                    val combinedSpeed = when (rumbleMode) {
+                        "max"   -> maxOf(left, right)
+                        "smart" -> {
+                            if (left == 0 || right == 0) maxOf(left, right)
+                            else (0.7f * maxOf(left, right) + 0.3f * minOf(left, right)).roundToInt()
+                        }
+                        "avg"   -> (left + right) / 2
+                        "min"   -> minOf(left, right)
+                        else    -> minOf(left, right)
+                    }
+                    
+                    val scaledSpeed = combinedSpeed.coerceIn(0, 255)
+                    
+                    // ── Stage 2: Hardware Dead Zone ──────────────────────────────
+                    val motorDeadZone = when (motorProfile.tier) {
+                        1 -> 0     // Binary, no amplitude control
+                        3 -> 8     // LRA: precise, low threshold
+                        else -> 20 // ERM: spinning weight needs minimum voltage
+                    }
+                    
+                    val afterDeadZone = when {
+                        scaledSpeed == 0 -> 0
+                        scaledSpeed < motorDeadZone -> motorDeadZone
+                        else -> scaledSpeed
+                    }
+                    
+                    // ── Stage 3: Perceptual Gamma Curve (Weber-Fechner) ──────────
+                    val gamma = 0.55
+                    val totalSpeed = if (afterDeadZone == 0) 0
+                                     else (255.0 * (afterDeadZone / 255.0).pow(gamma)).roundToInt().coerceIn(1, 255)
+                    
+                    // ── Stage 4: Band Quantization ───────────────────────────────
+                    val band = when {
+                        totalSpeed == 0 -> 0
+                        bandSize >= 255 -> totalSpeed.coerceIn(1, 255)
+                        else -> ((totalSpeed + bandSize / 2) / bandSize * bandSize).coerceIn(bandSize, 255)
+                    }
+                    
+                    val gap = now - lastUpdateTimeMs.get()
+                    
+                    if (band > 0) {
+                        rumbleStopJob?.cancel()
+                        val prevBand = lastAppliedBand.get()
+                        val shouldUpdate = when {
+                            prevBand <= 0 -> true // ON: always instant
+                            band != prevBand && gap >= minGapMs -> true // Band changed + motor ready
+                            else -> false
+                        }
+                        
+                        if (shouldUpdate) {
+                            if (prevBand <= 0) {
+                                motorOnStartTimeMs.set(now)
+                            }
+                            lastAppliedBand.set(band)
+                            lastUpdateTimeMs.set(now)
+                            isRumbling = true
+                            
+                            when (motorProfile.tier) {
+                                1 -> {
+                                    vibrator?.vibrate(
+                                        VibrationEffect.createWaveform(longArrayOf(0, 10000), 0)
+                                    )
+                                }
+                                else -> {
+                                    vibrator?.vibrate(
+                                        VibrationEffect.createWaveform(
+                                            longArrayOf(0, 10000), intArrayOf(0, band), 0
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        val prevBand = lastAppliedBand.get()
+                        if (prevBand > 0) {
+                            val minBurstMs = if (motorProfile.tier == 3) 35L else 50L
+                            val elapsed = now - motorOnStartTimeMs.get()
+                            if (elapsed < minBurstMs) {
+                                rumbleStopJob?.cancel()
+                                rumbleStopJob = launch(kotlinx.coroutines.Dispatchers.Default) {
+                                    delay(minBurstMs - elapsed)
+                                    lastAppliedBand.set(0)
+                                    isRumbling = false
+                                    vibrator?.cancel()
+                                }
+                            } else {
+                                rumbleStopJob?.cancel()
+                                lastAppliedBand.set(0)
+                                isRumbling = false
+                                vibrator?.cancel()
+                            }
+                        }
+                    }
+                }
+        }
     }
 
     DisposableEffect(Unit) {
         onDispose {
             rumbleStopJob?.cancel()
-            rumbleResetJob?.cancel()
             vibrator?.cancel()
             navigationViewModel?.clearGamepadSession()
         }
@@ -439,10 +462,7 @@ fun GamepadScreenContent(
         }
 
         // Dynamically track exact runtime bounding boxes of all interactive buttons in container coords
-        val buttonBoundsMap = remember { mutableStateMapOf<String, Rect>() }
-        LaunchedEffect(adjustedPositions) {
-            buttonBoundsMap.clear()
-        }
+        val boundsRegistry = remember(profile) { BoundsRegistry() }
 
         val halfWidthDp = with(density) { (screenWidthPx / 2f).toDp() }
 
@@ -456,9 +476,6 @@ fun GamepadScreenContent(
 
         if (inbuildLtp != null) {
             val ltpPos = inbuildLtp.value
-            val leftExclusions = remember(buttonBoundsMap.toMap(), screenWidthPx) {
-                buttonBoundsMap.values.filter { it.center.x < screenWidthPx / 2f }
-            }
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
@@ -469,7 +486,7 @@ fun GamepadScreenContent(
                     isLeft = true,
                     screenWidthPx = screenWidthPx,
                     screenHeightPx = screenHeightPx,
-                    exclusionRects = leftExclusions,
+                    boundsProvider = { boundsRegistry.getExclusionRects(isLeft = true, screenWidthPx = screenWidthPx) },
                     isConnected = isConnected,
                     isRgbEnabled = profile.isRgbEnabled,
                     viewModel = viewModel,
@@ -480,9 +497,6 @@ fun GamepadScreenContent(
 
         if (inbuildRtp != null) {
             val rtpPos = inbuildRtp.value
-            val rightExclusions = remember(buttonBoundsMap.toMap(), screenWidthPx) {
-                buttonBoundsMap.values.filter { it.center.x >= screenWidthPx / 2f }
-            }
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
@@ -493,7 +507,7 @@ fun GamepadScreenContent(
                     isLeft = false,
                     screenWidthPx = screenWidthPx,
                     screenHeightPx = screenHeightPx,
-                    exclusionRects = rightExclusions,
+                    boundsProvider = { boundsRegistry.getExclusionRects(isLeft = false, screenWidthPx = screenWidthPx) },
                     isConnected = isConnected,
                     isRgbEnabled = profile.isRgbEnabled,
                     viewModel = viewModel,
@@ -512,6 +526,9 @@ fun GamepadScreenContent(
         }
 
         discreteTouchpadEntries.forEach { (key, position) ->
+            DisposableEffect(key) {
+                onDispose { boundsRegistry.remove(key) }
+            }
             Box(
                 modifier = Modifier
                     .layout { measurable, childConstraints ->
@@ -527,7 +544,7 @@ fun GamepadScreenContent(
                     .scale(position.scale * responsiveScale)
                     .alpha(position.opacity)
                     .onGloballyPositioned { coordinates ->
-                        buttonBoundsMap[key] = coordinates.boundsInParent()
+                        boundsRegistry.put(key, coordinates.boundsInParent())
                     }
             ) {
                 renderElement(key, position)
@@ -543,14 +560,14 @@ fun GamepadScreenContent(
                 modifier = Modifier
                     .layout { measurable, childConstraints ->
                         val placeable = measurable.measure(childConstraints)
-                        val extraX = if (isLs) lsFloatX.value else if (isRs) rsFloatX.value else 0f
-                        val extraY = if (isLs) lsFloatY.value else if (isRs) rsFloatY.value else 0f
                         val safeX = if (position.xRatio.isFinite()) position.xRatio else 0f
                         val safeY = if (position.yRatio.isFinite()) position.yRatio else 0f
-                        val x = (safeX * screenWidthPx - placeable.width / 2f + extraX).roundToInt()
-                        val y = (safeY * screenHeightPx - placeable.height / 2f + extraY).roundToInt()
+                        val baseX = (safeX * screenWidthPx - placeable.width / 2f).roundToInt()
+                        val baseY = (safeY * screenHeightPx - placeable.height / 2f).roundToInt()
                         layout(placeable.width, placeable.height) {
-                            placeable.placeRelative(x, y)
+                            val extraX = if (isLs) lsFloatX.value else if (isRs) rsFloatX.value else 0f
+                            val extraY = if (isLs) lsFloatY.value else if (isRs) rsFloatY.value else 0f
+                            placeable.placeRelative(baseX + extraX.roundToInt(), baseY + extraY.roundToInt())
                         }
                     }
                     .scale(position.scale * responsiveScale)
@@ -567,9 +584,6 @@ fun GamepadScreenContent(
             val lsPos = lsEntry.value
             val lsMode = lsPos.joystickMode ?: if (lsPos.isLocked == false) "FULL" else "LOCKED"
             if (lsMode != "LOCKED") {
-                val leftExclusions = remember(buttonBoundsMap.toMap(), screenWidthPx) {
-                    buttonBoundsMap.values.filter { it.center.x < screenWidthPx / 2f }
-                }
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
@@ -587,7 +601,7 @@ fun GamepadScreenContent(
                         floatY = lsFloatY,
                         viewModel = viewModel,
                         isConnected = isConnected,
-                        exclusionRects = leftExclusions,
+                        boundsRegistry = boundsRegistry,
                         responsiveScale = responsiveScale
                     )
                 }
@@ -599,9 +613,6 @@ fun GamepadScreenContent(
             val rsPos = rsEntry.value
             val rsMode = rsPos.joystickMode ?: if (rsPos.isLocked == false) "FULL" else "LOCKED"
             if (rsMode != "LOCKED") {
-                val rightExclusions = remember(buttonBoundsMap.toMap(), screenWidthPx) {
-                    buttonBoundsMap.values.filter { it.center.x >= screenWidthPx / 2f }
-                }
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
@@ -619,7 +630,7 @@ fun GamepadScreenContent(
                         floatY = rsFloatY,
                         viewModel = viewModel,
                         isConnected = isConnected,
-                        exclusionRects = rightExclusions,
+                        boundsRegistry = boundsRegistry,
                         responsiveScale = responsiveScale
                     )
                 }
@@ -629,6 +640,9 @@ fun GamepadScreenContent(
         // 3. Render all interactive buttons, D-pad, triggers, bumpers, menu buttons — HIGHEST Z-order.
         // Direct button taps are captured by the buttons with absolute priority.
         interactiveButtonEntries.forEach { (key, position) ->
+            DisposableEffect(key) {
+                onDispose { boundsRegistry.remove(key) }
+            }
             Box(
                 modifier = Modifier
                     .layout { measurable, childConstraints ->
@@ -644,7 +658,7 @@ fun GamepadScreenContent(
                     .scale(position.scale * responsiveScale)
                     .alpha(position.opacity)
                     .onGloballyPositioned { coordinates ->
-                        buttonBoundsMap[key] = coordinates.boundsInParent()
+                        boundsRegistry.put(key, coordinates.boundsInParent())
                     }
             ) {
                 renderElement(key, position)
@@ -665,12 +679,11 @@ private fun BoxScope.JoystickTouchLayer(
     floatY: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>,
     viewModel: GamepadViewModel?,
     isConnected: Boolean,
-    exclusionRects: List<Rect>,
+    boundsRegistry: BoundsRegistry,
     responsiveScale: Float = 1.0f
 ) {
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
-    val currentExclusionRects by rememberUpdatedState(exclusionRects)
 
     // Joystick home center in screen coordinates
     val homeX = remember(position, screenWidthPx) { position.xRatio * screenWidthPx }
@@ -705,15 +718,7 @@ private fun BoxScope.JoystickTouchLayer(
                     val screenY = down.position.y
 
                     // 2. Universal element boundary exclusion check:
-                    // Computes exact 2D Euclidean distance from touch to element boundary.
-                    // Dilates any shape (native, .nxprc vector, custom skin) uniformly by marginPx
-                    // with smooth rounded corners, completely agnostic to element type or aspect ratio.
-                    val marginSq = marginPx * marginPx
-                    val nearButton = currentExclusionRects.any { rect ->
-                        val dx = maxOf(abs(screenX - rect.center.x) - rect.width / 2f, 0f)
-                        val dy = maxOf(abs(screenY - rect.center.y) - rect.height / 2f, 0f)
-                        (dx * dx + dy * dy) <= marginSq
-                    }
+                    val nearButton = boundsRegistry.isNearAny(screenX, screenY, marginPx, isLeft, screenWidthPx)
                     if (nearButton) return@awaitEachGesture
 
                     // 3. Activation zone gate (floating joystick only active for FULL or BOX)

@@ -184,7 +184,20 @@ fun RealisticBumper(
     Box(
         modifier = modifier
             .size(154.dp, 48.dp)
+            .graphicsLayer {
+                scaleX = scaleAnim
+                scaleY = scaleAnim
+            }
             .drawBehind {
+                val shadowOffsetY = if (isPressed) 1.5.dp.toPx() else 4.dp.toPx()
+                val shadowPad = if (isPressed) 2.dp.toPx() else 5.dp.toPx()
+                drawRoundRect(
+                    color = Color.Black.copy(alpha = if (isPressed) 0.35f else 0.55f),
+                    topLeft = Offset(-shadowPad * 0.5f, shadowOffsetY - shadowPad * 0.5f),
+                    size = Size(size.width + shadowPad, size.height + shadowPad),
+                    cornerRadius = CornerRadius(22.dp.toPx() + shadowPad, 22.dp.toPx() + shadowPad)
+                )
+
                 if (isRgbEnabled) {
                     val padX = 14.dp.toPx()
                     val padY = 8.dp.toPx()
@@ -242,12 +255,6 @@ fun RealisticBumper(
                     )
                 }
             }
-            .shadow(
-                elevation = if (isPressed) 1.dp else 4.dp,
-                shape = bumperShape,
-                ambientColor = if (isRgbEnabled) neonColor else Color.Black,
-                spotColor = if (isRgbEnabled) neonColor else Color.Black
-            )
             .border(
                 width = 1.dp,
                 color = Color.Black.copy(alpha = 0.50f),

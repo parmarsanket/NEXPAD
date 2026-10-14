@@ -164,10 +164,24 @@ fun OrbitHomeButton(
             .graphicsLayer {
                 scaleX = scaleAnim
                 scaleY = scaleAnim
+                translationY = pressOffsetYAnim * density
             }
-            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             // Bespoke Planetary Orbital Resonance Aura
             .drawBehind {
+                val shadowOffsetY = if (isPressed) 1.5.dp.toPx() else 4.dp.toPx()
+                val shadowRadius = size.minDimension * 0.44f
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        0.0f to Color.Black.copy(alpha = if (isPressed) 0.35f else 0.55f),
+                        0.75f to Color.Black.copy(alpha = if (isPressed) 0.15f else 0.25f),
+                        1.0f to Color.Transparent,
+                        center = Offset(center.x, center.y + shadowOffsetY),
+                        radius = shadowRadius
+                    ),
+                    radius = shadowRadius,
+                    center = Offset(center.x, center.y + shadowOffsetY)
+                )
+
                 if (isRgbEnabled) {
                     val auraR = size.minDimension * 0.85f
 
@@ -209,12 +223,6 @@ fun OrbitHomeButton(
                     }
                 }
             }
-            .shadow(
-                elevation = if (isPressed) 2.dp else 6.dp,
-                shape = CircleShape,
-                ambientColor = if (isRgbEnabled) glowColor else Color.Black,
-                spotColor = if (isRgbEnabled) glowColor else Color.Black
-            )
             .clip(CircleShape)
             .background(domeGradient)
             .border(

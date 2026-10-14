@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -159,21 +160,24 @@ fun RealisticButton(
     var isPressed by remember { mutableStateOf(false) }
 
     // Physical Spring Kinematics (stiffness: 440f, damping: 0.68f, press-scale: 0.95f)
-    val scaleAnim by animateFloatAsState(
+    val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "btn_scale"
     )
-    val pressOffsetYAnim by animateFloatAsState(
+    val pressOffsetYAnimState = animateFloatAsState(
         targetValue = if (isPressed) 2f else 0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "btn_depth"
     )
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "btn_rgb_bloom"
     )
+
+    val currentOnVibrate by rememberUpdatedState(onVibrate)
+    val currentViewModel by rememberUpdatedState(viewModel)
 
     val activeLabel = displayLabel ?: key
     val psShape = getPlayStationShape(activeLabel)
@@ -272,53 +276,87 @@ fun RealisticButton(
     val stroke3_5dp = remember(density) { Stroke(width = 3.5f * density) }
     val stroke4dp = remember(density) { Stroke(width = 4f * density) }
 
-    val bloomColorsList = remember(effectiveColor) {
-        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    val normalShadowBrush = remember {
+        Brush.radialGradient(
+            0.0f to Color.Black.copy(alpha = 0.55f),
+            0.70f to Color.Black.copy(alpha = 0.20f),
+            1.0f to Color.Transparent
+        )
     }
+    val pressedShadowBrush = remember {
+        Brush.radialGradient(
+            0.0f to Color.Black.copy(alpha = 0.35f),
+            0.65f to Color.Black.copy(alpha = 0.10f),
+            1.0f to Color.Transparent
+        )
+    }
+
+    class RealisticButtonAuraBrush {
+        private var radius: Float = 0f
+        private var center: Offset = Offset.Unspecified
+        private var brush: Brush? = null
+
+        fun getBrush(color: Color, c: Offset, r: Float): Brush {
+            val existing = brush
+            if (existing != null && radius == r && center == c) return existing
+            val newBrush = Brush.radialGradient(
+                0.00f to color.copy(alpha = 0.55f),
+                0.45f to color.copy(alpha = 0.22f),
+                1.00f to Color.Transparent,
+                center = c,
+                radius = r
+            )
+            radius = r
+            center = c
+            brush = newBrush
+            return newBrush
+        }
+    }
+    val auraBrushCache = remember(effectiveColor) { RealisticButtonAuraBrush() }
 
     Box(
         modifier = modifier
             .size(80.dp)
-            // Ambient RGB Bloom behind button socket
+            .graphicsLayer {
+                scaleX = scaleAnimState.value
+                scaleY = scaleAnimState.value
+                translationY = pressOffsetYAnimState.value * density
+            }
+            // Hardware-accelerated soft drop shadow + Ambient RGB Bloom
             .drawBehind {
+                val r = size.minDimension / 2f
+                val shadowOffsetY = if (isPressed) 1.5.dp.toPx() else 4.dp.toPx()
+                val shadowPad = if (isPressed) 2.dp.toPx() else 5.dp.toPx()
+                val shadowRadius = r + shadowPad
+                drawCircle(
+                    brush = if (isPressed) pressedShadowBrush else normalShadowBrush,
+                    radius = shadowRadius,
+                    center = Offset(center.x, center.y + shadowOffsetY)
+                )
+
                 if (isRgbEnabled) {
-                    bloomColorsList[0] = effectiveColor.copy(alpha = rgbBloomAlpha * 0.55f)
-                    bloomColorsList[1] = effectiveColor.copy(alpha = rgbBloomAlpha * 0.22f)
-                    bloomColorsList[2] = Color.Transparent
+                    val auraRadius = size.minDimension * 1f
+                    val brush = auraBrushCache.getBrush(effectiveColor, center, auraRadius)
                     drawCircle(
-                        brush = Brush.radialGradient(
-                            colors = bloomColorsList,
-                            center = center,
-                            radius = size.minDimension * 1f
-                        ),
-                        radius = size.minDimension * 1f
+                        brush = brush,
+                        radius = auraRadius,
+                        center = center,
+                        alpha = rgbBloomAlphaState.value
                     )
                 }
             }
-            .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
-            }
-            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
-            // Outer drop shadow: 0 4px 7px rgba(0, 0, 0, 0.55)
-            .shadow(
-                elevation = if (isPressed) 1.dp else 4.dp,
-                shape = CircleShape,
-                ambientColor = if (isRgbEnabled) effectiveColor else Color.Black,
-                spotColor = if (isRgbEnabled) effectiveColor else Color.Black
-            )
             .clip(CircleShape)
             // .cap base dome: radial-gradient(circle at 50% 55%, #232527 0%, #0c0d0e 75%, #000 100%)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
             .pointerInput(key) {
                 detectTapGestures(
                     onPress = {
-                        onVibrate()
+                        currentOnVibrate()
                         isPressed = true
-                        viewModel.updateButton(key, true)
+                        currentViewModel.updateButton(key, true)
                         tryAwaitRelease()
                         isPressed = false
-                        viewModel.updateButton(key, false)
+                        currentViewModel.updateButton(key, false)
                     }
                 )
             },
@@ -485,9 +523,7 @@ fun RealisticButton(
             ButtonPerspectiveDirection.NONE   -> IntOffset(0, 0)
         }
 
-        val glyphModifier = Modifier
-            .offset { glyphOffset }
-            .then(if (horizonClipShape != null) Modifier.clip(horizonClipShape) else Modifier)
+        val glyphModifier = Modifier.offset { glyphOffset }
 
         if (psShape != null) {
             PlayStationSymbol(
