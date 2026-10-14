@@ -45,6 +45,7 @@ import com.sanket.tools.nexpad.runtime.model.NexPadInputTarget
 import com.sanket.tools.nexpad.nxprc.*
 import com.sanket.tools.nexpad.ui.components.controller.abxy.PlayStationSymbol
 import com.sanket.tools.nexpad.ui.components.controller.abxy.getPlayStationShape
+import com.sanket.tools.nexpad.ui.components.controller.abxy.getPlayStationColor
 import com.sanket.tools.nexpad.ui.components.controller.special.calculateGamingStickMagnitude
 import com.sanket.tools.nexpad.ui.components.controller.special.VelocityRingBuffer
 import kotlinx.coroutines.launch
@@ -103,10 +104,182 @@ private fun rotateHue(color: Color, degrees: Float): Color {
     return Color(red = newR, green = newG, blue = newB, alpha = color.alpha)
 }
 
-internal fun resolveAuraColor(document: NxprcDocument): Color {
+/**
+ * Converts a Compose Color to HSV components (Hue in 0..360, Saturation in 0..1, Value in 0..1).
+ */
+internal fun Color.toHsv(): FloatArray {
+    val r = red
+    val g = green
+    val b = blue
+    val max = maxOf(r, maxOf(g, b))
+    val min = minOf(r, minOf(g, b))
+    val delta = max - min
+
+    val hue = when {
+        delta == 0f -> 0f
+        max == r -> ((g - b) / delta * 60f + 360f) % 360f
+        max == g -> ((b - r) / delta * 60f + 120f) % 360f
+        else -> ((r - g) / delta * 60f + 240f) % 360f
+    }
+    val saturation = if (max == 0f) 0f else delta / max
+    val value = max
+
+    return floatArrayOf(hue, saturation, value)
+}
+
+internal fun hsvToColor(alpha: Float, hue: Float, saturation: Float, value: Float): Color {
+    val c = value * saturation
+    val hPrime = ((hue % 360f + 360f) % 360f) / 60f
+    val x = c * (1f - kotlin.math.abs(hPrime % 2f - 1f))
+    val m = value - c
+
+    val (r1, g1, b1) = when {
+        hPrime < 1f -> Triple(c, x, 0f)
+        hPrime < 2f -> Triple(x, c, 0f)
+        hPrime < 3f -> Triple(0f, c, x)
+        hPrime < 4f -> Triple(0f, x, c)
+        hPrime < 5f -> Triple(x, 0f, c)
+        else -> Triple(c, 0f, x)
+    }
+
+    return Color(
+        red = (r1 + m).coerceIn(0f, 1f),
+        green = (g1 + m).coerceIn(0f, 1f),
+        blue = (b1 + m).coerceIn(0f, 1f),
+        alpha = alpha.coerceIn(0f, 1f)
+    )
+}
+
+/**
+ * Returns true if the color is achromatic (neutral white, gray, black, silver, carbon, dark chassis)
+ * where hue shifting would produce unnatural chromatic artifacts.
+ */
+internal fun Color.isAchromatic(): Boolean {
+    val r = red
+    val g = green
+    val b = blue
+    val max = maxOf(r, maxOf(g, b))
+    val min = minOf(r, minOf(g, b))
+    val delta = max - min
+    return delta < 0.08f || max < 0.08f || (max > 0f && delta / max < 0.15f)
+}
+
+/**
+ * Determines whether a color corresponds to the default console accent for a given control.
+ * Used to distinguish un-specified / default colors from user-specified custom themes.
+ */
+internal fun isDefaultConsoleAccent(color: Color, controlKey: String): Boolean {
+    if (color.isAchromatic()) return false
+    val hsv = color.toHsv()
+    val hue = hsv[0]
+    return when (controlKey.trim().uppercase()) {
+        "A" -> hue in 120f..175f // Xbox Default Emerald Green
+        "X" -> hue in 180f..230f // Xbox Default Sapphire Blue
+        "Y" -> hue in 30f..70f   // Xbox Default Solar Yellow
+        "B" -> hue in 340f..360f || hue in 0f..20f // Xbox Default Crimson Red
+        else -> false
+    }
+}
+
+/**
+ * Dynamically adapts an accent color for console platform mode (Xbox <-> PlayStation).
+ * STRICT CONSTRAINTS:
+ * 1. Only applies to ABXY face buttons (A, B, X, Y). All other categories are 100% untouched.
+ * 2. Only shifts colors that match the canonical console default palette.
+ * 3. User-specified custom colors (Pink, Gold, White, Carbon, etc.) are strictly preserved.
+ */
+private val ABXY_KEYS = setOf("A", "B", "X", "Y")
+
+internal fun adaptColorForConsole(
+    color: Color,
+    controlKey: String,
+    labelStyle: ControllerLabelStyle
+): Color {
+    val upper = controlKey.trim().uppercase()
+    if (upper !in ABXY_KEYS) return color
+    if (labelStyle != ControllerLabelStyle.PLAYSTATION) return color
+    if (color.isAchromatic()) return color
+
+    val hsv = color.toHsv()
+    val hue = hsv[0]
+
+    // Button A: Default Green (120°..175°) -> Shift +60° to PlayStation Blue (~210°..220°)
+    if (upper == "A" && hue in 120f..175f) {
+        val newHue = (hue + 60f) % 360f
+        return hsvToColor(color.alpha, newHue, hsv[1], hsv[2])
+    }
+
+    // Button X: Default Blue (180°..230°) -> Shift +122° to PlayStation Pink (~315°..330°)
+    if (upper == "X" && hue in 180f..230f) {
+        val newHue = (hue + 122f) % 360f
+        return hsvToColor(color.alpha, newHue, hsv[1], hsv[2])
+    }
+
+    // Button Y: Default Yellow (30°..70°) -> Shift +85° to PlayStation Green (~120°..145°)
+    if (upper == "Y" && hue in 30f..70f) {
+        val newHue = (hue + 85f) % 360f
+        return hsvToColor(color.alpha, newHue, hsv[1], hsv[2])
+    }
+
+    // Button B: Xbox Red (340°..20°) and PlayStation Circle are both Red -> Keep authentic red
+    return color
+}
+
+internal fun adaptFill(fill: FillBrush, controlKey: String, labelStyle: ControllerLabelStyle): FillBrush {
+    if (labelStyle != ControllerLabelStyle.PLAYSTATION) return fill
+    val upper = controlKey.trim().uppercase()
+    if (upper !in ABXY_KEYS) return fill
+
+    return when (fill) {
+        is FillBrush.Solid -> {
+            val adapted = adaptColorForConsole(Color(fill.color), controlKey, labelStyle)
+            FillBrush.Solid(adapted.toArgb().toLong() and 0xFFFFFFFFL)
+        }
+        is FillBrush.LinearGradient -> {
+            val newColors = fill.colors.map { c ->
+                adaptColorForConsole(Color(c), controlKey, labelStyle).toArgb().toLong() and 0xFFFFFFFFL
+            }
+            fill.copy(colors = newColors)
+        }
+        is FillBrush.RadialGradient -> {
+            val newColors = fill.colors.map { c ->
+                adaptColorForConsole(Color(c), controlKey, labelStyle).toArgb().toLong() and 0xFFFFFFFFL
+            }
+            fill.copy(colors = newColors)
+        }
+        is FillBrush.SweepGradient -> {
+            val newColors = fill.colors.map { c ->
+                adaptColorForConsole(Color(c), controlKey, labelStyle).toArgb().toLong() and 0xFFFFFFFFL
+            }
+            fill.copy(colors = newColors)
+        }
+    }
+}
+
+internal fun adaptStroke(stroke: StrokeStyle?, controlKey: String, labelStyle: ControllerLabelStyle): StrokeStyle? {
+    if (stroke == null || labelStyle != ControllerLabelStyle.PLAYSTATION) return stroke
+    val upper = controlKey.trim().uppercase()
+    if (upper !in ABXY_KEYS) return stroke
+    val adapted = adaptColorForConsole(Color(stroke.color), controlKey, labelStyle)
+    return stroke.copy(color = adapted.toArgb().toLong() and 0xFFFFFFFFL)
+}
+
+internal fun adaptBoxShadow(shadow: BoxShadowDef, controlKey: String, labelStyle: ControllerLabelStyle): BoxShadowDef {
+    if (labelStyle != ControllerLabelStyle.PLAYSTATION) return shadow
+    val upper = controlKey.trim().uppercase()
+    if (upper !in ABXY_KEYS) return shadow
+    val adapted = adaptColorForConsole(Color(shadow.color), controlKey, labelStyle)
+    return shadow.copy(color = adapted.toArgb().toLong() and 0xFFFFFFFFL)
+}
+
+internal fun resolveAuraColor(
+    document: NxprcDocument,
+    controlKey: String = document.manifest.defaultControl,
+    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX
+): Color {
     // 1. Explicit GlowRing layer
     val explicitGlow = document.canvas.layers.filterIsInstance<CanvasLayer.GlowRing>().firstOrNull()
-    if (explicitGlow != null) return Color(explicitGlow.glowColor)
+    if (explicitGlow != null) return adaptColorForConsole(Color(explicitGlow.glowColor), controlKey, labelStyle)
 
     // 2. Outset vibrant box-shadow
     for (layer in document.canvas.layers) {
@@ -117,7 +290,7 @@ internal fun resolveAuraColor(document: NxprcDocument): Color {
                     c.alpha > 0.05f && (kotlin.math.abs(c.red - c.green) > 0.08f || kotlin.math.abs(c.green - c.blue) > 0.08f)
                 }
             }
-            if (vibrantShadow != null) return Color(vibrantShadow.color)
+            if (vibrantShadow != null) return adaptColorForConsole(Color(vibrantShadow.color), controlKey, labelStyle)
         }
     }
 
@@ -132,20 +305,20 @@ internal fun resolveAuraColor(document: NxprcDocument): Color {
         if (strokeColor != null) {
             val c = Color(strokeColor)
             if (c.alpha > 0.1f && (kotlin.math.abs(c.red - c.green) > 0.08f || kotlin.math.abs(c.green - c.blue) > 0.08f)) {
-                return c
+                return adaptColorForConsole(c, controlKey, labelStyle)
             }
         }
     }
 
     // 4. ControlKey accentColorArgb
-    val controlKey = ControlKey.fromIdentifier(document.manifest.defaultControl)
+    val controlKeyObj = ControlKey.fromIdentifier(controlKey.ifBlank { document.manifest.defaultControl })
         ?: ControlKey.fromIdentifier(document.manifest.id)
-    if (controlKey != null) {
-        return Color(controlKey.accentColorArgb)
+    if (controlKeyObj != null) {
+        return adaptColorForConsole(Color(controlKeyObj.accentColorArgb), controlKey, labelStyle)
     }
 
     // 5. Default Emerald Fallback
-    return Color(0xFF4ADE80L)
+    return adaptColorForConsole(Color(0xFF4ADE80L), controlKey, labelStyle)
 }
 
 private fun createNxprcColorFilter(filter: FilterDef): ColorFilter? {
@@ -474,6 +647,11 @@ fun NxprcCanvasRenderer(
         }
     }
 
+    val effectiveControlKey = remember(buttonControl, document.manifest.defaultControl) {
+        val key = buttonControl.key.ifBlank { document.manifest.defaultControl }
+        key.trim().uppercase()
+    }
+
     val isDpadCross = (assignedControl is NexPadControl.Button && (assignedControl.key.equals(NexpadKeys.DPAD, ignoreCase = true) || document.manifest.defaultControl.equals(NexpadKeys.DPAD, ignoreCase = true))) ||
             (document.manifest.category.equals(NexpadKeys.DPAD, ignoreCase = true) && assignedControl is NexPadControl.Button && assignedControl.key.equals(NexpadKeys.DPAD, ignoreCase = true)) ||
             (document.manifest.id.contains("dpad_cross", ignoreCase = true))
@@ -481,7 +659,9 @@ fun NxprcCanvasRenderer(
     val isTouchpad = document.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
             document.manifest.defaultControl.uppercase() in listOf(NexpadKeys.LTP, NexpadKeys.RTP)
 
-    val rawAuraColor = remember(document) { resolveAuraColor(document) }
+    val rawAuraColor = remember(document, effectiveControlKey, labelStyle) {
+        resolveAuraColor(document, effectiveControlKey, labelStyle)
+    }
     val auraBloomAlpha = if (isInteractive) {
         animateFloatAsState(
             targetValue = if (isPressed) 0.90f else 0.40f,
@@ -496,8 +676,53 @@ fun NxprcCanvasRenderer(
         0.40f + 0.55f * stickDispFraction
     } else 0.40f
 
-    val primaryBox = remember(document) { document.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>().firstOrNull() }
-    val primaryShape = remember(document) { document.canvas.layers.filterIsInstance<CanvasLayer.GradientShape>().firstOrNull() }
+    val adaptedLayers = remember(document, effectiveControlKey, labelStyle) {
+        if (labelStyle != ControllerLabelStyle.PLAYSTATION || effectiveControlKey !in ABXY_KEYS) {
+            document.canvas.layers
+        } else {
+            document.canvas.layers.map { layer ->
+                when (layer) {
+                    is CanvasLayer.BoxLayer -> layer.copy(
+                        fills = layer.fills.map { adaptFill(it, effectiveControlKey, labelStyle) },
+                        stroke = adaptStroke(layer.stroke, effectiveControlKey, labelStyle),
+                        boxShadows = layer.boxShadows.map { adaptBoxShadow(it, effectiveControlKey, labelStyle) }
+                    )
+                    is CanvasLayer.GlowRing -> layer.copy(
+                        glowColor = adaptColorForConsole(Color(layer.glowColor), effectiveControlKey, labelStyle).toArgb().toLong() and 0xFFFFFFFFL
+                    )
+                    is CanvasLayer.GradientShape -> layer.copy(
+                        fill = adaptFill(layer.fill, effectiveControlKey, labelStyle),
+                        stroke = adaptStroke(layer.stroke, effectiveControlKey, labelStyle)
+                    )
+                    is CanvasLayer.VectorPath -> layer.copy(
+                        fill = adaptFill(layer.fill, effectiveControlKey, labelStyle),
+                        stroke = adaptStroke(layer.stroke, effectiveControlKey, labelStyle)
+                    )
+                    is CanvasLayer.InnerShadow -> layer.copy(
+                        highlightColor = adaptColorForConsole(Color(layer.highlightColor), effectiveControlKey, labelStyle).toArgb().toLong() and 0xFFFFFFFFL,
+                        shadowColor = adaptColorForConsole(Color(layer.shadowColor), effectiveControlKey, labelStyle).toArgb().toLong() and 0xFFFFFFFFL
+                    )
+                    is CanvasLayer.TextLayer -> layer.copy(
+                        textColor = adaptColorForConsole(Color(layer.textColor), effectiveControlKey, labelStyle).toArgb().toLong() and 0xFFFFFFFFL,
+                        textShadows = layer.textShadows.map { ts -> ts.copy(color = adaptColorForConsole(Color(ts.color), effectiveControlKey, labelStyle).toArgb().toLong() and 0xFFFFFFFFL) }
+                    )
+                    is CanvasLayer.CenterGlyph -> layer.copy(
+                        textColor = adaptColorForConsole(Color(layer.textColor), effectiveControlKey, labelStyle).toArgb().toLong() and 0xFFFFFFFFL,
+                        shadowColor = layer.shadowColor?.let { adaptColorForConsole(Color(it), effectiveControlKey, labelStyle).toArgb().toLong() and 0xFFFFFFFFL },
+                        highlightColor = layer.highlightColor?.let { adaptColorForConsole(Color(it), effectiveControlKey, labelStyle).toArgb().toLong() and 0xFFFFFFFFL },
+                        textShadows = layer.textShadows.map { ts -> ts.copy(color = adaptColorForConsole(Color(ts.color), effectiveControlKey, labelStyle).toArgb().toLong() and 0xFFFFFFFFL) }
+                    )
+                    else -> layer
+                }
+            }
+        }
+    }
+
+    val primaryBox = remember(adaptedLayers) { adaptedLayers.filterIsInstance<CanvasLayer.BoxLayer>().firstOrNull() }
+    val primaryShape = remember(adaptedLayers) { adaptedLayers.filterIsInstance<CanvasLayer.GradientShape>().firstOrNull() }
+    val glowRing = remember(adaptedLayers) { adaptedLayers.filterIsInstance<CanvasLayer.GlowRing>().firstOrNull() }
+    val glyph = remember(adaptedLayers) { adaptedLayers.filterIsInstance<CanvasLayer.CenterGlyph>().firstOrNull() }
+    val textLayers = remember(adaptedLayers) { adaptedLayers.filterIsInstance<CanvasLayer.TextLayer>() }
     val rootShapeType = remember(primaryBox, primaryShape) {
         (primaryBox?.shapeType?.uppercase() ?: primaryShape?.shapeType?.uppercase() ?: "ROUNDED_RECT")
     }
@@ -974,8 +1199,6 @@ fun NxprcCanvasRenderer(
                 val pxPerUnit = viewScale
                 val scaleRatio = (pxPerUnit / density).coerceAtLeast(0.01f)
 
-                val primaryBox = document.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>().firstOrNull()
-                val primaryShape = document.canvas.layers.filterIsInstance<CanvasLayer.GradientShape>().firstOrNull()
                 val rootShapeType = (primaryBox?.shapeType?.uppercase() ?: primaryShape?.shapeType?.uppercase() ?: "ROUNDED_RECT")
                 val rootIsOval = rootShapeType == "OVAL"
                 val rootIsPolygon = rootShapeType == "POLYGON" || rootShapeType == "PATH" || (primaryBox?.pathData?.isNotBlank() == true)
@@ -1076,7 +1299,6 @@ fun NxprcCanvasRenderer(
                                     val elementPath = getOrCreateBoxPath(boxLeft, boxTop, boxWidth, boxHeight, tl, tr, br, bl, isOval)
 
                                     // 1. Outset box shadows (drawn bottom-to-top per CSS spec)
-                                    val glowRing = document.canvas.layers.filterIsInstance<CanvasLayer.GlowRing>().firstOrNull()
                                     layer.boxShadows.filter { !it.isInset }.reversed().forEach { shadow ->
                                         if (glowRing != null && shadow.color == glowRing.glowColor && shadow.blurRadius == glowRing.blurRadius) {
                                             return@forEach
@@ -1274,7 +1496,7 @@ fun NxprcCanvasRenderer(
                                 }
                             }
 
-                            val isRootLayer = layer == document.canvas.layers.firstOrNull() || (layer.widthRatio >= 1.0f && layer.heightRatio >= 1.0f)
+                            val isRootLayer = layer == adaptedLayers.firstOrNull() || (layer.widthRatio >= 1.0f && layer.heightRatio >= 1.0f)
                             if (!isRootLayer && (layer.clipToBounds || document.canvas.clipToBounds)) {
                                 clipPath(rootClipShape) {
                                     drawFilteredBox()
@@ -1601,7 +1823,7 @@ fun NxprcCanvasRenderer(
                     }
                 }
 
-                document.canvas.layers.forEachIndexed { layerIdx, layer ->
+                adaptedLayers.forEachIndexed { layerIdx, layer ->
                     val isCap = isTwoStageStick && layerIdx in capIndicesSet
                     if (isCap) {
                         withTransform({
@@ -1617,8 +1839,6 @@ fun NxprcCanvasRenderer(
             }
 
         // Center text glyph or multi-text layers with embossed 3D lighting and tactile synchronization
-        val glyph = remember(document) { document.canvas.layers.filterIsInstance<CanvasLayer.CenterGlyph>().firstOrNull() }
-        val textLayers = remember(document) { document.canvas.layers.filterIsInstance<CanvasLayer.TextLayer>() }
         val viewBox = document.canvas.viewBoxWidth.coerceAtLeast(1f)
         val viewBoxH = document.canvas.viewBoxHeight.coerceAtLeast(1f)
         val baseScale = minOf(rawWidthDp / viewBox, rawHeightDp / viewBoxH)
@@ -1626,7 +1846,7 @@ fun NxprcCanvasRenderer(
         val buttonW = viewBox * viewScale
         val buttonH = viewBoxH * viewScale
         val scaleFactor = viewScale
-        val rootBox = remember(document) { document.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>().firstOrNull() }
+        val rootBox = primaryBox
 
         if (textLayers.isNotEmpty()) {
             Box(
@@ -1641,7 +1861,7 @@ fun NxprcCanvasRenderer(
                     val resolvedText = CategoryManager.resolveGlyphForStyle(tl.text, document.manifest.defaultControl, labelStyle)
                     val fontSp = (tl.fontSizeSp * scaleFactor).sp
                     val fontWeight = if (tl.fontWeight >= 900) FontWeight.Black else if (tl.fontWeight >= 700) FontWeight.Bold else FontWeight.Normal
-                    val isLayerCap = isTwoStageStick && document.canvas.layers.indexOf(tl).let { it != -1 && it in capIndicesSet }
+                    val isLayerCap = isTwoStageStick && adaptedLayers.indexOf(tl).let { it != -1 && it in capIndicesSet }
                     val stickShiftX = if (isLayerCap) (thumbOffsetX / density).dp else 0.dp
                     val stickShiftY = if (isLayerCap) (thumbOffsetY / density).dp else 0.dp
                     val offX = (tl.offsetXRatio * buttonW).dp + stickShiftX
@@ -1663,9 +1883,17 @@ fun NxprcCanvasRenderer(
                                 )
                             }
                         }
+                        val rawSymbolColor = Color(tl.textColor)
+                        val symbolColor = if (rawSymbolColor.isAchromatic()) {
+                            getPlayStationColor(psShape)
+                        } else if (isDefaultConsoleAccent(rawSymbolColor, effectiveControlKey)) {
+                            adaptColorForConsole(rawSymbolColor, effectiveControlKey, labelStyle)
+                        } else {
+                            rawSymbolColor
+                        }
                         PlayStationSymbol(
                             shape = psShape,
-                            color = Color(tl.textColor),
+                            color = symbolColor,
                             size = glyphSizeDp,
                             modifier = Modifier.offset(x = offX, y = offY)
                         )
@@ -1694,7 +1922,7 @@ fun NxprcCanvasRenderer(
                     }
                 }
             }
-        } else if (glyph != null || document.canvas.layers.any { it is CanvasLayer.CenterGlyph }) {
+        } else if (glyph != null || adaptedLayers.any { it is CanvasLayer.CenterGlyph }) {
             val rawCenterText = glyph?.text ?: document.manifest.defaultControl
             val centerText = CategoryManager.resolveGlyphForStyle(rawCenterText, document.manifest.defaultControl, labelStyle)
             val textColor = glyph?.textColor ?: 0xFFF5F5F5L
@@ -1755,9 +1983,17 @@ fun NxprcCanvasRenderer(
                         }
                     }
                     // Foreground PlayStation symbol
+                    val rawSymbolColor = Color(textColor)
+                    val symbolColor = if (rawSymbolColor.isAchromatic()) {
+                        getPlayStationColor(psShape)
+                    } else if (isDefaultConsoleAccent(rawSymbolColor, effectiveControlKey)) {
+                        adaptColorForConsole(rawSymbolColor, effectiveControlKey, labelStyle)
+                    } else {
+                        rawSymbolColor
+                    }
                     PlayStationSymbol(
                         shape = psShape,
-                        color = Color(textColor),
+                        color = symbolColor,
                         size = glyphSizeDp
                     )
                 } else {
