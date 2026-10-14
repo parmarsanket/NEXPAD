@@ -266,16 +266,11 @@ fun RealisticDPad(
     val strokeArcVibrant = remember(density) { Stroke(width = 3.8f * density, cap = StrokeCap.Round) }
     val strokeArcHalo = remember(density) { Stroke(width = 7.5f * density, cap = StrokeCap.Round) }
 
-    val strokeRimAuraHalo = remember(density) { Stroke(width = 16f * density, cap = StrokeCap.Round) }
-    val strokeRimAuraVibrant = remember(density) { Stroke(width = 7.5f * density, cap = StrokeCap.Round) }
-    val strokeRimAuraCore = remember(density) { Stroke(width = 2.5f * density, cap = StrokeCap.Round) }
-
     // Reusable color arrays for multi-tiered radial bloom
     val bloomTier1 = remember(neonColor) { arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent) }
     val bloomTier2 = remember(neonColor) { arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent) }
     val bloomTier3 = remember(neonColor) { arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent) }
     val clusterAuraColors = remember(neonColor) { arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent) }
-    val directionalAuraColors = remember(neonColor) { arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent) }
 
     // Static Precomputed Brushes (matching RealisticButton obsidian caps)
     val baseDomeGradient = remember {
@@ -434,92 +429,26 @@ fun RealisticDPad(
             val leftCenter = Offset(cx - orbitRadius, cy)
             val rightCenter = Offset(cx + orbitRadius, cy)
 
-            // 1. Ambient Cluster Nebula Aura (Dynamically shifts & surges toward pressed side!)
+            // 1. Ambient Cluster Nebula Aura
             val auraVal = clusterAura.value
             if (isRgbEnabled) {
-                val maxAura = maxOf(upAuraGrowth.value, downAuraGrowth.value, leftAuraGrowth.value, rightAuraGrowth.value)
-                val shiftX = (rightAuraGrowth.value - leftAuraGrowth.value) * (minDim * 0.12f)
-                val shiftY = (downAuraGrowth.value - upAuraGrowth.value) * (minDim * 0.12f)
-                val clusterRadius = minDim * (0.52f + 0.18f * maxAura)
-                val dynamicCenter = Offset(cx + shiftX, cy + shiftY)
-
-                clusterAuraColors[0] = neonColor.copy(alpha = (auraVal * 0.28f) + (maxAura * 0.22f))
-                clusterAuraColors[1] = neonColor.copy(alpha = (auraVal * 0.08f) + (maxAura * 0.08f))
+                val clusterRadius = minDim * 0.52f
+                clusterAuraColors[0] = neonColor.copy(alpha = auraVal * 0.28f)
+                clusterAuraColors[1] = neonColor.copy(alpha = auraVal * 0.08f)
                 clusterAuraColors[2] = Color.Transparent
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = clusterAuraColors,
-                        center = dynamicCenter,
+                        center = Offset(cx, cy),
                         radius = clusterRadius
                     ),
                     radius = clusterRadius,
-                    center = dynamicCenter
+                    center = Offset(cx, cy)
                 )
             }
-
-            // Directional Circle Dial Perimeter Aura Surges
-            // When a direction is pressed, the outer circle dial rim on that side flares and expands outward!
-            val rimRadius = minDim * 0.465f
-            val rimRect = Size(rimRadius * 2f, rimRadius * 2f)
-            val rimTopLeft = Offset(cx - rimRadius, cy - rimRadius)
-
-            fun drawDirectionalRimAura(startAngle: Float, growth: Float, flareCenter: Offset) {
-                if (growth <= 0.02f || !isRgbEnabled) return
-                // A. Outer Radial Glow Flare on the rim
-                val flareRadius = minDim * (0.22f + 0.16f * growth)
-                directionalAuraColors[0] = neonColor.copy(alpha = growth * 0.55f)
-                directionalAuraColors[1] = neonColor.copy(alpha = growth * 0.16f)
-                directionalAuraColors[2] = Color.Transparent
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = directionalAuraColors,
-                        center = flareCenter,
-                        radius = flareRadius
-                    ),
-                    radius = flareRadius,
-                    center = flareCenter
-                )
-
-                // B. Multi-layered outer rim energy arc
-                drawArc(
-                    color = neonColor.copy(alpha = growth * 0.45f),
-                    startAngle = startAngle,
-                    sweepAngle = 90f,
-                    useCenter = false,
-                    topLeft = rimTopLeft,
-                    size = rimRect,
-                    style = strokeRimAuraHalo
-                )
-                drawArc(
-                    color = neonColor.copy(alpha = growth * 0.90f),
-                    startAngle = startAngle,
-                    sweepAngle = 90f,
-                    useCenter = false,
-                    topLeft = rimTopLeft,
-                    size = rimRect,
-                    style = strokeRimAuraVibrant
-                )
-                drawArc(
-                    color = Color.White.copy(alpha = growth * 0.95f),
-                    startAngle = startAngle,
-                    sweepAngle = 90f,
-                    useCenter = false,
-                    topLeft = rimTopLeft,
-                    size = rimRect,
-                    style = strokeRimAuraCore
-                )
-            }
-
-            // UP: centered at -90 deg -> start at -135 deg, sweep 90 deg
-            drawDirectionalRimAura(-135f, upAuraGrowth.value, Offset(cx, cy - minDim * 0.42f))
-            // RIGHT: centered at 0 deg -> start at -45 deg, sweep 90 deg
-            drawDirectionalRimAura(-45f, rightAuraGrowth.value, Offset(cx + minDim * 0.42f, cy))
-            // DOWN: centered at 90 deg -> start at 45 deg, sweep 90 deg
-            drawDirectionalRimAura(45f, downAuraGrowth.value, Offset(cx, cy + minDim * 0.42f))
-            // LEFT: centered at 180 deg -> start at 135 deg, sweep 90 deg
-            drawDirectionalRimAura(135f, leftAuraGrowth.value, Offset(cx - minDim * 0.42f, cy))
 
             // 2. Sleek Background Stage & Concentric Precision Rings
+            val rimRadius = minDim * 0.465f
             drawCircle(
                 brush = stageTrackBrush,
                 radius = minDim * 0.48f,
@@ -541,35 +470,19 @@ fun RealisticDPad(
 
             // Micro-telemetry compass tick marks around outer perimeter
             for (i in 0 until 16) {
-                val angleDeg = i * 22.5f
-                val angleRad = angleDeg * (Math.PI / 180f).toFloat()
+                val angleRad = (i * 22.5f) * (Math.PI / 180f).toFloat()
                 val isMajor = i % 2 == 0
-
-                val tickGrowth = when (i) {
-                    11, 12, 13 -> upAuraGrowth.value     // Near top (247.5, 270, 292.5)
-                    15, 0, 1   -> rightAuraGrowth.value  // Near right (337.5, 0, 22.5)
-                    3, 4, 5    -> downAuraGrowth.value   // Near bottom (67.5, 90, 112.5)
-                    7, 8, 9    -> leftAuraGrowth.value   // Near left (157.5, 180, 202.5)
-                    else -> 0f
-                }
-
-                val baseTickLen = (if (isMajor) 4.5f else 2.5f) * density
-                val tickLen = baseTickLen + (4.0f * density * tickGrowth)
+                val tickLen = (if (isMajor) 4.5f else 2.5f) * density
                 val startX = cx + cos(angleRad) * (rimRadius - tickLen)
                 val startY = cy + sin(angleRad) * (rimRadius - tickLen)
                 val endX = cx + cos(angleRad) * rimRadius
                 val endY = cy + sin(angleRad) * rimRadius
-                val tickAlpha = if (tickGrowth > 0.1f) {
-                    0.35f + 0.65f * tickGrowth
-                } else if (isMajor) 0.35f else 0.18f
-
+                val tickAlpha = if (isMajor) 0.35f else 0.18f
                 drawLine(
-                    color = if (tickGrowth > 0.2f) Color.White.copy(alpha = tickAlpha)
-                            else if (isRgbEnabled) neonColor.copy(alpha = tickAlpha)
-                            else Color.White.copy(alpha = tickAlpha),
+                    color = if (isRgbEnabled) neonColor.copy(alpha = tickAlpha) else Color.White.copy(alpha = tickAlpha),
                     start = Offset(startX, startY),
                     end = Offset(endX, endY),
-                    strokeWidth = (if (tickGrowth > 0.2f) stroke1_5dp else stroke1dp).width
+                    strokeWidth = stroke1dp.width
                 )
             }
 
@@ -745,11 +658,10 @@ fun RealisticDPad(
 
                 // A. Multi-Tiered Dynamic Radial Aura (Surges & Grows on Press!)
                 if (isRgbEnabled) {
-                    // Tier 1: Wide diffuse atmospheric nebula - grows dramatically when pressed!
-                    // Idle: r * 1.50f (subtle, contained) -> Pressed: r * 3.40f (massive surging aura!)
-                    val diffuseRadius = r * (1.50f + 1.90f * auraGrowth)
-                    bloomTier1[0] = neonColor.copy(alpha = (0.10f + 0.32f * auraGrowth) * bloomAlpha)
-                    bloomTier1[1] = neonColor.copy(alpha = (0.03f + 0.12f * auraGrowth) * bloomAlpha)
+                    // Tier 1: Wide diffuse atmospheric nebula - smooth, comfortable radial growth
+                    val diffuseRadius = r * (1.60f + 0.90f * auraGrowth)
+                    bloomTier1[0] = neonColor.copy(alpha = (0.12f + 0.16f * auraGrowth) * bloomAlpha)
+                    bloomTier1[1] = neonColor.copy(alpha = (0.04f + 0.06f * auraGrowth) * bloomAlpha)
                     bloomTier1[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
@@ -761,11 +673,10 @@ fun RealisticDPad(
                         center = nodeCenter
                     )
 
-                    // Tier 2: Mid-range vibrant corona - expands outward
-                    // Idle: r * 1.20f -> Pressed: r * 2.30f
-                    val coronaRadius = r * (1.20f + 1.10f * auraGrowth)
-                    bloomTier2[0] = neonColor.copy(alpha = (0.35f + 0.55f * auraGrowth) * bloomAlpha)
-                    bloomTier2[1] = neonColor.copy(alpha = (0.10f + 0.25f * auraGrowth) * bloomAlpha)
+                    // Tier 2: Mid-range vibrant corona - expands softly
+                    val coronaRadius = r * (1.25f + 0.45f * auraGrowth)
+                    bloomTier2[0] = neonColor.copy(alpha = (0.35f + 0.30f * auraGrowth) * bloomAlpha)
+                    bloomTier2[1] = neonColor.copy(alpha = (0.10f + 0.12f * auraGrowth) * bloomAlpha)
                     bloomTier2[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
@@ -777,11 +688,11 @@ fun RealisticDPad(
                         center = nodeCenter
                     )
 
-                    // Tier 3: Core Plasma Overdrive (ignites when pressed)
+                    // Tier 3: Soft Core Bloom (ignites gently on press without harsh white glare)
                     if (auraGrowth > 0.05f) {
-                        val coreBloomRadius = r * (0.85f + 0.50f * auraGrowth)
-                        bloomTier3[0] = Color.White.copy(alpha = 0.45f * auraGrowth)
-                        bloomTier3[1] = neonColor.copy(alpha = 0.75f * auraGrowth)
+                        val coreBloomRadius = r * (0.95f + 0.35f * auraGrowth)
+                        bloomTier3[0] = neonColor.copy(alpha = 0.55f * auraGrowth)
+                        bloomTier3[1] = neonColor.copy(alpha = 0.20f * auraGrowth)
                         bloomTier3[2] = Color.Transparent
                         drawCircle(
                             brush = Brush.radialGradient(
