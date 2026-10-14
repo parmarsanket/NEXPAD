@@ -106,8 +106,8 @@ fun FacetButton(
     val psShape = getPlayStationShape(activeLabel)
     val effectiveColor = if (psShape != null) getPlayStationColor(psShape) else buttonColor
 
-    // 54dp square rotated 45° has diagonal 54 * sqrt(2) ≈ 76.4dp, fitting cleanly in 80dp
-    val gemShape = remember { RoundedCornerShape(12.dp) }
+    // 64dp square rotated 45° has diagonal 64 * sqrt(2) ≈ 90.5dp, fitting cleanly in 92dp
+    val gemShape = remember { RoundedCornerShape(14.dp) }
     val density = LocalDensity.current.density
     val insetColorsPressed = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)) }
     val insetColorsNormal = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)) }
@@ -158,14 +158,14 @@ fun FacetButton(
 
     Box(
         modifier = modifier
-            .size(80.dp)
+            .size(92.dp)
             .graphicsLayer {
                 // Root RenderNode isolation
             }
             .drawBehind {
                 if (isRgbEnabled) {
                     val cr = 14.dp.toPx()
-                    val halfSize = 26.dp.toPx()
+                    val halfSize = (64.dp.toPx() * 1.4142f) / 2f
                     val pad = 5.dp.toPx()
                     val innerRotAnim = innerRotAnimState.value
                     val rgbBloomAlpha = rgbBloomAlphaState.value
@@ -179,15 +179,15 @@ fun FacetButton(
                             brush = Brush.radialGradient(
                                 colorStops = diamondBloomStops,
                                 center = center,
-                                radius = size.minDimension * 0.58f
+                                radius = size.minDimension * 0.52f
                             ),
                             topLeft = Offset(center.x - halfSize - pad, center.y - halfSize - pad),
                             size = Size((halfSize + pad) * 2f, (halfSize + pad) * 2f),
                             cornerRadius = CornerRadius(cr, cr)
                         )
 
-                        // 8-point crystalline diffraction spikes contained within 80dp container
-                        val spikeLen = size.minDimension * 0.45f
+                        // 8-point crystalline diffraction spikes contained within 92dp bounds
+                        val spikeLen = size.minDimension * 0.46f
                         val spikeColor = effectiveColor.copy(alpha = if (isPressed) 0.85f else 0.40f)
                         // Cardinal axes
                         drawLine(
@@ -226,9 +226,9 @@ fun FacetButton(
                             brush = Brush.radialGradient(
                                 colors = crystalGlintColors,
                                 center = center,
-                                radius = 16f
+                                radius = 18f
                             ),
-                            radius = 16f,
+                            radius = 18f,
                             center = center
                         )
                     }
@@ -236,10 +236,10 @@ fun FacetButton(
             },
         contentAlignment = Alignment.Center
     ) {
-        // ── GEM DIAMOND (54dp square rotated 45°, diagonal 76.4dp inside 80dp) ──
+        // ── GEM DIAMOND (64dp square rotated 45°, diagonal 90.5dp inside 92dp) ──
         Box(
             modifier = Modifier
-                .size(54.dp)
+                .size(64.dp)
                 .graphicsLayer {
                     rotationZ = 45f
                     scaleX = scaleAnimState.value
@@ -303,11 +303,11 @@ fun FacetButton(
                     size = Size(w, insetH)
                 )
 
-                // Inner diamond: inset 9.5px, corner radius 6px
-                val inset = 9.5.dp.toPx()
+                // Inner diamond: inset 11dp, corner radius 7dp
+                val inset = 11.dp.toPx()
                 val innerW = w - inset * 2f
                 val innerH = h - inset * 2f
-                val cr = 6.dp.toPx()
+                val cr = 7.dp.toPx()
 
                 rotate(innerRotAnimState.value, pivot = center) {
                     scale(scaleX = innerScaleAnimState.value, scaleY = innerScaleAnimState.value, pivot = center) {
@@ -340,14 +340,14 @@ fun FacetButton(
                     PlayStationSymbol(
                         shape = psShape,
                         color = effectiveColor,
-                        size = 28.dp
+                        size = 38.dp
                     )
                 } else {
                     Text(
                         text = activeLabel,
                         color = effectiveColor,
                         fontWeight = FontWeight.Medium,
-                        fontSize = 28.sp,
+                        fontSize = 38.sp,
                         style = androidx.compose.ui.text.TextStyle(
                             shadow = androidx.compose.ui.graphics.Shadow(
                                 color = effectiveColor.copy(alpha = if (isPressed) 0.90f else 0.50f),
@@ -363,11 +363,11 @@ fun FacetButton(
                 val w = size.width
                 val h = size.height
 
-                // Neon ring around diamond perimeter (inset 2.5px, r=9.5px)
-                val ringInset = 2.5.dp.toPx()
+                // Neon ring around diamond perimeter (inset 3dp, r=11dp)
+                val ringInset = 3.dp.toPx()
                 val ringW = w - ringInset * 2f
                 val ringH = h - ringInset * 2f
-                val ringCr = 9.5.dp.toPx()
+                val ringCr = 11.dp.toPx()
 
                 // Outer soft bloom
                 drawRoundRect(
@@ -396,7 +396,7 @@ fun FacetButton(
                     ),
                     topLeft = Offset(lensInset, lensInset),
                     size = Size(w - lensInset * 2f, h * 0.40f),
-                    cornerRadius = CornerRadius(11.dp.toPx(), 11.dp.toPx())
+                    cornerRadius = CornerRadius(13.dp.toPx(), 13.dp.toPx())
                 )
             }
         }
