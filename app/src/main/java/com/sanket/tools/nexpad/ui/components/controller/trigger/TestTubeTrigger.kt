@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
@@ -149,12 +150,80 @@ fun TestTubeTrigger(
         )
     }
 
+    val chassisBorderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.50f),
+                Color.Black.copy(alpha = 0.85f)
+            )
+        )
+    }
+
+    val windowBackgroundBrush = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF050506),
+                Color(0xFF121314)
+            ),
+            center = Offset(0.50f, 0.60f),
+            radius = 40f
+        )
+    }
+
+    val windowBorderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.9f),
+                Color.White.copy(alpha = 0.10f)
+            )
+        )
+    }
+
+    val liquidBodyColors = remember(glowColor) {
+        listOf(
+            glowColor.copy(alpha = 0.55f),
+            glowColor.copy(alpha = 0.85f)
+        )
+    }
+
+    val liquidCoreColors = remember(glowColor) {
+        listOf(
+            glowColor.copy(alpha = 0.35f),
+            glowColor.copy(alpha = 0.70f)
+        )
+    }
+
+    val glossStripColors = remember {
+        listOf(
+            Color.White.copy(alpha = 0.35f),
+            Color.White.copy(alpha = 0.08f),
+            Color.Transparent
+        )
+    }
+
+    val lensColors = remember {
+        listOf(
+            Color.White.copy(alpha = 0.16f),
+            Color.White.copy(alpha = 0.04f),
+            Color.Transparent
+        )
+    }
+
     val tubeCapsuleColors = remember(glowColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
     val reservoirPoolColors = remember(glowColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
+
+    val bubbleOffsetsX = remember { floatArrayOf(0.20f, 0.42f, 0.65f, 0.32f, 0.78f) }
+    val bubbleSpeeds = remember { floatArrayOf(1.0f, 1.4f, 0.9f, 1.2f, 1.5f) }
+    val bubbleDelays = remember { floatArrayOf(0.0f, 0.25f, 0.5f, 0.75f, 0.1f) }
+
+    val density = LocalDensity.current.density
+    val strokeBubblePip = remember(density) { Stroke(width = 1f * density) }
+    val strokeChassisRingBloom = remember(density) { Stroke(width = 2.6f * density) }
+    val strokeChassisRingCore = remember(density) { Stroke(width = 1.2f * density) }
 
     Box(
         modifier = modifier
@@ -163,8 +232,8 @@ fun TestTubeTrigger(
             // Outer dynamic RGB aura
             .drawBehind {
                 if (isRgbEnabled) {
-                    val padX = 10.dp.toPx()
-                    val padY = 8.dp.toPx()
+                    val padX = 10f * density
+                    val padY = 8f * density
 
                     // 1. Elongated Test Tube Capsule Aura
                     tubeCapsuleColors[0] = glowColor.copy(alpha = rgbBloomAlpha.value * (if (isPressed) 0.35f else 0.15f))
@@ -178,7 +247,7 @@ fun TestTubeTrigger(
                         ),
                         topLeft = Offset(-padX, -padY),
                         size = Size(size.width + padX * 2f, size.height + padY * 2f),
-                        cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx())
+                        cornerRadius = CornerRadius(24f * density, 24f * density)
                     )
 
                     // 2. Rising Bioluminescent Liquid Reservoir Pool (surges with fillProgress)
@@ -194,9 +263,9 @@ fun TestTubeTrigger(
                                 center = Offset(center.x, size.height - poolH * 0.5f),
                                 radius = size.width * 0.80f
                             ),
-                            topLeft = Offset(-padX - 4.dp.toPx(), poolTop),
-                            size = Size(size.width + (padX + 4.dp.toPx()) * 2f, poolH + padY),
-                            cornerRadius = CornerRadius(20.dp.toPx(), 20.dp.toPx())
+                            topLeft = Offset(-padX - 4f * density, poolTop),
+                            size = Size(size.width + (padX + 4f * density) * 2f, poolH + padY),
+                            cornerRadius = CornerRadius(20f * density, 20f * density)
                         )
                     }
 
@@ -204,18 +273,18 @@ fun TestTubeTrigger(
                     if (isPressed) {
                         val bubblePhase = bubbleTime.value
                         val bY1 = size.height * (1f - ((bubblePhase * 0.9f) % 1f))
-                        val bX1 = center.x - 14.dp.toPx() + (swayProgress.value * 3.dp.toPx())
+                        val bX1 = center.x - 14f * density + (swayProgress.value * 3f * density)
                         val bY2 = size.height * (1f - (((bubblePhase + 0.4f) * 0.8f) % 1f))
-                        val bX2 = center.x + 14.dp.toPx() - (swayProgress.value * 2.dp.toPx())
+                        val bX2 = center.x + 14f * density - (swayProgress.value * 2f * density)
 
                         drawCircle(
                             color = Color.White.copy(alpha = rgbBloomAlpha.value * 0.85f),
-                            radius = 2.5.dp.toPx(),
+                            radius = 2.5f * density,
                             center = Offset(bX1, bY1)
                         )
                         drawCircle(
                             color = glowColor.copy(alpha = rgbBloomAlpha.value * 0.70f),
-                            radius = 2.dp.toPx(),
+                            radius = 2f * density,
                             center = Offset(bX2, bY2)
                         )
                     }
@@ -236,12 +305,7 @@ fun TestTubeTrigger(
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
             .border(
                 width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.50f),
-                        Color.Black.copy(alpha = 0.85f)
-                    )
-                ),
+                brush = chassisBorderBrush,
                 shape = chassisShape
             )
             .then(
@@ -283,10 +347,7 @@ fun TestTubeTrigger(
                     // Liquid volume glowing body
                     drawRect(
                         brush = Brush.verticalGradient(
-                            colors = listOf(
-                                glowColor.copy(alpha = 0.55f),
-                                glowColor.copy(alpha = 0.85f)
-                            ),
+                            colors = liquidBodyColors,
                             startY = liquidTopY,
                             endY = h
                         ),
@@ -297,20 +358,17 @@ fun TestTubeTrigger(
                     // Liquid emissive bloom core
                     drawRect(
                         brush = Brush.verticalGradient(
-                            colors = listOf(
-                                glowColor.copy(alpha = 0.35f),
-                                glowColor.copy(alpha = 0.70f)
-                            ),
+                            colors = liquidCoreColors,
                             startY = liquidTopY,
                             endY = h
                         ),
-                        topLeft = Offset(2.dp.toPx(), liquidTopY),
-                        size = Size(w - 4.dp.toPx(), liquidHeight)
+                        topLeft = Offset(2f * density, liquidTopY),
+                        size = Size(w - 4f * density, liquidHeight)
                     )
 
                     // Swaying Meniscus Crest (.tt-liq::before)
-                    val swayOffsetPx = if (isPressed) swayProgress.value * 3.dp.toPx() else 0f
-                    val meniscusHeight = 6.dp.toPx()
+                    val swayOffsetPx = if (isPressed) swayProgress.value * 3f * density else 0f
+                    val meniscusHeight = 6f * density
                     drawOval(
                         color = glowColor,
                         topLeft = Offset(-w * 0.15f + swayOffsetPx, liquidTopY - meniscusHeight / 2f),
@@ -325,9 +383,6 @@ fun TestTubeTrigger(
 
                     // Rising floating bubbles (.bubs)
                     if (isPressed || currentFill > 0.1f) {
-                        val bubbleOffsetsX = floatArrayOf(0.20f, 0.42f, 0.65f, 0.32f, 0.78f)
-                        val bubbleSpeeds = floatArrayOf(1.0f, 1.4f, 0.9f, 1.2f, 1.5f)
-                        val bubbleDelays = floatArrayOf(0.0f, 0.25f, 0.5f, 0.75f, 0.1f)
                         val bTime = bubbleTime.value
 
                         for (i in bubbleOffsetsX.indices) {
@@ -335,14 +390,14 @@ fun TestTubeTrigger(
                             val bY = h - (progress * liquidHeight)
                             val wobble = sin(progress * 6.28f * 2f) * 1.8f
                             val bX = w * bubbleOffsetsX[i] + wobble
-                            val bRadius = (1.5f + (i % 2) * 0.8f).dp.toPx()
+                            val bRadius = (1.5f + (i % 2) * 0.8f) * density
 
                             if (bY in (liquidTopY + bRadius)..h) {
                                 drawCircle(
                                     color = Color.White.copy(alpha = 0.75f),
                                     radius = bRadius,
                                     center = Offset(bX, bY),
-                                    style = Stroke(width = 1.dp.toPx())
+                                    style = strokeBubblePip
                                 )
                                 drawCircle(
                                     color = Color.White.copy(alpha = 0.40f),
@@ -356,30 +411,26 @@ fun TestTubeTrigger(
 
                 // Volumetric Measurement Scale Ticks (.tt-scale) on right edge
                 val numTicks = 6
-                val scaleStartX = w - 8.dp.toPx()
-                val scaleEndX = w - 3.dp.toPx()
+                val scaleStartX = w - 8f * density
+                val scaleEndX = w - 3f * density
                 for (i in 0 until numTicks) {
-                    val tickY = 16.dp.toPx() + i * ((h - 32.dp.toPx()) / (numTicks - 1))
+                    val tickY = 16f * density + i * ((h - 32f * density) / (numTicks - 1))
                     drawLine(
                         color = Color.White.copy(alpha = 0.35f),
                         start = Offset(scaleStartX, tickY),
                         end = Offset(scaleEndX, tickY),
-                        strokeWidth = 1.2.dp.toPx()
+                        strokeWidth = 1.2f * density
                     )
                 }
 
                 // Vertical Specular Glass Gloss Strip (.tt-gloss) on left edge
                 drawRoundRect(
                     brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.35f),
-                            Color.White.copy(alpha = 0.08f),
-                            Color.Transparent
-                        )
+                        colors = glossStripColors
                     ),
-                    topLeft = Offset(3.dp.toPx(), 8.dp.toPx()),
-                    size = Size(3.dp.toPx(), h - 16.dp.toPx()),
-                    cornerRadius = CornerRadius(1.5.dp.toPx(), 1.5.dp.toPx())
+                    topLeft = Offset(3f * density, 8f * density),
+                    size = Size(3f * density, h - 16f * density),
+                    cornerRadius = CornerRadius(1.5f * density, 1.5f * density)
                 )
             }
         }
@@ -391,24 +442,10 @@ fun TestTubeTrigger(
                 .offset(y = (12).dp)
                 .size(36.dp, 20.dp)
                 .clip(windowShape)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            Color(0xFF050506),
-                            Color(0xFF121314)
-                        ),
-                        center = Offset(0.50f, 0.60f),
-                        radius = 40f
-                    )
-                )
+                .background(windowBackgroundBrush)
                 .border(
                     width = 1.dp,
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.9f),
-                            Color.White.copy(alpha = 0.10f)
-                        )
-                    ),
+                    brush = windowBorderBrush,
                     shape = windowShape
                 ),
             contentAlignment = Alignment.Center
@@ -430,40 +467,36 @@ fun TestTubeTrigger(
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
-            val rPx = 24.dp.toPx()
+            val rPx = 24f * density
 
             // Top specular crescent highlight
             drawRoundRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.16f),
-                        Color.White.copy(alpha = 0.04f),
-                        Color.Transparent
-                    ),
+                    colors = lensColors,
                     startY = 0f,
                     endY = h * 0.30f
                 ),
-                topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
-                size = Size(w - 3.dp.toPx(), h * 0.30f),
+                topLeft = Offset(1.5f * density, 1.5f * density),
+                size = Size(w - 3f * density, h * 0.30f),
                 cornerRadius = CornerRadius(rPx, rPx)
             )
 
             // Outer chassis neon ring (.lx-ring)
-            val ringInset = 2.dp.toPx()
+            val ringInset = 2f * density
             val ringCorner = rPx - ringInset
             drawRoundRect(
                 color = glowColor.copy(alpha = rgbBloomAlpha.value * 0.55f),
                 topLeft = Offset(ringInset - 1f, ringInset - 1f),
                 size = Size(w - (ringInset - 1f) * 2f, h - (ringInset - 1f) * 2f),
                 cornerRadius = CornerRadius(ringCorner, ringCorner),
-                style = Stroke(width = 2.6.dp.toPx())
+                style = strokeChassisRingBloom
             )
             drawRoundRect(
                 color = glowColor.copy(alpha = if (isPressed) 0.95f else 0.60f),
                 topLeft = Offset(ringInset, ringInset),
                 size = Size(w - ringInset * 2f, h - ringInset * 2f),
                 cornerRadius = CornerRadius(ringCorner, ringCorner),
-                style = Stroke(width = 1.2.dp.toPx())
+                style = strokeChassisRingCore
             )
         }
     }

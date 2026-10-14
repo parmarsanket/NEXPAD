@@ -17,9 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -128,7 +126,74 @@ fun SliderTrigger(
         )
     }
 
+    val chassisBorderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.50f),
+                Color.Black.copy(alpha = 0.85f)
+            )
+        )
+    }
+
+    val puckDomeGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF34373B),
+                Color(0xFF17181B),
+                Color(0xFF050506)
+            ),
+            center = Offset(0.50f, 0.38f),
+            radius = 50f
+        )
+    }
+
+    val windowBackgroundBrush = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF050506),
+                Color(0xFF121314)
+            ),
+            center = Offset(0.50f, 0.60f),
+            radius = 50f
+        )
+    }
+
+    val windowBorderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.9f),
+                Color.White.copy(alpha = 0.08f)
+            )
+        )
+    }
+
+    val windowVignetteColors = remember {
+        listOf(Color.Transparent, Color.Black.copy(alpha = 0.80f))
+    }
+
+    val puckLensColors = remember {
+        listOf(
+            Color.White.copy(alpha = 0.22f),
+            Color.White.copy(alpha = 0.05f),
+            Color.Transparent
+        )
+    }
+
+    val chassisLensColors = remember {
+        listOf(
+            Color.White.copy(alpha = 0.16f),
+            Color.White.copy(alpha = 0.04f),
+            Color.Transparent
+        )
+    }
+
     val density = LocalDensity.current
+    val strokePuckLens = remember(density) { Stroke(width = 1f * density.density) }
+    val strokePuckRingBloom = remember(density) { Stroke(width = 2.2f * density.density) }
+    val strokePuckRingCore = remember(density) { Stroke(width = 1.2f * density.density) }
+    val strokePuckDotRim = remember(density) { Stroke(width = 0.8f * density.density) }
+    val strokeChassisRingBloom = remember(density) { Stroke(width = 2.5f * density.density) }
+    val strokeChassisRingCore = remember(density) { Stroke(width = 1.2f * density.density) }
 
     val channelCapsuleColors = remember(glowColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
@@ -153,8 +218,8 @@ fun SliderTrigger(
             // Outer dynamic RGB aura
             .drawBehind {
                 if (isRgbEnabled) {
-                    val padX = 10.dp.toPx()
-                    val padY = 8.dp.toPx()
+                    val padX = 10f * density.density
+                    val padY = 8f * density.density
                     val curPull = fillAnim.value
 
                     // 1. Vertical Track Channel Capsule Aura
@@ -169,7 +234,7 @@ fun SliderTrigger(
                         ),
                         topLeft = Offset(-padX, -padY),
                         size = Size(size.width + padX * 2f, size.height + padY * 2f),
-                        cornerRadius = CornerRadius(21.dp.toPx(), 21.dp.toPx())
+                        cornerRadius = CornerRadius(21f * density.density, 21f * density.density)
                     )
 
                     // 2. Linear Laser Track Guide Beam
@@ -185,16 +250,16 @@ fun SliderTrigger(
                     drawLine(
                         brush = Brush.verticalGradient(
                             colors = trackGuideColors,
-                            startY = topRestPx - 10.dp.toPx(),
-                            endY = bottomRestPx + 10.dp.toPx()
+                            startY = topRestPx - 10f * density.density,
+                            endY = bottomRestPx + 10f * density.density
                         ),
-                        start = Offset(center.x, topRestPx - 10.dp.toPx()),
-                        end = Offset(center.x, bottomRestPx + 10.dp.toPx()),
-                        strokeWidth = 2.dp.toPx()
+                        start = Offset(center.x, topRestPx - 10f * density.density),
+                        end = Offset(center.x, bottomRestPx + 10f * density.density),
+                        strokeWidth = 2f * density.density
                     )
 
                     // 3. Travelling Puck Beacon Flare tracking puck coordinates
-                    val beaconRadius = (if (isDragging) 18.dp else 12.dp).toPx()
+                    val beaconRadius = (if (isDragging) 18f else 12f) * density.density
                     val beaconAlpha = rgbBloomAlpha.value * (if (isDragging) 0.90f else 0.55f)
 
                     beaconFlareColors[0] = Color.White.copy(alpha = beaconAlpha)
@@ -211,7 +276,7 @@ fun SliderTrigger(
                     )
 
                     // Lateral flare wing spikes
-                    val wingLen = (if (isDragging) 14.dp else 8.dp).toPx()
+                    val wingLen = (if (isDragging) 14f else 8f) * density.density
                     wingSpikeColors[0] = Color.Transparent
                     wingSpikeColors[1] = glowColor.copy(alpha = beaconAlpha)
                     wingSpikeColors[2] = Color.Transparent
@@ -223,7 +288,7 @@ fun SliderTrigger(
                         ),
                         start = Offset(center.x - wingLen, puckY),
                         end = Offset(center.x + wingLen, puckY),
-                        strokeWidth = (if (isDragging) 3f else 1.5f).dp.toPx()
+                        strokeWidth = (if (isDragging) 3f else 1.5f) * density.density
                     )
                 }
             }
@@ -238,12 +303,7 @@ fun SliderTrigger(
             .background(baseDomeGradient)
             .border(
                 width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.50f),
-                        Color.Black.copy(alpha = 0.85f)
-                    )
-                ),
+                brush = chassisBorderBrush,
                 shape = chassisShape
             )
             .then(
@@ -309,8 +369,8 @@ fun SliderTrigger(
             val bottomPx = bottomRestCenterDp.toPx()
             val spanPx = travelSpanDp.toPx()
 
-            val trackWidthPx = 5.dp.toPx()
-            val trackRadiusPx = 2.5.dp.toPx()
+            val trackWidthPx = 5f * density.density
+            val trackRadiusPx = 2.5f * density.density
 
             // Outer recessed track groove
             drawRoundRect(
@@ -343,8 +403,8 @@ fun SliderTrigger(
                 // Emissive halo bloom
                 drawRoundRect(
                     color = glowColor.copy(alpha = 0.45f),
-                    topLeft = Offset(centerX - trackWidthPx / 2f - 2.dp.toPx(), fillTopY),
-                    size = Size(trackWidthPx + 4.dp.toPx(), fillHeight),
+                    topLeft = Offset(centerX - trackWidthPx / 2f - 2f * density.density, fillTopY),
+                    size = Size(trackWidthPx + 4f * density.density, fillHeight),
                     cornerRadius = CornerRadius(trackRadiusPx, trackRadiusPx)
                 )
 
@@ -398,17 +458,7 @@ fun SliderTrigger(
                     spotColor = if (isRgbEnabled) glowColor else Color.Black
                 )
                 .clip(CircleShape)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            Color(0xFF34373B),
-                            Color(0xFF17181B),
-                            Color(0xFF050506)
-                        ),
-                        center = Offset(0.50f, 0.38f),
-                        radius = 50f
-                    )
-                )
+                .background(puckDomeGradient)
                 .border(1.dp, Color.Black.copy(alpha = 0.6f), CircleShape)
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
@@ -419,43 +469,39 @@ fun SliderTrigger(
                 // Specular lens highlight at top
                 drawArc(
                     brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.22f),
-                            Color.White.copy(alpha = 0.05f),
-                            Color.Transparent
-                        )
+                        colors = puckLensColors
                     ),
                     startAngle = 180f,
                     sweepAngle = 180f,
                     useCenter = false,
-                    topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
-                    size = Size(size.width - 3.dp.toPx(), size.height - 3.dp.toPx()),
-                    style = Stroke(width = 1.dp.toPx())
+                    topLeft = Offset(1.5f * density.density, 1.5f * density.density),
+                    size = Size(size.width - 3f * density.density, size.height - 3f * density.density),
+                    style = strokePuckLens
                 )
 
                 // Puck Neon Ring (.puck-ring)
-                val ringRadius = r - 2.5.dp.toPx()
+                val ringRadius = r - 2.5f * density.density
                 // Outer bloom
                 drawCircle(
                     color = glowColor.copy(alpha = 0.40f + currentFill * 0.45f),
                     radius = ringRadius,
                     center = center,
-                    style = Stroke(width = 2.2.dp.toPx())
+                    style = strokePuckRingBloom
                 )
                 // Crisp core
                 drawCircle(
                     color = glowColor.copy(alpha = 0.85f),
                     radius = ringRadius,
                     center = center,
-                    style = Stroke(width = 1.2.dp.toPx())
+                    style = strokePuckRingCore
                 )
 
                 // Central glowing LED dot (.puck-dot)
-                val dotRadius = 2.5.dp.toPx()
+                val dotRadius = 2.5f * density.density
                 // Bloom
                 drawCircle(
                     color = glowColor.copy(alpha = 0.50f + currentFill * 0.50f),
-                    radius = dotRadius + 2.dp.toPx(),
+                    radius = dotRadius + 2f * density.density,
                     center = center
                 )
                 // Core
@@ -468,7 +514,7 @@ fun SliderTrigger(
                     color = glowColor,
                     radius = dotRadius,
                     center = center,
-                    style = Stroke(width = 0.8.dp.toPx())
+                    style = strokePuckDotRim
                 )
             }
         }
@@ -487,24 +533,10 @@ fun SliderTrigger(
                 .then(windowOffset)
                 .size(windowWidthDp, windowHeightDp)
                 .clip(windowShape)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            Color(0xFF050506),
-                            Color(0xFF121314)
-                        ),
-                        center = Offset(0.50f, 0.60f),
-                        radius = 50f
-                    )
-                )
+                .background(windowBackgroundBrush)
                 .border(
                     width = 1.dp,
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.9f),
-                            Color.White.copy(alpha = 0.08f)
-                        )
-                    ),
+                    brush = windowBorderBrush,
                     shape = windowShape
                 ),
             contentAlignment = Alignment.Center
@@ -513,15 +545,12 @@ fun SliderTrigger(
             Canvas(modifier = Modifier.fillMaxSize()) {
                 drawRoundRect(
                     brush = Brush.radialGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.80f)
-                        ),
+                        colors = windowVignetteColors,
                         center = Offset(size.width / 2f, size.height / 2f),
                         radius = size.width * 0.55f
                     ),
                     size = size,
-                    cornerRadius = CornerRadius(7.dp.toPx(), 7.dp.toPx())
+                    cornerRadius = CornerRadius(7f * density.density, 7f * density.density)
                 )
             }
 
@@ -542,26 +571,22 @@ fun SliderTrigger(
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
-            val rPx = 21.dp.toPx()
+            val rPx = 21f * density.density
 
             // Top specular crescent highlight
             drawRoundRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.16f),
-                        Color.White.copy(alpha = 0.04f),
-                        Color.Transparent
-                    ),
+                    colors = chassisLensColors,
                     startY = 0f,
                     endY = h * 0.28f
                 ),
-                topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
-                size = Size(w - 3.dp.toPx(), h * 0.28f),
+                topLeft = Offset(1.5f * density.density, 1.5f * density.density),
+                size = Size(w - 3f * density.density, h * 0.28f),
                 cornerRadius = CornerRadius(rPx, rPx)
             )
 
             // Outer chassis neon ring (.lx-ring)
-            val ringInset = 2.dp.toPx()
+            val ringInset = 2f * density.density
             val ringCorner = rPx - ringInset
             // Bloom
             drawRoundRect(
@@ -569,7 +594,7 @@ fun SliderTrigger(
                 topLeft = Offset(ringInset - 1f, ringInset - 1f),
                 size = Size(w - (ringInset - 1f) * 2f, h - (ringInset - 1f) * 2f),
                 cornerRadius = CornerRadius(ringCorner, ringCorner),
-                style = Stroke(width = 2.5.dp.toPx())
+                style = strokeChassisRingBloom
             )
             // Core
             drawRoundRect(
@@ -577,7 +602,7 @@ fun SliderTrigger(
                 topLeft = Offset(ringInset, ringInset),
                 size = Size(w - ringInset * 2f, h - ringInset * 2f),
                 cornerRadius = CornerRadius(ringCorner, ringCorner),
-                style = Stroke(width = 1.2.dp.toPx())
+                style = strokeChassisRingCore
             )
         }
     }

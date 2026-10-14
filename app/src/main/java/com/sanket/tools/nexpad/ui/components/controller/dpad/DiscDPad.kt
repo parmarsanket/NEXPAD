@@ -270,8 +270,8 @@ fun DiscDPad(
     val baseBloomColors = remember(neonColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
-    val strokeRim = remember { androidx.compose.ui.graphics.drawscope.Stroke(width = 2.0f) }
-    val strokeBeaconArc = remember { androidx.compose.ui.graphics.drawscope.Stroke(width = 4.0f) }
+    val strokeRim = remember(density) { Stroke(width = 2f * density) }
+    val strokeBeaconArc = remember(density) { Stroke(width = 4f * density) }
     val wedgeFlareStops = remember(neonColor) {
         arrayOf(
             0.00f to Color.Transparent,
@@ -279,6 +279,88 @@ fun DiscDPad(
             1.00f to Color.Transparent
         )
     }
+
+    val upTriPath = remember(density) {
+        val cx = 80f * density
+        val halfW = 8f * density
+        val h = 13f * density
+        val margin = 16f * density
+        Path().apply {
+            moveTo(cx, margin)
+            lineTo(cx - halfW, margin + h)
+            lineTo(cx + halfW, margin + h)
+            close()
+        }
+    }
+    val downTriPath = remember(density) {
+        val cx = 80f * density
+        val totalH = 160f * density
+        val halfW = 8f * density
+        val h = 13f * density
+        val margin = 16f * density
+        Path().apply {
+            moveTo(cx, totalH - margin)
+            lineTo(cx - halfW, totalH - margin - h)
+            lineTo(cx + halfW, totalH - margin - h)
+            close()
+        }
+    }
+    val leftTriPath = remember(density) {
+        val cy = 80f * density
+        val halfW = 8f * density
+        val h = 13f * density
+        val margin = 16f * density
+        Path().apply {
+            moveTo(margin, cy)
+            lineTo(margin + h, cy - halfW)
+            lineTo(margin + h, cy + halfW)
+            close()
+        }
+    }
+    val rightTriPath = remember(density) {
+        val cy = 80f * density
+        val totalW = 160f * density
+        val halfW = 8f * density
+        val h = 13f * density
+        val margin = 16f * density
+        Path().apply {
+            moveTo(totalW - margin, cy)
+            lineTo(totalW - margin - h, cy - halfW)
+            lineTo(totalW - margin - h, cy + halfW)
+            close()
+        }
+    }
+
+    val strokeGroove = remember(density) { Stroke(width = 1f * density) }
+    val strokeTriBloom = remember(density) { Stroke(width = 4f * density) }
+    val strokePuckArc = remember(density) { Stroke(width = 1.5f * density) }
+    val strokePuckRingHalo = remember(density) { Stroke(width = 4f * density) }
+    val strokePuckRingCore = remember(density) { Stroke(width = 2f * density) }
+    val strokeOuterRingHaloPressed = remember(density) { Stroke(width = 6f * density) }
+    val strokeOuterRingHaloIdle = remember(density) { Stroke(width = 4f * density) }
+    val strokeOuterRingCore = remember(density) { Stroke(width = 2f * density) }
+    val strokeGateBloom = remember(density) { Stroke(width = 6f * density, cap = StrokeCap.Round) }
+    val strokeGateCore = remember(density) { Stroke(width = 3f * density, cap = StrokeCap.Round) }
+    val strokeLensChamfer = remember(density) { Stroke(width = 1f * density) }
+
+    val bottomUndercutColorsPressed = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)) }
+    val bottomUndercutColorsIdle = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)) }
+    val puckHighlightColors = remember { listOf(Color.White.copy(alpha = 0.20f), Color.Transparent) }
+    val lensChamferColorsPressed = remember {
+        listOf(
+            Color.White.copy(alpha = 0.06f),
+            Color.White.copy(alpha = 0.02f),
+            Color.Transparent
+        )
+    }
+    val lensChamferColorsIdle = remember {
+        listOf(
+            Color.White.copy(alpha = 0.14f),
+            Color.White.copy(alpha = 0.05f),
+            Color.Transparent
+        )
+    }
+    val specularSheenColors = remember { listOf(Color.White.copy(alpha = 0.06f), Color.Transparent) }
 
     Box(
         modifier = modifier
@@ -350,7 +432,7 @@ fun DiscDPad(
             }
             .then(
                 if (isInteractive) {
-                    Modifier.pointerInput(isConnected) {
+                    Modifier.pointerInput(Unit) {
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)
                             down.consume()
@@ -422,14 +504,14 @@ fun DiscDPad(
                 val center = Offset(w / 2f, h / 2f)
 
                 // A. Concentric machined grooves: repeating every 10dp from center outwards
-                val grooveIntervalPx = 10.dp.toPx()
+                val grooveIntervalPx = 10f * density
                 var currentRadius = grooveIntervalPx
-                while (currentRadius < r - 4.dp.toPx()) {
+                while (currentRadius < r - 4f * density) {
                     drawCircle(
                         color = Color.White.copy(alpha = 0.035f),
                         radius = currentRadius,
                         center = center,
-                        style = Stroke(width = 1.dp.toPx())
+                        style = strokeGroove
                     )
                     currentRadius += grooveIntervalPx
                 }
@@ -438,7 +520,7 @@ fun DiscDPad(
                 val insetH = h * 0.35f
                 drawRect(
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (isAnyPressed) 0.85f else 0.70f)),
+                        colors = if (isAnyPressed) bottomUndercutColorsPressed else bottomUndercutColorsIdle,
                         startY = h - insetH,
                         endY = h
                     ),
@@ -447,62 +529,33 @@ fun DiscDPad(
                 )
 
                 // C. Directional Triangles (.tri)
-                val triWidthPx = 16.dp.toPx()
-                val triHeightPx = 13.dp.toPx()
-                val triMarginPx = 16.dp.toPx()
-                val halfWidthPx = triWidthPx / 2f
-
                 // 1) UP Triangle (Pointing UP)
                 val isUp = currentlyPressed.contains(K.UP)
-                val upPath = Path().apply {
-                    moveTo(center.x, triMarginPx)
-                    lineTo(center.x - halfWidthPx, triMarginPx + triHeightPx)
-                    lineTo(center.x + halfWidthPx, triMarginPx + triHeightPx)
-                    close()
-                }
                 if (isUp) {
-                    drawPath(upPath, color = neonColor.copy(alpha = 0.50f), style = Stroke(width = 4.dp.toPx()))
+                    drawPath(upTriPath, color = neonColor.copy(alpha = 0.50f), style = strokeTriBloom)
                 }
-                drawPath(upPath, color = neonColor.copy(alpha = if (isUp) 1.0f else 0.35f))
+                drawPath(upTriPath, color = neonColor.copy(alpha = if (isUp) 1.0f else 0.35f))
 
                 // 2) DOWN Triangle (Pointing DOWN)
                 val isDown = currentlyPressed.contains(K.DOWN)
-                val downPath = Path().apply {
-                    moveTo(center.x, h - triMarginPx)
-                    lineTo(center.x - halfWidthPx, h - triMarginPx - triHeightPx)
-                    lineTo(center.x + halfWidthPx, h - triMarginPx - triHeightPx)
-                    close()
-                }
                 if (isDown) {
-                    drawPath(downPath, color = neonColor.copy(alpha = 0.50f), style = Stroke(width = 4.dp.toPx()))
+                    drawPath(downTriPath, color = neonColor.copy(alpha = 0.50f), style = strokeTriBloom)
                 }
-                drawPath(downPath, color = neonColor.copy(alpha = if (isDown) 1.0f else 0.35f))
+                drawPath(downTriPath, color = neonColor.copy(alpha = if (isDown) 1.0f else 0.35f))
 
                 // 3) LEFT Triangle (Pointing LEFT)
                 val isLeft = currentlyPressed.contains(K.LEFT)
-                val leftPath = Path().apply {
-                    moveTo(triMarginPx, center.y)
-                    lineTo(triMarginPx + triHeightPx, center.y - halfWidthPx)
-                    lineTo(triMarginPx + triHeightPx, center.y + halfWidthPx)
-                    close()
-                }
                 if (isLeft) {
-                    drawPath(leftPath, color = neonColor.copy(alpha = 0.50f), style = Stroke(width = 4.dp.toPx()))
+                    drawPath(leftTriPath, color = neonColor.copy(alpha = 0.50f), style = strokeTriBloom)
                 }
-                drawPath(leftPath, color = neonColor.copy(alpha = if (isLeft) 1.0f else 0.35f))
+                drawPath(leftTriPath, color = neonColor.copy(alpha = if (isLeft) 1.0f else 0.35f))
 
                 // 4) RIGHT Triangle (Pointing RIGHT)
                 val isRight = currentlyPressed.contains(K.RIGHT)
-                val rightPath = Path().apply {
-                    moveTo(w - triMarginPx, center.y)
-                    lineTo(w - triMarginPx - triHeightPx, center.y - halfWidthPx)
-                    lineTo(w - triMarginPx - triHeightPx, center.y + halfWidthPx)
-                    close()
-                }
                 if (isRight) {
-                    drawPath(rightPath, color = neonColor.copy(alpha = 0.50f), style = Stroke(width = 4.dp.toPx()))
+                    drawPath(rightTriPath, color = neonColor.copy(alpha = 0.50f), style = strokeTriBloom)
                 }
-                drawPath(rightPath, color = neonColor.copy(alpha = if (isRight) 1.0f else 0.35f))
+                drawPath(rightTriPath, color = neonColor.copy(alpha = if (isRight) 1.0f else 0.35f))
             }
 
             // D. Central Sliding Puck (.disc-puck)
@@ -534,41 +587,41 @@ fun DiscDPad(
                     // Puck Inset highlight: inset 0 2px 2px rgba(255,255,255,.10)
                     drawArc(
                         brush = Brush.verticalGradient(
-                            colors = listOf(Color.White.copy(alpha = 0.20f), Color.Transparent),
+                            colors = puckHighlightColors,
                             startY = 0f,
                             endY = ph * 0.45f
                         ),
                         startAngle = 180f,
                         sweepAngle = 180f,
                         useCenter = false,
-                        topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
-                        size = Size(pw - 2.dp.toPx(), ph - 2.dp.toPx()),
-                        style = Stroke(width = 1.5.dp.toPx())
+                        topLeft = Offset(1f * density, 1f * density),
+                        size = Size(pw - 2f * density, ph - 2f * density),
+                        style = strokePuckArc
                     )
 
                     // Inset 4dp neon ring (.disc-puck::before)
-                    val puckRingInset = 4.dp.toPx()
+                    val puckRingInset = 4f * density
                     val puckRingR = pr - puckRingInset
                     // Soft glow halo
                     drawCircle(
                         color = neonColor.copy(alpha = 0.35f),
                         radius = puckRingR,
                         center = pcenter,
-                        style = Stroke(width = 4.dp.toPx())
+                        style = strokePuckRingHalo
                     )
                     // Crisp neon core
                     drawCircle(
                         color = neonColor.copy(alpha = 0.85f),
                         radius = puckRingR,
                         center = pcenter,
-                        style = Stroke(width = 2.dp.toPx())
+                        style = strokePuckRingCore
                     )
 
                     // Center 6dp glowing neon pip (.disc-puck::after)
-                    val pipRadius = 3.dp.toPx()
+                    val pipRadius = 3f * density
                     drawCircle(
                         color = neonColor.copy(alpha = 0.40f),
-                        radius = pipRadius + 2.dp.toPx(),
+                        radius = pipRadius + 2f * density,
                         center = pcenter
                     )
                     drawCircle(
@@ -588,7 +641,7 @@ fun DiscDPad(
             val h = size.height
             val r = size.minDimension / 2f
             val center = Offset(w / 2f, h / 2f)
-            val ringInset = 3.dp.toPx()
+            val ringInset = 3f * density
             val ringR = r - ringInset
 
             // Static Outer Neon Ring: border 2px solid var(--glow)
@@ -597,14 +650,14 @@ fun DiscDPad(
                 color = neonColor.copy(alpha = ringAlphaAnim * 0.30f),
                 radius = ringR,
                 center = center,
-                style = Stroke(width = if (isAnyPressed) 6.dp.toPx() else 4.dp.toPx())
+                style = if (isAnyPressed) strokeOuterRingHaloPressed else strokeOuterRingHaloIdle
             )
             // Crisp core ring
             drawCircle(
                 color = neonColor.copy(alpha = ringAlphaAnim),
                 radius = ringR,
                 center = center,
-                style = Stroke(width = 2.dp.toPx())
+                style = strokeOuterRingCore
             )
 
             // Dynamic Directional Gate Sweep (.lx-gate): 84° illuminated arc at gateAngle
@@ -612,7 +665,7 @@ fun DiscDPad(
                 // CSS angle 0° = 12 o'clock, Compose angle 0° = 3 o'clock -> offset by -90°
                 val startAngle = (gateAngle - 90f) - 42f
                 val sweepAngle = 84f
-                val gateRadius = ringR - 1.dp.toPx()
+                val gateRadius = ringR - 1f * density
 
                 // Soft outer gate bloom
                 drawArc(
@@ -622,7 +675,7 @@ fun DiscDPad(
                     useCenter = false,
                     topLeft = Offset(center.x - gateRadius, center.y - gateRadius),
                     size = Size(gateRadius * 2f, gateRadius * 2f),
-                    style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round)
+                    style = strokeGateBloom
                 )
 
                 // Crisp bright gate core
@@ -633,7 +686,7 @@ fun DiscDPad(
                     useCenter = false,
                     topLeft = Offset(center.x - gateRadius, center.y - gateRadius),
                     size = Size(gateRadius * 2f, gateRadius * 2f),
-                    style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+                    style = strokeGateCore
                 )
             }
 
@@ -641,29 +694,22 @@ fun DiscDPad(
             // Top crescent arc chamfer
             drawArc(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isAnyPressed) 0.06f else 0.14f),
-                        Color.White.copy(alpha = if (isAnyPressed) 0.02f else 0.05f),
-                        Color.Transparent
-                    ),
+                    colors = if (isAnyPressed) lensChamferColorsPressed else lensChamferColorsIdle,
                     startY = 0f,
                     endY = h * 0.42f
                 ),
                 startAngle = 180f,
                 sweepAngle = 180f,
                 useCenter = false,
-                topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
-                size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
-                style = Stroke(width = 1.dp.toPx())
+                topLeft = Offset(1f * density, 1f * density),
+                size = Size(w - 2f * density, h - 2f * density),
+                style = strokeLensChamfer
             )
 
             // Bottom-right specular reflection sheen: circle at 70% 78%, rgba(255,255,255,.06)
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.06f),
-                        Color.Transparent
-                    ),
+                    colors = specularSheenColors,
                     center = Offset(w * 0.70f, h * 0.78f),
                     radius = w * 0.28f
                 ),
@@ -677,18 +723,18 @@ fun DiscDPad(
                 startAngle = 200f,
                 sweepAngle = 140f,
                 useCenter = false,
-                topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
-                size = Size(w - 3.dp.toPx(), h - 3.dp.toPx()),
-                style = Stroke(width = 1.dp.toPx())
+                topLeft = Offset(1.5f * density, 1.5f * density),
+                size = Size(w - 3f * density, h - 3f * density),
+                style = strokeLensChamfer
             )
             drawArc(
                 color = Color.Black.copy(alpha = 0.30f),
                 startAngle = 20f,
                 sweepAngle = 140f,
                 useCenter = false,
-                topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
-                size = Size(w - 3.dp.toPx(), h - 3.dp.toPx()),
-                style = Stroke(width = 1.dp.toPx())
+                topLeft = Offset(1.5f * density, 1.5f * density),
+                size = Size(w - 3f * density, h - 3f * density),
+                style = strokeLensChamfer
             )
         }
     }

@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
@@ -155,6 +156,91 @@ fun TubeBumper(
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
 
+    val density = LocalDensity.current
+    val borderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.50f),
+                Color.Black.copy(alpha = 0.80f)
+            )
+        )
+    }
+
+    val undercutShadowColorsNormal = remember {
+        listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f))
+    }
+    val undercutShadowColorsPressed = remember {
+        listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f))
+    }
+
+    val liquidBodyColors = remember(neonColor) {
+        listOf(
+            Color.White.copy(alpha = 0.32f),
+            Color.Transparent,
+            neonColor.copy(alpha = 0.75f)
+        )
+    }
+    val liquidTint = remember(neonColor) { neonColor.copy(alpha = 0.55f) }
+    val meniscusColor = remember(neonColor) { neonColor.copy(alpha = 0.90f) }
+    val meniscusSheenColor = remember { Color.White.copy(alpha = 0.45f) }
+    val tickColor = remember { Color.White.copy(alpha = 0.22f) }
+
+    val ringCornerRadius = remember(density) {
+        val r = with(density) { (27.dp - 2.5.dp).toPx() }
+        CornerRadius(r, r)
+    }
+    val strokeRingBloom = remember(density) {
+        Stroke(width = with(density) { 4.dp.toPx() })
+    }
+    val strokeRingCore = remember(density) {
+        Stroke(width = with(density) { 1.8.dp.toPx() })
+    }
+
+    val sheenColorsNormal = remember {
+        listOf(
+            Color.White.copy(alpha = 0.14f),
+            Color.White.copy(alpha = 0.04f),
+            Color.Transparent
+        )
+    }
+    val sheenColorsPressed = remember {
+        listOf(
+            Color.White.copy(alpha = 0.05f),
+            Color.White.copy(alpha = 0.01f),
+            Color.Transparent
+        )
+    }
+
+    val specLineColorsNormal = remember {
+        listOf(
+            Color.White.copy(alpha = 0.45f),
+            Color.White.copy(alpha = 0.16f)
+        )
+    }
+    val specLineColorsPressed = remember {
+        listOf(
+            Color.White.copy(alpha = 0.12f),
+            Color.White.copy(alpha = 0.04f)
+        )
+    }
+
+    val sheenCircleColors = remember {
+        listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)
+    }
+
+    val windowShape = remember { RoundedCornerShape(14.dp) }
+    val winTopShadowColors = remember {
+        listOf(Color.Black.copy(alpha = 0.90f), Color.Transparent)
+    }
+    val winVignetteBrush = remember {
+        Brush.radialGradient(
+            0.0f to Color.Transparent,
+            0.32f to Color.Transparent,
+            1.0f to Color.Black.copy(alpha = 0.82f)
+        )
+    }
+    val winBorderColor = remember { Color.White.copy(alpha = 0.05f) }
+
     Box(
         modifier = modifier
             .size(154.dp, 54.dp)
@@ -242,19 +328,14 @@ fun TubeBumper(
             .graphicsLayer {
                 scaleX = scaleAnimState.value
                 scaleY = scaleAnimState.value
-                translationY = pressOffsetYAnimState.value * density
+                translationY = pressOffsetYAnimState.value * density.density
             }
             .clip(bumperShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
             // 1px casing rim
             .border(
                 width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.50f),
-                        Color.Black.copy(alpha = 0.80f)
-                    )
-                ),
+                brush = borderBrush,
                 shape = bumperShape
             )
             .then(
@@ -284,7 +365,7 @@ fun TubeBumper(
             val insetH = h * 0.40f
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (isPressed) 0.85f else 0.70f)),
+                    colors = if (isPressed) undercutShadowColorsPressed else undercutShadowColorsNormal,
                     startY = h - insetH,
                     endY = h
                 ),
@@ -299,11 +380,7 @@ fun TubeBumper(
                 // Liquid column body
                 drawRect(
                     brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.32f),
-                            Color.Transparent,
-                            neonColor.copy(alpha = 0.75f)
-                        ),
+                        colors = liquidBodyColors,
                         startY = 0f,
                         endY = h
                     ),
@@ -311,7 +388,7 @@ fun TubeBumper(
                     size = Size(liqW, h)
                 )
                 drawRect(
-                    color = neonColor.copy(alpha = 0.55f),
+                    color = liquidTint,
                     topLeft = Offset(0f, 0f),
                     size = Size(liqW, h)
                 )
@@ -319,12 +396,12 @@ fun TubeBumper(
                 // Meniscus convex front bubble
                 val meniscusRadius = 14.dp.toPx()
                 drawCircle(
-                    color = neonColor.copy(alpha = 0.90f),
+                    color = meniscusColor,
                     center = Offset(liqW, h / 2f),
                     radius = meniscusRadius
                 )
                 drawCircle(
-                    color = Color.White.copy(alpha = 0.45f),
+                    color = meniscusSheenColor,
                     center = Offset(liqW, h / 2f),
                     radius = meniscusRadius * 0.60f
                 )
@@ -337,7 +414,7 @@ fun TubeBumper(
             var curTickX = 16.dp.toPx()
             while (curTickX < w - 16.dp.toPx()) {
                 drawLine(
-                    color = Color.White.copy(alpha = 0.22f),
+                    color = tickColor,
                     start = Offset(curTickX, tickYStart),
                     end = Offset(curTickX, tickYEnd),
                     strokeWidth = 1.dp.toPx()
@@ -348,33 +425,28 @@ fun TubeBumper(
             // Neon perimeter ring — inset 2.5dp with pill radii
             val ringBloomAlpha = ringBloomAlphaState.value
             val ringInset = 2.5.dp.toPx()
-            val ringRadius = 27.dp.toPx() - ringInset
             // Outer bloom pass
             drawRoundRect(
                 color = neonColor.copy(alpha = (if (isPressed) 0.60f else 0.28f) * ringBloomAlpha),
                 topLeft = Offset(ringInset, ringInset),
                 size = Size(w - ringInset * 2f, h - ringInset * 2f),
-                cornerRadius = CornerRadius(ringRadius, ringRadius),
-                style = Stroke(width = 4.dp.toPx())
+                cornerRadius = ringCornerRadius,
+                style = strokeRingBloom
             )
             // Core crisp stroke
             drawRoundRect(
                 color = neonColor.copy(alpha = (if (isPressed) 1.0f else 0.70f) * ringBloomAlpha),
                 topLeft = Offset(ringInset, ringInset),
                 size = Size(w - ringInset * 2f, h - ringInset * 2f),
-                cornerRadius = CornerRadius(ringRadius, ringRadius),
-                style = Stroke(width = 1.8.dp.toPx())
+                cornerRadius = ringCornerRadius,
+                style = strokeRingCore
             )
 
             // Top crescent specular sheen (optical glass lens)
             val sheenH = h * 0.40f
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isPressed) 0.05f else 0.14f),
-                        Color.White.copy(alpha = if (isPressed) 0.01f else 0.04f),
-                        Color.Transparent
-                    ),
+                    colors = if (isPressed) sheenColorsPressed else sheenColorsNormal,
                     startY = 0f,
                     endY = sheenH
                 ),
@@ -387,10 +459,7 @@ fun TubeBumper(
             val specEndX = w * 0.85f
             drawLine(
                 brush = Brush.horizontalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isPressed) 0.12f else 0.45f),
-                        Color.White.copy(alpha = if (isPressed) 0.04f else 0.16f)
-                    ),
+                    colors = if (isPressed) specLineColorsPressed else specLineColorsNormal,
                     startX = specStartX,
                     endX = specEndX
                 ),
@@ -402,7 +471,7 @@ fun TubeBumper(
             // Bottom-right specular sheen circle
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                    colors = sheenCircleColors,
                     center = Offset(w * 0.70f, h * 0.78f),
                     radius = w * 0.20f
                 ),
@@ -412,7 +481,6 @@ fun TubeBumper(
         }
 
         // Recessed Optical Window (.lx-window: 74dp × 28dp)
-        val windowShape = RoundedCornerShape(14.dp)
         Box(
             modifier = Modifier
                 .size(74.dp, 28.dp)
@@ -426,7 +494,7 @@ fun TubeBumper(
                 .background(windowGradient)
                 .border(
                     width = 1.dp,
-                    color = Color.White.copy(alpha = 0.05f),
+                    color = winBorderColor,
                     shape = windowShape
                 ),
             contentAlignment = Alignment.Center
@@ -438,7 +506,7 @@ fun TubeBumper(
                 // Inset top shadow
                 drawRect(
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color.Black.copy(alpha = 0.90f), Color.Transparent),
+                        colors = winTopShadowColors,
                         startY = 0f,
                         endY = 6.dp.toPx()
                     ),
@@ -447,18 +515,12 @@ fun TubeBumper(
 
                 // Deep vignette
                 drawRect(
-                    brush = Brush.radialGradient(
-                        0.0f to Color.Transparent,
-                        0.32f to Color.Transparent,
-                        1.0f to Color.Black.copy(alpha = 0.82f),
-                        center = Offset(winW / 2f, winH / 2f),
-                        radius = winW * 0.50f
-                    )
+                    brush = winVignetteBrush
                 )
 
                 // Bottom specular edge line
                 drawLine(
-                    color = Color.White.copy(alpha = 0.05f),
+                    color = winBorderColor,
                     start = Offset(4.dp.toPx(), winH - 0.5f),
                     end = Offset(winW - 4.dp.toPx(), winH - 0.5f),
                     strokeWidth = 1.dp.toPx()

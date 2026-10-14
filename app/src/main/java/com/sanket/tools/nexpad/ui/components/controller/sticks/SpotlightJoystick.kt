@@ -155,6 +155,13 @@ fun SpotlightJoystick(
 
     val stickKey = remember(isLeft) { if (isLeft) "LSB" else "RSB" }
 
+    val stroke4dp = remember(density) { Stroke(width = 4f * density) }
+    val stroke1_5dp = remember(density) { Stroke(width = 1.5f * density) }
+    val stroke3dp = remember(density) { Stroke(width = 3f * density) }
+    val stroke1_2dp = remember(density) { Stroke(width = 1.2f * density) }
+    val stroke3_5dp = remember(density) { Stroke(width = 3.5f * density) }
+    val stroke1dp = remember(density) { Stroke(width = 1f * density) }
+
     val socketGlowColors = remember(glowColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
@@ -599,7 +606,7 @@ fun SpotlightJoystick(
                     useCenter = false,
                     topLeft = Offset(center.x - gateRadius, center.y - gateRadius),
                     size = Size(gateRadius * 2f, gateRadius * 2f),
-                    style = Stroke(width = 4.dp.toPx())
+                    style = stroke4dp
                 )
             }
 
@@ -667,7 +674,7 @@ fun SpotlightJoystick(
                     useCenter = false,
                     topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
                     size = Size(puckW - 3.dp.toPx(), puckH - 3.dp.toPx()),
-                    style = Stroke(width = 1.5.dp.toPx())
+                    style = stroke1_5dp
                 )
 
                 // Inset bottom shadow: inset 0 -6px 9px rgba(0,0,0,0.80)
@@ -688,13 +695,13 @@ fun SpotlightJoystick(
                 drawCircle(
                     color = glowColor.copy(alpha = puckRingAlpha.value * 0.16f),
                     radius = ringRadius,
-                    style = Stroke(width = 3.dp.toPx())
+                    style = stroke3dp
                 )
                 // Crisp core ring
                 drawCircle(
                     color = glowColor.copy(alpha = puckRingAlpha.value * 0.85f),
                     radius = ringRadius,
-                    style = Stroke(width = 1.2.dp.toPx())
+                    style = stroke1_2dp
                 )
 
                 // Central Luminous Core Dot (.puck-dot): 9dp diameter with smooth radial bloom
@@ -744,12 +751,12 @@ fun SpotlightJoystick(
             drawCircle(
                 color = glowColor.copy(alpha = 0.10f),
                 radius = outerRingRadius,
-                style = Stroke(width = 3.5.dp.toPx())
+                style = stroke3_5dp
             )
             drawCircle(
                 color = glowColor.copy(alpha = 0.38f),
                 radius = outerRingRadius,
-                style = Stroke(width = 1.2.dp.toPx())
+                style = stroke1_2dp
             )
 
             // Outer Glass Lens (.lx-lens)
@@ -760,7 +767,7 @@ fun SpotlightJoystick(
                 useCenter = false,
                 topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
                 size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
-                style = Stroke(width = 1.dp.toPx())
+                style = stroke1dp
             )
             drawArc(
                 color = Color.White.copy(alpha = 0.06f),
@@ -769,7 +776,7 @@ fun SpotlightJoystick(
                 useCenter = false,
                 topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
                 size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
-                style = Stroke(width = 1.dp.toPx())
+                style = stroke1dp
             )
             drawArc(
                 color = Color.Black.copy(alpha = 0.30f),
@@ -778,7 +785,7 @@ fun SpotlightJoystick(
                 useCenter = false,
                 topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
                 size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
-                style = Stroke(width = 1.dp.toPx())
+                style = stroke1dp
             )
             drawCircle(
                 brush = Brush.radialGradient(
@@ -856,6 +863,16 @@ fun SpotlightStickButton(
     val density = androidx.compose.ui.platform.LocalDensity.current.density
     val strokeRing1 = remember(density) { Stroke(width = 1.5f * density) }
     val strokeRing2 = remember(density) { Stroke(width = 1f * density) }
+    val stroke1_5dp = strokeRing1
+    val stroke4dp = remember(density) { Stroke(width = 4f * density) }
+    val stroke1_8dp = remember(density) { Stroke(width = 1.8f * density) }
+    val centerPuckGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(Color(0xFF030304), Color(0xFF121314)),
+            center = Offset(0.50f, 0.60f),
+            radius = 60f
+        )
+    }
     val flareColors = remember(glowColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
@@ -951,7 +968,7 @@ fun SpotlightStickButton(
                 useCenter = false,
                 topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
                 size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
-                style = Stroke(width = 1.5.dp.toPx())
+                style = stroke1_5dp
             )
 
             // Bottom inset shadow
@@ -1009,12 +1026,12 @@ fun SpotlightStickButton(
             drawCircle(
                 color = glowColor.copy(alpha = ringBloomAlpha.value * 0.25f),
                 radius = outerRingR,
-                style = Stroke(width = 4.dp.toPx())
+                style = stroke4dp
             )
             drawCircle(
                 color = glowColor.copy(alpha = ringBloomAlpha.value * 0.70f),
                 radius = outerRingR,
-                style = Stroke(width = 1.8.dp.toPx())
+                style = stroke1_8dp
             )
 
             // Specular lens highlight
@@ -1034,13 +1051,7 @@ fun SpotlightStickButton(
             modifier = Modifier
                 .size(34.dp)
                 .clip(CircleShape)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(Color(0xFF030304), Color(0xFF121314)),
-                        center = Offset(0.50f, 0.60f),
-                        radius = 60f
-                    )
-                )
+                .background(centerPuckGradient)
                 .border(1.dp, glowColor.copy(alpha = 0.60f), CircleShape),
             contentAlignment = Alignment.Center
         ) {

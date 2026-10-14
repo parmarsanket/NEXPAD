@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
@@ -40,7 +41,6 @@ import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.cos
-import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
@@ -126,14 +126,57 @@ fun DialTrigger(
         )
     }
 
+    val chassisBorderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.50f),
+                Color.Black.copy(alpha = 0.80f)
+            )
+        )
+    }
+
+    val insetShadowColorsPressed = remember {
+        listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f))
+    }
+    val insetShadowColorsNormal = remember {
+        listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f))
+    }
+    val lensColorsPressed = remember {
+        listOf(Color.White.copy(alpha = 0.06f), Color.White.copy(alpha = 0.02f), Color.Transparent)
+    }
+    val lensColorsNormal = remember {
+        listOf(Color.White.copy(alpha = 0.14f), Color.White.copy(alpha = 0.05f), Color.Transparent)
+    }
+    val specularSheenColors = remember {
+        listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)
+    }
+    val windowLipShadowColors = remember {
+        listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent)
+    }
+    val windowVignetteColors = remember {
+        arrayOf(
+            0.0f to Color.Transparent,
+            0.32f to Color.Transparent,
+            1.0f to Color.Black.copy(alpha = 0.82f)
+        )
+    }
+
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
 
     val triggerShape = CircleShape
     val windowShape = RoundedCornerShape(13.dp)
 
-    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val density = LocalDensity.current.density
     val strokeGauge = remember(density) { Stroke(width = 4f * density, cap = StrokeCap.Round) }
+    val strokeTrackInactive = remember(density) { Stroke(width = 5f * density, cap = StrokeCap.Round) }
+    val strokeTrackBloom = remember(density) { Stroke(width = 8f * density, cap = StrokeCap.Round) }
+    val strokeTrackCore = remember(density) { Stroke(width = 5f * density, cap = StrokeCap.Round) }
+    val strokeRimOutline = remember(density) { Stroke(width = 1f * density) }
+    val strokeRingBloom = remember(density) { Stroke(width = 4f * density) }
+    val strokeRingCore = remember(density) { Stroke(width = 2f * density) }
+    val strokeLensArc = remember(density) { Stroke(width = 1f * density) }
+
     val ambientHaloColors = remember(neonColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
@@ -171,14 +214,14 @@ fun DialTrigger(
                     )
 
                     // 2. Circular Tick Graduation Halo (12 ticks around perimeter)
-                    val tickRadius = baseR + 4.dp.toPx()
+                    val tickRadius = baseR + 4f * density
                     for (i in 0 until 12) {
                         val tickAngleDeg = 135.0 + (i * 270.0 / 11.0)
                         val tickRad = Math.toRadians(tickAngleDeg)
                         val cosT = cos(tickRad).toFloat()
                         val sinT = sin(tickRad).toFloat()
                         val innerR = tickRadius
-                        val outerR = tickRadius + (if (i == 0 || i == 11) 6.dp.toPx() else 3.5.dp.toPx())
+                        val outerR = tickRadius + (if (i == 0 || i == 11) 6f * density else 3.5f * density)
                         val tickAlpha = rgbBloomAlpha * (if (i.toFloat() / 11f <= curPull) 0.90f else 0.30f)
 
                         drawLine(
@@ -201,13 +244,13 @@ fun DialTrigger(
                             brush = Brush.radialGradient(
                                 colors = gaugeColors,
                                 center = center,
-                                radius = baseR + 8.dp.toPx()
+                                radius = baseR + 8f * density
                             ),
                             startAngle = gaugeStart,
                             sweepAngle = activeSweep,
                             useCenter = false,
-                            topLeft = Offset(center.x - (baseR + 8.dp.toPx()), center.y - (baseR + 8.dp.toPx())),
-                            size = Size((baseR + 8.dp.toPx()) * 2f, (baseR + 8.dp.toPx()) * 2f),
+                            topLeft = Offset(center.x - (baseR + 8f * density), center.y - (baseR + 8f * density)),
+                            size = Size((baseR + 8f * density) * 2f, (baseR + 8f * density) * 2f),
                             style = strokeGauge
                         )
 
@@ -216,20 +259,21 @@ fun DialTrigger(
                         val pointerRad = Math.toRadians(pointerAngleDeg.toDouble())
                         val cosP = cos(pointerRad).toFloat()
                         val sinP = sin(pointerRad).toFloat()
-                        val ptrX = center.x + (baseR + 8.dp.toPx()) * cosP
-                        val ptrY = center.y + (baseR + 8.dp.toPx()) * sinP
+                        val ptrX = center.x + (baseR + 8f * density) * cosP
+                        val ptrY = center.y + (baseR + 8f * density) * sinP
 
                         pointerFlareColors[0] = Color.White.copy(alpha = rgbBloomAlpha * 0.95f)
                         pointerFlareColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.80f)
                         pointerFlareColors[2] = Color.Transparent
+                        val flareRadius = (if (isPressed) 14f else 9f) * density
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = pointerFlareColors,
                                 center = Offset(ptrX, ptrY),
-                                radius = (if (isPressed) 14.dp else 9.dp).toPx()
+                                radius = flareRadius
                             ),
                             center = Offset(ptrX, ptrY),
-                            radius = (if (isPressed) 14.dp else 9.dp).toPx()
+                            radius = flareRadius
                         )
                     }
                 }
@@ -248,12 +292,7 @@ fun DialTrigger(
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
             .border(
                 width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.50f),
-                        Color.Black.copy(alpha = 0.80f)
-                    )
-                ),
+                brush = chassisBorderBrush,
                 shape = triggerShape
             )
             .then(
@@ -283,7 +322,7 @@ fun DialTrigger(
             val insetH = h * 0.32f
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (isPressed) 0.85f else 0.70f)),
+                    colors = if (isPressed) insetShadowColorsPressed else insetShadowColorsNormal,
                     startY = h - insetH,
                     endY = h
                 ),
@@ -295,28 +334,27 @@ fun DialTrigger(
             drawCircle(
                 color = Color.Black.copy(alpha = 0.50f),
                 radius = (w / 2f) - 0.5f,
-                style = Stroke(width = 1.dp.toPx())
+                style = strokeRimOutline
             )
 
             // Multi-pass emissive neon ring (.lx-ring)
-            val ringInset = 3.dp.toPx()
+            val ringInset = 3f * density
             val ringRadius = (w / 2f) - ringInset
             drawCircle(
                 color = neonColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
                 radius = ringRadius,
-                style = Stroke(width = 4.dp.toPx())
+                style = strokeRingBloom
             )
             drawCircle(
                 color = neonColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
                 radius = ringRadius,
-                style = Stroke(width = 2.dp.toPx())
+                style = strokeRingCore
             )
 
             // =========================================================================
             // 270° RADIAL GAUGE TRACK (HTML SVG Dial Gauge Translation)
             // =========================================================================
-            // Radius of gauge track fits neatly inside outer neon ring
-            val gaugeRadius = (w / 2f) - 10.dp.toPx()
+            val gaugeRadius = (w / 2f) - 10f * density
             val gaugeCenter = Offset(w / 2f, h / 2f)
             val gaugeTopLeft = Offset(gaugeCenter.x - gaugeRadius, gaugeCenter.y - gaugeRadius)
             val gaugeSize = Size(gaugeRadius * 2f, gaugeRadius * 2f)
@@ -329,7 +367,7 @@ fun DialTrigger(
                 useCenter = false,
                 topLeft = gaugeTopLeft,
                 size = gaugeSize,
-                style = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round)
+                style = strokeTrackInactive
             )
 
             // Live active gauge: sweeps dynamically from 135° based on fillProgress
@@ -344,7 +382,7 @@ fun DialTrigger(
                     useCenter = false,
                     topLeft = gaugeTopLeft,
                     size = gaugeSize,
-                    style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
+                    style = strokeTrackBloom
                 )
                 // Core vivid gauge stroke
                 drawArc(
@@ -354,19 +392,15 @@ fun DialTrigger(
                     useCenter = false,
                     topLeft = gaugeTopLeft,
                     size = gaugeSize,
-                    style = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round)
+                    style = strokeTrackCore
                 )
             }
 
             // Top crescent specular highlight arc (.lx-lens)
-            val lensInset = 1.dp.toPx()
+            val lensInset = 1f * density
             drawArc(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isPressed) 0.06f else 0.14f),
-                        Color.White.copy(alpha = if (isPressed) 0.02f else 0.05f),
-                        Color.Transparent
-                    ),
+                    colors = if (isPressed) lensColorsPressed else lensColorsNormal,
                     startY = 0f,
                     endY = h * 0.38f
                 ),
@@ -375,13 +409,13 @@ fun DialTrigger(
                 useCenter = false,
                 topLeft = Offset(lensInset, lensInset),
                 size = Size(w - lensInset * 2f, h - lensInset * 2f),
-                style = Stroke(width = 1.dp.toPx())
+                style = strokeLensArc
             )
 
             // Bottom-right specular sheen oval
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                    colors = specularSheenColors,
                     center = Offset(w * 0.70f, h * 0.78f),
                     radius = w * 0.22f
                 ),
@@ -419,19 +453,17 @@ fun DialTrigger(
                 // Top lip shadow inside optical cavity
                 drawRect(
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent),
+                        colors = windowLipShadowColors,
                         startY = 0f,
-                        endY = 5.dp.toPx()
+                        endY = 5f * density
                     ),
-                    size = Size(winW, 5.dp.toPx())
+                    size = Size(winW, 5f * density)
                 )
 
                 // Perimeter shadow vignette (.lx-window::after)
                 drawRect(
                     brush = Brush.radialGradient(
-                        0.0f to Color.Transparent,
-                        0.32f to Color.Transparent,
-                        1.0f to Color.Black.copy(alpha = 0.82f),
+                        colorStops = windowVignetteColors,
                         center = Offset(winW / 2f, winH / 2f),
                         radius = winW * 0.50f
                     )

@@ -165,6 +165,31 @@ fun FlipBumper(
             Color.Transparent
         )
     }
+    val borderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.50f),
+                Color.Black.copy(alpha = 0.80f)
+            )
+        )
+    }
+    val windowShape = remember { RoundedCornerShape(16.dp) }
+    val winVignetteBrush = remember(density) {
+        val winW = 96f * density
+        val winH = 32f * density
+        Brush.radialGradient(
+            0.0f to Color.Transparent,
+            0.32f to Color.Transparent,
+            1.0f to Color.Black.copy(alpha = 0.82f),
+            center = Offset(winW / 2f, winH / 2f),
+            radius = winW * 0.50f
+        )
+    }
+    val strokeFaceB = remember(density) { Stroke(width = 1.5f * density) }
+    val cornerRadiusFaceB = remember(density) { CornerRadius(25f * density, 25f * density) }
+    val strokeRingBloom = remember(density) { Stroke(width = 4f * density) }
+    val strokeRingCore = remember(density) { Stroke(width = 1.8f * density) }
+    val ringCornerRadius = remember(density) { CornerRadius((27f - 2.5f) * density, (27f - 2.5f) * density) }
 
     Box(
         modifier = modifier
@@ -237,12 +262,7 @@ fun FlipBumper(
             // 1px casing rim
             .border(
                 width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.50f),
-                        Color.Black.copy(alpha = 0.80f)
-                    )
-                ),
+                brush = borderBrush,
                 shape = bumperShape
             )
             .then(
@@ -316,7 +336,6 @@ fun FlipBumper(
                     }
 
                     // Optical Window (96dp × 32dp)
-                    val windowShape = RoundedCornerShape(16.dp)
                     Box(
                         modifier = Modifier
                             .size(96.dp, 32.dp)
@@ -337,7 +356,6 @@ fun FlipBumper(
                     ) {
                         Canvas(modifier = Modifier.fillMaxSize()) {
                             val winW = size.width
-                            val winH = size.height
 
                             // Inset top shadow
                             drawRect(
@@ -351,13 +369,7 @@ fun FlipBumper(
 
                             // Deep vignette
                             drawRect(
-                                brush = Brush.radialGradient(
-                                    0.0f to Color.Transparent,
-                                    0.32f to Color.Transparent,
-                                    1.0f to Color.Black.copy(alpha = 0.82f),
-                                    center = Offset(winW / 2f, winH / 2f),
-                                    radius = winW * 0.50f
-                                )
+                                brush = winVignetteBrush
                             )
                         }
 
@@ -406,8 +418,8 @@ fun FlipBumper(
                             color = Color.Black.copy(alpha = 0.15f),
                             topLeft = Offset(2.dp.toPx(), 2.dp.toPx()),
                             size = Size(w - 4.dp.toPx(), h - 4.dp.toPx()),
-                            cornerRadius = CornerRadius(25.dp.toPx(), 25.dp.toPx()),
-                            style = Stroke(width = 1.5.dp.toPx())
+                            cornerRadius = cornerRadiusFaceB,
+                            style = strokeFaceB
                         )
                     }
 
@@ -428,28 +440,26 @@ fun FlipBumper(
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .clip(bumperShape)
         ) {
             val ringBloomAlpha = ringBloomAlphaState.value
             val w = size.width
             val h = size.height
             val ringInset = 2.5.dp.toPx()
-            val ringRadius = 27.dp.toPx() - ringInset
 
             drawRoundRect(
                 color = neonColor.copy(alpha = (if (isPressed) 0.65f else 0.28f) * ringBloomAlpha),
                 topLeft = Offset(ringInset, ringInset),
                 size = Size(w - ringInset * 2f, h - ringInset * 2f),
-                cornerRadius = CornerRadius(ringRadius, ringRadius),
-                style = Stroke(width = 4.dp.toPx())
+                cornerRadius = ringCornerRadius,
+                style = strokeRingBloom
             )
 
             drawRoundRect(
                 color = neonColor.copy(alpha = (if (isPressed) 1.0f else 0.70f) * ringBloomAlpha),
                 topLeft = Offset(ringInset, ringInset),
                 size = Size(w - ringInset * 2f, h - ringInset * 2f),
-                cornerRadius = CornerRadius(ringRadius, ringRadius),
-                style = Stroke(width = 1.8.dp.toPx())
+                cornerRadius = ringCornerRadius,
+                style = strokeRingCore
             )
         }
     }

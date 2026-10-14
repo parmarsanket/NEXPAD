@@ -170,6 +170,59 @@ fun CapsuleKey(
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
 
+    val chevronPath = remember(density) {
+        val s = density
+        Path().apply {
+            moveTo((-6f) * s, 3f * s)
+            lineTo(0f, (-3f) * s)
+            lineTo(6f * s, 3f * s)
+        }
+    }
+    val strokeChevronBloom = remember(density) {
+        Stroke(
+            width = 6f * density,
+            cap = StrokeCap.Round,
+            join = StrokeJoin.Round
+        )
+    }
+    val strokeChevronCore = remember(density) {
+        Stroke(
+            width = 3.4f * density,
+            cap = StrokeCap.Round,
+            join = StrokeJoin.Round
+        )
+    }
+    val strokeRingGlowPressed = remember(density) { Stroke(width = 4f * density) }
+    val strokeRingGlowIdle = remember(density) { Stroke(width = 3f * density) }
+    val strokeRingCore = remember(density) { Stroke(width = 2f * density) }
+    val strokeLensChamfer = remember(density) { Stroke(width = 1f * density) }
+
+    val ringCornerRadius = remember(density) { CornerRadius(20f * density, 20f * density) }
+    val lensCornerRadius = remember(density) { CornerRadius(22f * density, 22f * density) }
+
+    val bottomUndercutColorsPressed = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)) }
+    val bottomUndercutColorsIdle = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)) }
+    val lensColorsPressed = remember {
+        listOf(
+            Color.White.copy(alpha = 0.06f),
+            Color.White.copy(alpha = 0.02f),
+            Color.Transparent
+        )
+    }
+    val lensColorsIdle = remember {
+        listOf(
+            Color.White.copy(alpha = 0.14f),
+            Color.White.copy(alpha = 0.05f),
+            Color.Transparent
+        )
+    }
+    val specularColors = remember {
+        listOf(
+            Color.White.copy(alpha = 0.06f),
+            Color.Transparent
+        )
+    }
+
     Box(
         modifier = modifier
             .size(capsuleWidth, capsuleHeight)
@@ -224,7 +277,7 @@ fun CapsuleKey(
             val insetH = h * 0.35f
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (isPressed) 0.85f else 0.70f)),
+                    colors = if (isPressed) bottomUndercutColorsPressed else bottomUndercutColorsIdle,
                     startY = h - insetH,
                     endY = h
                 ),
@@ -233,38 +286,23 @@ fun CapsuleKey(
             )
 
             // 2. Vector Directional Chevron: M6 15 L12 9 L18 15 (viewBox 24x24)
-            // Centered in capsule
-            val chevronScale = 24.dp.toPx() / 24f
-            val chevronPath = Path().apply {
-                moveTo(center.x + (-6f) * chevronScale, center.y + 3f * chevronScale)
-                lineTo(center.x, center.y + (-3f) * chevronScale)
-                lineTo(center.x + 6f * chevronScale, center.y + 3f * chevronScale)
-            }
-
             withTransform({
-                rotate(degrees = rotationAngle, pivot = center)
+                translate(center.x, center.y)
+                rotate(degrees = rotationAngle, pivot = Offset.Zero)
             }) {
                 // Active bloom shadow
                 if (isPressed) {
                     drawPath(
                         path = chevronPath,
                         color = glowColor.copy(alpha = 0.55f),
-                        style = Stroke(
-                            width = 6f * chevronScale,
-                            cap = StrokeCap.Round,
-                            join = StrokeJoin.Round
-                        )
+                        style = strokeChevronBloom
                     )
                 }
                 // Crisp core chevron
                 drawPath(
                     path = chevronPath,
                     color = if (isPressed) Color.White else glowColor,
-                    style = Stroke(
-                        width = 3.4f * chevronScale,
-                        cap = StrokeCap.Round,
-                        join = StrokeJoin.Round
-                    )
+                    style = strokeChevronCore
                 )
             }
 
@@ -279,43 +317,36 @@ fun CapsuleKey(
                 color = glowColor.copy(alpha = if (isPressed) 0.50f else 0.25f),
                 topLeft = Offset(ringInset, ringInset),
                 size = Size(ringW, ringH),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(ringCorner, ringCorner),
-                style = Stroke(width = if (isPressed) 4.dp.toPx() else 3.dp.toPx())
+                cornerRadius = ringCornerRadius,
+                style = if (isPressed) strokeRingGlowPressed else strokeRingGlowIdle
             )
             // Crisp core ring
             drawRoundRect(
                 color = glowColor.copy(alpha = ringBloomAlphaState.value),
                 topLeft = Offset(ringInset, ringInset),
                 size = Size(ringW, ringH),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(ringCorner, ringCorner),
-                style = Stroke(width = 2.dp.toPx())
+                cornerRadius = ringCornerRadius,
+                style = strokeRingCore
             )
 
             // 4. Specular Optical Glass Lens (.lx-lens)
             // Top crescent chamfer
             drawRoundRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isPressed) 0.06f else 0.14f),
-                        Color.White.copy(alpha = if (isPressed) 0.02f else 0.05f),
-                        Color.Transparent
-                    ),
+                    colors = if (isPressed) lensColorsPressed else lensColorsIdle,
                     startY = 0f,
                     endY = h * 0.45f
                 ),
                 topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
                 size = Size(w - 2.dp.toPx(), h * 0.45f),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(22.dp.toPx(), 22.dp.toPx()),
-                style = Stroke(width = 1.dp.toPx())
+                cornerRadius = lensCornerRadius,
+                style = strokeLensChamfer
             )
 
             // Bottom-right specular reflection sheen
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.06f),
-                        Color.Transparent
-                    ),
+                    colors = specularColors,
                     center = Offset(w * 0.70f, h * 0.78f),
                     radius = minOf(w, h) * 0.35f
                 ),
@@ -418,6 +449,14 @@ fun CapsulesDPad(
         )
     }
 
+    val plumeCrVertPressed = remember(density) { CornerRadius(38f * density, 38f * density) }
+    val plumeCrVertIdle = remember(density) { CornerRadius(32f * density, 32f * density) }
+    val plumeCrHorizPressed = remember(density) { CornerRadius(38f * density, 38f * density) }
+    val plumeCrHorizIdle = remember(density) { CornerRadius(32f * density, 32f * density) }
+
+    val hubUndercutColors = remember { listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent) }
+    val strokeHubRing = remember(density) { Stroke(width = 1f * density) }
+
     Box(
         modifier = modifier
             .size(170.dp)
@@ -449,7 +488,11 @@ fun CapsulesDPad(
                         val plumeW = if (isVertical) 48.dp.toPx() else 70.dp.toPx()
                         val plumeH = if (isVertical) 70.dp.toPx() else 48.dp.toPx()
                         val pad = if (isPressed) 14.dp.toPx() else 8.dp.toPx()
-                        val cr = (if (isVertical) plumeW else plumeH) / 2f + pad
+                        val cr = if (isVertical) {
+                            if (isPressed) plumeCrVertPressed else plumeCrVertIdle
+                        } else {
+                            if (isPressed) plumeCrHorizPressed else plumeCrHorizIdle
+                        }
 
                         plumeStops[0] = 0.00f to (if (isPressed) Color.White else neonColor).copy(alpha = plumeAlpha * 0.65f)
                         plumeStops[1] = 0.45f to neonColor.copy(alpha = plumeAlpha * 0.30f)
@@ -463,7 +506,7 @@ fun CapsulesDPad(
                             ),
                             topLeft = Offset(cx - plumeW / 2f - pad, cy - plumeH / 2f - pad),
                             size = Size(plumeW + pad * 2f, plumeH + pad * 2f),
-                            cornerRadius = CornerRadius(cr, cr)
+                            cornerRadius = cr
                         )
                     }
 
@@ -487,7 +530,7 @@ fun CapsulesDPad(
             )
             .then(
                 if (isInteractive) {
-                    Modifier.pointerInput(isConnected) {
+                    Modifier.pointerInput(Unit) {
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)
                             down.consume()
@@ -553,7 +596,7 @@ fun CapsulesDPad(
                     // Inset deep shadow: inset 0 3px 6px rgba(0,0,0,0.9)
                     drawCircle(
                         brush = Brush.verticalGradient(
-                            colors = listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent),
+                            colors = hubUndercutColors,
                             startY = 0f,
                             endY = h * 0.6f
                         ),
@@ -566,7 +609,7 @@ fun CapsulesDPad(
                         color = neonColor.copy(alpha = 0.50f),
                         radius = ringRadius,
                         center = center,
-                        style = Stroke(width = 1.dp.toPx())
+                        style = strokeHubRing
                     )
                 }
             }

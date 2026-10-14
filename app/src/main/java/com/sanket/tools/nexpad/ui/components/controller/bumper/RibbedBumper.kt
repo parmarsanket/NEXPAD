@@ -153,6 +153,93 @@ fun RibbedBumper(
         )
     }
 
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val strokeRingBloom = remember(density) { Stroke(width = 4f * density) }
+    val strokeRingCore = remember(density) { Stroke(width = 1.8f * density) }
+    val borderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.50f),
+                Color.Black.copy(alpha = 0.80f)
+            )
+        )
+    }
+    val undercutShadowColorsNormal = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)) }
+    val undercutShadowColorsPressed = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)) }
+    val lensColorsNormal = remember {
+        listOf(
+            Color.White.copy(alpha = 0.14f),
+            Color.White.copy(alpha = 0.04f),
+            Color.Transparent
+        )
+    }
+    val lensColorsPressed = remember {
+        listOf(
+            Color.White.copy(alpha = 0.05f),
+            Color.White.copy(alpha = 0.01f),
+            Color.Transparent
+        )
+    }
+    val specLineColorsNormal = remember {
+        listOf(
+            Color.White.copy(alpha = 0.45f),
+            Color.White.copy(alpha = 0.16f)
+        )
+    }
+    val specLineColorsPressed = remember {
+        listOf(
+            Color.White.copy(alpha = 0.12f),
+            Color.White.copy(alpha = 0.04f)
+        )
+    }
+    val sheenCircleBrush = remember(density) {
+        val w = 154f * density
+        val h = 54f * density
+        Brush.radialGradient(
+            colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+            center = Offset(w * 0.70f, h * 0.78f),
+            radius = w * 0.20f
+        )
+    }
+    val windowShape = remember { RoundedCornerShape(15.dp) }
+    val stripShape = remember { RoundedCornerShape(2.dp) }
+    val winTopShadowBrush = remember(density) {
+        Brush.verticalGradient(
+            colors = listOf(Color.Black.copy(alpha = 0.90f), Color.Transparent),
+            startY = 0f,
+            endY = 6f * density
+        )
+    }
+    val winVignetteBrush = remember(density) {
+        val winW = 74f * density
+        Brush.radialGradient(
+            0.0f to Color.Transparent,
+            0.32f to Color.Transparent,
+            1.0f to Color.Black.copy(alpha = 0.82f),
+            center = Offset(winW / 2f, 15f * density),
+            radius = winW * 0.50f
+        )
+    }
+
+    val ringPath = remember(density, isLeft) {
+        val w = 154f * density
+        val h = 54f * density
+        val ringInset = 2.5f * density
+        val ringROuter = 27f * density - ringInset
+        val ringRInner = 12f * density - ringInset
+        Path().apply {
+            addRoundRect(
+                RoundRect(
+                    rect = Rect(ringInset, ringInset, w - ringInset, h - ringInset),
+                    topLeft = CornerRadius(if (isLeft) ringRInner else ringROuter),
+                    topRight = CornerRadius(if (isLeft) ringROuter else ringRInner),
+                    bottomRight = CornerRadius(if (isLeft) ringROuter else ringRInner),
+                    bottomLeft = CornerRadius(if (isLeft) ringRInner else ringROuter)
+                )
+            )
+        }
+    }
+
     val stadiumBloomColors = remember(neonColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
@@ -252,12 +339,7 @@ fun RibbedBumper(
             // 1px casing rim
             .border(
                 width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.50f),
-                        Color.Black.copy(alpha = 0.80f)
-                    )
-                ),
+                brush = borderBrush,
                 shape = bumperShape
             )
             .then(
@@ -287,7 +369,7 @@ fun RibbedBumper(
             val insetH = h * 0.40f
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (isPressed) 0.85f else 0.70f)),
+                    colors = if (isPressed) undercutShadowColorsPressed else undercutShadowColorsNormal,
                     startY = h - insetH,
                     endY = h
                 ),
@@ -310,45 +392,26 @@ fun RibbedBumper(
                 curX += ribSpacing
             }
 
-            // Neon color ring — inset 2.5dp with per-corner radii
-            val ringInset = 2.5.dp.toPx()
-            val ringROuter = 27.dp.toPx() - ringInset
-            val ringRInner = 12.dp.toPx() - ringInset
-            val ringPath = Path().apply {
-                addRoundRect(
-                    RoundRect(
-                        rect = Rect(ringInset, ringInset, w - ringInset, h - ringInset),
-                        topLeft = CornerRadius(if (isLeft) ringRInner else ringROuter),
-                        topRight = CornerRadius(if (isLeft) ringROuter else ringRInner),
-                        bottomRight = CornerRadius(if (isLeft) ringROuter else ringRInner),
-                        bottomLeft = CornerRadius(if (isLeft) ringRInner else ringROuter)
-                    )
-                )
-            }
-
             val ringBloomAlpha = ringBloomAlphaState.value
             // Outer bloom pass
             drawPath(
                 path = ringPath,
                 color = neonColor.copy(alpha = (if (isPressed) 0.60f else 0.28f) * ringBloomAlpha),
-                style = Stroke(width = 4.dp.toPx())
+                style = strokeRingBloom
             )
             // Core crisp stroke
             drawPath(
                 path = ringPath,
                 color = neonColor.copy(alpha = (if (isPressed) 1.0f else 0.70f) * ringBloomAlpha),
-                style = Stroke(width = 1.8.dp.toPx())
+                style = strokeRingCore
             )
 
             // Top crescent specular sheen (glass lens)
+            val ringInset = 2.5.dp.toPx()
             val sheenH = h * 0.40f
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isPressed) 0.05f else 0.14f),
-                        Color.White.copy(alpha = if (isPressed) 0.01f else 0.04f),
-                        Color.Transparent
-                    ),
+                    colors = if (isPressed) lensColorsPressed else lensColorsNormal,
                     startY = 0f,
                     endY = sheenH
                 ),
@@ -361,10 +424,7 @@ fun RibbedBumper(
             val specEndX = if (isLeft) w * 0.88f else w * 0.85f
             drawLine(
                 brush = Brush.horizontalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isPressed) 0.12f else 0.45f),
-                        Color.White.copy(alpha = if (isPressed) 0.04f else 0.16f)
-                    ),
+                    colors = if (isPressed) specLineColorsPressed else specLineColorsNormal,
                     startX = specStartX,
                     endX = specEndX
                 ),
@@ -375,18 +435,13 @@ fun RibbedBumper(
 
             // Bottom-right specular sheen circle
             drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
-                    center = Offset(w * 0.70f, h * 0.78f),
-                    radius = w * 0.20f
-                ),
+                brush = sheenCircleBrush,
                 center = Offset(w * 0.70f, h * 0.78f),
                 radius = w * 0.20f
             )
         }
 
         // Elevated Recessed Magnifier Window (.lx-window: 74dp × 30dp, top: 42%)
-        val windowShape = RoundedCornerShape(15.dp)
         Box(
             modifier = Modifier
                 .offset(y = (-4).dp)
@@ -412,23 +467,13 @@ fun RibbedBumper(
 
                 // Inset top shadow
                 drawRect(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(Color.Black.copy(alpha = 0.90f), Color.Transparent),
-                        startY = 0f,
-                        endY = 6.dp.toPx()
-                    ),
+                    brush = winTopShadowBrush,
                     size = Size(winW, 6.dp.toPx())
                 )
 
                 // Deep vignette
                 drawRect(
-                    brush = Brush.radialGradient(
-                        0.0f to Color.Transparent,
-                        0.32f to Color.Transparent,
-                        1.0f to Color.Black.copy(alpha = 0.82f),
-                        center = Offset(winW / 2f, winH / 2f),
-                        radius = winW * 0.50f
-                    )
+                    brush = winVignetteBrush
                 )
 
                 // Bottom specular edge line
@@ -452,7 +497,6 @@ fun RibbedBumper(
         }
 
         // Lower Neon Lightbar Accent Strip (.strip: height 4dp, border-radius 2dp, bottom 9dp)
-        val stripShape = RoundedCornerShape(2.dp)
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)

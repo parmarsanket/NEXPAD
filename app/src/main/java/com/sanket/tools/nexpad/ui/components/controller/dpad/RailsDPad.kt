@@ -309,6 +309,43 @@ fun RailsDPad(
         )
     }
 
+    val undercutColorsPressed = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)) }
+    val undercutColorsIdle = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)) }
+
+    val crBeamHalo = remember(density) { CornerRadius(3f * density, 3f * density) }
+    val crBeamCore = remember(density) { CornerRadius(1.5f * density, 1.5f * density) }
+
+    val puckHighlightColors = remember { listOf(Color.White.copy(alpha = 0.20f), Color.Transparent) }
+    val strokePuckRingBloom = remember(density) { Stroke(width = 4f * density) }
+    val strokePuckRingCore = remember(density) { Stroke(width = 2f * density) }
+    val strokePuckHighlight = remember(density) { Stroke(width = 1f * density) }
+
+    val strokeRingOuterPressed = remember(density) { Stroke(width = 5f * density) }
+    val strokeRingOuterIdle = remember(density) { Stroke(width = 3f * density) }
+    val strokeRingCore = remember(density) { Stroke(width = 2f * density) }
+    val strokeLensArc = remember(density) { Stroke(width = 1f * density) }
+
+    val lensColorsPressed = remember {
+        listOf(
+            Color.White.copy(alpha = 0.06f),
+            Color.White.copy(alpha = 0.02f),
+            Color.Transparent
+        )
+    }
+    val lensColorsIdle = remember {
+        listOf(
+            Color.White.copy(alpha = 0.14f),
+            Color.White.copy(alpha = 0.05f),
+            Color.Transparent
+        )
+    }
+    val specularSheenColors = remember {
+        listOf(
+            Color.White.copy(alpha = 0.06f),
+            Color.Transparent
+        )
+    }
+
     Box(
         modifier = modifier
             .size(160.dp)
@@ -351,7 +388,7 @@ fun RailsDPad(
                         ),
                         start = Offset(0f, center.y),
                         end = Offset(w, center.y),
-                        strokeWidth = 6.dp.toPx()
+                        strokeWidth = 6f * density
                     )
                     horizCoreColors[0] = Color.Transparent
                     horizCoreColors[1] = (if (isHorizActive) Color.White else neonColor).copy(alpha = horizAlpha)
@@ -362,7 +399,7 @@ fun RailsDPad(
                         ),
                         start = Offset(0f, center.y),
                         end = Offset(w, center.y),
-                        strokeWidth = 2.dp.toPx()
+                        strokeWidth = 2f * density
                     )
 
                     // Vertical laser track
@@ -376,7 +413,7 @@ fun RailsDPad(
                         ),
                         start = Offset(center.x, 0f),
                         end = Offset(center.x, h),
-                        strokeWidth = 6.dp.toPx()
+                        strokeWidth = 6f * density
                     )
                     vertCoreColors[0] = Color.Transparent
                     vertCoreColors[1] = (if (isVertActive) Color.White else neonColor).copy(alpha = vertAlpha)
@@ -387,12 +424,12 @@ fun RailsDPad(
                         ),
                         start = Offset(center.x, 0f),
                         end = Offset(center.x, h),
-                        strokeWidth = 2.dp.toPx()
+                        strokeWidth = 2f * density
                     )
 
                     // 3. Travelling sliding puck beacon flare
                     val puckPos = Offset(center.x + puckOffsetXAnim, center.y + puckOffsetYAnim)
-                    val puckBloomR = if (isAnyPressed) 32.dp.toPx() else 20.dp.toPx()
+                    val puckBloomR = if (isAnyPressed) 32f * density else 20f * density
                     puckStops[0] = 0.00f to (if (isAnyPressed) Color.White else neonColor).copy(alpha = rgbBloomAlpha * 0.75f)
                     puckStops[1] = 0.45f to neonColor.copy(alpha = rgbBloomAlpha * 0.35f)
                     puckStops[2] = 1.00f to Color.Transparent
@@ -409,7 +446,7 @@ fun RailsDPad(
             }
             .then(
                 if (isInteractive) {
-                    Modifier.pointerInput(isConnected) {
+                    Modifier.pointerInput(Unit) {
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)
                             down.consume()
@@ -483,7 +520,7 @@ fun RailsDPad(
                 val insetH = h * 0.35f
                 drawRect(
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (isAnyPressed) 0.85f else 0.70f)),
+                        colors = if (isAnyPressed) undercutColorsPressed else undercutColorsIdle,
                         startY = h - insetH,
                         endY = h
                     ),
@@ -541,121 +578,126 @@ fun RailsDPad(
                 val center = Offset(size.width / 2f, size.height / 2f)
 
                 // Dynamic Light Beams (.lit, height/width 3px, neonColor, box-shadow: 0 0 8px var(--glow))
-                val beamThickness = 3.dp.toPx()
+                val beamThickness = 3f * density
 
                 // RIGHT BEAM (.lit-r)
                 if (litRightWidth > 0f) {
-                    val wPx = litRightWidth.dp.toPx()
+                    val wPx = litRightWidth * density
                     // Glow halo
                     drawRoundRect(
                         color = neonColor.copy(alpha = 0.40f),
                         topLeft = Offset(center.x, center.y - beamThickness),
                         size = Size(wPx, beamThickness * 2f),
-                        cornerRadius = CornerRadius(beamThickness, beamThickness)
+                        cornerRadius = crBeamHalo
                     )
                     // Core beam
                     drawRoundRect(
                         color = neonColor,
                         topLeft = Offset(center.x, center.y - beamThickness / 2f),
                         size = Size(wPx, beamThickness),
-                        cornerRadius = CornerRadius(1.5.dp.toPx(), 1.5.dp.toPx())
+                        cornerRadius = crBeamCore
                     )
                 }
 
                 // LEFT BEAM (.lit-l)
                 if (litLeftWidth > 0f) {
-                    val wPx = litLeftWidth.dp.toPx()
+                    val wPx = litLeftWidth * density
                     // Glow halo
                     drawRoundRect(
                         color = neonColor.copy(alpha = 0.40f),
                         topLeft = Offset(center.x - wPx, center.y - beamThickness),
                         size = Size(wPx, beamThickness * 2f),
-                        cornerRadius = CornerRadius(beamThickness, beamThickness)
+                        cornerRadius = crBeamHalo
                     )
                     // Core beam
                     drawRoundRect(
                         color = neonColor,
                         topLeft = Offset(center.x - wPx, center.y - beamThickness / 2f),
                         size = Size(wPx, beamThickness),
-                        cornerRadius = CornerRadius(1.5.dp.toPx(), 1.5.dp.toPx())
+                        cornerRadius = crBeamCore
                     )
                 }
 
                 // DOWN BEAM (.lit-d)
                 if (litDownHeight > 0f) {
-                    val hPx = litDownHeight.dp.toPx()
+                    val hPx = litDownHeight * density
                     // Glow halo
                     drawRoundRect(
                         color = neonColor.copy(alpha = 0.40f),
                         topLeft = Offset(center.x - beamThickness, center.y),
                         size = Size(beamThickness * 2f, hPx),
-                        cornerRadius = CornerRadius(beamThickness, beamThickness)
+                        cornerRadius = crBeamHalo
                     )
                     // Core beam
                     drawRoundRect(
                         color = neonColor,
                         topLeft = Offset(center.x - beamThickness / 2f, center.y),
                         size = Size(beamThickness, hPx),
-                        cornerRadius = CornerRadius(1.5.dp.toPx(), 1.5.dp.toPx())
+                        cornerRadius = crBeamCore
                     )
                 }
 
                 // UP BEAM (.lit-u)
                 if (litUpHeight > 0f) {
-                    val hPx = litUpHeight.dp.toPx()
+                    val hPx = litUpHeight * density
                     // Glow halo
                     drawRoundRect(
                         color = neonColor.copy(alpha = 0.40f),
                         topLeft = Offset(center.x - beamThickness, center.y - hPx),
                         size = Size(beamThickness * 2f, hPx),
-                        cornerRadius = CornerRadius(beamThickness, beamThickness)
+                        cornerRadius = crBeamHalo
                     )
                     // Core beam
                     drawRoundRect(
                         color = neonColor,
                         topLeft = Offset(center.x - beamThickness / 2f, center.y - hPx),
                         size = Size(beamThickness, hPx),
-                        cornerRadius = CornerRadius(1.5.dp.toPx(), 1.5.dp.toPx())
+                        cornerRadius = crBeamCore
                     )
                 }
 
                 // End Target LEDs (.ed, 8px diameter = 4dp radius at 25dp from edges = 55dp from center)
-                val ledRadius = 4.dp.toPx()
-                val ledDist = 55.dp.toPx()
+                val ledRadius = 4f * density
+                val ledDist = 55f * density
 
-                val ledPositions = listOf(
-                    Pair(Offset(center.x, center.y - ledDist), ledUpAlpha),
-                    Pair(Offset(center.x, center.y + ledDist), ledDownAlpha),
-                    Pair(Offset(center.x - ledDist, center.y), ledLeftAlpha),
-                    Pair(Offset(center.x + ledDist, center.y), ledRightAlpha)
-                )
+                // UP LED
+                if (ledUpAlpha > 0.35f) {
+                    val pos = Offset(center.x, center.y - ledDist)
+                    drawCircle(color = neonColor.copy(alpha = (ledUpAlpha - 0.28f) * 0.50f), radius = ledRadius + 4f * density, center = pos)
+                    drawCircle(color = neonColor.copy(alpha = ledUpAlpha), radius = ledRadius, center = pos)
+                    drawCircle(color = Color.White.copy(alpha = (ledUpAlpha - 0.28f) * 0.70f), radius = ledRadius * 0.5f, center = pos)
+                } else {
+                    drawCircle(color = neonColor.copy(alpha = ledUpAlpha), radius = ledRadius, center = Offset(center.x, center.y - ledDist))
+                }
 
-                ledPositions.forEach { (pos, alpha) ->
-                    if (alpha > 0.35f) {
-                        // Active glow bloom
-                        drawCircle(
-                            color = neonColor.copy(alpha = (alpha - 0.28f) * 0.50f),
-                            radius = ledRadius + 4.dp.toPx(),
-                            center = pos
-                        )
-                        drawCircle(
-                            color = neonColor.copy(alpha = alpha),
-                            radius = ledRadius,
-                            center = pos
-                        )
-                        drawCircle(
-                            color = Color.White.copy(alpha = (alpha - 0.28f) * 0.70f),
-                            radius = ledRadius * 0.5f,
-                            center = pos
-                        )
-                    } else {
-                        // Idle pip
-                        drawCircle(
-                            color = neonColor.copy(alpha = alpha),
-                            radius = ledRadius,
-                            center = pos
-                        )
-                    }
+                // DOWN LED
+                if (ledDownAlpha > 0.35f) {
+                    val pos = Offset(center.x, center.y + ledDist)
+                    drawCircle(color = neonColor.copy(alpha = (ledDownAlpha - 0.28f) * 0.50f), radius = ledRadius + 4f * density, center = pos)
+                    drawCircle(color = neonColor.copy(alpha = ledDownAlpha), radius = ledRadius, center = pos)
+                    drawCircle(color = Color.White.copy(alpha = (ledDownAlpha - 0.28f) * 0.70f), radius = ledRadius * 0.5f, center = pos)
+                } else {
+                    drawCircle(color = neonColor.copy(alpha = ledDownAlpha), radius = ledRadius, center = Offset(center.x, center.y + ledDist))
+                }
+
+                // LEFT LED
+                if (ledLeftAlpha > 0.35f) {
+                    val pos = Offset(center.x - ledDist, center.y)
+                    drawCircle(color = neonColor.copy(alpha = (ledLeftAlpha - 0.28f) * 0.50f), radius = ledRadius + 4f * density, center = pos)
+                    drawCircle(color = neonColor.copy(alpha = ledLeftAlpha), radius = ledRadius, center = pos)
+                    drawCircle(color = Color.White.copy(alpha = (ledLeftAlpha - 0.28f) * 0.70f), radius = ledRadius * 0.5f, center = pos)
+                } else {
+                    drawCircle(color = neonColor.copy(alpha = ledLeftAlpha), radius = ledRadius, center = Offset(center.x - ledDist, center.y))
+                }
+
+                // RIGHT LED
+                if (ledRightAlpha > 0.35f) {
+                    val pos = Offset(center.x + ledDist, center.y)
+                    drawCircle(color = neonColor.copy(alpha = (ledRightAlpha - 0.28f) * 0.50f), radius = ledRadius + 4f * density, center = pos)
+                    drawCircle(color = neonColor.copy(alpha = ledRightAlpha), radius = ledRadius, center = pos)
+                    drawCircle(color = Color.White.copy(alpha = (ledRightAlpha - 0.28f) * 0.70f), radius = ledRadius * 0.5f, center = pos)
+                } else {
+                    drawCircle(color = neonColor.copy(alpha = ledRightAlpha), radius = ledRadius, center = Offset(center.x + ledDist, center.y))
                 }
             }
 
@@ -681,7 +723,7 @@ fun RailsDPad(
                     val center = Offset(w / 2f, h / 2f)
 
                     // Puck Inset Rim (inset: 4px, border: 2px solid var(--glow), opacity: 0.8)
-                    val ringInset = 4.dp.toPx()
+                    val ringInset = 4f * density
                     val ringRadius = (w / 2f) - ringInset
 
                     // Outer bloom
@@ -689,21 +731,21 @@ fun RailsDPad(
                         color = neonColor.copy(alpha = 0.35f),
                         radius = ringRadius,
                         center = center,
-                        style = Stroke(width = 4.dp.toPx())
+                        style = strokePuckRingBloom
                     )
                     // Core crisp ring
                     drawCircle(
                         color = neonColor.copy(alpha = 0.80f),
                         radius = ringRadius,
                         center = center,
-                        style = Stroke(width = 2.dp.toPx())
+                        style = strokePuckRingCore
                     )
 
                     // Central 7dp amber neon pip (radius 3.5dp)
-                    val pipRadius = 3.5.dp.toPx()
+                    val pipRadius = 3.5f * density
                     drawCircle(
                         color = neonColor.copy(alpha = 0.40f),
-                        radius = pipRadius + 2.dp.toPx(),
+                        radius = pipRadius + 2f * density,
                         center = center
                     )
                     drawCircle(
@@ -720,16 +762,16 @@ fun RailsDPad(
                     // Top specular highlight arc
                     drawArc(
                         brush = Brush.verticalGradient(
-                            colors = listOf(Color.White.copy(alpha = 0.20f), Color.Transparent),
+                            colors = puckHighlightColors,
                             startY = 0f,
                             endY = h * 0.45f
                         ),
                         startAngle = 180f,
                         sweepAngle = 180f,
                         useCenter = false,
-                        topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
-                        size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
-                        style = Stroke(width = 1.dp.toPx())
+                        topLeft = Offset(1f * density, 1f * density),
+                        size = Size(w - 2f * density, h - 2f * density),
+                        style = strokePuckHighlight
                     )
                 }
             }
@@ -741,7 +783,7 @@ fun RailsDPad(
             val h = size.height
             val r = size.minDimension / 2f
             val center = Offset(w / 2f, h / 2f)
-            val ringInset = 3.dp.toPx()
+            val ringInset = 3f * density
             val ringR = r - ringInset
 
             // Outer Neon Ring: border 2px solid var(--glow), opacity 0.35 idle, 1.0 pressed
@@ -750,38 +792,34 @@ fun RailsDPad(
                 color = neonColor.copy(alpha = ringAlpha * 0.40f),
                 radius = ringR,
                 center = center,
-                style = Stroke(width = if (isAnyPressed) 5.dp.toPx() else 3.dp.toPx())
+                style = if (isAnyPressed) strokeRingOuterPressed else strokeRingOuterIdle
             )
             drawCircle(
                 color = neonColor.copy(alpha = ringAlpha),
                 radius = ringR,
                 center = center,
-                style = Stroke(width = 2.dp.toPx())
+                style = strokeRingCore
             )
 
             // Top specular optical glass lens (.lx-lens)
             drawArc(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isAnyPressed) 0.06f else 0.14f),
-                        Color.White.copy(alpha = if (isAnyPressed) 0.02f else 0.05f),
-                        Color.Transparent
-                    ),
+                    colors = if (isAnyPressed) lensColorsPressed else lensColorsIdle,
                     startY = 0f,
                     endY = h * 0.42f
                 ),
                 startAngle = 180f,
                 sweepAngle = 180f,
                 useCenter = false,
-                topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
-                size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
-                style = Stroke(width = 1.dp.toPx())
+                topLeft = Offset(1f * density, 1f * density),
+                size = Size(w - 2f * density, h - 2f * density),
+                style = strokeLensArc
             )
 
             // Bottom-right specular reflection sheen
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                    colors = specularSheenColors,
                     center = Offset(w * 0.70f, h * 0.78f),
                     radius = w * 0.28f
                 ),
@@ -795,18 +833,18 @@ fun RailsDPad(
                 startAngle = 200f,
                 sweepAngle = 140f,
                 useCenter = false,
-                topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
-                size = Size(w - 3.dp.toPx(), h - 3.dp.toPx()),
-                style = Stroke(width = 1.dp.toPx())
+                topLeft = Offset(1.5f * density, 1.5f * density),
+                size = Size(w - 3f * density, h - 3f * density),
+                style = strokeLensArc
             )
             drawArc(
                 color = Color.Black.copy(alpha = 0.30f),
                 startAngle = 20f,
                 sweepAngle = 140f,
                 useCenter = false,
-                topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
-                size = Size(w - 3.dp.toPx(), h - 3.dp.toPx()),
-                style = Stroke(width = 1.dp.toPx())
+                topLeft = Offset(1.5f * density, 1.5f * density),
+                size = Size(w - 3f * density, h - 3f * density),
+                style = strokeLensArc
             )
         }
     }

@@ -128,6 +128,9 @@ fun OrbitHomeButton(
     val bloomColorsList = remember(glowColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
+    val dotBloomColorsList = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
 
     // Multi-stop convex dome gradient: #232527 0%, #0c0d0e 75%, #000 100%
     val domeGradient = remember {
@@ -297,13 +300,12 @@ fun OrbitHomeButton(
             // Layer 4: Luminous Center Core Dot (.dot: 12px in 96x96 = 12.5% diameter)
             val dotR = r * (6f / 48f)
             // Radial dot bloom
+            dotBloomColorsList[0] = glowColor.copy(alpha = if (isPressed) 0.90f else 0.60f)
+            dotBloomColorsList[1] = glowColor.copy(alpha = 0.20f)
+            dotBloomColorsList[2] = Color.Transparent
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(
-                        glowColor.copy(alpha = if (isPressed) 0.90f else 0.60f),
-                        glowColor.copy(alpha = 0.20f),
-                        Color.Transparent
-                    ),
+                    colors = dotBloomColorsList,
                     center = center,
                     radius = dotR * 3f
                 ),

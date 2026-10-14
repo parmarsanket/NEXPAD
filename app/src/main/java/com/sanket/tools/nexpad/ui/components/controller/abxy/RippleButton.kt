@@ -11,7 +11,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
@@ -21,11 +20,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,7 +37,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.category.CategoryManager
@@ -49,7 +44,6 @@ import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 /**
  * Ripple Rings ABXY button variant.
@@ -120,6 +114,12 @@ fun RippleButton(
     val psShape = getPlayStationShape(activeLabel)
     val effectiveColor = if (psShape != null) getPlayStationColor(psShape) else buttonColor
 
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val stroke1dp = remember(density) { Stroke(width = 1f * density) }
+    val stroke2dp = remember(density) { Stroke(width = 2f * density) }
+    val stroke4dp = remember(density) { Stroke(width = 4f * density) }
+    val stroke4_5dp = remember(density) { Stroke(width = 4.5f * density) }
+
     val baseDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
@@ -132,7 +132,6 @@ fun RippleButton(
         )
     }
 
-    val density = androidx.compose.ui.platform.LocalDensity.current.density
     val borderBrush = remember {
         Brush.verticalGradient(
             colors = listOf(
@@ -141,36 +140,77 @@ fun RippleButton(
             )
         )
     }
-    val stroke1dp = remember(density) { Stroke(width = 1f * density) }
-    val stroke2dp = remember(density) { Stroke(width = 2f * density) }
-    val stroke4dp = remember(density) { Stroke(width = 4f * density) }
-    val stroke4_5dp = remember(density) { Stroke(width = 4.5f * density) }
-    val insetShadowColorsPressed = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)) }
-    val insetShadowColorsNormal = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)) }
-    val lensColorsPressed = remember {
-        listOf(
-            Color.White.copy(alpha = 0.06f),
-            Color.White.copy(alpha = 0.02f),
-            Color.Transparent
+
+    val epicenterBloomBrush = remember(effectiveColor, density) {
+        val outerRadius = 46f * density
+        Brush.radialGradient(
+            colors = listOf(
+                effectiveColor.copy(alpha = 0.45f),
+                effectiveColor.copy(alpha = 0.16f),
+                Color.Transparent
+            ),
+            center = Offset(outerRadius, outerRadius),
+            radius = outerRadius
         )
     }
-    val lensColorsNormal = remember {
-        listOf(
-            Color.White.copy(alpha = 0.14f),
-            Color.White.copy(alpha = 0.05f),
-            Color.Transparent
+
+    val insetShadowBrushPressed = remember(density) {
+        val h = 80f * density
+        val insetH = h * 0.32f
+        Brush.verticalGradient(
+            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)),
+            startY = h - insetH,
+            endY = h
         )
     }
-    val specularSheenColors = remember {
-        listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)
+    val insetShadowBrushNormal = remember(density) {
+        val h = 80f * density
+        val insetH = h * 0.32f
+        Brush.verticalGradient(
+            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
+            startY = h - insetH,
+            endY = h
+        )
     }
-    val bloomColorsList = remember(effectiveColor) {
-        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+
+    val lensBrushPressed = remember(density) {
+        val h = 80f * density
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.06f),
+                Color.White.copy(alpha = 0.02f),
+                Color.Transparent
+            ),
+            startY = 0f,
+            endY = h * 0.40f
+        )
+    }
+    val lensBrushNormal = remember(density) {
+        val h = 80f * density
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.14f),
+                Color.White.copy(alpha = 0.05f),
+                Color.Transparent
+            ),
+            startY = 0f,
+            endY = h * 0.40f
+        )
+    }
+
+    val specularSheenBrush = remember(density) {
+        val w = 80f * density
+        val h = 80f * density
+        Brush.radialGradient(
+            colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+            center = Offset(w * 0.70f, h * 0.78f),
+            radius = w * 0.25f
+        )
     }
 
     Box(
         modifier = modifier
-            .size(80.dp)
+            .size(92.dp)
             .graphicsLayer {
                 // Root RenderNode isolation
             }
@@ -178,24 +218,18 @@ fun RippleButton(
                 if (isRgbEnabled) {
                     val rgbBloomAlpha = rgbBloomAlphaState.value
                     // 1. Acoustic shockwave epicenter bloom
-                    val epicenterRadius = size.minDimension * 0.95f
-                    bloomColorsList[0] = effectiveColor.copy(alpha = rgbBloomAlpha * 0.45f)
-                    bloomColorsList[1] = effectiveColor.copy(alpha = rgbBloomAlpha * 0.16f)
-                    bloomColorsList[2] = Color.Transparent
+                    val epicenterRadius = size.minDimension * 0.48f
                     drawCircle(
-                        brush = Brush.radialGradient(
-                            colors = bloomColorsList,
-                            center = center,
-                            radius = epicenterRadius
-                        ),
+                        brush = epicenterBloomBrush,
                         radius = epicenterRadius,
-                        center = center
+                        center = center,
+                        alpha = rgbBloomAlpha
                     )
                 }
 
                 // ── THREE RIPPLE SHOCKWAVE WAVEFRONTS PULSING OUTWARD ──
-                val rippleCenter = Offset(size.width / 2f, size.height / 2f)
-                val baseR = size.minDimension / 2f
+                val rippleCenter = center
+                val baseR = 40.dp.toPx()
 
                 fun drawRipple(progress: Float) {
                     if (progress < 0.999f) {
@@ -222,135 +256,129 @@ fun RippleButton(
                 drawRipple(ring1Progress.value)
                 drawRipple(ring2Progress.value)
                 drawRipple(ring3Progress.value)
-            }
-            .shadow(
-                elevation = if (isPressed) 1.dp else 4.dp,
-                shape = CircleShape,
-                ambientColor = if (isRgbEnabled) effectiveColor else Color.Black,
-                spotColor = if (isRgbEnabled) effectiveColor else Color.Black
-            )
-            .graphicsLayer {
-                scaleX = scaleAnimState.value
-                scaleY = scaleAnimState.value
-                translationY = pressOffsetYAnimState.value * density
-            }
-            .clip(CircleShape)
-            .background(baseDomeGradient)
-            .border(
-                width = 1.dp,
-                brush = borderBrush,
-                shape = CircleShape
-            )
-            .then(
-                if (isInteractive) {
-                    Modifier.pointerInput(key) {
-                        detectTapGestures(
-                            onPress = {
-                                currentOnVibrate()
-                                isPressed = true
-                                currentViewModel?.updateButton(key, true)
-                                rippleTrigger = System.nanoTime()
-                                tryAwaitRelease()
-                                isPressed = false
-                                currentViewModel?.updateButton(key, false)
-                            }
-                        )
-                    }
-                } else Modifier
-            ),
+            },
         contentAlignment = Alignment.Center
     ) {
-        // ── 1. BODY UNDERCUT SHADOW ──
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val w = size.width
-            val h = size.height
-
-            val insetH = h * 0.32f
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colors = if (isPressed) insetShadowColorsPressed else insetShadowColorsNormal,
-                    startY = h - insetH,
-                    endY = h
-                ),
-                topLeft = Offset(0f, h - insetH),
-                size = Size(w, insetH)
-            )
-        }
-
-        // ── 2. GLYPH WITH NEON SHADOW BLOOM ON PRESS ──
-        if (psShape != null) {
-            PlayStationSymbol(
-                shape = psShape,
-                color = effectiveColor,
-                size = 38.dp
-            )
-        } else {
-            Text(
-                text = activeLabel,
-                color = effectiveColor,
-                fontWeight = FontWeight.Medium,
-                fontSize = 44.sp,
-                style = TextStyle(
-                    shadow = if (isPressed) Shadow(
-                        color = effectiveColor,
-                        blurRadius = 24f
-                    ) else null
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .shadow(
+                    elevation = if (isPressed) 1.dp else 4.dp,
+                    shape = CircleShape,
+                    ambientColor = if (isRgbEnabled) effectiveColor else Color.Black,
+                    spotColor = if (isRgbEnabled) effectiveColor else Color.Black
                 )
-            )
-        }
-
-        // ── 3. SHELL OVERLAY (.lx-ring + .lx-lens) ──
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val w = size.width
-            val h = size.height
-            val r = size.minDimension / 2f
-
-            // Cap outline
-            drawCircle(
-                color = Color.Black.copy(alpha = 0.50f),
-                radius = r - 0.5.dp.toPx(),
-                style = stroke1dp
-            )
-
-            // Neon ring
-            val ringRadius = r - 3.dp.toPx()
-            drawCircle(
-                color = effectiveColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
-                radius = ringRadius,
-                style = stroke4dp
-            )
-            drawCircle(
-                color = effectiveColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
-                radius = ringRadius,
-                style = stroke2dp
-            )
-
-            // Glass lens
-            val lensInset = 1.dp.toPx()
-            drawArc(
-                brush = Brush.verticalGradient(
-                    colors = if (isPressed) lensColorsPressed else lensColorsNormal,
-                    startY = 0f,
-                    endY = h * 0.40f
+                .graphicsLayer {
+                    scaleX = scaleAnimState.value
+                    scaleY = scaleAnimState.value
+                    translationY = pressOffsetYAnimState.value * density
+                }
+                .clip(CircleShape)
+                .background(baseDomeGradient)
+                .border(
+                    width = 1.dp,
+                    brush = borderBrush,
+                    shape = CircleShape
+                )
+                .then(
+                    if (isInteractive) {
+                        Modifier.pointerInput(key) {
+                            detectTapGestures(
+                                onPress = {
+                                    currentOnVibrate()
+                                    isPressed = true
+                                    currentViewModel?.updateButton(key, true)
+                                    rippleTrigger = System.nanoTime()
+                                    tryAwaitRelease()
+                                    isPressed = false
+                                    currentViewModel?.updateButton(key, false)
+                                }
+                            )
+                        }
+                    } else Modifier
                 ),
-                startAngle = 180f,
-                sweepAngle = 180f,
-                useCenter = false,
-                topLeft = Offset(lensInset, lensInset),
-                size = Size(w - lensInset * 2f, h - lensInset * 2f),
-                style = stroke1dp
-            )
+            contentAlignment = Alignment.Center
+        ) {
+            // ── 1. BODY UNDERCUT SHADOW ──
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val w = size.width
+                val h = size.height
 
-            // Specular sheen
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = specularSheenColors,
+                val insetH = h * 0.32f
+                drawRect(
+                    brush = if (isPressed) insetShadowBrushPressed else insetShadowBrushNormal,
+                    topLeft = Offset(0f, h - insetH),
+                    size = Size(w, insetH)
+                )
+            }
+
+            // ── 2. GLYPH WITH NEON SHADOW BLOOM ON PRESS ──
+            if (psShape != null) {
+                PlayStationSymbol(
+                    shape = psShape,
+                    color = effectiveColor,
+                    size = 42.dp
+                )
+            } else {
+                Text(
+                    text = activeLabel,
+                    color = effectiveColor,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 44.sp,
+                    style = TextStyle(
+                        shadow = if (isPressed) Shadow(
+                            color = effectiveColor,
+                            blurRadius = 24f
+                        ) else null
+                    )
+                )
+            }
+
+            // ── 3. SHELL OVERLAY (.lx-ring + .lx-lens) ──
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val w = size.width
+                val h = size.height
+                val r = size.minDimension / 2f
+
+                // Cap outline
+                drawCircle(
+                    color = Color.Black.copy(alpha = 0.50f),
+                    radius = r - 0.5.dp.toPx(),
+                    style = stroke1dp
+                )
+
+                // Neon ring
+                val ringRadius = r - 3.dp.toPx()
+                drawCircle(
+                    color = effectiveColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
+                    radius = ringRadius,
+                    style = stroke4dp
+                )
+                drawCircle(
+                    color = effectiveColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
+                    radius = ringRadius,
+                    style = stroke2dp
+                )
+
+                // Glass lens
+                val lensInset = 1.dp.toPx()
+                drawArc(
+                    brush = if (isPressed) lensBrushPressed else lensBrushNormal,
+                    startAngle = 180f,
+                    sweepAngle = 180f,
+                    useCenter = false,
+                    topLeft = Offset(lensInset, lensInset),
+                    size = Size(w - lensInset * 2f, h - lensInset * 2f),
+                    style = stroke1dp
+                )
+
+                // Specular sheen
+                drawCircle(
+                    brush = specularSheenBrush,
                     center = Offset(w * 0.70f, h * 0.78f),
                     radius = w * 0.25f
-                ),
-                center = Offset(w * 0.70f, h * 0.78f),
-                radius = w * 0.25f
-            )
+                )
+            }
         }
     }
 }
@@ -378,5 +406,6 @@ fun StaticRippleButton(
         isInteractive = false
     )
 }
+
 
 

@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
@@ -155,6 +156,68 @@ fun UnderglowBumper(
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent, Color.Transparent, Color.Transparent)
     }
 
+    val density = LocalDensity.current
+    val borderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.50f),
+                Color.Black.copy(alpha = 0.80f)
+            )
+        )
+    }
+
+    val undercutShadowColorsNormal = remember {
+        listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f))
+    }
+    val undercutShadowColorsPressed = remember {
+        listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f))
+    }
+
+    val floodBloomColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent)
+    }
+
+    val sheenColorsNormal = remember {
+        listOf(
+            Color.White.copy(alpha = 0.14f),
+            Color.White.copy(alpha = 0.04f),
+            Color.Transparent
+        )
+    }
+    val sheenColorsPressed = remember {
+        listOf(
+            Color.White.copy(alpha = 0.05f),
+            Color.White.copy(alpha = 0.01f),
+            Color.Transparent
+        )
+    }
+
+    val specLineColorsNormal = remember {
+        listOf(
+            Color.White.copy(alpha = 0.45f),
+            Color.White.copy(alpha = 0.16f)
+        )
+    }
+    val specLineColorsPressed = remember {
+        listOf(
+            Color.White.copy(alpha = 0.12f),
+            Color.White.copy(alpha = 0.04f)
+        )
+    }
+
+    val sheenCircleColors = remember {
+        listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)
+    }
+
+    val barCornerRadiusOuter = remember(density) {
+        val r = with(density) { 4.dp.toPx() }
+        CornerRadius(r, r)
+    }
+    val barCornerRadiusInner = remember(density) {
+        val r = with(density) { 2.dp.toPx() }
+        CornerRadius(r, r)
+    }
+
     Box(
         modifier = modifier
             .size(154.dp, 54.dp)
@@ -235,19 +298,14 @@ fun UnderglowBumper(
             .graphicsLayer {
                 scaleX = scaleAnimState.value
                 scaleY = scaleAnimState.value
-                translationY = pressOffsetYAnimState.value * density
+                translationY = pressOffsetYAnimState.value * density.density
             }
             .clip(bumperShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
             // 1px casing rim
             .border(
                 width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.50f),
-                        Color.Black.copy(alpha = 0.80f)
-                    )
-                ),
+                brush = borderBrush,
                 shape = bumperShape
             )
             .then(
@@ -277,7 +335,7 @@ fun UnderglowBumper(
             val insetH = h * 0.40f
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (isPressed) 0.85f else 0.70f)),
+                    colors = if (isPressed) undercutShadowColorsPressed else undercutShadowColorsNormal,
                     startY = h - insetH,
                     endY = h
                 ),
@@ -289,12 +347,11 @@ fun UnderglowBumper(
             val floodHeightProgress = floodHeightProgressState.value
             if (floodHeightProgress > 0f) {
                 val currentFloodH = h * floodHeightProgress
+                floodBloomColors[0] = Color.Transparent
+                floodBloomColors[1] = neonColor.copy(alpha = 0.55f * floodHeightProgress)
                 drawRect(
                     brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            neonColor.copy(alpha = 0.55f * floodHeightProgress)
-                        ),
+                        colors = floodBloomColors,
                         startY = h - currentFloodH,
                         endY = h
                     ),
@@ -307,11 +364,7 @@ fun UnderglowBumper(
             val sheenH = h * 0.42f
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isPressed) 0.05f else 0.14f),
-                        Color.White.copy(alpha = if (isPressed) 0.01f else 0.04f),
-                        Color.Transparent
-                    ),
+                    colors = if (isPressed) sheenColorsPressed else sheenColorsNormal,
                     startY = 0f,
                     endY = sheenH
                 ),
@@ -324,10 +377,7 @@ fun UnderglowBumper(
             val specEndX = if (isLeft) w * 0.88f else w * 0.85f
             drawLine(
                 brush = Brush.horizontalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isPressed) 0.12f else 0.45f),
-                        Color.White.copy(alpha = if (isPressed) 0.04f else 0.16f)
-                    ),
+                    colors = if (isPressed) specLineColorsPressed else specLineColorsNormal,
                     startX = specStartX,
                     endX = specEndX
                 ),
@@ -339,7 +389,7 @@ fun UnderglowBumper(
             // Bottom-right specular sheen circle
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                    colors = sheenCircleColors,
                     center = Offset(w * 0.70f, h * 0.78f),
                     radius = w * 0.20f
                 ),
@@ -381,7 +431,7 @@ fun UnderglowBumper(
                 color = neonColor.copy(alpha = (if (isPressed) 0.65f else 0.35f) * underglowBloomAlpha),
                 topLeft = Offset(barInsetX - 4.dp.toPx(), barBottomY - 2.dp.toPx()),
                 size = Size(barW + 8.dp.toPx(), barH + 4.dp.toPx()),
-                cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+                cornerRadius = barCornerRadiusOuter
             )
 
             // Core crisp ground bar
@@ -389,7 +439,7 @@ fun UnderglowBumper(
                 color = neonColor.copy(alpha = (if (isPressed) 1.0f else 0.85f) * underglowBloomAlpha),
                 topLeft = Offset(barInsetX, barBottomY),
                 size = Size(barW, barH),
-                cornerRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx())
+                cornerRadius = barCornerRadiusInner
             )
         }
     }

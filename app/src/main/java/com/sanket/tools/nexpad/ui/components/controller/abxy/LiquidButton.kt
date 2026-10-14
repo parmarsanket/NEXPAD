@@ -173,6 +173,57 @@ fun LiquidButton(
         listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)
     }
 
+    val insetShadowBrushPressed = remember(density) {
+        val btnSizePx = 80f * density
+        val insetH = btnSizePx * 0.32f
+        Brush.verticalGradient(
+            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)),
+            startY = btnSizePx - insetH,
+            endY = btnSizePx
+        )
+    }
+    val insetShadowBrushNormal = remember(density) {
+        val btnSizePx = 80f * density
+        val insetH = btnSizePx * 0.32f
+        Brush.verticalGradient(
+            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
+            startY = btnSizePx - insetH,
+            endY = btnSizePx
+        )
+    }
+    val lensBrushPressed = remember(density) {
+        val btnSizePx = 80f * density
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.06f),
+                Color.White.copy(alpha = 0.02f),
+                Color.Transparent
+            ),
+            startY = 0f,
+            endY = btnSizePx * 0.40f
+        )
+    }
+    val lensBrushNormal = remember(density) {
+        val btnSizePx = 80f * density
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.14f),
+                Color.White.copy(alpha = 0.05f),
+                Color.Transparent
+            ),
+            startY = 0f,
+            endY = btnSizePx * 0.40f
+        )
+    }
+    val specularSheenBrush = remember(density) {
+        val btnSizePx = 80f * density
+        Brush.radialGradient(
+            colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+            center = Offset(btnSizePx * 0.70f, btnSizePx * 0.78f),
+            radius = btnSizePx * 0.25f
+        )
+    }
+
     val poolBloomStops = remember(effectiveColor) {
         arrayOf(
             0.00f to Color.Transparent,
@@ -184,7 +235,7 @@ fun LiquidButton(
 
     Box(
         modifier = modifier
-            .size(80.dp)
+            .size(92.dp)
             .graphicsLayer {
                 // Root RenderNode isolation
             }
@@ -234,209 +285,203 @@ fun LiquidButton(
                         )
                     }
                 }
-            }
-            .shadow(
-                elevation = if (isPressed) 1.dp else 4.dp,
-                shape = CircleShape,
-                ambientColor = if (isRgbEnabled) effectiveColor else Color.Black,
-                spotColor = if (isRgbEnabled) effectiveColor else Color.Black
-            )
-            .graphicsLayer {
-                scaleX = scaleAnimState.value
-                scaleY = scaleAnimState.value
-                translationY = pressOffsetYAnimState.value * density
-            }
-            .clip(CircleShape)
-            .background(baseDomeGradient)
-            .border(
-                width = 1.dp,
-                brush = borderBrush,
-                shape = CircleShape
-            )
-            .then(
-                if (isInteractive) {
-                    Modifier.pointerInput(key) {
-                        detectTapGestures(
-                            onPress = {
-                                currentOnVibrate()
-                                isPressed = true
-                                currentViewModel?.updateButton(key, true)
-                                tryAwaitRelease()
-                                isPressed = false
-                                currentViewModel?.updateButton(key, false)
-                            }
-                        )
-                    }
-                } else Modifier
-            ),
+            },
         contentAlignment = Alignment.Center
     ) {
-        // ── 1. LIQUID FILL RESERVOIR (.lq-wrap, inset 6px inside 80dp -> 68dp) ──
         Box(
             modifier = Modifier
-                .size(68.dp)
+                .size(80.dp)
+                .shadow(
+                    elevation = if (isPressed) 1.dp else 4.dp,
+                    shape = CircleShape,
+                    ambientColor = if (isRgbEnabled) effectiveColor else Color.Black,
+                    spotColor = if (isRgbEnabled) effectiveColor else Color.Black
+                )
+                .graphicsLayer {
+                    scaleX = scaleAnimState.value
+                    scaleY = scaleAnimState.value
+                    translationY = pressOffsetYAnimState.value * density
+                }
                 .clip(CircleShape)
+                .background(baseDomeGradient)
+                .border(
+                    width = 1.dp,
+                    brush = borderBrush,
+                    shape = CircleShape
+                )
+                .then(
+                    if (isInteractive) {
+                        Modifier.pointerInput(key) {
+                            detectTapGestures(
+                                onPress = {
+                                    currentOnVibrate()
+                                    isPressed = true
+                                    currentViewModel?.updateButton(key, true)
+                                    tryAwaitRelease()
+                                    isPressed = false
+                                    currentViewModel?.updateButton(key, false)
+                                }
+                            )
+                        }
+                    } else Modifier
+                ),
+            contentAlignment = Alignment.Center
         ) {
+            // ── 1. LIQUID FILL RESERVOIR (.lq-wrap, inset 6px inside 80dp -> 68dp) ──
+            Box(
+                modifier = Modifier
+                    .size(68.dp)
+                    .clip(CircleShape)
+            ) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val fillFraction = fillFractionState.value
+                    val waveScaleY = waveScaleYState.value
+                    val swayXPercent = swayXPercentState.value
+                    val w = size.width
+                    val h = size.height
+
+                    if (fillFraction > 0.005f) {
+                        val clampedFill = fillFraction.coerceIn(0f, 1f)
+                        val fillH = h * clampedFill
+                        val fillTop = h - fillH
+
+                        // Main rectangular liquid mass
+                        drawRect(
+                            color = effectiveColor,
+                            topLeft = Offset(0f, fillTop),
+                            size = Size(w, fillH)
+                        )
+
+                        // Sinusoidal meniscus wave ellipse at fill boundary
+                        if (clampedFill < 0.99f) {
+                            val ellipseW = w * 1.40f
+                            val ellipseH = 12.dp.toPx() * (if (isPressed) waveScaleY else 1.0f)
+                            val swayOffsetPx = if (isPressed) swayXPercent * w else 0f
+                            val ellipseLeft = (w - ellipseW) / 2f + swayOffsetPx
+                            val ellipseTop = fillTop - ellipseH / 2f
+
+                            drawOval(
+                                color = effectiveColor,
+                                topLeft = Offset(ellipseLeft, ellipseTop),
+                                size = Size(ellipseW, ellipseH)
+                            )
+                        }
+
+                        // Liquid volumetric surface sheen (.lq::after): linear-gradient(180deg, rgba(255,255,255,0.35), transparent 50%)
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                colors = liquidSheenColors,
+                                startY = fillTop,
+                                endY = fillTop + fillH * 0.55f
+                            ),
+                            topLeft = Offset(0f, fillTop),
+                            size = Size(w, fillH)
+                        )
+                    }
+                }
+            }
+
+            // ── 2. INSET BOTTOM SHADOW ──
             Canvas(modifier = Modifier.fillMaxSize()) {
-                val fillFraction = fillFractionState.value
-                val waveScaleY = waveScaleYState.value
-                val swayXPercent = swayXPercentState.value
                 val w = size.width
                 val h = size.height
 
-                if (fillFraction > 0.005f) {
-                    val clampedFill = fillFraction.coerceIn(0f, 1f)
-                    val fillH = h * clampedFill
-                    val fillTop = h - fillH
+                val insetH = h * 0.32f
+                drawRect(
+                    brush = if (isPressed) insetShadowBrushPressed else insetShadowBrushNormal,
+                    topLeft = Offset(0f, h - insetH),
+                    size = Size(w, insetH)
+                )
+            }
 
-                    // Main rectangular liquid mass
-                    drawRect(
+            // ── 3. GLYPH (TRANSITIONS TO DARK INK WHEN SUBMERGED) ──
+            Box(contentAlignment = Alignment.Center) {
+                if (psShape != null) {
+                    PlayStationSymbol(
+                        shape = psShape,
                         color = effectiveColor,
-                        topLeft = Offset(0f, fillTop),
-                        size = Size(w, fillH)
+                        size = 42.dp,
+                        modifier = Modifier.graphicsLayer {
+                            alpha = (1f - labelInkAlphaState.value).coerceIn(0f, 1f)
+                        }
                     )
-
-                    // Sinusoidal meniscus wave ellipse at fill boundary
-                    if (clampedFill < 0.99f) {
-                        val ellipseW = w * 1.40f
-                        val ellipseH = 12.dp.toPx() * (if (isPressed) waveScaleY else 1.0f)
-                        val swayOffsetPx = if (isPressed) swayXPercent * w else 0f
-                        val ellipseLeft = (w - ellipseW) / 2f + swayOffsetPx
-                        val ellipseTop = fillTop - ellipseH / 2f
-
-                        drawOval(
-                            color = effectiveColor,
-                            topLeft = Offset(ellipseLeft, ellipseTop),
-                            size = Size(ellipseW, ellipseH)
-                        )
-                    }
-
-                    // Liquid volumetric surface sheen (.lq::after): linear-gradient(180deg, rgba(255,255,255,0.35), transparent 50%)
-                    drawRect(
-                        brush = Brush.verticalGradient(
-                            colors = liquidSheenColors,
-                            startY = fillTop,
-                            endY = fillTop + fillH * 0.55f
-                        ),
-                        topLeft = Offset(0f, fillTop),
-                        size = Size(w, fillH)
+                    PlayStationSymbol(
+                        shape = psShape,
+                        color = Color(0xFF0B0C0D),
+                        size = 42.dp,
+                        modifier = Modifier.graphicsLayer {
+                            alpha = labelInkAlphaState.value.coerceIn(0f, 1f)
+                        }
+                    )
+                } else {
+                    // Neon glyph (fades out as ink alpha rises)
+                    Text(
+                        text = activeLabel,
+                        color = effectiveColor,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 44.sp,
+                        modifier = Modifier.graphicsLayer {
+                            alpha = (1f - labelInkAlphaState.value).coerceIn(0f, 1f)
+                        }
+                    )
+                    // Dark ink glyph (.ab.pressed .g { color: #0b0c0d })
+                    Text(
+                        text = activeLabel,
+                        color = Color(0xFF0B0C0D),
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 44.sp,
+                        modifier = Modifier.graphicsLayer {
+                            alpha = labelInkAlphaState.value.coerceIn(0f, 1f)
+                        }
                     )
                 }
             }
-        }
 
-        // ── 2. INSET BOTTOM SHADOW ──
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val w = size.width
-            val h = size.height
+            // ── 4. SHELL OVERLAY (.lx-ring + .lx-lens) ──
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val w = size.width
+                val h = size.height
+                val r = size.minDimension / 2f
 
-            val insetH = h * 0.32f
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colors = if (isPressed) insetShadowColorsPressed else insetShadowColorsNormal,
-                    startY = h - insetH,
-                    endY = h
-                ),
-                topLeft = Offset(0f, h - insetH),
-                size = Size(w, insetH)
-            )
-        }
-
-        // ── 3. GLYPH (TRANSITIONS TO DARK INK WHEN SUBMERGED) ──
-        Box(contentAlignment = Alignment.Center) {
-            if (psShape != null) {
-                PlayStationSymbol(
-                    shape = psShape,
-                    color = effectiveColor,
-                    size = 38.dp,
-                    modifier = Modifier.graphicsLayer {
-                        alpha = (1f - labelInkAlphaState.value).coerceIn(0f, 1f)
-                    }
+                // Cap outline
+                drawCircle(
+                    color = Color.Black.copy(alpha = 0.50f),
+                    radius = r - 0.5.dp.toPx(),
+                    style = stroke1dp
                 )
-                PlayStationSymbol(
-                    shape = psShape,
-                    color = Color(0xFF0B0C0D),
-                    size = 38.dp,
-                    modifier = Modifier.graphicsLayer {
-                        alpha = labelInkAlphaState.value.coerceIn(0f, 1f)
-                    }
+
+                // Neon ring
+                val ringRadius = r - 3.dp.toPx()
+                drawCircle(
+                    color = effectiveColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
+                    radius = ringRadius,
+                    style = stroke4dp
                 )
-            } else {
-                // Neon glyph (fades out as ink alpha rises)
-                Text(
-                    text = activeLabel,
-                    color = effectiveColor,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 44.sp,
-                    modifier = Modifier.graphicsLayer {
-                        alpha = (1f - labelInkAlphaState.value).coerceIn(0f, 1f)
-                    }
+                drawCircle(
+                    color = effectiveColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
+                    radius = ringRadius,
+                    style = stroke2dp
                 )
-                // Dark ink glyph (.ab.pressed .g { color: #0b0c0d })
-                Text(
-                    text = activeLabel,
-                    color = Color(0xFF0B0C0D),
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 44.sp,
-                    modifier = Modifier.graphicsLayer {
-                        alpha = labelInkAlphaState.value.coerceIn(0f, 1f)
-                    }
+
+                // Glass lens
+                val lensInset = 1.dp.toPx()
+                drawArc(
+                    brush = if (isPressed) lensBrushPressed else lensBrushNormal,
+                    startAngle = 180f,
+                    sweepAngle = 180f,
+                    useCenter = false,
+                    topLeft = Offset(lensInset, lensInset),
+                    size = Size(w - lensInset * 2f, h - lensInset * 2f),
+                    style = stroke1dp
                 )
-            }
-        }
 
-        // ── 4. SHELL OVERLAY (.lx-ring + .lx-lens) ──
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val w = size.width
-            val h = size.height
-            val r = size.minDimension / 2f
-
-            // Cap outline
-            drawCircle(
-                color = Color.Black.copy(alpha = 0.50f),
-                radius = r - 0.5.dp.toPx(),
-                style = stroke1dp
-            )
-
-            // Neon ring
-            val ringRadius = r - 3.dp.toPx()
-            drawCircle(
-                color = effectiveColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
-                radius = ringRadius,
-                style = stroke4dp
-            )
-            drawCircle(
-                color = effectiveColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
-                radius = ringRadius,
-                style = stroke2dp
-            )
-
-            // Glass lens
-            val lensInset = 1.dp.toPx()
-            drawArc(
-                brush = Brush.verticalGradient(
-                    colors = if (isPressed) lensColorsPressed else lensColorsNormal,
-                    startY = 0f,
-                    endY = h * 0.40f
-                ),
-                startAngle = 180f,
-                sweepAngle = 180f,
-                useCenter = false,
-                topLeft = Offset(lensInset, lensInset),
-                size = Size(w - lensInset * 2f, h - lensInset * 2f),
-                style = stroke1dp
-            )
-
-            // Specular sheen
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = specularSheenColors,
+                // Specular sheen
+                drawCircle(
+                    brush = specularSheenBrush,
                     center = Offset(w * 0.70f, h * 0.78f),
                     radius = w * 0.25f
-                ),
-                center = Offset(w * 0.70f, h * 0.78f),
-                radius = w * 0.25f
-            )
+                )
+            }
         }
     }
 }

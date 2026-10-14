@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
@@ -134,6 +135,41 @@ fun VuSlabsTrigger(
         )
     }
 
+    val chassisBorderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.50f),
+                Color.Black.copy(alpha = 0.80f)
+            )
+        )
+    }
+
+    val insetShadowColorsPressed = remember {
+        listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f))
+    }
+    val insetShadowColorsNormal = remember {
+        listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f))
+    }
+    val lensColorsPressed = remember {
+        listOf(Color.White.copy(alpha = 0.06f), Color.White.copy(alpha = 0.02f), Color.Transparent)
+    }
+    val lensColorsNormal = remember {
+        listOf(Color.White.copy(alpha = 0.14f), Color.White.copy(alpha = 0.05f), Color.Transparent)
+    }
+    val specularSheenColors = remember {
+        listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)
+    }
+    val windowLipShadowColors = remember {
+        listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent)
+    }
+    val windowVignetteColors = remember {
+        arrayOf(
+            0.0f to Color.Transparent,
+            0.32f to Color.Transparent,
+            1.0f to Color.Black.copy(alpha = 0.82f)
+        )
+    }
+
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
 
@@ -158,6 +194,13 @@ fun VuSlabsTrigger(
         arrayListOf(Color.Transparent, Color.Transparent)
     }
 
+    val density = LocalDensity.current.density
+    val strokeChassisRingBloom = remember(density) { Stroke(width = 3.5f * density) }
+    val strokeChassisRingCore = remember(density) { Stroke(width = 1.5f * density) }
+    val strokeLensArc = remember(density) { Stroke(width = 1f * density) }
+
+    val ringPath = remember { Path() }
+
     Box(
         modifier = modifier
             .size(100.dp, 92.dp)
@@ -165,8 +208,8 @@ fun VuSlabsTrigger(
             // Outer dynamic RGB aura
             .drawBehind {
                 if (isRgbEnabled) {
-                    val padX = 12.dp.toPx()
-                    val padY = 8.dp.toPx()
+                    val padX = 12f * density
+                    val padY = 8f * density
                     val curPull = fillProgress.value
 
                     val activeVuColor = when {
@@ -183,21 +226,21 @@ fun VuSlabsTrigger(
                         brush = Brush.verticalGradient(
                             colors = hullAuraColors,
                             startY = -padY,
-                            endY = size.height + padY + 12.dp.toPx() * curPull
+                            endY = size.height + padY + 12f * density * curPull
                         ),
                         topLeft = Offset(-padX, -padY),
-                        size = Size(size.width + padX * 2f, size.height + padY * 2f + 12.dp.toPx() * curPull),
-                        cornerRadius = CornerRadius(24.dp.toPx(), 36.dp.toPx())
+                        size = Size(size.width + padX * 2f, size.height + padY * 2f + 12f * density * curPull),
+                        cornerRadius = CornerRadius(24f * density, 36f * density)
                     )
 
                     // 2. Lateral Equalizer Soundwave Spectrum Wings (4 pairs on left & right)
                     if (curPull > 0.15f) {
                         val wingYStart = size.height * 0.40f
-                        val wingYStep = 10.dp.toPx()
+                        val wingYStep = 10f * density
                         for (i in 0 until 4) {
                             val wingFrac = (curPull - (i * 0.2f)).coerceIn(0f, 1f)
                             if (wingFrac > 0f) {
-                                val wingLen = (6.dp + 12.dp * wingFrac).toPx()
+                                val wingLen = (6f + 12f * wingFrac) * density
                                 val wingY = wingYStart + i * wingYStep
                                 val barColor = when (i) {
                                     3 -> redOverdrive
@@ -217,7 +260,7 @@ fun VuSlabsTrigger(
                                     ),
                                     start = Offset(-padX - wingLen, wingY),
                                     end = Offset(-padX, wingY),
-                                    strokeWidth = 3.dp.toPx()
+                                    strokeWidth = 3f * density
                                 )
 
                                 // Right wing
@@ -231,7 +274,7 @@ fun VuSlabsTrigger(
                                     ),
                                     start = Offset(size.width + padX, wingY),
                                     end = Offset(size.width + padX + wingLen, wingY),
-                                    strokeWidth = 3.dp.toPx()
+                                    strokeWidth = 3f * density
                                 )
                             }
                         }
@@ -253,12 +296,7 @@ fun VuSlabsTrigger(
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
             .border(
                 width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.50f),
-                        Color.Black.copy(alpha = 0.80f)
-                    )
-                ),
+                brush = chassisBorderBrush,
                 shape = triggerShape
             )
             .then(
@@ -279,8 +317,6 @@ fun VuSlabsTrigger(
             ),
         contentAlignment = Alignment.TopCenter
     ) {
-        val ringPath = remember { Path() }
-
         // LAYER STACK CANVAS: Undercut Shadow + Neon Ring + 7 VU Meter Slabs + Lens Reflections
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
@@ -290,7 +326,7 @@ fun VuSlabsTrigger(
             val insetH = h * 0.32f
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (isPressed) 0.85f else 0.70f)),
+                    colors = if (isPressed) insetShadowColorsPressed else insetShadowColorsNormal,
                     startY = h - insetH,
                     endY = h
                 ),
@@ -299,9 +335,9 @@ fun VuSlabsTrigger(
             )
 
             // Multi-pass emissive neon ring (.lx-ring) mapped accurately to 22dp/34dp hull
-            val ringInset = 2.5.dp.toPx()
-            val ringTopR = 19.5.dp.toPx()
-            val ringBotR = 31.5.dp.toPx()
+            val ringInset = 2.5f * density
+            val ringTopR = 19.5f * density
+            val ringBotR = 31.5f * density
             ringPath.reset()
             ringPath.addRoundRect(
                 RoundRect(
@@ -320,25 +356,25 @@ fun VuSlabsTrigger(
             drawPath(
                 path = ringPath,
                 color = neonColor.copy(alpha = rgbBloomAlpha.value * 0.55f),
-                style = Stroke(width = 3.5.dp.toPx())
+                style = strokeChassisRingBloom
             )
             // Core crisp filament stroke
             drawPath(
                 path = ringPath,
                 color = neonColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
-                style = Stroke(width = 1.5.dp.toPx())
+                style = strokeChassisRingCore
             )
 
             // =========================================================================
             // SEVEN AUDIO METER VU SLABS (HTML .vu i Translation)
             // =========================================================================
-            val slabHeight = 4.dp.toPx()
-            val slabGap = 2.5.dp.toPx()
-            val slabRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx())
-            val bottomMargin = 10.dp.toPx()
+            val slabHeight = 4f * density
+            val slabGap = 2.5f * density
+            val slabRadius = CornerRadius(2f * density, 2f * density)
+            val bottomMargin = 10f * density
 
             for (i in 0..6) {
-                val slabW = SLAB_WIDTHS_DP[i].dp.toPx()
+                val slabW = SLAB_WIDTHS_DP[i] * density
                 val slabColor = when (i) {
                     5 -> orangeOverdrive
                     6 -> redOverdrive
@@ -357,9 +393,9 @@ fun VuSlabsTrigger(
                 if (slabOpacity > 0.30f) {
                     drawRoundRect(
                         color = slabColor.copy(alpha = (slabOpacity * 0.40f).coerceAtMost(0.40f)),
-                        topLeft = Offset(slabLeft - 2.dp.toPx(), slabTop - 1.5.dp.toPx()),
-                        size = Size(slabW + 4.dp.toPx(), slabHeight + 3.dp.toPx()),
-                        cornerRadius = CornerRadius(3.5.dp.toPx(), 3.5.dp.toPx())
+                        topLeft = Offset(slabLeft - 2f * density, slabTop - 1.5f * density),
+                        size = Size(slabW + 4f * density, slabHeight + 3f * density),
+                        cornerRadius = CornerRadius(3.5f * density, 3.5f * density)
                     )
                 }
 
@@ -373,14 +409,10 @@ fun VuSlabsTrigger(
             }
 
             // Top crescent specular highlight arc (.lx-lens)
-            val lensInset = 1.dp.toPx()
+            val lensInset = 1f * density
             drawArc(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isPressed) 0.06f else 0.14f),
-                        Color.White.copy(alpha = if (isPressed) 0.02f else 0.05f),
-                        Color.Transparent
-                    ),
+                    colors = if (isPressed) lensColorsPressed else lensColorsNormal,
                     startY = 0f,
                     endY = h * 0.38f
                 ),
@@ -389,13 +421,13 @@ fun VuSlabsTrigger(
                 useCenter = false,
                 topLeft = Offset(lensInset, lensInset),
                 size = Size(w - lensInset * 2f, h - lensInset * 2f),
-                style = Stroke(width = 1.dp.toPx())
+                style = strokeLensArc
             )
 
             // Bottom-right specular sheen oval
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                    colors = specularSheenColors,
                     center = Offset(w * 0.70f, h * 0.78f),
                     radius = w * 0.22f
                 ),
@@ -433,19 +465,17 @@ fun VuSlabsTrigger(
                 // Top lip shadow inside optical cavity
                 drawRect(
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent),
+                        colors = windowLipShadowColors,
                         startY = 0f,
-                        endY = 5.dp.toPx()
+                        endY = 5f * density
                     ),
-                    size = Size(winW, 5.dp.toPx())
+                    size = Size(winW, 5f * density)
                 )
 
                 // Perimeter shadow vignette (.lx-window::after)
                 drawRect(
                     brush = Brush.radialGradient(
-                        0.0f to Color.Transparent,
-                        0.32f to Color.Transparent,
-                        1.0f to Color.Black.copy(alpha = 0.82f),
+                        colorStops = windowVignetteColors,
                         center = Offset(winW / 2f, winH / 2f),
                         radius = winW * 0.50f
                     )

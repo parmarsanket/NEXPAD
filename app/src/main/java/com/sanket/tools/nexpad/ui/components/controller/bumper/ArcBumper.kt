@@ -107,14 +107,48 @@ fun ArcBumper(
         val h = 56f * density
         min(w / 230f, h / 84f)
     }
+    val ox = remember(density, s) {
+        val w = 154f * density
+        (w - 230f * s) / 2f
+    }
+    val oy = remember(density, s) {
+        val h = 56f * density
+        (h - 84f * s) / 2f
+    }
+
+    val arcPath = remember(density, s, ox, oy) {
+        Path().apply {
+            moveTo(ox + 24f * s, oy + 62f * s)
+            quadraticTo(ox + 115f * s, oy - 10f * s, ox + 206f * s, oy + 62f * s)
+        }
+    }
+    val specPath = remember(density, s, ox, oy) {
+        Path().apply {
+            moveTo(ox + 40f * s, oy + (56f - 9f) * s)
+            quadraticTo(ox + 115f * s, oy + (-6f - 9f) * s, ox + 190f * s, oy + (56f - 9f) * s)
+        }
+    }
+    val bodyGradient = remember(density, s, oy) {
+        val topY = oy + 6f * s
+        val botY = oy + 80f * s
+        Brush.verticalGradient(
+            colors = listOf(Color(0xFF282A2E), Color(0xFF08090A)),
+            startY = topY,
+            endY = botY
+        )
+    }
+
     val strokeRibbonPressed = remember(s) { Stroke(width = 76f * s, cap = StrokeCap.Round, join = StrokeJoin.Round) }
     val strokeRibbonNormal = remember(s) { Stroke(width = 64f * s, cap = StrokeCap.Round, join = StrokeJoin.Round) }
     val strokeBeamPressed = remember(s) { Stroke(width = 58f * s, cap = StrokeCap.Round, join = StrokeJoin.Round) }
     val strokeBeamNormal = remember(s) { Stroke(width = 52f * s, cap = StrokeCap.Round, join = StrokeJoin.Round) }
+    val strokeShadow = remember(s) { Stroke(width = 56f * s, cap = StrokeCap.Round, join = StrokeJoin.Round) }
+    val strokeHalo = remember(s) { Stroke(width = 50f * s, cap = StrokeCap.Round, join = StrokeJoin.Round) }
+    val strokeBody = remember(s) { Stroke(width = 46f * s, cap = StrokeCap.Round, join = StrokeJoin.Round) }
+    val strokeSpec = remember(s) { Stroke(width = 6f * s, cap = StrokeCap.Round, join = StrokeJoin.Round) }
     val apexRadiusPressed = remember(density) { 24f * density }
     val apexRadiusNormal = remember(density) { 14f * density }
 
-    val arcPath = remember { Path() }
     val ribbonBloomColors = remember(neonColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
@@ -132,13 +166,6 @@ fun ArcBumper(
                 if (isRgbEnabled) {
                     val rgbBloomAlpha = rgbBloomAlphaState.value
                     val w = size.width
-                    val h = size.height
-                    val ox = (w - 230f * s) / 2f
-                    val oy = (h - 84f * s) / 2f
-
-                    arcPath.reset()
-                    arcPath.moveTo(ox + 24f * s, oy + 62f * s)
-                    arcPath.quadraticTo(ox + 115f * s, oy - 10f * s, ox + 206f * s, oy + 62f * s)
 
                     // 1. Broad outer crescent ribbon bloom
                     ribbonBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.55f else 0.35f))
@@ -189,7 +216,6 @@ fun ArcBumper(
                 scaleY = scaleAnimState.value
                 translationY = pressOffsetYAnimState.value * density
             }
-            .clip(bumperShape)
             .then(
                 if (isInteractive) {
                     Modifier.pointerInput(key) {
@@ -210,30 +236,13 @@ fun ArcBumper(
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val bloomAlphaAnim = bloomAlphaAnimState.value
-            val w = size.width
-            val h = size.height
-            val s = min(w / 230f, h / 84f)
-            val ox = (w - 230f * s) / 2f
-            val oy = (h - 84f * s) / 2f
-
-            // Base SVG Path: M24 62 Q115 -10 206 62
-            val arcPath = Path().apply {
-                moveTo(ox + 24f * s, oy + 62f * s)
-                quadraticTo(ox + 115f * s, oy - 10f * s, ox + 206f * s, oy + 62f * s)
-            }
-
-            // Specular Crescent Path: M40 56 Q115 -6 190 56 with translate(0, -9)
-            val specPath = Path().apply {
-                moveTo(ox + 40f * s, oy + (56f - 9f) * s)
-                quadraticTo(ox + 115f * s, oy + (-6f - 9f) * s, ox + 190f * s, oy + (56f - 9f) * s)
-            }
 
             // --- Layer 2: Drop Shadow Base (.a0) ---
             // Thicker shadow foundation: stroke-width 56
             drawPath(
                 path = arcPath,
                 color = Color.Black.copy(alpha = 0.60f),
-                style = Stroke(width = 56f * s, cap = StrokeCap.Round, join = StrokeJoin.Round)
+                style = strokeShadow
             )
 
             // --- Layer 3: Emissive Neon Halo Ring (.a1) ---
@@ -241,29 +250,22 @@ fun ArcBumper(
             drawPath(
                 path = arcPath,
                 color = neonColor.copy(alpha = bloomAlphaAnim),
-                style = Stroke(width = 50f * s, cap = StrokeCap.Round, join = StrokeJoin.Round)
+                style = strokeHalo
             )
 
             // --- Layer 4: Tubular Body Gradient (.a2) ---
             // Thicker solid body: stroke-width 46 (increased from 33 for ample interior label space)
-            val topY = oy + 6f * s
-            val botY = oy + 80f * s
-            val bodyGradient = Brush.verticalGradient(
-                colors = listOf(Color(0xFF282A2E), Color(0xFF08090A)),
-                startY = topY,
-                endY = botY
-            )
             drawPath(
                 path = arcPath,
                 brush = bodyGradient,
-                style = Stroke(width = 46f * s, cap = StrokeCap.Round, join = StrokeJoin.Round)
+                style = strokeBody
             )
 
             // --- Layer 5: Specular Crescent Highlight (.a3) ---
             drawPath(
                 path = specPath,
                 color = Color.White.copy(alpha = if (isPressed) 0.06f else 0.12f),
-                style = Stroke(width = 6f * s, cap = StrokeCap.Round, join = StrokeJoin.Round)
+                style = strokeSpec
             )
         }
 

@@ -251,3 +251,26 @@ fun RealisticMacroButton(
         )
     }
 }
+
+/**
+ * Static preview delegate for RealisticMacroButton with zero touch overhead.
+ */
+@Composable
+fun StaticRealisticMacroButton(
+    key: String,
+    modifier: Modifier = Modifier,
+    displayLabel: String? = null,
+    isRgbEnabled: Boolean = true
+) {
+    RealisticMacroButton(
+        key = key,
+        isConnected = true,
+        onVibrate = {},
+        viewModel = null,
+        isRgbEnabled = isRgbEnabled,
+        modifier = modifier,
+        displayLabel = displayLabel,
+        isInteractive = false
+    )
+}
+

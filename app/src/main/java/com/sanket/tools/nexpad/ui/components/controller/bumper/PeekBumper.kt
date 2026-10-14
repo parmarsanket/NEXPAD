@@ -150,6 +150,59 @@ fun PeekBumper(
     val strokeIrisNormal = remember(density) { Stroke(width = 1.5f * density) }
     val strokeIrisOuter = remember(density) { Stroke(width = 1f * density) }
 
+    val strokeRingBloom = remember(density) { Stroke(width = 3.5f * density) }
+    val strokeRingCore = remember(density) { Stroke(width = 1.8f * density) }
+    val ringCornerRadius = remember(density) { CornerRadius((27f - 2.5f) * density, (27f - 2.5f) * density) }
+    val borderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.50f),
+                Color.Black.copy(alpha = 0.80f)
+            )
+        )
+    }
+    val undercutShadowColorsNormal = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)) }
+    val undercutShadowColorsPressed = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)) }
+    val lensColorsNormal = remember {
+        listOf(
+            Color.White.copy(alpha = 0.14f),
+            Color.White.copy(alpha = 0.04f),
+            Color.Transparent
+        )
+    }
+    val lensColorsPressed = remember {
+        listOf(
+            Color.White.copy(alpha = 0.05f),
+            Color.White.copy(alpha = 0.01f),
+            Color.Transparent
+        )
+    }
+    val specLineColorsNormal = remember {
+        listOf(
+            Color.White.copy(alpha = 0.45f),
+            Color.White.copy(alpha = 0.16f)
+        )
+    }
+    val specLineColorsPressed = remember {
+        listOf(
+            Color.White.copy(alpha = 0.12f),
+            Color.White.copy(alpha = 0.04f)
+        )
+    }
+    val windowShape = remember { RoundedCornerShape(18.dp) }
+    val winTopShadowColors = remember { listOf(Color.Black.copy(alpha = 0.92f), Color.Transparent) }
+    val winVignetteBrush = remember(density) {
+        val winW = 124f * density
+        val winH = 36f * density
+        Brush.radialGradient(
+            0.0f to Color.Transparent,
+            0.28f to Color.Transparent,
+            1.0f to Color.Black.copy(alpha = 0.88f),
+            center = Offset(winW / 2f, winH / 2f),
+            radius = winW * 0.55f
+        )
+    }
+
     val stadiumBloomColors = remember(neonColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
@@ -243,12 +296,7 @@ fun PeekBumper(
             // 1px metallic rim outline
             .border(
                 width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.50f),
-                        Color.Black.copy(alpha = 0.80f)
-                    )
-                ),
+                brush = borderBrush,
                 shape = bumperShape
             )
             .then(
@@ -278,7 +326,7 @@ fun PeekBumper(
             val insetH = h * 0.40f
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (isPressed) 0.85f else 0.70f)),
+                    colors = if (isPressed) undercutShadowColorsPressed else undercutShadowColorsNormal,
                     startY = h - insetH,
                     endY = h
                 ),
@@ -289,15 +337,14 @@ fun PeekBumper(
             // Neon color ring — inset 2.5dp with pill corner radius
             val ringBloomAlpha = ringBloomAlphaState.value
             val ringInset = 2.5.dp.toPx()
-            val ringRadius = 27.dp.toPx() - ringInset
 
             // Outer bloom pass
             drawRoundRect(
                 color = neonColor.copy(alpha = (if (isPressed) 0.60f else 0.28f) * ringBloomAlpha),
                 topLeft = Offset(ringInset, ringInset),
                 size = Size(w - ringInset * 2, h - ringInset * 2),
-                cornerRadius = CornerRadius(ringRadius, ringRadius),
-                style = Stroke(width = 3.5.dp.toPx())
+                cornerRadius = ringCornerRadius,
+                style = strokeRingBloom
             )
 
             // Core crisp stroke
@@ -305,19 +352,15 @@ fun PeekBumper(
                 color = neonColor.copy(alpha = ringBloomAlpha),
                 topLeft = Offset(ringInset, ringInset),
                 size = Size(w - ringInset * 2, h - ringInset * 2),
-                cornerRadius = CornerRadius(ringRadius, ringRadius),
-                style = Stroke(width = 1.8.dp.toPx())
+                cornerRadius = ringCornerRadius,
+                style = strokeRingCore
             )
 
             // Glass lens top specular crescent highlight
             val sheenH = h * 0.42f
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isPressed) 0.05f else 0.14f),
-                        Color.White.copy(alpha = if (isPressed) 0.01f else 0.04f),
-                        Color.Transparent
-                    ),
+                    colors = if (isPressed) lensColorsPressed else lensColorsNormal,
                     startY = 0f,
                     endY = sheenH
                 ),
@@ -330,10 +373,7 @@ fun PeekBumper(
             val specEndX = w * 0.85f
             drawLine(
                 brush = Brush.horizontalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isPressed) 0.12f else 0.45f),
-                        Color.White.copy(alpha = if (isPressed) 0.04f else 0.16f)
-                    ),
+                    colors = if (isPressed) specLineColorsPressed else specLineColorsNormal,
                     startX = specStartX,
                     endX = specEndX
                 ),
@@ -344,7 +384,6 @@ fun PeekBumper(
         }
 
         // Oversized Recessed Magnifier Window (.lx-window)
-        val windowShape = RoundedCornerShape(18.dp)
         Box(
             modifier = Modifier
                 .size(124.dp, 36.dp)
@@ -366,12 +405,11 @@ fun PeekBumper(
             // Recessed inner vignette overlay and 3D bevel
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val winW = size.width
-                val winH = size.height
 
                 // Inset top shadow
                 drawRect(
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color.Black.copy(alpha = 0.92f), Color.Transparent),
+                        colors = winTopShadowColors,
                         startY = 0f,
                         endY = 8.dp.toPx()
                     ),
@@ -380,16 +418,11 @@ fun PeekBumper(
 
                 // Deep vignette
                 drawRect(
-                    brush = Brush.radialGradient(
-                        0.0f to Color.Transparent,
-                        0.28f to Color.Transparent,
-                        1.0f to Color.Black.copy(alpha = 0.88f),
-                        center = Offset(winW / 2f, winH / 2f),
-                        radius = winW * 0.55f
-                    )
+                    brush = winVignetteBrush
                 )
 
                 // Bottom specular edge line
+                val winH = size.height
                 drawLine(
                     color = Color.White.copy(alpha = 0.06f),
                     start = Offset(6.dp.toPx(), winH - 0.5f),

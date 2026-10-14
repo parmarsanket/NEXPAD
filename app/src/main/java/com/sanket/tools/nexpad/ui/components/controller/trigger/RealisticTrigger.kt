@@ -25,12 +25,12 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.roundToInt
 
@@ -64,7 +65,7 @@ fun RealisticTrigger(
     isInteractive: Boolean = true
 ) {
     var isPressed by remember { mutableStateOf(false) }
-    val isLeft = key.uppercase() == com.sanket.tools.nexpad.model.NexpadKeys.LT
+    val isLeft = key.uppercase() == NexpadKeys.LT
 
     // Ergonomic mobile trigger contour: 16dp top corners, 46dp bottom hull
     val triggerShape = remember {
@@ -138,10 +139,26 @@ fun RealisticTrigger(
     val stroke1_5dp = remember(density) { Stroke(width = 1.5f * density) }
     val stroke2dp = remember(density) { Stroke(width = 2f * density) }
     val stroke3_5dp = remember(density) { Stroke(width = 3.5f * density) }
+    val stroke5dp = remember(density) { Stroke(width = 5f * density) }
 
     val insetShadowColorsPressed = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)) }
     val insetShadowColorsNormal = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)) }
     val specularSheenColors = remember { listOf(Color.White.copy(alpha = 0.06f), Color.Transparent) }
+    val windowTopShadowColors = remember { listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent) }
+    val windowVignetteColors = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f)) }
+    val lensHighlightColors = remember { listOf(Color.Transparent, Color.White.copy(alpha = 0.22f), Color.Transparent) }
+    val lensHighlightPressedColors = remember { listOf(Color.Transparent, Color.White.copy(alpha = 0.10f), Color.Transparent) }
+
+    val shieldAuraColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val plumeColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val fluidGradientColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent)
+    }
+
     val chassisBorderBrush = remember {
         Brush.verticalGradient(
             colors = listOf(
@@ -165,38 +182,36 @@ fun RealisticTrigger(
                 if (isRgbEnabled) {
                     val fillProgress = fillProgressState.value
                     val rgbBloomAlpha = rgbBloomAlphaState.value
-                    val padX = 12.dp.toPx()
-                    val padTop = 6.dp.toPx()
-                    val padBottom = (10.dp + 16.dp * fillProgress).toPx()
+                    val padX = 12f * density
+                    val padTop = 6f * density
+                    val padBottom = (10f + 16f * fillProgress) * density
 
                     // 1. Asymmetric Trigger Shield Aura matching trigger contour
+                    shieldAuraColors[0] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.55f else 0.32f))
+                    shieldAuraColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.15f)
+                    shieldAuraColors[2] = Color.Transparent
                     drawRoundRect(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.55f else 0.32f)),
-                                neonColor.copy(alpha = rgbBloomAlpha * 0.15f),
-                                Color.Transparent
-                            ),
-                            center = Offset(center.x, center.y + 6.dp.toPx() * fillProgress),
+                            colors = shieldAuraColors,
+                            center = Offset(center.x, center.y + 6f * density * fillProgress),
                             radius = size.width * 0.65f
                         ),
                         topLeft = Offset(-padX, -padTop),
                         size = Size(size.width + padX * 2f, size.height + padTop + padBottom),
-                        cornerRadius = CornerRadius(20.dp.toPx(), 44.dp.toPx())
+                        cornerRadius = CornerRadius(20f * density, 44f * density)
                     )
 
                     // 2. Downward Squeeze Thruster Plume along bottom hull
                     if (fillProgress > 0.05f) {
                         val plumeW = size.width * 0.70f
-                        val plumeH = 20.dp.toPx() * fillProgress
-                        val plumeY = size.height + 2.dp.toPx()
+                        val plumeH = 20f * density * fillProgress
+                        val plumeY = size.height + 2f * density
+                        plumeColors[0] = Color.White.copy(alpha = rgbBloomAlpha * fillProgress * 0.70f)
+                        plumeColors[1] = neonColor.copy(alpha = rgbBloomAlpha * fillProgress * 0.90f)
+                        plumeColors[2] = Color.Transparent
                         drawOval(
                             brush = Brush.radialGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = rgbBloomAlpha * fillProgress * 0.70f),
-                                    neonColor.copy(alpha = rgbBloomAlpha * fillProgress * 0.90f),
-                                    Color.Transparent
-                                ),
+                                colors = plumeColors,
                                 center = Offset(center.x, plumeY),
                                 radius = plumeW * 0.50f
                             ),
@@ -264,13 +279,12 @@ fun RealisticTrigger(
             )
 
             // 2. Analog Meter (.lx-meter): inset 7dp, top radii 11dp, bottom radii 38dp
-            val mInset = 7.dp.toPx()
-            val mw = w - mInset * 2f
+            val mInset = 7f * density
             val mh = h - mInset * 2f
-            val meterTopR = 11.dp.toPx()
-            val meterBotR = 38.dp.toPx()
+            val meterTopR = 11f * density
+            val meterBotR = 38f * density
 
-            // Meter fluid surging upward from bottom hull on press (Direct hardware path fill, no stencil)
+            // Meter fluid surging upward from bottom hull on press (Direct hardware path fill)
             if (fillProgress > 0.001f) {
                 val liquidH = mh * fillProgress
                 val fluidTopY = (h - mInset) - liquidH
@@ -280,7 +294,7 @@ fun RealisticTrigger(
 
                 liquidPath.reset()
                 liquidPath.addRoundRect(
-                    androidx.compose.ui.geometry.RoundRect(
+                    RoundRect(
                         left = mInset,
                         top = fluidTopY,
                         right = w - mInset,
@@ -293,25 +307,23 @@ fun RealisticTrigger(
                 )
 
                 // Fluid vertical gradient fill: glow at bottom, fading toward top
+                fluidGradientColors[0] = Color.Transparent
+                fluidGradientColors[1] = neonColor.copy(alpha = 0.50f * fillProgress)
                 drawPath(
                     path = liquidPath,
                     brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            neonColor.copy(alpha = 0.50f * fillProgress)
-                        ),
+                        colors = fluidGradientColors,
                         startY = fluidTopY,
                         endY = h - mInset
                     )
                 )
 
                 // Emissive top fluid crest line & bloom
-                val glowWidth = 5.dp.toPx()
                 drawLine(
                     color = neonColor.copy(alpha = 0.55f * fillProgress),
                     start = Offset(mInset + currentTopR, fluidTopY),
                     end = Offset(w - mInset - currentTopR, fluidTopY),
-                    strokeWidth = glowWidth
+                    strokeWidth = stroke5dp.width
                 )
                 drawLine(
                     color = neonColor.copy(alpha = 1.0f * fillProgress),
@@ -322,12 +334,12 @@ fun RealisticTrigger(
             }
 
             // 3. Neon Lens Ring (.lx-ring): inset 2.5dp, dual-pass stroke bloom
-            val ringInset = 2.5.dp.toPx()
-            val ringTopR = 13.5.dp.toPx()
-            val ringBotR = 43.5.dp.toPx()
+            val ringInset = 2.5f * density
+            val ringTopR = 13.5f * density
+            val ringBotR = 43.5f * density
             ringPath.reset()
             ringPath.addRoundRect(
-                androidx.compose.ui.geometry.RoundRect(
+                RoundRect(
                     left = ringInset,
                     top = ringInset,
                     right = w - ringInset,
@@ -356,14 +368,10 @@ fun RealisticTrigger(
             // Top specular line highlight along the top edge
             drawLine(
                 brush = Brush.horizontalGradient(
-                    colors = listOf(
-                        Color.Transparent,
-                        Color.White.copy(alpha = if (isPressed) 0.10f else 0.22f),
-                        Color.Transparent
-                    )
+                    colors = if (isPressed) lensHighlightPressedColors else lensHighlightColors
                 ),
-                start = Offset(w * 0.15f, 2.dp.toPx()),
-                end = Offset(w * 0.85f, 2.dp.toPx()),
+                start = Offset(w * 0.15f, 2f * density),
+                end = Offset(w * 0.85f, 2f * density),
                 strokeWidth = stroke1_5dp.width
             )
 
@@ -407,10 +415,7 @@ fun RealisticTrigger(
                 // Inset shadow at top of window: inset 0 2px 5px rgba(0,0,0,0.9)
                 drawRect(
                     brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.85f),
-                            Color.Transparent
-                        ),
+                        colors = windowTopShadowColors,
                         startY = 0f,
                         endY = winH * 0.45f
                     ),
@@ -421,10 +426,7 @@ fun RealisticTrigger(
                 // Edge radial vignette
                 drawOval(
                     brush = Brush.radialGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.75f)
-                        ),
+                        colors = windowVignetteColors,
                         center = Offset(winW / 2f, winH / 2f),
                         radius = winW / 2f
                     ),
@@ -451,4 +453,26 @@ fun RealisticTrigger(
             )
         }
     }
+}
+
+/**
+ * Static preview delegate for RealisticTrigger with 0 touch overhead and 0 coroutines.
+ */
+@Composable
+fun StaticRealisticTrigger(
+    key: String = "LT",
+    isRgbEnabled: Boolean = true,
+    displayLabel: String? = null,
+    modifier: Modifier = Modifier
+) {
+    RealisticTrigger(
+        key = key,
+        isConnected = false,
+        onVibrate = {},
+        viewModel = null,
+        isRgbEnabled = isRgbEnabled,
+        modifier = modifier,
+        displayLabel = displayLabel,
+        isInteractive = false
+    )
 }

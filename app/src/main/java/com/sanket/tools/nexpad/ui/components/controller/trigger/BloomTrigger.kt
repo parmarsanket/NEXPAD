@@ -8,7 +8,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
@@ -23,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -31,15 +29,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.cos
-import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
@@ -117,13 +114,63 @@ fun BloomTrigger(
         )
     }
 
-    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val chassisBorderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.50f),
+                Color.Black.copy(alpha = 0.85f)
+            )
+        )
+    }
+
+    val windowBackgroundBrush = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF050506),
+                Color(0xFF121314)
+            ),
+            center = Offset(0.50f, 0.60f),
+            radius = 45f
+        )
+    }
+
+    val windowBorderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.9f),
+                Color.White.copy(alpha = 0.12f)
+            )
+        )
+    }
+
+    val windowVignetteColors = remember {
+        listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f))
+    }
+
+    val lensHighlightColors = remember {
+        listOf(
+            Color.White.copy(alpha = 0.16f),
+            Color.White.copy(alpha = 0.04f),
+            Color.Transparent
+        )
+    }
+
+    val density = LocalDensity.current.density
     val strokeRim = remember(density) { Stroke(width = 1.5f * density) }
+    val strokeBloomRimOuter = remember(density) { Stroke(width = 4f * density) }
+    val strokeBloomRimCore = remember(density) { Stroke(width = 1.8f * density) }
+    val strokeLensArc = remember(density) { Stroke(width = 1.2f * density) }
+    val strokeRingBloom = remember(density) { Stroke(width = 2.8f * density) }
+    val strokeRingCore = remember(density) { Stroke(width = 1.3f * density) }
+
     val pupilBloomColors = remember(glowColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent, Color.Transparent)
     }
     val petalColors = remember(glowColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val bloomRadialColors = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent, Color.Transparent)
     }
 
     Box(
@@ -159,8 +206,8 @@ fun BloomTrigger(
                     // 2. 8 Expanding Mechanical Iris Petal Lobes
                     val petalCount = 8
                     val petalRot = 45f * fillProgress
-                    val petalLength = (10.dp + 16.dp * fillProgress).toPx()
-                    val petalStartR = baseR - 4.dp.toPx()
+                    val petalLength = (10f + 16f * fillProgress) * density
+                    val petalStartR = baseR - 4f * density
 
                     for (i in 0 until petalCount) {
                         val angleDeg = i * (360.0 / petalCount) + petalRot
@@ -183,14 +230,14 @@ fun BloomTrigger(
                             ),
                             start = startPt,
                             end = endPt,
-                            strokeWidth = (2.5f + 2f * fillProgress).dp.toPx()
+                            strokeWidth = (2.5f + 2f * fillProgress) * density
                         )
                     }
 
                     // 3. Expanding circular iris perimeter rim
                     drawCircle(
                         color = glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.90f else 0.50f)),
-                        radius = baseR + 4.dp.toPx() + 8.dp.toPx() * fillProgress,
+                        radius = baseR + 4f * density + 8f * density * fillProgress,
                         center = center,
                         style = strokeRim
                     )
@@ -211,12 +258,7 @@ fun BloomTrigger(
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
             .border(
                 width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.50f),
-                        Color.Black.copy(alpha = 0.85f)
-                    )
-                ),
+                brush = chassisBorderBrush,
                 shape = CircleShape
             )
             .then(
@@ -241,44 +283,43 @@ fun BloomTrigger(
         Canvas(modifier = Modifier.fillMaxSize()) {
             val currentFill = fillProgressState.value
             val center = Offset(size.width / 2f, size.height / 2f)
-            val maxRadius = size.minDimension / 2f - 4.dp.toPx()
+            val maxRadius = size.minDimension / 2f - 4f * density
 
             if (currentFill > 0.005f) {
                 val bloomRadius = (currentFill * maxRadius).coerceAtLeast(4f)
                 val bloomAlpha = (currentFill * 2.5f).coerceIn(0f, 1f)
 
                 // Radiant Light Bloom expanding from the center pupil
+                bloomRadialColors[0] = Color.White.copy(alpha = 0.90f * bloomAlpha)
+                bloomRadialColors[1] = glowColor.copy(alpha = 0.70f * bloomAlpha)
+                bloomRadialColors[2] = glowColor.copy(alpha = 0.30f * bloomAlpha)
+                bloomRadialColors[3] = Color.Transparent
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.90f * bloomAlpha),
-                            glowColor.copy(alpha = 0.70f * bloomAlpha),
-                            glowColor.copy(alpha = 0.30f * bloomAlpha),
-                            Color.Transparent
-                        ),
+                        colors = bloomRadialColors,
                         center = center,
-                        radius = bloomRadius + 8.dp.toPx()
+                        radius = bloomRadius + 8f * density
                     ),
-                    radius = bloomRadius + 8.dp.toPx(),
+                    radius = bloomRadius + 8f * density,
                     center = center
                 )
 
                 // Expanding Bloom Rim Halo (.bloom-rim)
-                val rimRadius = currentFill * (maxRadius - 2.dp.toPx())
+                val rimRadius = currentFill * (maxRadius - 2f * density)
                 if (rimRadius > 2f) {
                     // Outer neon halo
                     drawCircle(
                         color = glowColor.copy(alpha = 0.55f * bloomAlpha),
                         radius = rimRadius,
                         center = center,
-                        style = Stroke(width = 4.dp.toPx())
+                        style = strokeBloomRimOuter
                     )
                     // Crisp core white ring
                     drawCircle(
                         color = Color.White.copy(alpha = 0.85f * bloomAlpha),
                         radius = rimRadius,
                         center = center,
-                        style = Stroke(width = 1.8.dp.toPx())
+                        style = strokeBloomRimCore
                     )
                 }
             }
@@ -289,24 +330,10 @@ fun BloomTrigger(
             modifier = Modifier
                 .size(34.dp)
                 .clip(CircleShape)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            Color(0xFF050506),
-                            Color(0xFF121314)
-                        ),
-                        center = Offset(0.50f, 0.60f),
-                        radius = 45f
-                    )
-                )
+                .background(windowBackgroundBrush)
                 .border(
                     width = 1.dp,
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.9f),
-                            Color.White.copy(alpha = 0.12f)
-                        )
-                    ),
+                    brush = windowBorderBrush,
                     shape = CircleShape
                 ),
             contentAlignment = Alignment.Center
@@ -314,7 +341,7 @@ fun BloomTrigger(
             Canvas(modifier = Modifier.fillMaxSize()) {
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)),
+                        colors = windowVignetteColors,
                         center = Offset(size.width / 2f, size.height / 2f),
                         radius = size.minDimension * 0.55f
                     ),
@@ -345,35 +372,31 @@ fun BloomTrigger(
             // Top specular crescent arc highlight
             drawArc(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.16f),
-                        Color.White.copy(alpha = 0.04f),
-                        Color.Transparent
-                    ),
+                    colors = lensHighlightColors,
                     startY = 0f,
                     endY = size.height * 0.38f
                 ),
                 startAngle = 180f,
                 sweepAngle = 180f,
                 useCenter = false,
-                topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
-                size = Size(size.width - 3.dp.toPx(), size.height - 3.dp.toPx()),
-                style = Stroke(width = 1.2.dp.toPx())
+                topLeft = Offset(1.5f * density, 1.5f * density),
+                size = Size(size.width - 3f * density, size.height - 3f * density),
+                style = strokeLensArc
             )
 
             // Outer chassis neon ring (.lx-ring)
-            val ringRadius = r - 2.5.dp.toPx()
+            val ringRadius = r - 2.5f * density
             drawCircle(
                 color = glowColor.copy(alpha = rgbBloomAlpha * 0.55f),
                 radius = ringRadius,
                 center = center,
-                style = Stroke(width = 2.8.dp.toPx())
+                style = strokeRingBloom
             )
             drawCircle(
                 color = glowColor.copy(alpha = if (isPressed) 0.95f else 0.60f),
                 radius = ringRadius,
                 center = center,
-                style = Stroke(width = 1.3.dp.toPx())
+                style = strokeRingCore
             )
         }
     }

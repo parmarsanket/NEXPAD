@@ -255,6 +255,41 @@ fun MetaballsDPad(
         )
     }
 
+    val undercutColorsPressed = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)) }
+    val undercutColorsIdle = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)) }
+
+    val bridgePath = remember { Path() }
+    val strokeBridgeHalo = remember(density) { Stroke(width = 6f * density, cap = StrokeCap.Round, join = StrokeJoin.Round) }
+
+    val pipHighlightColors = remember { listOf(Color.White.copy(alpha = 0.16f), Color.Transparent) }
+    val strokePipHighlight = remember(density) { Stroke(width = 1f * density) }
+
+    val strokeRingOuterPressed = remember(density) { Stroke(width = 5f * density) }
+    val strokeRingOuterIdle = remember(density) { Stroke(width = 3f * density) }
+    val strokeRingCore = remember(density) { Stroke(width = 2f * density) }
+    val strokeLensArc = remember(density) { Stroke(width = 1f * density) }
+
+    val lensColorsPressed = remember {
+        listOf(
+            Color.White.copy(alpha = 0.06f),
+            Color.White.copy(alpha = 0.02f),
+            Color.Transparent
+        )
+    }
+    val lensColorsIdle = remember {
+        listOf(
+            Color.White.copy(alpha = 0.14f),
+            Color.White.copy(alpha = 0.05f),
+            Color.Transparent
+        )
+    }
+    val specularSheenColors = remember {
+        listOf(
+            Color.White.copy(alpha = 0.06f),
+            Color.Transparent
+        )
+    }
+
     Box(
         modifier = modifier
             .size(172.dp)
@@ -285,56 +320,109 @@ fun MetaballsDPad(
                     )
 
                     // 2. Viscous satellite fluid fields swelling toward plunging centers
-                    val baseDist = 58.dp.toPx()
-                    val plungeTravel = 26.dp.toPx()
+                    val baseDist = 58f * density
+                    val plungeTravel = 26f * density
 
-                    fun drawFluidSatellite(dx: Float, dy: Float, progress: Float) {
-                        val isPlunging = progress > 0.05f
-                        val dist = baseDist - plungeTravel * progress
-                        val satPos = Offset(center.x + dx * dist, center.y + dy * dist)
-                        val satR = 24.dp.toPx() + (12.dp.toPx() * progress)
-                        val satAlpha = if (isPlunging) rgbBloomAlpha * 0.90f else (if (isAnyPressed) 0.20f else 0.40f)
-
-                        // Viscous connecting bridge to center
-                        if (isPlunging) {
-                            bridgeColors[0] = neonColor.copy(alpha = satAlpha * 0.7f)
-                            bridgeColors[1] = Color.White.copy(alpha = satAlpha * 0.85f)
-                            drawLine(
-                                brush = Brush.linearGradient(
-                                    colors = bridgeColors,
-                                    start = center,
-                                    end = satPos
-                                ),
-                                start = center,
-                                end = satPos,
-                                strokeWidth = 20.dp.toPx() * progress
-                            )
-                        }
-
-                        // Swelling satellite blob aura
-                        satBloomStops[0] = 0.00f to (if (isPlunging) Color.White else neonColor).copy(alpha = satAlpha * 0.70f)
-                        satBloomStops[1] = 0.45f to neonColor.copy(alpha = satAlpha * 0.35f)
-                        satBloomStops[2] = 1.00f to Color.Transparent
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                colorStops = satBloomStops,
-                                center = satPos,
-                                radius = satR * 1.35f
-                            ),
-                            radius = satR * 1.35f,
-                            center = satPos
+                    // UP
+                    var isPlunging = upProgress > 0.05f
+                    var dist = baseDist - plungeTravel * upProgress
+                    var satPos = Offset(center.x, center.y - dist)
+                    var satR = 24f * density + (12f * density * upProgress)
+                    var satAlpha = if (isPlunging) rgbBloomAlpha * 0.90f else (if (isAnyPressed) 0.20f else 0.40f)
+                    if (isPlunging) {
+                        bridgeColors[0] = neonColor.copy(alpha = satAlpha * 0.7f)
+                        bridgeColors[1] = Color.White.copy(alpha = satAlpha * 0.85f)
+                        drawLine(
+                            brush = Brush.linearGradient(colors = bridgeColors, start = center, end = satPos),
+                            start = center, end = satPos,
+                            strokeWidth = 20f * density * upProgress
                         )
                     }
+                    satBloomStops[0] = 0.00f to (if (isPlunging) Color.White else neonColor).copy(alpha = satAlpha * 0.70f)
+                    satBloomStops[1] = 0.45f to neonColor.copy(alpha = satAlpha * 0.35f)
+                    satBloomStops[2] = 1.00f to Color.Transparent
+                    drawCircle(
+                        brush = Brush.radialGradient(colorStops = satBloomStops, center = satPos, radius = satR * 1.35f),
+                        radius = satR * 1.35f,
+                        center = satPos
+                    )
 
-                    drawFluidSatellite(0f, -1f, upProgress)
-                    drawFluidSatellite(0f, 1f, downProgress)
-                    drawFluidSatellite(-1f, 0f, leftProgress)
-                    drawFluidSatellite(1f, 0f, rightProgress)
+                    // DOWN
+                    isPlunging = downProgress > 0.05f
+                    dist = baseDist - plungeTravel * downProgress
+                    satPos = Offset(center.x, center.y + dist)
+                    satR = 24f * density + (12f * density * downProgress)
+                    satAlpha = if (isPlunging) rgbBloomAlpha * 0.90f else (if (isAnyPressed) 0.20f else 0.40f)
+                    if (isPlunging) {
+                        bridgeColors[0] = neonColor.copy(alpha = satAlpha * 0.7f)
+                        bridgeColors[1] = Color.White.copy(alpha = satAlpha * 0.85f)
+                        drawLine(
+                            brush = Brush.linearGradient(colors = bridgeColors, start = center, end = satPos),
+                            start = center, end = satPos,
+                            strokeWidth = 20f * density * downProgress
+                        )
+                    }
+                    satBloomStops[0] = 0.00f to (if (isPlunging) Color.White else neonColor).copy(alpha = satAlpha * 0.70f)
+                    satBloomStops[1] = 0.45f to neonColor.copy(alpha = satAlpha * 0.35f)
+                    satBloomStops[2] = 1.00f to Color.Transparent
+                    drawCircle(
+                        brush = Brush.radialGradient(colorStops = satBloomStops, center = satPos, radius = satR * 1.35f),
+                        radius = satR * 1.35f,
+                        center = satPos
+                    )
+
+                    // LEFT
+                    isPlunging = leftProgress > 0.05f
+                    dist = baseDist - plungeTravel * leftProgress
+                    satPos = Offset(center.x - dist, center.y)
+                    satR = 24f * density + (12f * density * leftProgress)
+                    satAlpha = if (isPlunging) rgbBloomAlpha * 0.90f else (if (isAnyPressed) 0.20f else 0.40f)
+                    if (isPlunging) {
+                        bridgeColors[0] = neonColor.copy(alpha = satAlpha * 0.7f)
+                        bridgeColors[1] = Color.White.copy(alpha = satAlpha * 0.85f)
+                        drawLine(
+                            brush = Brush.linearGradient(colors = bridgeColors, start = center, end = satPos),
+                            start = center, end = satPos,
+                            strokeWidth = 20f * density * leftProgress
+                        )
+                    }
+                    satBloomStops[0] = 0.00f to (if (isPlunging) Color.White else neonColor).copy(alpha = satAlpha * 0.70f)
+                    satBloomStops[1] = 0.45f to neonColor.copy(alpha = satAlpha * 0.35f)
+                    satBloomStops[2] = 1.00f to Color.Transparent
+                    drawCircle(
+                        brush = Brush.radialGradient(colorStops = satBloomStops, center = satPos, radius = satR * 1.35f),
+                        radius = satR * 1.35f,
+                        center = satPos
+                    )
+
+                    // RIGHT
+                    isPlunging = rightProgress > 0.05f
+                    dist = baseDist - plungeTravel * rightProgress
+                    satPos = Offset(center.x + dist, center.y)
+                    satR = 24f * density + (12f * density * rightProgress)
+                    satAlpha = if (isPlunging) rgbBloomAlpha * 0.90f else (if (isAnyPressed) 0.20f else 0.40f)
+                    if (isPlunging) {
+                        bridgeColors[0] = neonColor.copy(alpha = satAlpha * 0.7f)
+                        bridgeColors[1] = Color.White.copy(alpha = satAlpha * 0.85f)
+                        drawLine(
+                            brush = Brush.linearGradient(colors = bridgeColors, start = center, end = satPos),
+                            start = center, end = satPos,
+                            strokeWidth = 20f * density * rightProgress
+                        )
+                    }
+                    satBloomStops[0] = 0.00f to (if (isPlunging) Color.White else neonColor).copy(alpha = satAlpha * 0.70f)
+                    satBloomStops[1] = 0.45f to neonColor.copy(alpha = satAlpha * 0.35f)
+                    satBloomStops[2] = 1.00f to Color.Transparent
+                    drawCircle(
+                        brush = Brush.radialGradient(colorStops = satBloomStops, center = satPos, radius = satR * 1.35f),
+                        radius = satR * 1.35f,
+                        center = satPos
+                    )
                 }
             }
             .then(
                 if (isInteractive) {
-                    Modifier.pointerInput(isConnected) {
+                    Modifier.pointerInput(Unit) {
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)
                             down.consume()
@@ -408,7 +496,7 @@ fun MetaballsDPad(
                 val insetH = h * 0.35f
                 drawRect(
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (isAnyPressed) 0.85f else 0.70f)),
+                        colors = if (isAnyPressed) undercutColorsPressed else undercutColorsIdle,
                         startY = h - insetH,
                         endY = h
                     ),
@@ -425,68 +513,92 @@ fun MetaballsDPad(
                 val leftProgress = leftProgressState.value
 
                 val center = Offset(size.width / 2f, size.height / 2f)
-                val baseDistPx = 58.dp.toPx()
-                val rCenterPx = 19.dp.toPx() // c0 radius (diameter 38dp)
-                val rSatPx = 23.dp.toPx()    // sb radius (diameter 46dp)
+                val baseDistPx = 58f * density
+                val rCenterPx = 19f * density // c0 radius (diameter 38dp)
+                val rSatPx = 23f * density    // sb radius (diameter 46dp)
+                val maxBridgeDist = 54f * density
+                val minBridgeDist = 31f * density
+                val bridgeDistDiff = maxBridgeDist - minBridgeDist
 
-                // Current satellite distances
-                val satDistances = listOf(
-                    Triple(K.UP, upProgress, baseDistPx * (1f - upProgress * 0.45f)),
-                    Triple(K.RIGHT, rightProgress, baseDistPx * (1f - rightProgress * 0.45f)),
-                    Triple(K.DOWN, downProgress, baseDistPx * (1f - downProgress * 0.45f)),
-                    Triple(K.LEFT, leftProgress, baseDistPx * (1f - leftProgress * 0.45f))
-                )
-
-                val satOffsets = listOf(
-                    Offset(0f, -satDistances[0].third),
-                    Offset(satDistances[1].third, 0f),
-                    Offset(0f, satDistances[2].third),
-                    Offset(-satDistances[3].third, 0f)
-                )
+                val dUp = baseDistPx * (1f - upProgress * 0.45f)
+                val dRight = baseDistPx * (1f - rightProgress * 0.45f)
+                val dDown = baseDistPx * (1f - downProgress * 0.45f)
+                val dLeft = baseDistPx * (1f - leftProgress * 0.45f)
 
                 // 1. Draw dynamic organic fluid bridge ONLY for satellites currently plunging inward
-                satDistances.forEach { (dir, progress, d) ->
-                    if (progress > 0.05f && d < 54.dp.toPx()) {
-                        val blend = ((54.dp.toPx() - d) / (54.dp.toPx() - 31.dp.toPx())).coerceIn(0f, 1f)
-                        val angle = when (dir) {
-                            K.UP -> -90.0
-                            K.RIGHT -> 0.0
-                            K.DOWN -> 90.0
-                            K.LEFT -> 180.0
-                            else -> 0.0
-                        }
-
-                        val bridgePath = Path()
-                        withTransform({
-                            rotate(degrees = angle.toFloat(), pivot = center)
-                        }) {
-                            val wCenter = rCenterPx * (0.60f + 0.35f * blend)
-                            val wSat = rSatPx * (0.60f + 0.35f * blend)
-                            val wMid = (6.dp.toPx() + 10.dp.toPx() * blend)
-
-                            bridgePath.reset()
-                            bridgePath.moveTo(0f, -wCenter)
-                            bridgePath.cubicTo(d * 0.35f, -wMid, d * 0.65f, -wMid, d, -wSat)
-                            bridgePath.lineTo(d, wSat)
-                            bridgePath.cubicTo(d * 0.65f, wMid, d * 0.35f, wMid, 0f, wCenter)
-                            bridgePath.close()
-
-                            // Soft outer fluid halo
-                            drawPath(
-                                bridgePath,
-                                color = neonColor.copy(alpha = 0.35f * blend),
-                                style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
-                            )
-                            // Fluid body fill
-                            drawPath(bridgePath, color = neonColor.copy(alpha = 0.92f * blend))
-                        }
+                // UP (-90°)
+                if (upProgress > 0.05f && dUp < maxBridgeDist) {
+                    val blend = ((maxBridgeDist - dUp) / bridgeDistDiff).coerceIn(0f, 1f)
+                    withTransform({ rotate(degrees = -90f, pivot = center) }) {
+                        val wCenter = rCenterPx * (0.60f + 0.35f * blend)
+                        val wSat = rSatPx * (0.60f + 0.35f * blend)
+                        val wMid = 6f * density + 10f * density * blend
+                        bridgePath.reset()
+                        bridgePath.moveTo(0f, -wCenter)
+                        bridgePath.cubicTo(dUp * 0.35f, -wMid, dUp * 0.65f, -wMid, dUp, -wSat)
+                        bridgePath.lineTo(dUp, wSat)
+                        bridgePath.cubicTo(dUp * 0.65f, wMid, dUp * 0.35f, wMid, 0f, wCenter)
+                        bridgePath.close()
+                        drawPath(bridgePath, color = neonColor.copy(alpha = 0.35f * blend), style = strokeBridgeHalo)
+                        drawPath(bridgePath, color = neonColor.copy(alpha = 0.92f * blend))
+                    }
+                }
+                // RIGHT (0°)
+                if (rightProgress > 0.05f && dRight < maxBridgeDist) {
+                    val blend = ((maxBridgeDist - dRight) / bridgeDistDiff).coerceIn(0f, 1f)
+                    withTransform({ rotate(degrees = 0f, pivot = center) }) {
+                        val wCenter = rCenterPx * (0.60f + 0.35f * blend)
+                        val wSat = rSatPx * (0.60f + 0.35f * blend)
+                        val wMid = 6f * density + 10f * density * blend
+                        bridgePath.reset()
+                        bridgePath.moveTo(0f, -wCenter)
+                        bridgePath.cubicTo(dRight * 0.35f, -wMid, dRight * 0.65f, -wMid, dRight, -wSat)
+                        bridgePath.lineTo(dRight, wSat)
+                        bridgePath.cubicTo(dRight * 0.65f, wMid, dRight * 0.35f, wMid, 0f, wCenter)
+                        bridgePath.close()
+                        drawPath(bridgePath, color = neonColor.copy(alpha = 0.35f * blend), style = strokeBridgeHalo)
+                        drawPath(bridgePath, color = neonColor.copy(alpha = 0.92f * blend))
+                    }
+                }
+                // DOWN (90°)
+                if (downProgress > 0.05f && dDown < maxBridgeDist) {
+                    val blend = ((maxBridgeDist - dDown) / bridgeDistDiff).coerceIn(0f, 1f)
+                    withTransform({ rotate(degrees = 90f, pivot = center) }) {
+                        val wCenter = rCenterPx * (0.60f + 0.35f * blend)
+                        val wSat = rSatPx * (0.60f + 0.35f * blend)
+                        val wMid = 6f * density + 10f * density * blend
+                        bridgePath.reset()
+                        bridgePath.moveTo(0f, -wCenter)
+                        bridgePath.cubicTo(dDown * 0.35f, -wMid, dDown * 0.65f, -wMid, dDown, -wSat)
+                        bridgePath.lineTo(dDown, wSat)
+                        bridgePath.cubicTo(dDown * 0.65f, wMid, dDown * 0.35f, wMid, 0f, wCenter)
+                        bridgePath.close()
+                        drawPath(bridgePath, color = neonColor.copy(alpha = 0.35f * blend), style = strokeBridgeHalo)
+                        drawPath(bridgePath, color = neonColor.copy(alpha = 0.92f * blend))
+                    }
+                }
+                // LEFT (180°)
+                if (leftProgress > 0.05f && dLeft < maxBridgeDist) {
+                    val blend = ((maxBridgeDist - dLeft) / bridgeDistDiff).coerceIn(0f, 1f)
+                    withTransform({ rotate(degrees = 180f, pivot = center) }) {
+                        val wCenter = rCenterPx * (0.60f + 0.35f * blend)
+                        val wSat = rSatPx * (0.60f + 0.35f * blend)
+                        val wMid = 6f * density + 10f * density * blend
+                        bridgePath.reset()
+                        bridgePath.moveTo(0f, -wCenter)
+                        bridgePath.cubicTo(dLeft * 0.35f, -wMid, dLeft * 0.65f, -wMid, dLeft, -wSat)
+                        bridgePath.lineTo(dLeft, wSat)
+                        bridgePath.cubicTo(dLeft * 0.65f, wMid, dLeft * 0.35f, wMid, 0f, wCenter)
+                        bridgePath.close()
+                        drawPath(bridgePath, color = neonColor.copy(alpha = 0.35f * blend), style = strokeBridgeHalo)
+                        drawPath(bridgePath, color = neonColor.copy(alpha = 0.92f * blend))
                     }
                 }
 
                 // 2. Central fluid circle (.c0, diameter 38dp)
                 drawCircle(
                     color = neonColor.copy(alpha = 0.30f),
-                    radius = rCenterPx + 2.5.dp.toPx(),
+                    radius = rCenterPx + 2.5f * density,
                     center = center
                 )
                 drawCircle(
@@ -496,22 +608,45 @@ fun MetaballsDPad(
                 )
 
                 // 3. Satellite fluid circles (.sb, diameter 46dp)
-                satDistances.forEachIndexed { index, (_, progress, _) ->
-                    val satPos = center + satOffsets[index]
-                    val isDirPressed = progress > 0.05f
-                    // Outer soft halo
-                    drawCircle(
-                        color = neonColor.copy(alpha = if (isDirPressed) 0.55f else 0.30f),
-                        radius = rSatPx + (if (isDirPressed) 4.dp.toPx() else 2.5.dp.toPx()),
-                        center = satPos
-                    )
-                    // Core fluid circle
-                    drawCircle(
-                        color = neonColor.copy(alpha = 0.92f),
-                        radius = rSatPx,
-                        center = satPos
-                    )
-                }
+                // UP
+                var satPos = Offset(center.x, center.y - dUp)
+                var isDirPressed = upProgress > 0.05f
+                drawCircle(
+                    color = neonColor.copy(alpha = if (isDirPressed) 0.55f else 0.30f),
+                    radius = rSatPx + (if (isDirPressed) 4f * density else 2.5f * density),
+                    center = satPos
+                )
+                drawCircle(color = neonColor.copy(alpha = 0.92f), radius = rSatPx, center = satPos)
+
+                // RIGHT
+                satPos = Offset(center.x + dRight, center.y)
+                isDirPressed = rightProgress > 0.05f
+                drawCircle(
+                    color = neonColor.copy(alpha = if (isDirPressed) 0.55f else 0.30f),
+                    radius = rSatPx + (if (isDirPressed) 4f * density else 2.5f * density),
+                    center = satPos
+                )
+                drawCircle(color = neonColor.copy(alpha = 0.92f), radius = rSatPx, center = satPos)
+
+                // DOWN
+                satPos = Offset(center.x, center.y + dDown)
+                isDirPressed = downProgress > 0.05f
+                drawCircle(
+                    color = neonColor.copy(alpha = if (isDirPressed) 0.55f else 0.30f),
+                    radius = rSatPx + (if (isDirPressed) 4f * density else 2.5f * density),
+                    center = satPos
+                )
+                drawCircle(color = neonColor.copy(alpha = 0.92f), radius = rSatPx, center = satPos)
+
+                // LEFT
+                satPos = Offset(center.x - dLeft, center.y)
+                isDirPressed = leftProgress > 0.05f
+                drawCircle(
+                    color = neonColor.copy(alpha = if (isDirPressed) 0.55f else 0.30f),
+                    radius = rSatPx + (if (isDirPressed) 4f * density else 2.5f * density),
+                    center = satPos
+                )
+                drawCircle(color = neonColor.copy(alpha = 0.92f), radius = rSatPx, center = satPos)
             }
 
             // --- 3. Caps Layer (.capl) ---
@@ -528,10 +663,10 @@ fun MetaballsDPad(
                 // Central 6dp glowing neon pip
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val pcenter = Offset(size.width / 2f, size.height / 2f)
-                    val pipRadius = 3.dp.toPx()
+                    val pipRadius = 3f * density
                     drawCircle(
                         color = neonColor.copy(alpha = 0.40f),
-                        radius = pipRadius + 2.dp.toPx(),
+                        radius = pipRadius + 2f * density,
                         center = pcenter
                     )
                     drawCircle(
@@ -548,16 +683,16 @@ fun MetaballsDPad(
                     // Top specular highlight arc
                     drawArc(
                         brush = Brush.verticalGradient(
-                            colors = listOf(Color.White.copy(alpha = 0.16f), Color.Transparent),
+                            colors = pipHighlightColors,
                             startY = 0f,
                             endY = size.height * 0.40f
                         ),
                         startAngle = 180f,
                         sweepAngle = 180f,
                         useCenter = false,
-                        topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
-                        size = Size(size.width - 2.dp.toPx(), size.height - 2.dp.toPx()),
-                        style = Stroke(width = 1.dp.toPx())
+                        topLeft = Offset(1f * density, 1f * density),
+                        size = Size(size.width - 2f * density, size.height - 2f * density),
+                        style = strokePipHighlight
                     )
                 }
             }
@@ -571,7 +706,7 @@ fun MetaballsDPad(
                 capGradient = capGradient,
                 rotationAngle = 0f,
                 modifier = Modifier.offset {
-                    val upDistPx = 58.dp.toPx() * (1f - upProgressState.value * 0.45f)
+                    val upDistPx = 58f * density * (1f - upProgressState.value * 0.45f)
                     IntOffset(0, -upDistPx.roundToInt())
                 }
             )
@@ -584,7 +719,7 @@ fun MetaballsDPad(
                 capGradient = capGradient,
                 rotationAngle = 90f,
                 modifier = Modifier.offset {
-                    val rightDistPx = 58.dp.toPx() * (1f - rightProgressState.value * 0.45f)
+                    val rightDistPx = 58f * density * (1f - rightProgressState.value * 0.45f)
                     IntOffset(rightDistPx.roundToInt(), 0)
                 }
             )
@@ -597,7 +732,7 @@ fun MetaballsDPad(
                 capGradient = capGradient,
                 rotationAngle = 180f,
                 modifier = Modifier.offset {
-                    val downDistPx = 58.dp.toPx() * (1f - downProgressState.value * 0.45f)
+                    val downDistPx = 58f * density * (1f - downProgressState.value * 0.45f)
                     IntOffset(0, downDistPx.roundToInt())
                 }
             )
@@ -610,7 +745,7 @@ fun MetaballsDPad(
                 capGradient = capGradient,
                 rotationAngle = 270f,
                 modifier = Modifier.offset {
-                    val leftDistPx = 58.dp.toPx() * (1f - leftProgressState.value * 0.45f)
+                    val leftDistPx = 58f * density * (1f - leftProgressState.value * 0.45f)
                     IntOffset(-leftDistPx.roundToInt(), 0)
                 }
             )
@@ -622,7 +757,7 @@ fun MetaballsDPad(
             val h = size.height
             val r = size.minDimension / 2f
             val center = Offset(w / 2f, h / 2f)
-            val ringInset = 3.dp.toPx()
+            val ringInset = 3f * density
             val ringR = r - ringInset
 
             // Outer Neon Ring: border 2px solid var(--glow), opacity 0.3 idle, 1.0 pressed
@@ -631,38 +766,34 @@ fun MetaballsDPad(
                 color = neonColor.copy(alpha = ringAlpha * 0.40f),
                 radius = ringR,
                 center = center,
-                style = Stroke(width = if (isAnyPressed) 5.dp.toPx() else 3.dp.toPx())
+                style = if (isAnyPressed) strokeRingOuterPressed else strokeRingOuterIdle
             )
             drawCircle(
                 color = neonColor.copy(alpha = ringAlpha),
                 radius = ringR,
                 center = center,
-                style = Stroke(width = 2.dp.toPx())
+                style = strokeRingCore
             )
 
             // Top specular optical glass lens (.lx-lens)
             drawArc(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isAnyPressed) 0.06f else 0.14f),
-                        Color.White.copy(alpha = if (isAnyPressed) 0.02f else 0.05f),
-                        Color.Transparent
-                    ),
+                    colors = if (isAnyPressed) lensColorsPressed else lensColorsIdle,
                     startY = 0f,
                     endY = h * 0.42f
                 ),
                 startAngle = 180f,
                 sweepAngle = 180f,
                 useCenter = false,
-                topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
-                size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
-                style = Stroke(width = 1.dp.toPx())
+                topLeft = Offset(1f * density, 1f * density),
+                size = Size(w - 2f * density, h - 2f * density),
+                style = strokeLensArc
             )
 
             // Bottom-right specular reflection sheen
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                    colors = specularSheenColors,
                     center = Offset(w * 0.70f, h * 0.78f),
                     radius = w * 0.28f
                 ),
@@ -676,18 +807,18 @@ fun MetaballsDPad(
                 startAngle = 200f,
                 sweepAngle = 140f,
                 useCenter = false,
-                topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
-                size = Size(w - 3.dp.toPx(), h - 3.dp.toPx()),
-                style = Stroke(width = 1.dp.toPx())
+                topLeft = Offset(1.5f * density, 1.5f * density),
+                size = Size(w - 3f * density, h - 3f * density),
+                style = strokeLensArc
             )
             drawArc(
                 color = Color.Black.copy(alpha = 0.30f),
                 startAngle = 20f,
                 sweepAngle = 140f,
                 useCenter = false,
-                topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
-                size = Size(w - 3.dp.toPx(), h - 3.dp.toPx()),
-                style = Stroke(width = 1.dp.toPx())
+                topLeft = Offset(1.5f * density, 1.5f * density),
+                size = Size(w - 3f * density, h - 3f * density),
+                style = strokeLensArc
             )
         }
     }
@@ -706,6 +837,36 @@ fun SatelliteCap(
     rotationAngle: Float,
     modifier: Modifier = Modifier
 ) {
+    val density = LocalDensity.current.density
+    val chevronPath = remember(density) {
+        val cx = 18f * density
+        val cy = 18f * density
+        val s = (18f * density) / 24f
+        Path().apply {
+            moveTo(cx - 6f * s, cy + 3f * s)
+            lineTo(cx, cy - 3f * s)
+            lineTo(cx + 6f * s, cy + 3f * s)
+        }
+    }
+    val strokeChevronBloom = remember(density) {
+        val s = (18f * density) / 24f
+        Stroke(
+            width = 6f * s,
+            cap = StrokeCap.Round,
+            join = StrokeJoin.Round
+        )
+    }
+    val strokeChevronCore = remember(density) {
+        val s = (18f * density) / 24f
+        Stroke(
+            width = 3.4f * s,
+            cap = StrokeCap.Round,
+            join = StrokeJoin.Round
+        )
+    }
+    val strokeCapHighlight = remember(density) { Stroke(width = 1f * density) }
+    val capHighlightColors = remember { listOf(Color.White.copy(alpha = 0.16f), Color.Transparent) }
+
     Box(
         modifier = modifier
             .size(36.dp)
@@ -727,14 +888,6 @@ fun SatelliteCap(
         Canvas(modifier = Modifier.fillMaxSize()) {
             val center = Offset(size.width / 2f, size.height / 2f)
 
-            // Vector Directional Chevron: M6 15 L12 9 L18 15 (viewBox 24x24)
-            val chevronScale = 18.dp.toPx() / 24f
-            val chevronPath = Path().apply {
-                moveTo(center.x + (-6f) * chevronScale, center.y + 3f * chevronScale)
-                lineTo(center.x, center.y + (-3f) * chevronScale)
-                lineTo(center.x + 6f * chevronScale, center.y + 3f * chevronScale)
-            }
-
             withTransform({
                 rotate(degrees = rotationAngle, pivot = center)
             }) {
@@ -743,38 +896,30 @@ fun SatelliteCap(
                     drawPath(
                         path = chevronPath,
                         color = glowColor.copy(alpha = 0.65f),
-                        style = Stroke(
-                            width = 6f * chevronScale,
-                            cap = StrokeCap.Round,
-                            join = StrokeJoin.Round
-                        )
+                        style = strokeChevronBloom
                     )
                 }
                 // Crisp core chevron
                 drawPath(
                     path = chevronPath,
                     color = if (isPressed) Color.White else glowColor,
-                    style = Stroke(
-                        width = 3.4f * chevronScale,
-                        cap = StrokeCap.Round,
-                        join = StrokeJoin.Round
-                    )
+                    style = strokeChevronCore
                 )
             }
 
             // Inset highlight arc
             drawArc(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.16f), Color.Transparent),
+                    colors = capHighlightColors,
                     startY = 0f,
                     endY = size.height * 0.45f
                 ),
                 startAngle = 180f,
                 sweepAngle = 180f,
                 useCenter = false,
-                topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
-                size = Size(size.width - 2.dp.toPx(), size.height - 2.dp.toPx()),
-                style = Stroke(width = 1.dp.toPx())
+                topLeft = Offset(1f * density, 1f * density),
+                size = Size(size.width - 2f * density, size.height - 2f * density),
+                style = strokeCapHighlight
             )
         }
     }

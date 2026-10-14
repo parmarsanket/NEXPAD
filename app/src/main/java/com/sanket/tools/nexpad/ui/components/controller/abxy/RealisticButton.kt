@@ -36,6 +36,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.category.CategoryManager
+import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.roundToInt
 
@@ -154,9 +156,9 @@ fun RealisticButton(
     onVibrate: () -> Unit = {},
     viewModel: GamepadViewModel? = null,
     isRgbEnabled: Boolean = true,
-    isInteractive: Boolean = true,
     modifier: Modifier = Modifier,
-    displayLabel: String? = null
+    displayLabel: String? = null,
+    isInteractive: Boolean = true
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
@@ -275,6 +277,103 @@ fun RealisticButton(
     val stroke3_5dp = remember(density) { Stroke(width = 3.5f * density) }
     val stroke4dp = remember(density) { Stroke(width = 4f * density) }
 
+    val insetShadowBrushPressed = remember(density) {
+        val btnSizePx = 80f * density
+        val insetShadowH = btnSizePx * 0.35f
+        Brush.verticalGradient(
+            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)),
+            startY = btnSizePx - insetShadowH,
+            endY = btnSizePx
+        )
+    }
+    val insetShadowBrushNormal = remember(density) {
+        val btnSizePx = 80f * density
+        val insetShadowH = btnSizePx * 0.35f
+        Brush.verticalGradient(
+            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
+            startY = btnSizePx - insetShadowH,
+            endY = btnSizePx
+        )
+    }
+    val lensBrushPressed = remember(density) {
+        val btnSizePx = 80f * density
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.06f),
+                Color.White.copy(alpha = 0.02f),
+                Color.Transparent
+            ),
+            startY = 0f,
+            endY = btnSizePx * 0.40f
+        )
+    }
+    val lensBrushNormal = remember(density) {
+        val btnSizePx = 80f * density
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.14f),
+                Color.White.copy(alpha = 0.05f),
+                Color.Transparent
+            ),
+            startY = 0f,
+            endY = btnSizePx * 0.40f
+        )
+    }
+    val sheenBrush = remember(density) {
+        val btnSizePx = 80f * density
+        Brush.radialGradient(
+            colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+            center = Offset(btnSizePx * 0.70f, btnSizePx * 0.78f),
+            radius = btnSizePx * 0.25f
+        )
+    }
+
+    val recessBrushBottom = remember(density) {
+        val btnSizePx = 80f * density
+        val recessW = btnSizePx * 0.80f
+        val recessH = btnSizePx * 0.26f
+        val recessBottom = btnSizePx - (btnSizePx * 0.04f)
+        val recessTop = recessBottom - recessH
+        Brush.radialGradient(
+            colors = recessColors,
+            center = Offset(btnSizePx * 0.5f, recessTop + recessH * 0.05f),
+            radius = recessW * 0.5f
+        )
+    }
+    val recessBrushTop = remember(density) {
+        val btnSizePx = 80f * density
+        val recessW = btnSizePx * 0.80f
+        val recessH = btnSizePx * 0.26f
+        val recessTop = btnSizePx * 0.04f
+        Brush.radialGradient(
+            colors = recessColors,
+            center = Offset(btnSizePx * 0.5f, recessTop + recessH * 0.95f),
+            radius = recessW * 0.5f
+        )
+    }
+    val recessBrushLeft = remember(density) {
+        val btnSizePx = 80f * density
+        val recessW = btnSizePx * 0.26f
+        val recessH = btnSizePx * 0.80f
+        val recessLeft = btnSizePx * 0.04f
+        Brush.radialGradient(
+            colors = recessColors,
+            center = Offset(recessLeft + recessW * 0.95f, btnSizePx * 0.5f),
+            radius = recessH * 0.5f
+        )
+    }
+    val recessBrushRight = remember(density) {
+        val btnSizePx = 80f * density
+        val recessW = btnSizePx * 0.26f
+        val recessH = btnSizePx * 0.80f
+        val recessLeft = btnSizePx - recessW - (btnSizePx * 0.04f)
+        Brush.radialGradient(
+            colors = recessColors,
+            center = Offset(recessLeft + recessW * 0.05f, btnSizePx * 0.5f),
+            radius = recessH * 0.5f
+        )
+    }
+
     class RealisticButtonAuraBrush {
         private var radius: Float = 0f
         private var center: Offset = Offset.Unspecified
@@ -300,14 +399,14 @@ fun RealisticButton(
 
     Box(
         modifier = modifier
-            .size(80.dp)
+            .size(92.dp)
             .graphicsLayer {
                 // Root RenderNode isolation
             }
             // Ambient RGB Bloom behind button socket
             .drawBehind {
                 if (isRgbEnabled) {
-                    val r = size.minDimension * 1f
+                    val r = size.minDimension * 0.95f
                     val brush = auraBrushCache.getBrush(effectiveColor, center, r)
                     drawCircle(
                         brush = brush,
@@ -316,218 +415,220 @@ fun RealisticButton(
                         alpha = rgbBloomAlphaState.value
                     )
                 }
-            }
-            // Outer drop shadow: 0 4px 7px rgba(0, 0, 0, 0.55)
-            .shadow(
-                elevation = if (isPressed) 1.dp else 4.dp,
-                shape = CircleShape,
-                ambientColor = if (isRgbEnabled) effectiveColor else Color.Black,
-                spotColor = if (isRgbEnabled) effectiveColor else Color.Black
-            )
-            .graphicsLayer {
-                scaleX = scaleAnimState.value
-                scaleY = scaleAnimState.value
-                translationY = pressOffsetYAnimState.value * density
-            }
-            .clip(CircleShape)
-            // .cap base dome: radial-gradient(circle at 50% 55%, #232527 0%, #0c0d0e 75%, #000 100%)
-            .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
-            .then(
-                if (isInteractive) {
-                    Modifier.pointerInput(key) {
-                        detectTapGestures(
-                            onPress = {
-                                currentOnVibrate()
-                                isPressed = true
-                                currentViewModel?.updateButton(key, true)
-                                tryAwaitRelease()
-                                isPressed = false
-                                currentViewModel?.updateButton(key, false)
-                            }
-                        )
-                    }
-                } else Modifier
-            ),
+            },
         contentAlignment = Alignment.Center
     ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val w = size.width
-            val h = size.height
-            val r = size.minDimension / 2f
-
-            // 0 0 0 1px rgba(0, 0, 0, 0.5) cap outline
-            drawCircle(
-                color = Color.Black.copy(alpha = 0.50f),
-                radius = r - 0.5.dp.toPx(),
-                style = stroke1dp
-            )
-
-            // Inset bottom shadow: inset 0 -6px 9px rgba(0, 0, 0, 0.70)
-            val insetShadowH = h * 0.35f
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colors = if (isPressed) insetShadowColorsPressed else insetShadowColorsNormal,
-                    startY = h - insetShadowH,
-                    endY = h
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                // Outer drop shadow: 0 4px 7px rgba(0, 0, 0, 0.55)
+                .shadow(
+                    elevation = if (isPressed) 1.dp else 4.dp,
+                    shape = CircleShape,
+                    ambientColor = if (isRgbEnabled) effectiveColor else Color.Black,
+                    spotColor = if (isRgbEnabled) effectiveColor else Color.Black
+                )
+                .graphicsLayer {
+                    scaleX = scaleAnimState.value
+                    scaleY = scaleAnimState.value
+                    translationY = pressOffsetYAnimState.value * density
+                }
+                .clip(CircleShape)
+                // .cap base dome: radial-gradient(circle at 50% 55%, #232527 0%, #0c0d0e 75%, #000 100%)
+                .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
+                .then(
+                    if (isInteractive) {
+                        Modifier.pointerInput(key) {
+                            detectTapGestures(
+                                onPress = {
+                                    currentOnVibrate()
+                                    isPressed = true
+                                    currentViewModel?.updateButton(key, true)
+                                    tryAwaitRelease()
+                                    isPressed = false
+                                    currentViewModel?.updateButton(key, false)
+                                }
+                            )
+                        }
+                    } else Modifier
                 ),
-                topLeft = Offset(0f, h - insetShadowH),
-                size = Size(w, insetShadowH)
-            )
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val w = size.width
+                val h = size.height
+                val r = size.minDimension / 2f
 
-            // .cap::after: Directional Optical Recess Ellipse
-            when (perspectiveDirection) {
-                ButtonPerspectiveDirection.BOTTOM -> {
-                    val recessW = w * 0.80f
-                    val recessH = h * 0.26f
-                    val recessLeft = (w - recessW) / 2f
-                    val recessBottom = h - (h * 0.04f)
-                    val recessTop = recessBottom - recessH
+                // 0 0 0 1px rgba(0, 0, 0, 0.5) cap outline
+                drawCircle(
+                    color = Color.Black.copy(alpha = 0.50f),
+                    radius = r - 0.5.dp.toPx(),
+                    style = stroke1dp
+                )
 
-                    drawOval(
-                        brush = Brush.radialGradient(
-                            colors = recessColors,
-                            center = Offset(w * 0.5f, recessTop + recessH * 0.05f),
-                            radius = recessW * 0.5f
-                        ),
-                        topLeft = Offset(recessLeft, recessTop),
-                        size = Size(recessW, recessH)
-                    )
+                // Inset bottom shadow: inset 0 -6px 9px rgba(0, 0, 0, 0.70)
+                val insetShadowH = h * 0.35f
+                drawRect(
+                    brush = if (isPressed) insetShadowBrushPressed else insetShadowBrushNormal,
+                    topLeft = Offset(0f, h - insetShadowH),
+                    size = Size(w, insetShadowH)
+                )
+
+                // .cap::after: Directional Optical Recess Ellipse
+                when (perspectiveDirection) {
+                    ButtonPerspectiveDirection.BOTTOM -> {
+                        val recessW = w * 0.80f
+                        val recessH = h * 0.26f
+                        val recessLeft = (w - recessW) / 2f
+                        val recessBottom = h - (h * 0.04f)
+                        val recessTop = recessBottom - recessH
+
+                        drawOval(
+                            brush = recessBrushBottom,
+                            topLeft = Offset(recessLeft, recessTop),
+                            size = Size(recessW, recessH)
+                        )
+                    }
+                    ButtonPerspectiveDirection.TOP -> {
+                        val recessW = w * 0.80f
+                        val recessH = h * 0.26f
+                        val recessLeft = (w - recessW) / 2f
+                        val recessTop = h * 0.04f
+
+                        drawOval(
+                            brush = recessBrushTop,
+                            topLeft = Offset(recessLeft, recessTop),
+                            size = Size(recessW, recessH)
+                        )
+                    }
+                    ButtonPerspectiveDirection.LEFT -> {
+                        val recessW = w * 0.26f
+                        val recessH = h * 0.80f
+                        val recessLeft = w * 0.04f
+                        val recessTop = (h - recessH) / 2f
+
+                        drawOval(
+                            brush = recessBrushLeft,
+                            topLeft = Offset(recessLeft, recessTop),
+                            size = Size(recessW, recessH)
+                        )
+                    }
+                    ButtonPerspectiveDirection.RIGHT -> {
+                        val recessW = w * 0.26f
+                        val recessH = h * 0.80f
+                        val recessLeft = w - recessW - (w * 0.04f)
+                        val recessTop = (h - recessH) / 2f
+
+                        drawOval(
+                            brush = recessBrushRight,
+                            topLeft = Offset(recessLeft, recessTop),
+                            size = Size(recessW, recessH)
+                        )
+                    }
+                    ButtonPerspectiveDirection.NONE -> {
+                        drawCircle(
+                            color = Color.Black.copy(alpha = if (isPressed) 0.60f else 0.35f),
+                            radius = r - 2.dp.toPx(),
+                            style = stroke3dp
+                        )
+                    }
                 }
-                ButtonPerspectiveDirection.TOP -> {
-                    val recessW = w * 0.80f
-                    val recessH = h * 0.26f
-                    val recessLeft = (w - recessW) / 2f
-                    val recessTop = h * 0.04f
 
-                    drawOval(
-                        brush = Brush.radialGradient(
-                            colors = recessColors,
-                            center = Offset(w * 0.5f, recessTop + recessH * 0.95f),
-                            radius = recessW * 0.5f
-                        ),
-                        topLeft = Offset(recessLeft, recessTop),
-                        size = Size(recessW, recessH)
-                    )
-                }
-                ButtonPerspectiveDirection.LEFT -> {
-                    val recessW = w * 0.26f
-                    val recessH = h * 0.80f
-                    val recessLeft = w * 0.04f
-                    val recessTop = (h - recessH) / 2f
+                // .ring: Inner Glowing Neon Color Ring
+                val ringRadius = r - 3.dp.toPx()
+                // Outer bloom
+                drawCircle(
+                    color = effectiveColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
+                    radius = ringRadius,
+                    style = stroke4dp
+                )
+                // Core crisp ring
+                drawCircle(
+                    color = effectiveColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
+                    radius = ringRadius,
+                    style = stroke2dp
+                )
 
-                    drawOval(
-                        brush = Brush.radialGradient(
-                            colors = recessColors,
-                            center = Offset(recessLeft + recessW * 0.95f, h * 0.5f),
-                            radius = recessH * 0.5f
-                        ),
-                        topLeft = Offset(recessLeft, recessTop),
-                        size = Size(recessW, recessH)
-                    )
-                }
-                ButtonPerspectiveDirection.RIGHT -> {
-                    val recessW = w * 0.26f
-                    val recessH = h * 0.80f
-                    val recessLeft = w - recessW - (w * 0.04f)
-                    val recessTop = (h - recessH) / 2f
+                // Layer #6: Socket Bevel Rim — outside neon ring
+                drawCircle(
+                    color = effectiveColor.copy(alpha = if (isPressed) 0.35f else 0.12f),
+                    radius = ringRadius + 1.5.dp.toPx(),
+                    style = if (isPressed) stroke3_5dp else stroke2dp
+                )
 
-                    drawOval(
-                        brush = Brush.radialGradient(
-                            colors = recessColors,
-                            center = Offset(recessLeft + recessW * 0.05f, h * 0.5f),
-                            radius = recessH * 0.5f
-                        ),
-                        topLeft = Offset(recessLeft, recessTop),
-                        size = Size(recessW, recessH)
-                    )
-                }
-                ButtonPerspectiveDirection.NONE -> {
-                    drawCircle(
-                        color = Color.Black.copy(alpha = if (isPressed) 0.60f else 0.35f),
-                        radius = r - 2.dp.toPx(),
-                        style = stroke3dp
-                    )
-                }
-            }
+                // .lens: Acrylic Glass Lens Specular Reflections
+                val lensInset = 1.dp.toPx()
+                drawArc(
+                    brush = if (isPressed) lensBrushPressed else lensBrushNormal,
+                    startAngle = 180f,
+                    sweepAngle = 180f,
+                    useCenter = false,
+                    topLeft = Offset(lensInset, lensInset),
+                    size = Size(w - lensInset * 2f, h - lensInset * 2f),
+                    style = stroke1dp
+                )
 
-            // .ring: Inner Glowing Neon Color Ring
-            val ringRadius = r - 3.dp.toPx()
-            // Outer bloom
-            drawCircle(
-                color = effectiveColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
-                radius = ringRadius,
-                style = stroke4dp
-            )
-            // Core crisp ring
-            drawCircle(
-                color = effectiveColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
-                radius = ringRadius,
-                style = stroke2dp
-            )
-
-            // Layer #6: Socket Bevel Rim — outside neon ring
-            drawCircle(
-                color = effectiveColor.copy(alpha = if (isPressed) 0.35f else 0.12f),
-                radius = ringRadius + 1.5.dp.toPx(),
-                style = if (isPressed) stroke3_5dp else stroke2dp
-            )
-
-            // .lens: Acrylic Glass Lens Specular Reflections
-            val lensInset = 1.dp.toPx()
-            drawArc(
-                brush = Brush.verticalGradient(
-                    colors = if (isPressed) lensColorsPressed else lensColorsNormal,
-                    startY = 0f,
-                    endY = h * 0.40f
-                ),
-                startAngle = 180f,
-                sweepAngle = 180f,
-                useCenter = false,
-                topLeft = Offset(lensInset, lensInset),
-                size = Size(w - lensInset * 2f, h - lensInset * 2f),
-                style = stroke1dp
-            )
-
-            // Bottom-right specular sheen
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = sheenColors,
+                // Bottom-right specular sheen
+                drawCircle(
+                    brush = sheenBrush,
                     center = Offset(w * 0.70f, h * 0.78f),
                     radius = w * 0.25f
-                ),
-                center = Offset(w * 0.70f, h * 0.78f),
-                radius = w * 0.25f
-            )
-        }
+                )
+            }
 
-        // .glyph: Magnified Optical Glyph with Directional Shift & Horizon Clipping
-        val glyphAlpha = if (isPressed) 0.85f else 1.0f
+            // .glyph: Magnified Optical Glyph with Directional Shift & Horizon Clipping
+            val glyphAlpha = if (isPressed) 0.85f else 1.0f
 
-        val glyphOffset = when (perspectiveDirection) {
-            ButtonPerspectiveDirection.BOTTOM -> IntOffset(0, 7)
-            ButtonPerspectiveDirection.TOP    -> IntOffset(0, -7)
-            ButtonPerspectiveDirection.LEFT   -> IntOffset(-7, 0)
-            ButtonPerspectiveDirection.RIGHT  -> IntOffset(7, 0)
-            ButtonPerspectiveDirection.NONE   -> IntOffset(0, 0)
-        }
+            val glyphOffset = when (perspectiveDirection) {
+                ButtonPerspectiveDirection.BOTTOM -> IntOffset(0, 7)
+                ButtonPerspectiveDirection.TOP    -> IntOffset(0, -7)
+                ButtonPerspectiveDirection.LEFT   -> IntOffset(-7, 0)
+                ButtonPerspectiveDirection.RIGHT  -> IntOffset(7, 0)
+                ButtonPerspectiveDirection.NONE   -> IntOffset(0, 0)
+            }
 
-        val glyphModifier = Modifier.offset { glyphOffset }
+            val glyphModifier = Modifier.offset { glyphOffset }
 
-        if (psShape != null) {
-            PlayStationSymbol(
-                shape = psShape,
-                color = effectiveColor.copy(alpha = glyphAlpha),
-                size = 40.dp,
-                modifier = glyphModifier
-            )
-        } else {
-            Text(
-                text = activeLabel,
-                color = effectiveColor.copy(alpha = glyphAlpha),
-                fontSize = 46.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = glyphModifier
-            )
+            if (psShape != null) {
+                PlayStationSymbol(
+                    shape = psShape,
+                    color = effectiveColor.copy(alpha = glyphAlpha),
+                    size = 44.dp,
+                    modifier = glyphModifier
+                )
+            } else {
+                Text(
+                    text = activeLabel,
+                    color = effectiveColor.copy(alpha = glyphAlpha),
+                    fontSize = 46.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = glyphModifier
+                )
+            }
         }
     }
+}
+
+/**
+ * Static non-interactive preview delegate for RealisticButton with zero touch overhead.
+ */
+@Composable
+fun StaticRealisticButton(
+    controlKey: String,
+    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
+    modifier: Modifier = Modifier
+) {
+    val displayLabel = CategoryManager.getLabelForStyle(controlKey, labelStyle)
+    val buttonColor = resolveButtonColor(controlKey, labelStyle, displayLabel)
+    RealisticButton(
+        key = controlKey,
+        buttonColor = buttonColor,
+        isConnected = false,
+        onVibrate = {},
+        viewModel = null,
+        isRgbEnabled = true,
+        modifier = modifier,
+        displayLabel = displayLabel,
+        isInteractive = false
+    )
 }

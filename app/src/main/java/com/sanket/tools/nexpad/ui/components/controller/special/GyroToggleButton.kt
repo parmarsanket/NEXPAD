@@ -173,7 +173,7 @@ fun GyroToggleButton(
                     ambientColor = if (isRgbEnabled && isGyroEnabled) activeAccentColor else Color.Black,
                     spotColor = if (isRgbEnabled && isGyroEnabled) activeAccentColor else Color.Black
                 )
-                .offset { IntOffset(0, pressOffsetYAnim.value.roundToInt()) }
+                .offset { IntOffset(0, (pressOffsetYAnim.value * density).roundToInt()) }
                 .graphicsLayer {
                     scaleX = scaleAnim.value
                     scaleY = scaleAnim.value
@@ -240,14 +240,14 @@ fun GyroToggleButton(
                     color = activeAccentColor.copy(alpha = alphaGuideline),
                     start = Offset(cx - crossHairLength - 12.dp.toPx(), cy),
                     end = Offset(cx - 12.dp.toPx(), cy),
-                    strokeWidth = 1.2.dp.toPx(),
+                    strokeWidth = 1.2f * density,
                     cap = StrokeCap.Round
                 )
                 drawLine(
                     color = activeAccentColor.copy(alpha = alphaGuideline),
                     start = Offset(cx + 12.dp.toPx(), cy),
                     end = Offset(cx + crossHairLength + 12.dp.toPx(), cy),
-                    strokeWidth = 1.2.dp.toPx(),
+                    strokeWidth = 1.2f * density,
                     cap = StrokeCap.Round
                 )
 

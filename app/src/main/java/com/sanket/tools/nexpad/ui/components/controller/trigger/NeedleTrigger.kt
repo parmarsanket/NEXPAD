@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
@@ -124,6 +125,50 @@ fun NeedleTrigger(
         )
     }
 
+    val chassisBorderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.50f),
+                Color.Black.copy(alpha = 0.85f)
+            )
+        )
+    }
+
+    val needleGradientColors = remember(glowColor) {
+        listOf(Color.White, glowColor)
+    }
+    val hubCavityColors = remember {
+        listOf(Color(0xFF34373B), Color(0xFF0C0D0E))
+    }
+    val windowBackgroundBrush = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF050506),
+                Color(0xFF121314)
+            ),
+            center = Offset(0.50f, 0.60f),
+            radius = 60f
+        )
+    }
+    val windowBorderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.9f),
+                Color.White.copy(alpha = 0.08f)
+            )
+        )
+    }
+    val windowVignetteColors = remember {
+        listOf(Color.Transparent, Color.Black.copy(alpha = 0.80f))
+    }
+    val lensColors = remember {
+        listOf(
+            Color.White.copy(alpha = 0.16f),
+            Color.White.copy(alpha = 0.04f),
+            Color.Transparent
+        )
+    }
+
     val domeAuraColors = remember(glowColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
@@ -137,6 +182,20 @@ fun NeedleTrigger(
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
 
+    val density = LocalDensity.current.density
+    val strokeTicks = remember(density) {
+        Stroke(
+            width = 4.5f * density,
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(1.5f * density, 6.5f * density), 0f)
+        )
+    }
+    val strokeTrackInactive = remember(density) { Stroke(width = 2.5f * density, cap = StrokeCap.Round) }
+    val strokeTrackBloom = remember(density) { Stroke(width = 5.5f * density, cap = StrokeCap.Round) }
+    val strokeTrackCore = remember(density) { Stroke(width = 2.5f * density, cap = StrokeCap.Round) }
+    val strokeHubRim = remember(density) { Stroke(width = 1f * density) }
+    val strokeRingBloom = remember(density) { Stroke(width = 2.8f * density) }
+    val strokeRingCore = remember(density) { Stroke(width = 1.3f * density) }
+
     Box(
         modifier = modifier
             .size(widthDp, heightDp)
@@ -144,8 +203,8 @@ fun NeedleTrigger(
             // Outer dynamic RGB aura
             .drawBehind {
                 if (isRgbEnabled) {
-                    val padX = 12.dp.toPx()
-                    val padY = 8.dp.toPx()
+                    val padX = 12f * density
+                    val padY = 8f * density
                     val curPull = fillProgress.value
 
                     // 1. Arched Dome Chassis Aura (54dp top curve, 14dp bottom)
@@ -160,13 +219,13 @@ fun NeedleTrigger(
                         ),
                         topLeft = Offset(-padX, -padY),
                         size = Size(size.width + padX * 2f, size.height + padY * 2f),
-                        cornerRadius = CornerRadius(54.dp.toPx(), 14.dp.toPx())
+                        cornerRadius = CornerRadius(54f * density, 14f * density)
                     )
 
                     // 2. Sweeping Radial Tachometer Sector Halo
                     val pivotX = size.width / 2f
-                    val pivotY = size.height - 28.dp.toPx()
-                    val arcR = 48.dp.toPx()
+                    val pivotY = size.height - 28f * density
+                    val arcR = 48f * density
                     val startAngle = 200f
                     val sweepTotal = 140f
 
@@ -177,7 +236,7 @@ fun NeedleTrigger(
                         brush = Brush.radialGradient(
                             colors = tachoTrackColors,
                             center = Offset(pivotX, pivotY),
-                            radius = arcR + 10.dp.toPx()
+                            radius = arcR + 10f * density
                         ),
                         startAngle = startAngle,
                         sweepAngle = sweepTotal,
@@ -196,13 +255,13 @@ fun NeedleTrigger(
                             brush = Brush.radialGradient(
                                 colors = sectorPlumeColors,
                                 center = Offset(pivotX, pivotY),
-                                radius = arcR + 12.dp.toPx()
+                                radius = arcR + 12f * density
                             ),
                             startAngle = startAngle,
                             sweepAngle = activeSweep,
                             useCenter = true,
-                            topLeft = Offset(pivotX - arcR - 6.dp.toPx(), pivotY - arcR - 6.dp.toPx()),
-                            size = Size((arcR + 6.dp.toPx()) * 2f, (arcR + 6.dp.toPx()) * 2f)
+                            topLeft = Offset(pivotX - arcR - 6f * density, pivotY - arcR - 6f * density),
+                            size = Size((arcR + 6f * density) * 2f, (arcR + 6f * density) * 2f)
                         )
 
                         // 3. Tachometer Needle Tip Beacon Flare
@@ -210,20 +269,21 @@ fun NeedleTrigger(
                         val angleRad = Math.toRadians(currentAngleDeg.toDouble())
                         val cosN = cos(angleRad).toFloat()
                         val sinN = sin(angleRad).toFloat()
-                        val tipX = pivotX + (arcR + 4.dp.toPx()) * cosN
-                        val tipY = pivotY + (arcR + 4.dp.toPx()) * sinN
+                        val tipX = pivotX + (arcR + 4f * density) * cosN
+                        val tipY = pivotY + (arcR + 4f * density) * sinN
 
                         tipBeaconColors[0] = Color.White.copy(alpha = rgbBloomAlpha.value * 0.90f)
                         tipBeaconColors[1] = glowColor.copy(alpha = rgbBloomAlpha.value * 0.80f)
                         tipBeaconColors[2] = Color.Transparent
+                        val beaconRadius = (if (isPressed) 16f else 10f) * density
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = tipBeaconColors,
                                 center = Offset(tipX, tipY),
-                                radius = (if (isPressed) 16.dp else 10.dp).toPx()
+                                radius = beaconRadius
                             ),
                             center = Offset(tipX, tipY),
-                            radius = (if (isPressed) 16.dp else 10.dp).toPx()
+                            radius = beaconRadius
                         )
                     }
                 }
@@ -243,12 +303,7 @@ fun NeedleTrigger(
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
             .border(
                 width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.50f),
-                        Color.Black.copy(alpha = 0.85f)
-                    )
-                ),
+                brush = chassisBorderBrush,
                 shape = chassisShape
             )
             .then(
@@ -276,10 +331,10 @@ fun NeedleTrigger(
 
             // Pivot coordinates at lower-middle section above the optical window
             val pivotX = w / 2f
-            val pivotY = h - 28.dp.toPx()
+            val pivotY = h - 28f * density
 
-            val arcRadius = 40.dp.toPx()
-            val ticksRadius = 46.dp.toPx()
+            val arcRadius = 40f * density
+            val ticksRadius = 46f * density
 
             // Meter arc geometry: 140° symmetrical arc from 200° (bottom-left) to 340° (bottom-right)
             val startAngle = 200f
@@ -293,10 +348,7 @@ fun NeedleTrigger(
                 useCenter = false,
                 topLeft = Offset(pivotX - ticksRadius, pivotY - ticksRadius),
                 size = Size(ticksRadius * 2f, ticksRadius * 2f),
-                style = Stroke(
-                    width = 4.5.dp.toPx(),
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(1.5f, 6.5f), 0f)
-                )
+                style = strokeTicks
             )
 
             // Inactive Background Track Arc (.ndl-track)
@@ -307,7 +359,7 @@ fun NeedleTrigger(
                 useCenter = false,
                 topLeft = Offset(pivotX - arcRadius, pivotY - arcRadius),
                 size = Size(arcRadius * 2f, arcRadius * 2f),
-                style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round)
+                style = strokeTrackInactive
             )
 
             // Active Glowing Progress Arc (.ndl-prog)
@@ -322,7 +374,7 @@ fun NeedleTrigger(
                     useCenter = false,
                     topLeft = Offset(pivotX - arcRadius, pivotY - arcRadius),
                     size = Size(arcRadius * 2f, arcRadius * 2f),
-                    style = Stroke(width = 5.5.dp.toPx(), cap = StrokeCap.Round)
+                    style = strokeTrackBloom
                 )
 
                 // Crisp neon core
@@ -333,14 +385,14 @@ fun NeedleTrigger(
                     useCenter = false,
                     topLeft = Offset(pivotX - arcRadius, pivotY - arcRadius),
                     size = Size(arcRadius * 2f, arcRadius * 2f),
-                    style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round)
+                    style = strokeTrackCore
                 )
             }
 
             // Analog Needle: rotates from -70° to +70° (relative to pointing straight up)
             val needleAngleDeg = -70f + currentFill * 140f
-            val needleLength = arcRadius + 4.dp.toPx()
-            val needleWidth = 3.dp.toPx()
+            val needleLength = arcRadius + 4f * density
+            val needleWidth = 3f * density
 
             rotate(degrees = needleAngleDeg, pivot = Offset(pivotX, pivotY)) {
                 // Emissive needle glow
@@ -348,14 +400,14 @@ fun NeedleTrigger(
                     color = glowColor.copy(alpha = 0.50f + currentFill * 0.45f),
                     start = Offset(pivotX, pivotY),
                     end = Offset(pivotX, pivotY - needleLength),
-                    strokeWidth = needleWidth + 3.dp.toPx(),
+                    strokeWidth = needleWidth + 3f * density,
                     cap = StrokeCap.Round
                 )
 
                 // Core needle blade with gradient (white tip, neon root)
                 drawLine(
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color.White, glowColor),
+                        colors = needleGradientColors,
                         startY = pivotY - needleLength,
                         endY = pivotY
                     ),
@@ -367,10 +419,10 @@ fun NeedleTrigger(
             }
 
             // Pivot Center Hub (.ndl-cap)
-            val hubRadius = 7.dp.toPx()
+            val hubRadius = 7f * density
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(Color(0xFF34373B), Color(0xFF0C0D0E)),
+                    colors = hubCavityColors,
                     center = Offset(pivotX, pivotY),
                     radius = hubRadius
                 ),
@@ -381,12 +433,12 @@ fun NeedleTrigger(
                 color = Color.Black.copy(alpha = 0.7f),
                 radius = hubRadius,
                 center = Offset(pivotX, pivotY),
-                style = Stroke(width = 1.dp.toPx())
+                style = strokeHubRim
             )
             // Center LED dot on the pivot cap
             drawCircle(
                 color = glowColor,
-                radius = 2.2.dp.toPx(),
+                radius = 2.2f * density,
                 center = Offset(pivotX, pivotY)
             )
         }
@@ -398,24 +450,10 @@ fun NeedleTrigger(
                 .offset(y = (-6).dp)
                 .size(48.dp, 20.dp)
                 .clip(windowShape)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            Color(0xFF050506),
-                            Color(0xFF121314)
-                        ),
-                        center = Offset(0.50f, 0.60f),
-                        radius = 60f
-                    )
-                )
+                .background(windowBackgroundBrush)
                 .border(
                     width = 1.dp,
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.9f),
-                            Color.White.copy(alpha = 0.08f)
-                        )
-                    ),
+                    brush = windowBorderBrush,
                     shape = windowShape
                 ),
             contentAlignment = Alignment.Center
@@ -423,12 +461,12 @@ fun NeedleTrigger(
             Canvas(modifier = Modifier.fillMaxSize()) {
                 drawRoundRect(
                     brush = Brush.radialGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.80f)),
+                        colors = windowVignetteColors,
                         center = Offset(size.width / 2f, size.height / 2f),
                         radius = size.width * 0.55f
                     ),
                     size = size,
-                    cornerRadius = CornerRadius(10.dp.toPx(), 10.dp.toPx())
+                    cornerRadius = CornerRadius(10f * density, 10f * density)
                 )
             }
 
@@ -453,36 +491,32 @@ fun NeedleTrigger(
             // Top specular crescent highlight on arched dome
             drawRoundRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.16f),
-                        Color.White.copy(alpha = 0.04f),
-                        Color.Transparent
-                    ),
+                    colors = lensColors,
                     startY = 0f,
                     endY = h * 0.35f
                 ),
-                topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
-                size = Size(w - 3.dp.toPx(), h * 0.35f),
-                cornerRadius = CornerRadius(54.dp.toPx(), 54.dp.toPx())
+                topLeft = Offset(1.5f * density, 1.5f * density),
+                size = Size(w - 3f * density, h * 0.35f),
+                cornerRadius = CornerRadius(54f * density, 54f * density)
             )
 
             // Outer chassis neon ring (.lx-ring)
-            val ringInset = 2.dp.toPx()
+            val ringInset = 2f * density
             // Outer bloom
             drawRoundRect(
                 color = glowColor.copy(alpha = rgbBloomAlpha.value * 0.55f),
                 topLeft = Offset(ringInset - 1f, ringInset - 1f),
                 size = Size(w - (ringInset - 1f) * 2f, h - (ringInset - 1f) * 2f),
-                cornerRadius = CornerRadius(52.dp.toPx(), 52.dp.toPx()),
-                style = Stroke(width = 2.8.dp.toPx())
+                cornerRadius = CornerRadius(52f * density, 52f * density),
+                style = strokeRingBloom
             )
             // Crisp core
             drawRoundRect(
                 color = glowColor.copy(alpha = if (isPressed) 0.95f else 0.60f),
                 topLeft = Offset(ringInset, ringInset),
                 size = Size(w - ringInset * 2f, h - ringInset * 2f),
-                cornerRadius = CornerRadius(52.dp.toPx(), 52.dp.toPx()),
-                style = Stroke(width = 1.3.dp.toPx())
+                cornerRadius = CornerRadius(52f * density, 52f * density),
+                style = strokeRingCore
             )
         }
     }

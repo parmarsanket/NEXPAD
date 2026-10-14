@@ -158,8 +158,14 @@ fun GyroJoystick(
 
     val stickKey = remember(isLeft) { if (isLeft) "LSB" else "RSB" }
 
-    val strokeOuterGimbal = remember { Stroke(width = 2.0f) }
-    val strokeInnerGimbal = remember { Stroke(width = 1.6f) }
+    val strokeOuterGimbal = remember(density) { Stroke(width = 2.0f * density) }
+    val strokeInnerGimbal = remember(density) { Stroke(width = 1.6f * density) }
+    val stroke4dp = remember(density) { Stroke(width = 4f * density) }
+    val stroke6dp = remember(density) { Stroke(width = 6f * density) }
+    val stroke3dp = remember(density) { Stroke(width = 3f * density) }
+    val stroke1_2dp = remember(density) { Stroke(width = 1.2f * density) }
+    val stroke1dp = remember(density) { Stroke(width = 1f * density) }
+    val stroke3_5dp = remember(density) { Stroke(width = 3.5f * density) }
     val coreBloomColors = remember(glowColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
@@ -504,7 +510,7 @@ fun GyroJoystick(
                     useCenter = false,
                     topLeft = Offset(center.x - gateRadius, center.y - gateRadius),
                     size = Size(gateRadius * 2f, gateRadius * 2f),
-                    style = Stroke(width = 4.dp.toPx())
+                    style = stroke4dp
                 )
             }
 
@@ -549,19 +555,19 @@ fun GyroJoystick(
                 drawCircle(
                     color = glowColor.copy(alpha = gimbalAlpha.value * 0.06f),
                     radius = ringRadius,
-                    style = Stroke(width = 6.dp.toPx())
+                    style = stroke6dp
                 )
                 // Diffuse glow halo
                 drawCircle(
                     color = glowColor.copy(alpha = gimbalAlpha.value * 0.20f),
                     radius = ringRadius,
-                    style = Stroke(width = 3.dp.toPx())
+                    style = stroke3dp
                 )
                 // Crisp core laser filament
                 drawCircle(
                     color = glowColor.copy(alpha = gimbalAlpha.value * 0.90f),
                     radius = ringRadius,
-                    style = Stroke(width = 1.2.dp.toPx())
+                    style = stroke1_2dp
                 )
             }
         }
@@ -590,19 +596,19 @@ fun GyroJoystick(
                 drawCircle(
                     color = glowColor.copy(alpha = gimbalAlpha.value * 0.06f),
                     radius = ringRadius,
-                    style = Stroke(width = 6.dp.toPx())
+                    style = stroke6dp
                 )
                 // Diffuse glow halo
                 drawCircle(
                     color = glowColor.copy(alpha = gimbalAlpha.value * 0.20f),
                     radius = ringRadius,
-                    style = Stroke(width = 3.dp.toPx())
+                    style = stroke3dp
                 )
                 // Crisp core laser filament
                 drawCircle(
                     color = glowColor.copy(alpha = gimbalAlpha.value * 0.90f),
                     radius = ringRadius,
-                    style = Stroke(width = 1.2.dp.toPx())
+                    style = stroke1_2dp
                 )
             }
         }
@@ -653,7 +659,7 @@ fun GyroJoystick(
                     useCenter = false,
                     topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
                     size = Size(puckW - 2.dp.toPx(), puckH - 2.dp.toPx()),
-                    style = Stroke(width = 1.dp.toPx())
+                    style = stroke1dp
                 )
 
                 // Inset bottom shadow: inset 0 -6px 9px rgba(0,0,0,0.80)
@@ -674,13 +680,13 @@ fun GyroJoystick(
                 drawCircle(
                     color = glowColor.copy(alpha = if (isDragging) 0.25f else 0.14f),
                     radius = puckRingRadius,
-                    style = Stroke(width = 3.dp.toPx())
+                    style = stroke3dp
                 )
                 // Crisp core filament
                 drawCircle(
                     color = glowColor.copy(alpha = if (isDragging) 0.95f else 0.65f),
                     radius = puckRingRadius,
-                    style = Stroke(width = 1.2.dp.toPx())
+                    style = stroke1_2dp
                 )
 
                 // Central Luminous Core Dot (.puck-dot): 9dp diameter with smooth radial bloom
@@ -731,13 +737,13 @@ fun GyroJoystick(
             drawCircle(
                 color = glowColor.copy(alpha = 0.10f),
                 radius = outerRingRadius,
-                style = Stroke(width = 3.5.dp.toPx())
+                style = stroke3_5dp
             )
             // Core line
             drawCircle(
                 color = glowColor.copy(alpha = 0.38f),
                 radius = outerRingRadius,
-                style = Stroke(width = 1.2.dp.toPx())
+                style = stroke1_2dp
             )
 
             // Outer Glass Lens (.lx-lens): Top chamfer, left reflection, bottom shadow
@@ -748,7 +754,7 @@ fun GyroJoystick(
                 useCenter = false,
                 topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
                 size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
-                style = Stroke(width = 1.dp.toPx())
+                style = stroke1dp
             )
             drawArc(
                 color = Color.White.copy(alpha = 0.06f),
@@ -757,7 +763,7 @@ fun GyroJoystick(
                 useCenter = false,
                 topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
                 size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
-                style = Stroke(width = 1.dp.toPx())
+                style = stroke1dp
             )
             drawArc(
                 color = Color.Black.copy(alpha = 0.30f),
@@ -766,7 +772,7 @@ fun GyroJoystick(
                 useCenter = false,
                 topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
                 size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
-                style = Stroke(width = 1.dp.toPx())
+                style = stroke1dp
             )
             drawCircle(
                 brush = Brush.radialGradient(
@@ -850,11 +856,22 @@ fun GyroStickButton(
         label = "gyro_stick_btn_bloom"
     )
 
-    val strokeGimbal1 = remember { androidx.compose.ui.graphics.drawscope.Stroke(width = 1.8f) }
-    val strokeGimbal2 = remember {
+    val strokeGimbal1 = remember(density) { androidx.compose.ui.graphics.drawscope.Stroke(width = 1.8f * density) }
+    val strokeGimbal2 = remember(density) {
         androidx.compose.ui.graphics.drawscope.Stroke(
-            width = 1.2f,
-            pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(4f, 6f), 0f)
+            width = 1.2f * density,
+            pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(4f * density, 6f * density), 0f)
+        )
+    }
+    val stroke1_5dp = remember(density) { androidx.compose.ui.graphics.drawscope.Stroke(width = 1.5f * density) }
+    val stroke4dp = remember(density) { androidx.compose.ui.graphics.drawscope.Stroke(width = 4f * density) }
+    val stroke1_8dp = remember(density) { androidx.compose.ui.graphics.drawscope.Stroke(width = 1.8f * density) }
+    val stroke3dp = remember(density) { androidx.compose.ui.graphics.drawscope.Stroke(width = 3f * density) }
+    val centerPuckGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(Color(0xFF030304), Color(0xFF121314)),
+            center = Offset(0.50f, 0.60f),
+            radius = 60f
         )
     }
     val btnCoreBloomStops = remember(glowColor) {
@@ -952,7 +969,7 @@ fun GyroStickButton(
                 useCenter = false,
                 topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
                 size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
-                style = Stroke(width = 1.5.dp.toPx())
+                style = stroke1_5dp
             )
 
             // Bottom inset shadow
@@ -972,12 +989,12 @@ fun GyroStickButton(
             drawCircle(
                 color = glowColor.copy(alpha = ringBloomAlpha.value * 0.25f),
                 radius = outerGimbalR,
-                style = Stroke(width = 4.dp.toPx())
+                style = stroke4dp
             )
             drawCircle(
                 color = glowColor.copy(alpha = ringBloomAlpha.value * 0.70f),
                 radius = outerGimbalR,
-                style = Stroke(width = 1.8.dp.toPx())
+                style = stroke1_8dp
             )
 
             // Inner Concentric Gimbal Ring
@@ -985,12 +1002,12 @@ fun GyroStickButton(
             drawCircle(
                 color = glowColor.copy(alpha = ringBloomAlpha.value * 0.20f),
                 radius = innerGimbalR,
-                style = Stroke(width = 3.dp.toPx())
+                style = stroke3dp
             )
             drawCircle(
                 color = glowColor.copy(alpha = ringBloomAlpha.value * 0.55f),
                 radius = innerGimbalR,
-                style = Stroke(width = 1.5.dp.toPx())
+                style = stroke1_5dp
             )
 
             // Specular lens highlight
@@ -1010,13 +1027,7 @@ fun GyroStickButton(
             modifier = Modifier
                 .size(34.dp)
                 .clip(CircleShape)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(Color(0xFF030304), Color(0xFF121314)),
-                        center = Offset(0.50f, 0.60f),
-                        radius = 60f
-                    )
-                )
+                .background(centerPuckGradient)
                 .border(1.dp, glowColor.copy(alpha = 0.60f), CircleShape),
             contentAlignment = Alignment.Center
         ) {

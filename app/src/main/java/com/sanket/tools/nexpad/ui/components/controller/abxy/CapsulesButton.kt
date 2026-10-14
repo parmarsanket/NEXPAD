@@ -93,21 +93,25 @@ fun CapsulesButton(
     val pillW = if (isVertical) 52.dp else 84.dp
     val pillH = if (isVertical) 84.dp else 52.dp
 
+    val capRadiusWithPad = remember(density) { CornerRadius(38f * density, 38f * density) }
     val floodAlpha = floodAlphaState.value
-    // Flood gradient direction based on key
-    val floodBrush = when (key.uppercase()) {
-        ControlKey.Y.key -> Brush.verticalGradient(
-            colors = listOf(effectiveColor.copy(alpha = floodAlpha), Color.Transparent)
-        )
-        ControlKey.A.key -> Brush.verticalGradient(
-            colors = listOf(Color.Transparent, effectiveColor.copy(alpha = floodAlpha))
-        )
-        ControlKey.X.key -> Brush.horizontalGradient(
-            colors = listOf(effectiveColor.copy(alpha = floodAlpha), Color.Transparent)
-        )
-        else -> Brush.horizontalGradient(
-            colors = listOf(Color.Transparent, effectiveColor.copy(alpha = floodAlpha))
-        )
+    val floodAlphaInt = (floodAlpha * 255).roundToInt()
+    val floodBrush = remember(key, effectiveColor, floodAlphaInt) {
+        val fa = floodAlphaInt / 255f
+        when (key.uppercase()) {
+            ControlKey.Y.key -> Brush.verticalGradient(
+                colors = listOf(effectiveColor.copy(alpha = fa), Color.Transparent)
+            )
+            ControlKey.A.key -> Brush.verticalGradient(
+                colors = listOf(Color.Transparent, effectiveColor.copy(alpha = fa))
+            )
+            ControlKey.X.key -> Brush.horizontalGradient(
+                colors = listOf(effectiveColor.copy(alpha = fa), Color.Transparent)
+            )
+            else -> Brush.horizontalGradient(
+                colors = listOf(Color.Transparent, effectiveColor.copy(alpha = fa))
+            )
+        }
     }
 
     val domeBrush = remember {
@@ -133,7 +137,7 @@ fun CapsulesButton(
 
     Box(
         modifier = modifier
-            .size(80.dp)
+            .size(92.dp)
             .graphicsLayer {
                 // Root RenderNode isolation
             },
@@ -161,7 +165,7 @@ fun CapsulesButton(
                             ),
                             topLeft = Offset(-pad, -pad),
                             size = Size(size.width + pad * 2, size.height + pad * 2),
-                            cornerRadius = CornerRadius(capR + pad, capR + pad)
+                            cornerRadius = capRadiusWithPad
                         )
 
                         // 2. Dual focal node blooms at stadium endcaps
@@ -233,14 +237,14 @@ fun CapsulesButton(
                 PlayStationSymbol(
                     shape = psShape,
                     color = if (isPressed) Color.White else effectiveColor,
-                    size = 24.dp
+                    size = 28.dp
                 )
             } else {
                 Text(
                     text = activeLabel,
                     color = if (isPressed) Color.White else effectiveColor,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 24.sp
+                    fontSize = 28.sp
                 )
             }
         }

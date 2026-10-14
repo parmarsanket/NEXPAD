@@ -46,11 +46,23 @@ import kotlin.math.roundToInt
  * - START / MENU: Hamburger 3 horizontal lines (y=7, 12, 17)
  * - SHARE / CAPTURE: Xbox Series X|S Capture Tray (y=14..19.5) with Upward Arrow (x=12, y=4.5..15)
  */
+private val canonicalSystemKeys = setOf(ControlKey.BACK, ControlKey.GUIDE, ControlKey.START, ControlKey.SHARE)
+
+/**
+ * Draws the vector icons for NEXPAD system buttons in standard 24x24 normalized coordinate space.
+ * Translates the authentic Lens HTML system SVGs into high-precision Compose DrawScope paths:
+ * - BACK / VIEW: Overlapping rounded rectangles (x=4, y=8, w=12, h=12, rx=2.5 + top-right path)
+ * - GUIDE / HOME: Concentric circle (r=8.5) with filled center core dot (r=3.0)
+ * - START / MENU: Hamburger 3 horizontal lines (y=7, 12, 17)
+ * - SHARE / CAPTURE: Xbox Series X|S Capture Tray (y=14..19.5) with Upward Arrow (x=12, y=4.5..15)
+ */
 internal fun DrawScope.drawSystemIcon(
     controlKey: ControlKey?,
     color: Color,
     iconSizePx: Float,
-    center: Offset
+    center: Offset,
+    path1: Path? = null,
+    path2: Path? = null
 ) {
     val scale = iconSizePx / 24f
     val left = center.x - iconSizePx / 2f
@@ -72,12 +84,11 @@ internal fun DrawScope.drawSystemIcon(
             )
 
             // Background open rectangle path (top & right edges)
-            val backPath = Path().apply {
-                moveTo(left + 8f * scale, top + 4.5f * scale)
-                lineTo(left + 17.5f * scale, top + 4.5f * scale)
-                quadraticTo(left + 20f * scale, top + 4.5f * scale, left + 20f * scale, top + 7f * scale)
-                lineTo(left + 20f * scale, top + 16.5f * scale)
-            }
+            val backPath = path1?.apply { rewind() } ?: Path()
+            backPath.moveTo(left + 8f * scale, top + 4.5f * scale)
+            backPath.lineTo(left + 17.5f * scale, top + 4.5f * scale)
+            backPath.quadraticTo(left + 20f * scale, top + 4.5f * scale, left + 20f * scale, top + 7f * scale)
+            backPath.lineTo(left + 20f * scale, top + 16.5f * scale)
             drawPath(path = backPath, color = color, style = strokeStyle)
         }
 
@@ -112,14 +123,13 @@ internal fun DrawScope.drawSystemIcon(
             val strokeStyle = Stroke(width = strokeW, cap = StrokeCap.Round, join = StrokeJoin.Round)
 
             // Bottom tray
-            val trayPath = Path().apply {
-                moveTo(left + 5f * scale, top + 14f * scale)
-                lineTo(left + 5f * scale, top + 17.5f * scale)
-                quadraticTo(left + 5f * scale, top + 19.5f * scale, left + 7f * scale, top + 19.5f * scale)
-                lineTo(left + 17f * scale, top + 19.5f * scale)
-                quadraticTo(left + 19f * scale, top + 19.5f * scale, left + 19f * scale, top + 17.5f * scale)
-                lineTo(left + 19f * scale, top + 14f * scale)
-            }
+            val trayPath = path1?.apply { rewind() } ?: Path()
+            trayPath.moveTo(left + 5f * scale, top + 14f * scale)
+            trayPath.lineTo(left + 5f * scale, top + 17.5f * scale)
+            trayPath.quadraticTo(left + 5f * scale, top + 19.5f * scale, left + 7f * scale, top + 19.5f * scale)
+            trayPath.lineTo(left + 17f * scale, top + 19.5f * scale)
+            trayPath.quadraticTo(left + 19f * scale, top + 19.5f * scale, left + 19f * scale, top + 17.5f * scale)
+            trayPath.lineTo(left + 19f * scale, top + 14f * scale)
             drawPath(path = trayPath, color = color, style = strokeStyle)
 
             // Upward arrow stem
@@ -132,11 +142,10 @@ internal fun DrawScope.drawSystemIcon(
             )
 
             // Chevron arrowhead
-            val arrowHeadPath = Path().apply {
-                moveTo(left + 7.5f * scale, top + 9f * scale)
-                lineTo(center.x, top + 4.5f * scale)
-                lineTo(left + 16.5f * scale, top + 9f * scale)
-            }
+            val arrowHeadPath = path2?.apply { rewind() } ?: Path()
+            arrowHeadPath.moveTo(left + 7.5f * scale, top + 9f * scale)
+            arrowHeadPath.lineTo(center.x, top + 4.5f * scale)
+            arrowHeadPath.lineTo(left + 16.5f * scale, top + 9f * scale)
             drawPath(path = arrowHeadPath, color = color, style = strokeStyle)
         }
 
@@ -240,6 +249,8 @@ fun RealisticSystemButton(
     val bloomColorsList = remember(auraColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
+    val iconPath1 = remember { Path() }
+    val iconPath2 = remember { Path() }
 
     Box(
         modifier = modifier
@@ -370,21 +381,25 @@ fun RealisticSystemButton(
             }
 
             // Layer 4: Vector SVG Icon
-            if (ctrl in listOf(ControlKey.BACK, ControlKey.GUIDE, ControlKey.START, ControlKey.SHARE)) {
+            if (ctrl in canonicalSystemKeys) {
                 val iconPx = iconSize.toPx()
                 // Emissive glow shadow pass
                 drawSystemIcon(
                     controlKey = ctrl,
                     color = auraColor.copy(alpha = if (isPressed) 0.50f else 0.20f),
                     iconSizePx = iconPx + 2.dp.toPx(),
-                    center = center
+                    center = center,
+                    path1 = iconPath1,
+                    path2 = iconPath2
                 )
                 // Core crisp stroke pass
                 drawSystemIcon(
                     controlKey = ctrl,
                     color = if (isPressed) Color.White else auraColor,
                     iconSizePx = iconPx,
-                    center = center
+                    center = center,
+                    path1 = iconPath1,
+                    path2 = iconPath2
                 )
             }
 
@@ -416,7 +431,7 @@ fun RealisticSystemButton(
         }
 
         // Fallback for non-standard keys outside the 4 canonical system controls
-        if (ctrl !in listOf(ControlKey.BACK, ControlKey.GUIDE, ControlKey.START, ControlKey.SHARE)) {
+        if (ctrl !in canonicalSystemKeys) {
             Text(
                 text = key.take(2),
                 color = if (isPressed) Color.White else auraColor,
@@ -426,3 +441,25 @@ fun RealisticSystemButton(
         }
     }
 }
+
+/**
+ * Static delegate for RealisticSystemButton used in previews/customizer screens.
+ * Fully renders all authentic visual layers with isInteractive = false.
+ */
+@Composable
+fun StaticRealisticSystemButton(
+    key: String,
+    modifier: Modifier = Modifier,
+    isRgbEnabled: Boolean = true
+) {
+    RealisticSystemButton(
+        key = key,
+        isConnected = true,
+        onVibrate = {},
+        viewModel = null,
+        isRgbEnabled = isRgbEnabled,
+        modifier = modifier,
+        isInteractive = false
+    )
+}
+

@@ -169,7 +169,95 @@ fun RealisticBumper(
     val windowTopShadowColors = remember { listOf(Color.Black.copy(alpha = 0.90f), Color.Transparent) }
     val lensEdgeColors = remember { listOf(Color.White.copy(alpha = 0.10f), Color.Transparent) }
 
-    val ringPath = remember { Path() }
+    val windowShape = remember { RoundedCornerShape(15.dp) }
+    val topEdgeBrush = remember(density) {
+        val h = 48f * density
+        Brush.verticalGradient(
+            colors = topEdgeColors,
+            startY = 0f,
+            endY = h * 0.42f
+        )
+    }
+    val undercutBrush = remember(density) {
+        val h = 48f * density
+        val undercutH = h * 0.40f
+        Brush.verticalGradient(
+            colors = undercutColors,
+            startY = h - undercutH,
+            endY = h
+        )
+    }
+    val pressedInsetBrush = remember(density) {
+        val h = 48f * density
+        val pressedH = h * 0.40f
+        Brush.verticalGradient(
+            colors = pressedColors,
+            startY = 0f,
+            endY = pressedH
+        )
+    }
+    val windowBgBrush = remember(density) {
+        val winW = 78f * density
+        val winH = 30f * density
+        Brush.radialGradient(
+            colors = windowBgColors,
+            center = Offset(winW * 0.50f, winH * 0.60f),
+            radius = winW * 0.60f
+        )
+    }
+    val windowTopShadowBrush = remember(density) {
+        Brush.verticalGradient(
+            colors = windowTopShadowColors,
+            startY = 0f,
+            endY = 8f * density
+        )
+    }
+    val windowVignetteBrush = remember(density) {
+        val winW = 78f * density
+        val winH = 30f * density
+        Brush.radialGradient(
+            0.0f to Color.Transparent,
+            0.32f to Color.Transparent,
+            1.0f to Color.Black.copy(alpha = 0.82f),
+            center = Offset(winW / 2f, winH / 2f),
+            radius = winW / 2f
+        )
+    }
+    val lensSheenBrush = remember(density) {
+        val w = 154f * density
+        val h = 48f * density
+        Brush.radialGradient(
+            0.0f to Color.White.copy(alpha = 0.06f),
+            0.40f to Color.Transparent,
+            1.0f to Color.Transparent,
+            center = Offset(w * 0.70f, h * 0.78f),
+            radius = w * 0.30f
+        )
+    }
+    val lensEdgeBrush = remember(density) {
+        Brush.verticalGradient(
+            colors = lensEdgeColors,
+            startY = 0f,
+            endY = 3.5f * density
+        )
+    }
+
+    val ringPath = remember(density, isLeft) {
+        val w = 154f * density
+        val h = 48f * density
+        val ringInset = 2.5f * density
+        Path().apply {
+            addRoundRect(
+                RoundRect(
+                    rect = Rect(ringInset, ringInset, w - ringInset, h - ringInset),
+                    topLeft = CornerRadius(if (isLeft) 7.5f * density else 23.5f * density),
+                    topRight = CornerRadius(if (isLeft) 23.5f * density else 7.5f * density),
+                    bottomRight = CornerRadius(if (isLeft) 23.5f * density else 7.5f * density),
+                    bottomLeft = CornerRadius(if (isLeft) 7.5f * density else 23.5f * density)
+                )
+            )
+        }
+    }
 
     Box(
         modifier = modifier
@@ -242,11 +330,6 @@ fun RealisticBumper(
                 ambientColor = if (isRgbEnabled) neonColor else Color.Black,
                 spotColor = if (isRgbEnabled) neonColor else Color.Black
             )
-            .graphicsLayer {
-                scaleX = scaleAnimState.value
-                scaleY = scaleAnimState.value
-                translationY = pressOffsetYAnimState.value * density
-            }
             .border(
                 width = 1.dp,
                 color = Color.Black.copy(alpha = 0.50f),
@@ -290,22 +373,14 @@ fun RealisticBumper(
 
                 // Top edge highlight: linear-gradient(180deg, rgba(255,255,255,0.07), transparent 42%)
                 drawRect(
-                    brush = Brush.verticalGradient(
-                        colors = topEdgeColors,
-                        startY = 0f,
-                        endY = h * 0.42f
-                    ),
+                    brush = topEdgeBrush,
                     size = Size(w, h * 0.42f)
                 )
 
                 // Bottom undercut shadow: inset 0 -5px 7px rgba(0,0,0,0.70)
                 val undercutH = h * 0.40f
                 drawRect(
-                    brush = Brush.verticalGradient(
-                        colors = undercutColors,
-                        startY = h - undercutH,
-                        endY = h
-                    ),
+                    brush = undercutBrush,
                     topLeft = Offset(0f, h - undercutH),
                     size = Size(w, undercutH)
                 )
@@ -314,18 +389,13 @@ fun RealisticBumper(
                 if (isPressed) {
                     val pressedH = h * 0.40f
                     drawRect(
-                        brush = Brush.verticalGradient(
-                            colors = pressedColors,
-                            startY = 0f,
-                            endY = pressedH
-                        ),
+                        brush = pressedInsetBrush,
                         size = Size(w, pressedH)
                     )
                 }
             }
 
             // Layer 5: Magnifier Window (.lx-window) — 78dp × 30dp (centered)
-            val windowShape = RoundedCornerShape(15.dp)
             Box(
                 modifier = Modifier
                     .size(78.dp, 30.dp)
@@ -338,33 +408,19 @@ fun RealisticBumper(
 
                     // Window background: radial-gradient(ellipse at 50% 60%, #050506 0%, #121314 100%)
                     drawRect(
-                        brush = Brush.radialGradient(
-                            colors = windowBgColors,
-                            center = Offset(winW * 0.50f, winH * 0.60f),
-                            radius = winW * 0.60f
-                        ),
+                        brush = windowBgBrush,
                         size = Size(winW, winH)
                     )
 
                     // Inset top shadow: inset 0 2.5px 5px rgba(0,0,0,0.9)
                     drawRect(
-                        brush = Brush.verticalGradient(
-                            colors = windowTopShadowColors,
-                            startY = 0f,
-                            endY = 8.dp.toPx()
-                        ),
+                        brush = windowTopShadowBrush,
                         size = Size(winW, 8.dp.toPx())
                     )
 
                     // Vignette: radial-gradient(ellipse at 50% 50%, transparent 32%, rgba(0,0,0,0.82) 100%)
                     drawRect(
-                        brush = Brush.radialGradient(
-                            0.0f to Color.Transparent,
-                            0.32f to Color.Transparent,
-                            1.0f to Color.Black.copy(alpha = 0.82f),
-                            center = Offset(winW / 2f, winH / 2f),
-                            radius = winW / 2f
-                        ),
+                        brush = windowVignetteBrush,
                         size = Size(winW, winH)
                     )
 
@@ -395,18 +451,6 @@ fun RealisticBumper(
             val h = size.height
 
             // --- Layer 4: Neon Ring (.lx-ring) ---
-            val ringInset = 2.5.dp.toPx()
-            ringPath.reset()
-            ringPath.addRoundRect(
-                RoundRect(
-                    rect = Rect(ringInset, ringInset, w - ringInset, h - ringInset),
-                    topLeft = CornerRadius(if (isLeft) 7.5.dp.toPx() else 23.5.dp.toPx()),
-                    topRight = CornerRadius(if (isLeft) 23.5.dp.toPx() else 7.5.dp.toPx()),
-                    bottomRight = CornerRadius(if (isLeft) 23.5.dp.toPx() else 7.5.dp.toPx()),
-                    bottomLeft = CornerRadius(if (isLeft) 7.5.dp.toPx() else 23.5.dp.toPx())
-                )
-            )
-
             // Outer bloom pass
             drawPath(
                 path = ringPath,
@@ -429,24 +473,14 @@ fun RealisticBumper(
             // --- Layer 7: Glass Lens (.lx-lens) ---
             // Specular sheen circle: circle at 70% 78%, rgba(255,255,255,0.06) 0%, transparent 40%
             drawCircle(
-                brush = Brush.radialGradient(
-                    0.0f to Color.White.copy(alpha = 0.06f),
-                    0.40f to Color.Transparent,
-                    1.0f to Color.Transparent,
-                    center = Offset(w * 0.70f, h * 0.78f),
-                    radius = w * 0.30f
-                ),
+                brush = lensSheenBrush,
                 center = Offset(w * 0.70f, h * 0.78f),
                 radius = w * 0.30f
             )
 
             // Top specular edge highlight: inset 0 2px 2px rgba(255,255,255,0.10)
             drawRect(
-                brush = Brush.verticalGradient(
-                    colors = lensEdgeColors,
-                    startY = 0f,
-                    endY = 3.5.dp.toPx()
-                ),
+                brush = lensEdgeBrush,
                 size = Size(w, 3.5.dp.toPx())
             )
 
@@ -473,4 +507,26 @@ fun RealisticBumper(
             )
         }
     }
+}
+
+/**
+ * Static preview delegate for RealisticBumper with 0 touch overhead and 0 coroutines.
+ */
+@Composable
+fun StaticRealisticBumper(
+    key: String = "LB",
+    isRgbEnabled: Boolean = true,
+    displayLabel: String? = null,
+    modifier: Modifier = Modifier
+) {
+    RealisticBumper(
+        key = key,
+        isConnected = false,
+        onVibrate = {},
+        viewModel = null,
+        isRgbEnabled = isRgbEnabled,
+        modifier = modifier,
+        displayLabel = displayLabel,
+        isInteractive = false
+    )
 }

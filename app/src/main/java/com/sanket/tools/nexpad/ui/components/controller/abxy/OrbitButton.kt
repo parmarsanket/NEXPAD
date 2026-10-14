@@ -192,13 +192,64 @@ fun OrbitButton(
         listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)
     }
 
+    val insetShadowBrushPressed = remember(density) {
+        val btnSizePx = 80f * density
+        val insetH = btnSizePx * 0.32f
+        Brush.verticalGradient(
+            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)),
+            startY = btnSizePx - insetH,
+            endY = btnSizePx
+        )
+    }
+    val insetShadowBrushNormal = remember(density) {
+        val btnSizePx = 80f * density
+        val insetH = btnSizePx * 0.32f
+        Brush.verticalGradient(
+            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
+            startY = btnSizePx - insetH,
+            endY = btnSizePx
+        )
+    }
+    val lensBrushPressed = remember(density) {
+        val btnSizePx = 80f * density
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.06f),
+                Color.White.copy(alpha = 0.02f),
+                Color.Transparent
+            ),
+            startY = 0f,
+            endY = btnSizePx * 0.40f
+        )
+    }
+    val lensBrushNormal = remember(density) {
+        val btnSizePx = 80f * density
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.14f),
+                Color.White.copy(alpha = 0.05f),
+                Color.Transparent
+            ),
+            startY = 0f,
+            endY = btnSizePx * 0.40f
+        )
+    }
+    val specularSheenBrush = remember(density) {
+        val btnSizePx = 80f * density
+        Brush.radialGradient(
+            colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+            center = Offset(btnSizePx * 0.70f, btnSizePx * 0.78f),
+            radius = btnSizePx * 0.25f
+        )
+    }
+
     val bloomColorsList = remember(effectiveColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
 
     Box(
         modifier = modifier
-            .size(80.dp)
+            .size(92.dp)
             .graphicsLayer {
                 // Root RenderNode isolation
             }
@@ -223,7 +274,7 @@ fun OrbitButton(
                     )
 
                     // 2. Outer planetary dashed orbit ring 1 (rotated by rotation1)
-                    val r1 = size.minDimension * 0.62f
+                    val r1 = size.minDimension * 0.48f
                     rotate(degrees = rotation1, pivot = center) {
                         drawCircle(
                             color = effectiveColor.copy(alpha = if (isPressed) 0.85f else 0.40f),
@@ -250,7 +301,7 @@ fun OrbitButton(
                     )
 
                     // 3. Counter-rotating inner orbit ring 2 (rotated by rotation2)
-                    val r2 = size.minDimension * 0.53f
+                    val r2 = size.minDimension * 0.40f
                     rotate(degrees = rotation2, pivot = center) {
                         drawCircle(
                             color = effectiveColor.copy(alpha = if (isPressed) 0.70f else 0.30f),
@@ -271,164 +322,158 @@ fun OrbitButton(
                         center = pip2
                     )
                 }
-            }
-            .shadow(
-                elevation = if (isPressed) 1.dp else 4.dp,
-                shape = CircleShape,
-                ambientColor = if (isRgbEnabled) effectiveColor else Color.Black,
-                spotColor = if (isRgbEnabled) effectiveColor else Color.Black
-            )
-            .graphicsLayer {
-                scaleX = scaleAnimState.value
-                scaleY = scaleAnimState.value
-                translationY = pressOffsetYAnimState.value * density
-            }
-            .clip(CircleShape)
-            .background(baseDomeGradient)
-            .border(
-                width = 1.dp,
-                brush = borderBrush,
-                shape = CircleShape
-            )
-            .then(
-                if (isInteractive) {
-                    Modifier.pointerInput(key) {
-                        detectTapGestures(
-                            onPress = {
-                                currentOnVibrate()
-                                isPressed = true
-                                currentViewModel?.updateButton(key, true)
-                                tryAwaitRelease()
-                                isPressed = false
-                                currentViewModel?.updateButton(key, false)
-                            }
-                        )
-                    }
-                } else Modifier
-            ),
+            },
         contentAlignment = Alignment.Center
     ) {
-        // ── 1. ORBIT SVG RINGS & UNDERCUT SHADOW ──
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val rotation1 = rotation1State.value
-            val rotation2 = rotation2State.value
-            val orbit1Alpha = orbit1AlphaState.value
-            val orbit2Alpha = orbit2AlphaState.value
-            val w = size.width
-            val h = size.height
-            val cx = w / 2f
-            val cy = h / 2f
-            val maxR = size.minDimension / 2f
-
-            // Undercut bottom shadow
-            val insetH = h * 0.32f
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colors = if (isPressed) insetShadowColorsPressed else insetShadowColorsNormal,
-                    startY = h - insetH,
-                    endY = h
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .shadow(
+                    elevation = if (isPressed) 1.dp else 4.dp,
+                    shape = CircleShape,
+                    ambientColor = if (isRgbEnabled) effectiveColor else Color.Black,
+                    spotColor = if (isRgbEnabled) effectiveColor else Color.Black
+                )
+                .graphicsLayer {
+                    scaleX = scaleAnimState.value
+                    scaleY = scaleAnimState.value
+                    translationY = pressOffsetYAnimState.value * density
+                }
+                .clip(CircleShape)
+                .background(baseDomeGradient)
+                .border(
+                    width = 1.dp,
+                    brush = borderBrush,
+                    shape = CircleShape
+                )
+                .then(
+                    if (isInteractive) {
+                        Modifier.pointerInput(key) {
+                            detectTapGestures(
+                                onPress = {
+                                    currentOnVibrate()
+                                    isPressed = true
+                                    currentViewModel?.updateButton(key, true)
+                                    tryAwaitRelease()
+                                    isPressed = false
+                                    currentViewModel?.updateButton(key, false)
+                                }
+                            )
+                        }
+                    } else Modifier
                 ),
-                topLeft = Offset(0f, h - insetH),
-                size = Size(w, insetH)
-            )
+            contentAlignment = Alignment.Center
+        ) {
+            // ── 1. ORBIT SVG RINGS & UNDERCUT SHADOW ──
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val rotation1 = rotation1State.value
+                val rotation2 = rotation2State.value
+                val orbit1Alpha = orbit1AlphaState.value
+                val orbit2Alpha = orbit2AlphaState.value
+                val w = size.width
+                val h = size.height
+                val cx = w / 2f
+                val cy = h / 2f
+                val maxR = size.minDimension / 2f
 
-            // Outer Orbit 1: r = 30 / 39 * maxR, stroke-width = 3.5, dasharray = 26 7.33 (3 arcs)
-            val r1 = (30f / 39f) * maxR
-            val c1 = (2f * PI * r1).toFloat()
-            val stroke1Px = (3.5f / 39f) * maxR
-            val dash1 = (0.26f * c1 - stroke1Px).coerceAtLeast(1f)
-            val gap1 = 0.0733f * c1 + stroke1Px
+                // Undercut bottom shadow
+                val insetH = h * 0.32f
+                drawRect(
+                    brush = if (isPressed) insetShadowBrushPressed else insetShadowBrushNormal,
+                    topLeft = Offset(0f, h - insetH),
+                    size = Size(w, insetH)
+                )
 
-            rotate(degrees = rotation1, pivot = Offset(cx, cy)) {
-                drawCircle(
-                    color = effectiveColor.copy(alpha = orbit1Alpha),
-                    radius = r1,
-                    center = Offset(cx, cy),
-                    style = orbit1Stroke
+                // Outer Orbit 1: r = 30 / 39 * maxR, stroke-width = 3.5, dasharray = 26 7.33 (3 arcs)
+                val r1 = (30f / 39f) * maxR
+                val c1 = (2f * PI * r1).toFloat()
+                val stroke1Px = (3.5f / 39f) * maxR
+                val dash1 = (0.26f * c1 - stroke1Px).coerceAtLeast(1f)
+                val gap1 = 0.0733f * c1 + stroke1Px
+
+                rotate(degrees = rotation1, pivot = Offset(cx, cy)) {
+                    drawCircle(
+                        color = effectiveColor.copy(alpha = orbit1Alpha),
+                        radius = r1,
+                        center = Offset(cx, cy),
+                        style = orbit1Stroke
+                    )
+                }
+
+                // Inner Orbit 2: r = 24 / 39 * maxR, stroke-width = 2, dasharray = 1.2 4.8 (dotted pips)
+                val r2 = (24f / 39f) * maxR
+
+                rotate(degrees = rotation2, pivot = Offset(cx, cy)) {
+                    drawCircle(
+                        color = effectiveColor.copy(alpha = orbit2Alpha),
+                        radius = r2,
+                        center = Offset(cx, cy),
+                        style = orbit2Stroke
+                    )
+                }
+            }
+
+            // ── 2. CENTER GLYPH (font-size: 34px) ──
+            if (psShape != null) {
+                PlayStationSymbol(
+                    shape = psShape,
+                    color = effectiveColor,
+                    size = 34.dp
+                )
+            } else {
+                Text(
+                    text = activeLabel,
+                    color = effectiveColor,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 34.sp
                 )
             }
 
-            // Inner Orbit 2: r = 24 / 39 * maxR, stroke-width = 2, dasharray = 1.2 4.8 (dotted pips)
-            val r2 = (24f / 39f) * maxR
+            // ── 3. SHELL OVERLAY (.lx-ring + .lx-lens) ──
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val w = size.width
+                val h = size.height
+                val r = size.minDimension / 2f
 
-            rotate(degrees = rotation2, pivot = Offset(cx, cy)) {
+                // Cap outline
                 drawCircle(
-                    color = effectiveColor.copy(alpha = orbit2Alpha),
-                    radius = r2,
-                    center = Offset(cx, cy),
-                    style = orbit2Stroke
+                    color = Color.Black.copy(alpha = 0.50f),
+                    radius = r - 0.5.dp.toPx(),
+                    style = stroke1dp
                 )
-            }
-        }
 
-        // ── 2. CENTER GLYPH (font-size: 34px) ──
-        if (psShape != null) {
-            PlayStationSymbol(
-                shape = psShape,
-                color = effectiveColor,
-                size = 32.dp
-            )
-        } else {
-            Text(
-                text = activeLabel,
-                color = effectiveColor,
-                fontWeight = FontWeight.Medium,
-                fontSize = 34.sp
-            )
-        }
+                // Neon ring (.lx-ring)
+                val ringRadius = r - 3.dp.toPx()
+                drawCircle(
+                    color = effectiveColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
+                    radius = ringRadius,
+                    style = stroke4dp
+                )
+                drawCircle(
+                    color = effectiveColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
+                    radius = ringRadius,
+                    style = stroke2dp
+                )
 
-        // ── 3. SHELL OVERLAY (.lx-ring + .lx-lens) ──
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val w = size.width
-            val h = size.height
-            val r = size.minDimension / 2f
+                // Glass lens (.lx-lens)
+                val lensInset = 1.dp.toPx()
+                drawArc(
+                    brush = if (isPressed) lensBrushPressed else lensBrushNormal,
+                    startAngle = 180f,
+                    sweepAngle = 180f,
+                    useCenter = false,
+                    topLeft = Offset(lensInset, lensInset),
+                    size = Size(w - lensInset * 2f, h - lensInset * 2f),
+                    style = stroke1dp
+                )
 
-            // Cap outline
-            drawCircle(
-                color = Color.Black.copy(alpha = 0.50f),
-                radius = r - 0.5.dp.toPx(),
-                style = stroke1dp
-            )
-
-            // Neon ring (.lx-ring)
-            val ringRadius = r - 3.dp.toPx()
-            drawCircle(
-                color = effectiveColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
-                radius = ringRadius,
-                style = stroke4dp
-            )
-            drawCircle(
-                color = effectiveColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
-                radius = ringRadius,
-                style = stroke2dp
-            )
-
-            // Glass lens (.lx-lens)
-            val lensInset = 1.dp.toPx()
-            drawArc(
-                brush = Brush.verticalGradient(
-                    colors = if (isPressed) lensColorsPressed else lensColorsNormal,
-                    startY = 0f,
-                    endY = h * 0.40f
-                ),
-                startAngle = 180f,
-                sweepAngle = 180f,
-                useCenter = false,
-                topLeft = Offset(lensInset, lensInset),
-                size = Size(w - lensInset * 2f, h - lensInset * 2f),
-                style = stroke1dp
-            )
-
-            // Specular sheen
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = specularSheenColors,
+                // Specular sheen
+                drawCircle(
+                    brush = specularSheenBrush,
                     center = Offset(w * 0.70f, h * 0.78f),
                     radius = w * 0.25f
-                ),
-                center = Offset(w * 0.70f, h * 0.78f),
-                radius = w * 0.25f
-            )
+                )
+            }
         }
     }
 }

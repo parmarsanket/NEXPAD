@@ -114,11 +114,63 @@ fun FlipButton(
             Color.Transparent
         )
     }
-    val backFaceSheenColors = remember {
-        listOf(Color.White.copy(alpha = 0.45f), Color.Transparent)
+    val backFaceSheenBrush = remember(density) {
+        val btnSizePx = 80f * density
+        Brush.radialGradient(
+            colors = listOf(Color.White.copy(alpha = 0.45f), Color.Transparent),
+            center = Offset(btnSizePx * 0.50f, btnSizePx * 0.35f),
+            radius = btnSizePx * 0.45f
+        )
     }
-    val specularSheenColors = remember {
-        listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)
+    val insetShadowBrushPressed = remember(density) {
+        val btnSizePx = 80f * density
+        val insetH = btnSizePx * 0.32f
+        Brush.verticalGradient(
+            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)),
+            startY = btnSizePx - insetH,
+            endY = btnSizePx
+        )
+    }
+    val insetShadowBrushNormal = remember(density) {
+        val btnSizePx = 80f * density
+        val insetH = btnSizePx * 0.32f
+        Brush.verticalGradient(
+            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
+            startY = btnSizePx - insetH,
+            endY = btnSizePx
+        )
+    }
+    val lensBrushPressed = remember(density) {
+        val btnSizePx = 80f * density
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.06f),
+                Color.White.copy(alpha = 0.02f),
+                Color.Transparent
+            ),
+            startY = 0f,
+            endY = btnSizePx * 0.40f
+        )
+    }
+    val lensBrushNormal = remember(density) {
+        val btnSizePx = 80f * density
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.14f),
+                Color.White.copy(alpha = 0.05f),
+                Color.Transparent
+            ),
+            startY = 0f,
+            endY = btnSizePx * 0.40f
+        )
+    }
+    val specularSheenBrush = remember(density) {
+        val btnSizePx = 80f * density
+        Brush.radialGradient(
+            colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+            center = Offset(btnSizePx * 0.70f, btnSizePx * 0.78f),
+            radius = btnSizePx * 0.25f
+        )
     }
 
     val flipBloomStops = remember(effectiveColor) {
@@ -135,7 +187,7 @@ fun FlipButton(
 
     Box(
         modifier = modifier
-            .size(80.dp)
+            .size(92.dp)
             .graphicsLayer {
                 // Root RenderNode isolation
             }
@@ -182,167 +234,157 @@ fun FlipButton(
                         )
                     }
                 }
-            }
-            .shadow(
-                elevation = if (isPressed) 2.dp else 6.dp,
-                shape = CircleShape,
-                spotColor = Color.Black,
-                ambientColor = Color.Black
-            )
-            .clip(CircleShape)
-            .background(Color(0xFF0C0D0E))
-            .border(
-                width = 1.dp,
-                brush = borderBrush,
-                shape = CircleShape
-            )
-            .then(
-                if (isInteractive) {
-                    Modifier.pointerInput(key) {
-                        detectTapGestures(
-                            onPress = {
-                                currentOnVibrate()
-                                isPressed = true
-                                currentViewModel?.updateButton(key, true)
-                                tryAwaitRelease()
-                                isPressed = false
-                                currentViewModel?.updateButton(key, false)
-                            }
-                        )
-                    }
-                } else Modifier
-            ),
+            },
         contentAlignment = Alignment.Center
     ) {
-        // ── 1. FLIPPING CARD (.fl-in) ──
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    val angle = flipAngleState.value
-                    rotationY = if (angle > 90f) angle - 180f else angle
-                    cameraDistance = 16f
-                }
+                .size(80.dp)
+                .shadow(
+                    elevation = if (isPressed) 2.dp else 6.dp,
+                    shape = CircleShape,
+                    spotColor = Color.Black,
+                    ambientColor = Color.Black
+                )
                 .clip(CircleShape)
-                .background(
-                    if (isBackFace) SolidColor(effectiveColor)
-                    else frontFaceBrush
+                .background(Color(0xFF0C0D0E))
+                .border(
+                    width = 1.dp,
+                    brush = borderBrush,
+                    shape = CircleShape
+                )
+                .then(
+                    if (isInteractive) {
+                        Modifier.pointerInput(key) {
+                            detectTapGestures(
+                                onPress = {
+                                    currentOnVibrate()
+                                    isPressed = true
+                                    currentViewModel?.updateButton(key, true)
+                                    tryAwaitRelease()
+                                    isPressed = false
+                                    currentViewModel?.updateButton(key, false)
+                                }
+                            )
+                        }
+                    } else Modifier
                 ),
             contentAlignment = Alignment.Center
         ) {
-            if (isBackFace) {
-                // BACK FACE (.fl-f.b): specular white highlight at top + dark ink upright letter
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val w = size.width
-                    val h = size.height
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            colors = backFaceSheenColors,
-                            center = Offset(w * 0.50f, h * 0.35f),
-                            radius = w * 0.45f
-                        ),
-                        radius = w * 0.45f,
-                        center = Offset(w * 0.50f, h * 0.35f)
-                    )
-                }
+            // ── 1. FLIPPING CARD (.fl-in) ──
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        val angle = flipAngleState.value
+                        rotationY = if (angle > 90f) angle - 180f else angle
+                        cameraDistance = 16f
+                    }
+                    .clip(CircleShape)
+                    .background(
+                        if (isBackFace) SolidColor(effectiveColor)
+                        else frontFaceBrush
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isBackFace) {
+                    // BACK FACE (.fl-f.b): specular white highlight at top + dark ink upright letter
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val w = size.width
+                        val h = size.height
+                        drawCircle(
+                            brush = backFaceSheenBrush,
+                            radius = w * 0.45f,
+                            center = Offset(w * 0.50f, h * 0.35f)
+                        )
+                    }
 
-                if (psShape != null) {
-                    PlayStationSymbol(
-                        shape = psShape,
-                        color = Color(0xFF0A0B0C),
-                        size = 38.dp
-                    )
+                    if (psShape != null) {
+                        PlayStationSymbol(
+                            shape = psShape,
+                            color = Color(0xFF0A0B0C),
+                            size = 40.dp
+                        )
+                    } else {
+                        Text(
+                            text = activeLabel,
+                            color = Color(0xFF0A0B0C),
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 44.sp
+                        )
+                    }
                 } else {
-                    Text(
-                        text = activeLabel,
-                        color = Color(0xFF0A0B0C),
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 44.sp
-                    )
-                }
-            } else {
-                // FRONT FACE (.fl-f.a): neon glowing letter
-                if (psShape != null) {
-                    PlayStationSymbol(
-                        shape = psShape,
-                        color = effectiveColor,
-                        size = 38.dp
-                    )
-                } else {
-                    Text(
-                        text = activeLabel,
-                        color = effectiveColor,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 44.sp
-                    )
+                    // FRONT FACE (.fl-f.a): neon glowing letter
+                    if (psShape != null) {
+                        PlayStationSymbol(
+                            shape = psShape,
+                            color = effectiveColor,
+                            size = 40.dp
+                        )
+                    } else {
+                        Text(
+                            text = activeLabel,
+                            color = effectiveColor,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 44.sp
+                        )
+                    }
                 }
             }
-        }
 
-        // ── 2. STATIONARY SHELL OVERLAY (.lx-ring + .lx-lens + undercut shadow) ──
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val w = size.width
-            val h = size.height
-            val r = size.minDimension / 2f
+            // ── 2. STATIONARY SHELL OVERLAY (.lx-ring + .lx-lens + undercut shadow) ──
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val w = size.width
+                val h = size.height
+                val r = size.minDimension / 2f
 
-            // Undercut bottom shadow
-            val insetH = h * 0.32f
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colors = if (isPressed) insetShadowColorsPressed else insetShadowColorsNormal,
-                    startY = h - insetH,
-                    endY = h
-                ),
-                topLeft = Offset(0f, h - insetH),
-                size = Size(w, insetH)
-            )
+                // Undercut bottom shadow
+                val insetH = h * 0.32f
+                drawRect(
+                    brush = if (isPressed) insetShadowBrushPressed else insetShadowBrushNormal,
+                    topLeft = Offset(0f, h - insetH),
+                    size = Size(w, insetH)
+                )
 
-            // Cap outline
-            drawCircle(
-                color = Color.Black.copy(alpha = 0.50f),
-                radius = r - 0.5.dp.toPx(),
-                style = stroke1dp
-            )
+                // Cap outline
+                drawCircle(
+                    color = Color.Black.copy(alpha = 0.50f),
+                    radius = r - 0.5.dp.toPx(),
+                    style = stroke1dp
+                )
 
-            // Neon ring
-            val ringRadius = r - 3.dp.toPx()
-            drawCircle(
-                color = effectiveColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
-                radius = ringRadius,
-                style = stroke4dp
-            )
-            drawCircle(
-                color = effectiveColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
-                radius = ringRadius,
-                style = stroke2dp
-            )
+                // Neon ring
+                val ringRadius = r - 3.dp.toPx()
+                drawCircle(
+                    color = effectiveColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
+                    radius = ringRadius,
+                    style = stroke4dp
+                )
+                drawCircle(
+                    color = effectiveColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
+                    radius = ringRadius,
+                    style = stroke2dp
+                )
 
-            // Glass lens
-            val lensInset = 1.dp.toPx()
-            drawArc(
-                brush = Brush.verticalGradient(
-                    colors = if (isPressed) lensColorsPressed else lensColorsNormal,
-                    startY = 0f,
-                    endY = h * 0.40f
-                ),
-                startAngle = 180f,
-                sweepAngle = 180f,
-                useCenter = false,
-                topLeft = Offset(lensInset, lensInset),
-                size = Size(w - lensInset * 2f, h - lensInset * 2f),
-                style = stroke1dp
-            )
+                // Glass lens
+                val lensInset = 1.dp.toPx()
+                drawArc(
+                    brush = if (isPressed) lensBrushPressed else lensBrushNormal,
+                    startAngle = 180f,
+                    sweepAngle = 180f,
+                    useCenter = false,
+                    topLeft = Offset(lensInset, lensInset),
+                    size = Size(w - lensInset * 2f, h - lensInset * 2f),
+                    style = stroke1dp
+                )
 
-            // Specular sheen
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = specularSheenColors,
+                // Specular sheen
+                drawCircle(
+                    brush = specularSheenBrush,
                     center = Offset(w * 0.70f, h * 0.78f),
                     radius = w * 0.25f
-                ),
-                center = Offset(w * 0.70f, h * 0.78f),
-                radius = w * 0.25f
-            )
+                )
+            }
         }
     }
 }

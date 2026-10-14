@@ -270,9 +270,92 @@ fun LensDPad(
             1.00f to Color.Transparent
         )
     }
-    val strokeFringe = remember { androidx.compose.ui.graphics.drawscope.Stroke(width = 2.0f) }
-    val strokeCaustic1 = remember { androidx.compose.ui.graphics.drawscope.Stroke(width = 2.2f) }
-    val strokeCaustic2 = remember { androidx.compose.ui.graphics.drawscope.Stroke(width = 1.4f) }
+    val strokeFringe = remember(density) { Stroke(width = 2.0f * density) }
+    val strokeCaustic1 = remember(density) { Stroke(width = 2.2f * density) }
+    val strokeCaustic2 = remember(density) { Stroke(width = 1.4f * density) }
+
+    val socketBottomShadowColors = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)) }
+    val strokeSocketRingBloom = remember(density) { Stroke(width = 5f * density) }
+    val strokeSocketRingCore = remember(density) { Stroke(width = 2f * density) }
+
+    val crossPath = remember(density) {
+        createContouredCrossPath(Size(150f * density, 150f * density), insetDp = 0f)
+    }
+    val insetNeonPath = remember(density) {
+        createContouredCrossPath(Size(150f * density, 150f * density), insetDp = 3.6f)
+    }
+    val shadowPaths = remember(density) {
+        val size150 = Size(150f * density, 150f * density)
+        (0..4).map { step ->
+            val offY = (2.5f + step * 0.9f) * density
+            Path().apply {
+                addPath(createContouredCrossPath(size150, insetDp = step * 0.4f), Offset(0f, offY))
+            }
+        }
+    }
+
+    val upChevron = remember(density) {
+        Path().apply {
+            moveTo(64f * density, 36f * density)
+            lineTo(75f * density, 25f * density)
+            lineTo(86f * density, 36f * density)
+        }
+    }
+    val downChevron = remember(density) {
+        Path().apply {
+            moveTo(64f * density, 114f * density)
+            lineTo(75f * density, 125f * density)
+            lineTo(86f * density, 114f * density)
+        }
+    }
+    val leftChevron = remember(density) {
+        Path().apply {
+            moveTo(36f * density, 64f * density)
+            lineTo(25f * density, 75f * density)
+            lineTo(36f * density, 86f * density)
+        }
+    }
+    val rightChevron = remember(density) {
+        Path().apply {
+            moveTo(114f * density, 64f * density)
+            lineTo(125f * density, 75f * density)
+            lineTo(114f * density, 86f * density)
+        }
+    }
+
+    val armCornerRadius = remember(density) { CornerRadius(10f * density, 10f * density) }
+    val armSize = remember(density) { Size(46f * density, 46f * density) }
+
+    val strokeCrossBorder = remember(density) { Stroke(width = 1f * density) }
+    val strokeNeonBloom = remember(density) { Stroke(width = 5f * density, cap = StrokeCap.Round, join = StrokeJoin.Round) }
+    val strokeNeonCore = remember(density) { Stroke(width = 1.8f * density, cap = StrokeCap.Round, join = StrokeJoin.Round) }
+    val strokeChevronBloom = remember(density) { Stroke(width = 8f * density, cap = StrokeCap.Round, join = StrokeJoin.Round) }
+    val strokeChevronCore = remember(density) { Stroke(width = 4f * density, cap = StrokeCap.Round, join = StrokeJoin.Round) }
+    val strokeHubBorder = remember(density) { Stroke(width = 1f * density) }
+
+    val strokeGlassChamfer = remember(density) { Stroke(width = 1.2f * density) }
+    val strokeGlassShadow = remember(density) { Stroke(width = 1f * density) }
+
+    val shadowColor = remember { Color.Black.copy(alpha = 0.14f) }
+    val crossBorderColor = remember { Color.Black.copy(alpha = 0.50f) }
+    val neonBloomColor = remember(glowColor) { glowColor.copy(alpha = 0.22f) }
+    val neonCoreColor = remember(glowColor) { glowColor.copy(alpha = 0.85f) }
+    val hubBorderColor = remember(glowColor) { glowColor.copy(alpha = 0.35f) }
+    val hubPipColor = remember(glowColor) { glowColor.copy(alpha = 0.70f) }
+
+    val glassHighlightColors = remember {
+        listOf(
+            Color.White.copy(alpha = 0.12f),
+            Color.White.copy(alpha = 0.04f),
+            Color.Transparent
+        )
+    }
+    val glassSpecularColors = remember {
+        listOf(
+            Color.White.copy(alpha = 0.06f),
+            Color.Transparent
+        )
+    }
 
     Box(
         modifier = modifier
@@ -351,7 +434,7 @@ fun LensDPad(
             )
             .then(
                 if (isInteractive) {
-                    Modifier.pointerInput(isConnected) {
+                    Modifier.pointerInput(Unit) {
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)
                             down.consume()
@@ -361,7 +444,6 @@ fun LensDPad(
                                 val center = Offset(size.width / 2f, size.height / 2f)
                                 val dx = pos.x - center.x
                                 val dy = pos.y - center.y
-                                val dist = hypot(dx, dy)
                                 val scale = min(size.width, size.height) / 160f
                                 val armHalfWidth = 23f * scale
                                 val armMaxReach = 75f * scale
@@ -423,7 +505,7 @@ fun LensDPad(
             val insetH = h * 0.35f
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
+                    colors = socketBottomShadowColors,
                     startY = h - insetH,
                     endY = h
                 ),
@@ -433,17 +515,17 @@ fun LensDPad(
 
             // Socket Inset Neon Ring (.lx-ring): inset 3px, border 2px solid var(--glow), opacity 0.35
             val r = size.minDimension / 2f
-            val ringRadius = r - 3.dp.toPx()
+            val ringRadius = r - 3f * density
 
             drawCircle(
                 color = glowColor.copy(alpha = 0.12f),
                 radius = ringRadius,
-                style = Stroke(width = 5.dp.toPx())
+                style = strokeSocketRingBloom
             )
             drawCircle(
                 color = glowColor.copy(alpha = 0.35f),
                 radius = ringRadius,
-                style = Stroke(width = 2.dp.toPx())
+                style = strokeSocketRingCore
             )
         }
 
@@ -468,19 +550,11 @@ fun LensDPad(
                 val leftGlowAlpha = leftGlowAlphaState.value
                 val rightGlowAlpha = rightGlowAlphaState.value
 
-                val crossPath = createContouredCrossPath(size, insetDp = 0f)
-                val insetNeonPath = createContouredCrossPath(size, insetDp = 3.6f)
-                val scale = min(size.width, size.height) / 150f
-
                 // 1. D-Pad 3D Drop Shadow: translate(0, 5) with soft Gaussian blur
-                for (step in 0..4) {
-                    val offY = (2.5f + step * 0.9f) * scale
-                    val shadowPath = Path().apply {
-                        addPath(createContouredCrossPath(size, insetDp = step * 0.4f), Offset(0f, offY))
-                    }
+                for (i in shadowPaths.indices) {
                     drawPath(
-                        path = shadowPath,
-                        color = Color.Black.copy(alpha = 0.14f)
+                        path = shadowPaths[i],
+                        color = shadowColor
                     )
                 }
 
@@ -491,22 +565,22 @@ fun LensDPad(
                 )
                 drawPath(
                     path = crossPath,
-                    color = Color.Black.copy(alpha = 0.50f),
-                    style = Stroke(width = 1.dp.toPx())
+                    color = crossBorderColor,
+                    style = strokeCrossBorder
                 )
 
                 // 3. Inset Neon Ribbon Contour (.lx-neon with feMorphology erode 3px to 5px)
                 // Soft neon bloom
                 drawPath(
                     path = insetNeonPath,
-                    color = glowColor.copy(alpha = 0.22f),
-                    style = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+                    color = neonBloomColor,
+                    style = strokeNeonBloom
                 )
                 // Crisp neon core
                 drawPath(
                     path = insetNeonPath,
-                    color = glowColor.copy(alpha = 0.85f),
-                    style = Stroke(width = 1.8.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+                    color = neonCoreColor,
+                    style = strokeNeonCore
                 )
 
                 // 4. Gloss Sheen Overlay (dpGloss)
@@ -516,16 +590,13 @@ fun LensDPad(
                 )
 
                 // 5. Active Directional Arm Fills (.af: animated opacity 0.30 when pressed)
-                fun sx(x: Float) = x * scale
-                fun sy(y: Float) = y * scale
-
                 // UP Arm Active Fill (x=52, y=9, w=46, h=46, rx=10)
                 if (upFillAlpha > 0f) {
                     drawRoundRect(
                         color = glowColor.copy(alpha = upFillAlpha),
-                        topLeft = Offset(sx(52f), sy(9f)),
-                        size = Size(sx(46f), sy(46f)),
-                        cornerRadius = CornerRadius(sx(10f), sy(10f))
+                        topLeft = Offset(52f * density, 9f * density),
+                        size = armSize,
+                        cornerRadius = armCornerRadius
                     )
                 }
 
@@ -533,9 +604,9 @@ fun LensDPad(
                 if (downFillAlpha > 0f) {
                     drawRoundRect(
                         color = glowColor.copy(alpha = downFillAlpha),
-                        topLeft = Offset(sx(52f), sy(95f)),
-                        size = Size(sx(46f), sy(46f)),
-                        cornerRadius = CornerRadius(sx(10f), sy(10f))
+                        topLeft = Offset(52f * density, 95f * density),
+                        size = armSize,
+                        cornerRadius = armCornerRadius
                     )
                 }
 
@@ -543,9 +614,9 @@ fun LensDPad(
                 if (leftFillAlpha > 0f) {
                     drawRoundRect(
                         color = glowColor.copy(alpha = leftFillAlpha),
-                        topLeft = Offset(sx(9f), sy(52f)),
-                        size = Size(sx(46f), sy(46f)),
-                        cornerRadius = CornerRadius(sx(10f), sy(10f))
+                        topLeft = Offset(9f * density, 52f * density),
+                        size = armSize,
+                        cornerRadius = armCornerRadius
                     )
                 }
 
@@ -553,63 +624,37 @@ fun LensDPad(
                 if (rightFillAlpha > 0f) {
                     drawRoundRect(
                         color = glowColor.copy(alpha = rightFillAlpha),
-                        topLeft = Offset(sx(95f), sy(52f)),
-                        size = Size(sx(46f), sy(46f)),
-                        cornerRadius = CornerRadius(sx(10f), sy(10f))
+                        topLeft = Offset(95f * density, 52f * density),
+                        size = armSize,
+                        cornerRadius = armCornerRadius
                     )
                 }
 
                 // 6. Directional Chevrons (.ch: stroke-width: 4, linecap: round, linejoin: round)
-                val strokeW = 4.dp.toPx()
-
-                // UP Chevron: points="64,36 75,25 86,36"
-                val upChevron = Path().apply {
-                    moveTo(sx(64f), sy(36f))
-                    lineTo(sx(75f), sy(25f))
-                    lineTo(sx(86f), sy(36f))
-                }
                 if (upGlowAlpha > 0f) {
-                    drawPath(upChevron, glowColor.copy(alpha = upGlowAlpha * 0.70f), style = Stroke(strokeW + 4.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+                    drawPath(upChevron, glowColor.copy(alpha = upGlowAlpha * 0.70f), style = strokeChevronBloom)
                 }
-                drawPath(upChevron, if (upGlowAlpha > 0.5f) Color.White else glowColor.copy(alpha = 0.85f), style = Stroke(strokeW, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                drawPath(upChevron, if (upGlowAlpha > 0.5f) Color.White else neonCoreColor, style = strokeChevronCore)
 
-                // DOWN Chevron: points="64,114 75,125 86,114"
-                val downChevron = Path().apply {
-                    moveTo(sx(64f), sy(114f))
-                    lineTo(sx(75f), sy(125f))
-                    lineTo(sx(86f), sy(114f))
-                }
                 if (downGlowAlpha > 0f) {
-                    drawPath(downChevron, glowColor.copy(alpha = downGlowAlpha * 0.70f), style = Stroke(strokeW + 4.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+                    drawPath(downChevron, glowColor.copy(alpha = downGlowAlpha * 0.70f), style = strokeChevronBloom)
                 }
-                drawPath(downChevron, if (downGlowAlpha > 0.5f) Color.White else glowColor.copy(alpha = 0.85f), style = Stroke(strokeW, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                drawPath(downChevron, if (downGlowAlpha > 0.5f) Color.White else neonCoreColor, style = strokeChevronCore)
 
-                // LEFT Chevron: points="36,64 25,75 36,86"
-                val leftChevron = Path().apply {
-                    moveTo(sx(36f), sy(64f))
-                    lineTo(sx(25f), sy(75f))
-                    lineTo(sx(36f), sy(86f))
-                }
                 if (leftGlowAlpha > 0f) {
-                    drawPath(leftChevron, glowColor.copy(alpha = leftGlowAlpha * 0.70f), style = Stroke(strokeW + 4.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+                    drawPath(leftChevron, glowColor.copy(alpha = leftGlowAlpha * 0.70f), style = strokeChevronBloom)
                 }
-                drawPath(leftChevron, if (leftGlowAlpha > 0.5f) Color.White else glowColor.copy(alpha = 0.85f), style = Stroke(strokeW, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                drawPath(leftChevron, if (leftGlowAlpha > 0.5f) Color.White else neonCoreColor, style = strokeChevronCore)
 
-                // RIGHT Chevron: points="114,64 125,75 114,86"
-                val rightChevron = Path().apply {
-                    moveTo(sx(114f), sy(64f))
-                    lineTo(sx(125f), sy(75f))
-                    lineTo(sx(114f), sy(86f))
-                }
                 if (rightGlowAlpha > 0f) {
-                    drawPath(rightChevron, glowColor.copy(alpha = rightGlowAlpha * 0.70f), style = Stroke(strokeW + 4.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+                    drawPath(rightChevron, glowColor.copy(alpha = rightGlowAlpha * 0.70f), style = strokeChevronBloom)
                 }
-                drawPath(rightChevron, if (rightGlowAlpha > 0.5f) Color.White else glowColor.copy(alpha = 0.85f), style = Stroke(strokeW, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                drawPath(rightChevron, if (rightGlowAlpha > 0.5f) Color.White else neonCoreColor, style = strokeChevronCore)
 
                 // 7. Center Hub Dish & Luminous Pip
-                val hubCenter = Offset(sx(75f), sy(75f))
-                val hubRadius = sx(12f)
-                val dotRadius = sx(3f)
+                val hubCenter = Offset(75f * density, 75f * density)
+                val hubRadius = 12f * density
+                val dotRadius = 3f * density
 
                 drawCircle(
                     brush = hubGradient,
@@ -617,13 +662,13 @@ fun LensDPad(
                     center = hubCenter
                 )
                 drawCircle(
-                    color = glowColor.copy(alpha = 0.35f),
+                    color = hubBorderColor,
                     radius = hubRadius,
                     center = hubCenter,
-                    style = Stroke(width = 1.dp.toPx())
+                    style = strokeHubBorder
                 )
                 drawCircle(
-                    color = glowColor.copy(alpha = 0.70f),
+                    color = hubPipColor,
                     radius = dotRadius,
                     center = hubCenter
                 )
@@ -636,22 +681,19 @@ fun LensDPad(
             val h = size.height
 
             // Inset highlight crescent: inset 0 2px 2px rgba(255,255,255,0.10)
+            val lensInset = 1f * density
             drawArc(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.12f),
-                        Color.White.copy(alpha = 0.04f),
-                        Color.Transparent
-                    ),
+                    colors = glassHighlightColors,
                     startY = 0f,
                     endY = h * 0.40f
                 ),
                 startAngle = 180f,
                 sweepAngle = 180f,
                 useCenter = false,
-                topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
-                size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
-                style = Stroke(width = 1.2.dp.toPx())
+                topLeft = Offset(lensInset, lensInset),
+                size = Size(w - lensInset * 2f, h - lensInset * 2f),
+                style = strokeGlassChamfer
             )
 
             // Bottom Shadow: inset 0 -3px 5px rgba(0,0,0,0.35)
@@ -660,15 +702,15 @@ fun LensDPad(
                 startAngle = 0f,
                 sweepAngle = 180f,
                 useCenter = false,
-                topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
-                size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
-                style = Stroke(width = 1.dp.toPx())
+                topLeft = Offset(lensInset, lensInset),
+                size = Size(w - lensInset * 2f, h - lensInset * 2f),
+                style = strokeGlassShadow
             )
 
             // Specular sheen at bottom-right (circle at 70% 78%, rgba(255,255,255,0.06))
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                    colors = glassSpecularColors,
                     center = Offset(w * 0.70f, h * 0.78f),
                     radius = w * 0.22f
                 ),

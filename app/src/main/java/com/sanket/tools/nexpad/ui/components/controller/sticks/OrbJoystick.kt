@@ -167,6 +167,12 @@ fun OrbJoystick(
     val stickKey = remember(isLeft) { if (isLeft) "LSB" else "RSB" }
 
     val strokeCoronaRing = remember { androidx.compose.ui.graphics.drawscope.Stroke(width = 2.2f) }
+    val stroke1dp = remember(density) { Stroke(width = 1f * density) }
+    val stroke1_2dp = remember(density) { Stroke(width = 1.2f * density) }
+    val stroke2dp = remember(density) { Stroke(width = 2f * density) }
+    val stroke3dp = remember(density) { Stroke(width = 3f * density) }
+    val stroke3_5dp = remember(density) { Stroke(width = 3.5f * density) }
+    val stroke7dp = remember(density) { Stroke(width = 7f * density) }
     val prominenceColors = remember { listOf(Color.White.copy(alpha = 0.8f), Color.Transparent) }
     val coronaStops = remember(glowColor) {
         arrayOf(
@@ -524,7 +530,7 @@ fun OrbJoystick(
                             useCenter = false,
                             topLeft = Offset(center.x - gateRadius, center.y - gateRadius),
                             size = Size(gateRadius * 2f, gateRadius * 2f),
-                            style = Stroke(width = 7.dp.toPx())
+                            style = stroke7dp
                         )
                     }
                 }
@@ -592,7 +598,7 @@ fun OrbJoystick(
                     useCenter = false,
                     topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
                     size = Size(capW - 3.dp.toPx(), capH - 3.dp.toPx()),
-                    style = Stroke(width = 2.dp.toPx())
+                    style = stroke2dp
                 )
 
                 // Inset bottom shadow: inset 0 -8px 14px rgba(0,0,0,0.85)
@@ -686,13 +692,13 @@ fun OrbJoystick(
                 drawCircle(
                     color = glowColor.copy(alpha = 0.16f),
                     radius = orbRingRadius,
-                    style = Stroke(width = 3.dp.toPx())
+                    style = stroke3dp
                 )
                 // Crisp core ring
                 drawCircle(
                     color = glowColor.copy(alpha = 0.70f),
                     radius = orbRingRadius,
-                    style = Stroke(width = 1.2.dp.toPx())
+                    style = stroke1_2dp
                 )
 
                 // Dual Spherical Lens Highlights (.orb-spec):
@@ -747,12 +753,12 @@ fun OrbJoystick(
             drawCircle(
                 color = glowColor.copy(alpha = 0.10f),
                 radius = outerRingRadius,
-                style = Stroke(width = 3.5.dp.toPx())
+                style = stroke3_5dp
             )
             drawCircle(
                 color = glowColor.copy(alpha = 0.38f),
                 radius = outerRingRadius,
-                style = Stroke(width = 1.2.dp.toPx())
+                style = stroke1_2dp
             )
 
             // Outer Glass Lens (.lx-lens): Top-lit 1px chamfer rim
@@ -763,7 +769,7 @@ fun OrbJoystick(
                 useCenter = false,
                 topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
                 size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
-                style = Stroke(width = 1.dp.toPx())
+                style = stroke1dp
             )
             // Left subtle reflection
             drawArc(
@@ -773,7 +779,7 @@ fun OrbJoystick(
                 useCenter = false,
                 topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
                 size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
-                style = Stroke(width = 1.dp.toPx())
+                style = stroke1dp
             )
             // Bottom shadow chamfer
             drawArc(
@@ -783,7 +789,7 @@ fun OrbJoystick(
                 useCenter = false,
                 topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
                 size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
-                style = Stroke(width = 1.dp.toPx())
+                style = stroke1dp
             )
             // Lower-right glass specular sheen: at 70% 78%
             drawCircle(
@@ -822,6 +828,9 @@ fun OrbStickButton(
 ) {
     var isPressed by remember { mutableStateOf(false) }
     val density = LocalDensity.current.density
+    val stroke1_5dp = remember(density) { Stroke(width = 1.5f * density) }
+    val stroke1_8dp = remember(density) { Stroke(width = 1.8f * density) }
+    val stroke4dp = remember(density) { Stroke(width = 4f * density) }
 
     val scaleAnim = animateFloatAsState(
         targetValue = if (isPressed) 0.92f else 1.0f,
@@ -961,7 +970,7 @@ fun OrbStickButton(
                 useCenter = false,
                 topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
                 size = Size(w - 2.dp.toPx(), h - 2.dp.toPx()),
-                style = Stroke(width = 1.5.dp.toPx())
+                style = stroke1_5dp
             )
 
             // Bottom inset shadow
@@ -1013,12 +1022,12 @@ fun OrbStickButton(
             drawCircle(
                 color = glowColor.copy(alpha = if (isPressed) 0.50f else 0.25f),
                 radius = ringRadius,
-                style = Stroke(width = 4.dp.toPx())
+                style = stroke4dp
             )
             drawCircle(
                 color = glowColor.copy(alpha = if (isPressed) 0.90f else 0.60f),
                 radius = ringRadius,
-                style = Stroke(width = 1.8.dp.toPx())
+                style = stroke1_8dp
             )
 
             // Specular lens highlight

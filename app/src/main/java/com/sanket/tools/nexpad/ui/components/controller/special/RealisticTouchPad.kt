@@ -209,35 +209,39 @@ private fun DrawScope.drawTouchPadAura(
 
 private fun DrawScope.drawTouchPadBackgroundMatrix(
     auraColor: Color,
-    isRgbEnabled: Boolean
+    isRgbEnabled: Boolean,
+    stroke1dp: Stroke? = null,
+    strokeDashRadar: Stroke? = null
 ) {
     val cx = size.width / 2f
     val cy = size.height / 2f
     val r = size.minDimension / 2f
 
     val gridColor = if (isRgbEnabled) auraColor else Color.White
+    val s1 = stroke1dp ?: Stroke(width = 1.dp.toPx())
+    val sDash = strokeDashRadar ?: Stroke(
+        width = 1.dp.toPx(),
+        pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx()), 0f)
+    )
 
     // Concentric Precision Radar Range Rings (28%, 55%, 80%)
     drawCircle(
         color = gridColor.copy(alpha = 0.08f),
         radius = r * 0.28f,
         center = Offset(cx, cy),
-        style = Stroke(width = 1.dp.toPx())
+        style = s1
     )
     drawCircle(
         color = gridColor.copy(alpha = 0.06f),
         radius = r * 0.55f,
         center = Offset(cx, cy),
-        style = Stroke(
-            width = 1.dp.toPx(),
-            pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx()), 0f)
-        )
+        style = sDash
     )
     drawCircle(
         color = gridColor.copy(alpha = 0.05f),
         radius = r * 0.80f,
         center = Offset(cx, cy),
-        style = Stroke(width = 1.dp.toPx())
+        style = s1
     )
 
     // Fine Cardinal Crosshairs with Central Clearance Gap
@@ -280,7 +284,7 @@ private fun DrawScope.drawTouchPadBackgroundMatrix(
         useCenter = false,
         topLeft = Offset(3.dp.toPx(), 3.dp.toPx()),
         size = Size(size.width - 6.dp.toPx(), size.height * 0.50f),
-        style = Stroke(width = 1.dp.toPx())
+        style = s1
     )
 }
 
@@ -292,7 +296,9 @@ private fun DrawScope.drawActiveCapacitiveTouch(
     activeAlpha: Float,
     rgbBloomAlpha: Float,
     auraColor: Color,
-    isRgbEnabled: Boolean
+    isRgbEnabled: Boolean,
+    stroke2dp: Stroke? = null,
+    stroke1_2dp: Stroke? = null
 ) {
     if (activeAlpha <= 0.01f) return
 
@@ -347,13 +353,13 @@ private fun DrawScope.drawActiveCapacitiveTouch(
         color = glowColor.copy(alpha = activeAlpha * 0.85f),
         radius = 16.dp.toPx(),
         center = puckCenter,
-        style = Stroke(width = 2.dp.toPx())
+        style = stroke2dp ?: Stroke(width = 2.dp.toPx())
     )
     drawCircle(
         color = glowColor.copy(alpha = activeAlpha * 0.45f),
         radius = 28.dp.toPx(),
         center = puckCenter,
-        style = Stroke(width = 1.2.dp.toPx())
+        style = stroke1_2dp ?: Stroke(width = 1.2.dp.toPx())
     )
 
     // 4. Specular Core Contact Dot
@@ -402,17 +408,35 @@ fun RealisticTouchPad(
         label = "touchpad_active_alpha"
     )
 
-    val shape = RoundedCornerShape(26.dp)
-    val innerShape = RoundedCornerShape(18.dp)
+    val shape = remember { RoundedCornerShape(26.dp) }
+    val innerShape = remember { RoundedCornerShape(18.dp) }
 
-    val surfaceGradient = Brush.radialGradient(
-        colors = listOf(Color(0xFF23252B), Color(0xFF131418), Color(0xFF0B0C0E)),
-        center = Offset(0.4f, 0.4f),
-        radius = 280f
-    )
+    val density = LocalDensity.current.density
+    val stroke1dp = remember(density) { Stroke(width = 1f * density) }
+    val stroke1_2dp = remember(density) { Stroke(width = 1.2f * density) }
+    val stroke2dp = remember(density) { Stroke(width = 2f * density) }
+    val strokeDashRadar = remember(density) {
+        Stroke(
+            width = 1f * density,
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f * density, 4f * density), 0f)
+        )
+    }
+
+    val surfaceGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(Color(0xFF23252B), Color(0xFF131418), Color(0xFF0B0C0E)),
+            center = Offset(0.4f, 0.4f),
+            radius = 280f
+        )
+    }
+    val sensorWellBrush = remember {
+        Brush.radialGradient(
+            colors = listOf(Color.White.copy(alpha = 0.03f), Color.Transparent),
+            radius = 200f
+        )
+    }
 
     val context = LocalContext.current
-    val density = LocalDensity.current.density
     val padKey = if (isLeft) "LTP" else "RTP"
     val effectiveSensitivity = remember(context, sensitivity, padKey) {
         if (sensitivity != null && sensitivity > 0f) {
@@ -625,12 +649,7 @@ fun RealisticTouchPad(
                 .fillMaxSize()
                 .padding(14.dp)
                 .clip(innerShape)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(Color.White.copy(alpha = 0.03f), Color.Transparent),
-                        radius = 200f
-                    )
-                )
+                .background(sensorWellBrush)
                 .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)), innerShape)
         )
 
@@ -638,7 +657,9 @@ fun RealisticTouchPad(
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawTouchPadBackgroundMatrix(
                 auraColor = auraColor,
-                isRgbEnabled = isRgbEnabled
+                isRgbEnabled = isRgbEnabled,
+                stroke1dp = stroke1dp,
+                strokeDashRadar = strokeDashRadar
             )
 
             // Layer 3: Dynamic Capacitive Touch Puck & Ripples
@@ -650,7 +671,9 @@ fun RealisticTouchPad(
                 activeAlpha = activeAlpha.value,
                 rgbBloomAlpha = rgbBloomAlpha.value,
                 auraColor = auraColor,
-                isRgbEnabled = isRgbEnabled
+                isRgbEnabled = isRgbEnabled,
+                stroke2dp = stroke2dp,
+                stroke1_2dp = stroke1_2dp
             )
         }
 
@@ -663,7 +686,7 @@ fun RealisticTouchPad(
                     color = dotColor.copy(alpha = 0.25f),
                     radius = 6.dp.toPx(),
                     center = centerPt,
-                    style = Stroke(width = 1.dp.toPx())
+                    style = stroke1dp
                 )
                 drawCircle(
                     color = dotColor.copy(alpha = 0.50f),

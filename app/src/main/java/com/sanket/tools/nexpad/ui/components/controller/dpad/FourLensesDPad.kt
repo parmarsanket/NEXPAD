@@ -181,6 +181,58 @@ fun FourLensesKey(
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
 
+    val chevronPath = remember(density) {
+        val s = (34f * density) / 44f
+        Path().apply {
+            moveTo(-14f * s, 7f * s)
+            lineTo(0f, -7f * s)
+            lineTo(14f * s, 7f * s)
+        }
+    }
+    val strokeChevronBloom = remember(density) {
+        val s = (34f * density) / 44f
+        Stroke(
+            width = 6f * s + 3f * density,
+            cap = StrokeCap.Round,
+            join = StrokeJoin.Round
+        )
+    }
+    val strokeChevronCore = remember(density) {
+        val s = (34f * density) / 44f
+        Stroke(
+            width = 6f * s,
+            cap = StrokeCap.Round,
+            join = StrokeJoin.Round
+        )
+    }
+    val strokeDishEdge = remember(density) { Stroke(width = 1f * density) }
+    val strokeRingBloomPressed = remember(density) { Stroke(width = 6f * density) }
+    val strokeRingBloomIdle = remember(density) { Stroke(width = 4f * density) }
+    val strokeRingCorePressed = remember(density) { Stroke(width = 2.2f * density) }
+    val strokeRingCoreIdle = remember(density) { Stroke(width = 1.8f * density) }
+    val strokeLensChamfer = remember(density) { Stroke(width = 1.2f * density) }
+    val strokeLensBottomShadow = remember(density) { Stroke(width = 1f * density) }
+
+    val bottomUndercutColorsPressed = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)) }
+    val bottomUndercutColorsIdle = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)) }
+    val pressedTopShadowColors = remember { listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent) }
+    val dishInnerShadowColors = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f)) }
+    val lensColorsPressed = remember {
+        listOf(
+            Color.White.copy(alpha = 0.06f),
+            Color.White.copy(alpha = 0.02f),
+            Color.Transparent
+        )
+    }
+    val lensColorsIdle = remember {
+        listOf(
+            Color.White.copy(alpha = 0.14f),
+            Color.White.copy(alpha = 0.05f),
+            Color.Transparent
+        )
+    }
+    val specularColors = remember { listOf(Color.White.copy(alpha = 0.06f), Color.Transparent) }
+
     Box(
         modifier = modifier
             .size(54.dp)
@@ -233,7 +285,7 @@ fun FourLensesKey(
             val insetH = h * 0.35f
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (isPressed) 0.85f else 0.70f)),
+                    colors = if (isPressed) bottomUndercutColorsPressed else bottomUndercutColorsIdle,
                     startY = h - insetH,
                     endY = h
                 ),
@@ -246,7 +298,7 @@ fun FourLensesKey(
                 val pressedInsetH = h * 0.30f
                 drawRect(
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent),
+                        colors = pressedTopShadowColors,
                         startY = 0f,
                         endY = pressedInsetH
                     ),
@@ -256,7 +308,7 @@ fun FourLensesKey(
             }
 
             // 3. Recessed Dish (.lx-window: 34dp circle centered)
-            val dishRadius = 17.dp.toPx()
+            val dishRadius = 17f * density
             drawCircle(
                 brush = dishGradient,
                 radius = dishRadius,
@@ -265,7 +317,7 @@ fun FourLensesKey(
             // Dish inner top shadow
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f)),
+                    colors = dishInnerShadowColors,
                     center = center,
                     radius = dishRadius
                 ),
@@ -280,71 +332,52 @@ fun FourLensesKey(
                 useCenter = false,
                 topLeft = Offset(center.x - dishRadius, center.y - dishRadius),
                 size = Size(dishRadius * 2f, dishRadius * 2f),
-                style = Stroke(width = 1.dp.toPx())
+                style = strokeDishEdge
             )
 
             // 4. Directional Chevron Arrow (SVG viewBox 0 0 44 44: M8 30 L22 16 L36 30)
-            val s = (34.dp.toPx()) / 44f
-            val chevronPath = Path().apply {
-                moveTo(center.x - 14f * s, center.y + 7f * s)
-                lineTo(center.x, center.y - 7f * s)
-                lineTo(center.x + 14f * s, center.y + 7f * s)
-            }
-
             withTransform({
-                rotate(degrees = rotationAngle, pivot = center)
+                translate(center.x, center.y)
+                rotate(degrees = rotationAngle, pivot = Offset.Zero)
             }) {
-                val strokeW = 6f * s
                 // Emissive bloom on press
                 if (isPressed) {
                     drawPath(
                         path = chevronPath,
                         color = glowColor.copy(alpha = 0.75f),
-                        style = Stroke(
-                            width = strokeW + 3.dp.toPx(),
-                            cap = StrokeCap.Round,
-                            join = StrokeJoin.Round
-                        )
+                        style = strokeChevronBloom
                     )
                 }
                 // Crisp core stroke
                 drawPath(
                     path = chevronPath,
                     color = if (isPressed) Color.White else glowColor.copy(alpha = 0.90f),
-                    style = Stroke(
-                        width = strokeW,
-                        cap = StrokeCap.Round,
-                        join = StrokeJoin.Round
-                    )
+                    style = strokeChevronCore
                 )
             }
 
             // 5. Inset Neon Ring (.lx-ring: inset 3px)
-            val ringRadius = r - 3.dp.toPx()
+            val ringRadius = r - 3f * density
             // Outer bloom
             drawCircle(
                 color = glowColor.copy(alpha = if (isPressed) 0.55f else 0.22f),
                 radius = ringRadius,
                 center = center,
-                style = Stroke(width = if (isPressed) 6.dp.toPx() else 4.dp.toPx())
+                style = if (isPressed) strokeRingBloomPressed else strokeRingBloomIdle
             )
             // Crisp core
             drawCircle(
                 color = glowColor.copy(alpha = ringBloomAlphaState.value),
                 radius = ringRadius,
                 center = center,
-                style = Stroke(width = if (isPressed) 2.2.dp.toPx() else 1.8.dp.toPx())
+                style = if (isPressed) strokeRingCorePressed else strokeRingCoreIdle
             )
 
             // 6. Top Specular Glass Lens (.lx-lens)
-            val lensInset = 1.dp.toPx()
+            val lensInset = 1f * density
             drawArc(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isPressed) 0.06f else 0.14f),
-                        Color.White.copy(alpha = if (isPressed) 0.02f else 0.05f),
-                        Color.Transparent
-                    ),
+                    colors = if (isPressed) lensColorsPressed else lensColorsIdle,
                     startY = 0f,
                     endY = h * 0.40f
                 ),
@@ -353,7 +386,7 @@ fun FourLensesKey(
                 useCenter = false,
                 topLeft = Offset(lensInset, lensInset),
                 size = Size(w - lensInset * 2f, h - lensInset * 2f),
-                style = Stroke(width = 1.2.dp.toPx())
+                style = strokeLensChamfer
             )
 
             // Inset bottom shadow arc
@@ -364,13 +397,13 @@ fun FourLensesKey(
                 useCenter = false,
                 topLeft = Offset(lensInset, lensInset),
                 size = Size(w - lensInset * 2f, h - lensInset * 2f),
-                style = Stroke(width = 1.dp.toPx())
+                style = strokeLensBottomShadow
             )
 
             // Bottom-right specular sheen circle
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                    colors = specularColors,
                     center = Offset(w * 0.70f, h * 0.78f),
                     radius = w * 0.22f
                 ),
@@ -461,6 +494,8 @@ fun FourLensesDPad(
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
 
+    val hubShadowColors = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)) }
+
     Box(
         modifier = modifier
             .size(164.dp)
@@ -470,7 +505,7 @@ fun FourLensesDPad(
             .drawBehind {
                 if (isRgbEnabled) {
                     val rgbBloomAlpha = rgbBloomAlphaState.value
-                    val podR = 27.dp.toPx()
+                    val podR = 27f * density
                     val upCenter = Offset(center.x, podR)
                     val downCenter = Offset(center.x, size.height - podR)
                     val leftCenter = Offset(podR, center.y)
@@ -490,46 +525,86 @@ fun FourLensesDPad(
                     )
 
                     // 2. Connective energy filaments from central hub to satellites
-                    fun drawFilament(target: Offset, isPressed: Boolean) {
-                        val filamentAlpha = if (isPressed) rgbBloomAlpha * 0.90f else (if (hasActivePress) 0.18f else 0.40f)
-                        filamentColors[0] = glowColor.copy(alpha = filamentAlpha * 0.5f)
-                        filamentColors[1] = glowColor.copy(alpha = filamentAlpha)
-                        drawLine(
-                            brush = Brush.linearGradient(
-                                colors = filamentColors,
-                                start = center,
-                                end = target
-                            ),
-                            start = center,
-                            end = target,
-                            strokeWidth = if (isPressed) 3.5f else 1.8f
-                        )
-                    }
-                    drawFilament(upCenter, isUpPressed)
-                    drawFilament(downCenter, isDownPressed)
-                    drawFilament(leftCenter, isLeftPressed)
-                    drawFilament(rightCenter, isRightPressed)
+                    var filamentAlpha = if (isUpPressed) rgbBloomAlpha * 0.90f else (if (hasActivePress) 0.18f else 0.40f)
+                    filamentColors[0] = glowColor.copy(alpha = filamentAlpha * 0.5f)
+                    filamentColors[1] = glowColor.copy(alpha = filamentAlpha)
+                    drawLine(
+                        brush = Brush.linearGradient(colors = filamentColors, start = center, end = upCenter),
+                        start = center,
+                        end = upCenter,
+                        strokeWidth = if (isUpPressed) 3.5f * density else 1.8f * density
+                    )
+
+                    filamentAlpha = if (isDownPressed) rgbBloomAlpha * 0.90f else (if (hasActivePress) 0.18f else 0.40f)
+                    filamentColors[0] = glowColor.copy(alpha = filamentAlpha * 0.5f)
+                    filamentColors[1] = glowColor.copy(alpha = filamentAlpha)
+                    drawLine(
+                        brush = Brush.linearGradient(colors = filamentColors, start = center, end = downCenter),
+                        start = center,
+                        end = downCenter,
+                        strokeWidth = if (isDownPressed) 3.5f * density else 1.8f * density
+                    )
+
+                    filamentAlpha = if (isLeftPressed) rgbBloomAlpha * 0.90f else (if (hasActivePress) 0.18f else 0.40f)
+                    filamentColors[0] = glowColor.copy(alpha = filamentAlpha * 0.5f)
+                    filamentColors[1] = glowColor.copy(alpha = filamentAlpha)
+                    drawLine(
+                        brush = Brush.linearGradient(colors = filamentColors, start = center, end = leftCenter),
+                        start = center,
+                        end = leftCenter,
+                        strokeWidth = if (isLeftPressed) 3.5f * density else 1.8f * density
+                    )
+
+                    filamentAlpha = if (isRightPressed) rgbBloomAlpha * 0.90f else (if (hasActivePress) 0.18f else 0.40f)
+                    filamentColors[0] = glowColor.copy(alpha = filamentAlpha * 0.5f)
+                    filamentColors[1] = glowColor.copy(alpha = filamentAlpha)
+                    drawLine(
+                        brush = Brush.linearGradient(colors = filamentColors, start = center, end = rightCenter),
+                        start = center,
+                        end = rightCenter,
+                        strokeWidth = if (isRightPressed) 3.5f * density else 1.8f * density
+                    )
 
                     // 3. Discrete satellite lens pod blooms
-                    fun drawPodBloom(podCenter: Offset, isPressed: Boolean) {
-                        val podBloomR = podR * (if (isPressed) 1.55f else 1.25f)
-                        podBloomColors[0] = (if (isPressed) Color.White else glowColor).copy(alpha = if (isPressed) 0.85f else 0.40f)
-                        podBloomColors[1] = glowColor.copy(alpha = if (isPressed) 0.40f else 0.15f)
-                        podBloomColors[2] = Color.Transparent
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                colors = podBloomColors,
-                                center = podCenter,
-                                radius = podBloomR
-                            ),
-                            radius = podBloomR,
-                            center = podCenter
-                        )
-                    }
-                    drawPodBloom(upCenter, isUpPressed)
-                    drawPodBloom(downCenter, isDownPressed)
-                    drawPodBloom(leftCenter, isLeftPressed)
-                    drawPodBloom(rightCenter, isRightPressed)
+                    var podBloomR = podR * (if (isUpPressed) 1.55f else 1.25f)
+                    podBloomColors[0] = (if (isUpPressed) Color.White else glowColor).copy(alpha = if (isUpPressed) 0.85f else 0.40f)
+                    podBloomColors[1] = glowColor.copy(alpha = if (isUpPressed) 0.40f else 0.15f)
+                    podBloomColors[2] = Color.Transparent
+                    drawCircle(
+                        brush = Brush.radialGradient(colors = podBloomColors, center = upCenter, radius = podBloomR),
+                        radius = podBloomR,
+                        center = upCenter
+                    )
+
+                    podBloomR = podR * (if (isDownPressed) 1.55f else 1.25f)
+                    podBloomColors[0] = (if (isDownPressed) Color.White else glowColor).copy(alpha = if (isDownPressed) 0.85f else 0.40f)
+                    podBloomColors[1] = glowColor.copy(alpha = if (isDownPressed) 0.40f else 0.15f)
+                    podBloomColors[2] = Color.Transparent
+                    drawCircle(
+                        brush = Brush.radialGradient(colors = podBloomColors, center = downCenter, radius = podBloomR),
+                        radius = podBloomR,
+                        center = downCenter
+                    )
+
+                    podBloomR = podR * (if (isLeftPressed) 1.55f else 1.25f)
+                    podBloomColors[0] = (if (isLeftPressed) Color.White else glowColor).copy(alpha = if (isLeftPressed) 0.85f else 0.40f)
+                    podBloomColors[1] = glowColor.copy(alpha = if (isLeftPressed) 0.40f else 0.15f)
+                    podBloomColors[2] = Color.Transparent
+                    drawCircle(
+                        brush = Brush.radialGradient(colors = podBloomColors, center = leftCenter, radius = podBloomR),
+                        radius = podBloomR,
+                        center = leftCenter
+                    )
+
+                    podBloomR = podR * (if (isRightPressed) 1.55f else 1.25f)
+                    podBloomColors[0] = (if (isRightPressed) Color.White else glowColor).copy(alpha = if (isRightPressed) 0.85f else 0.40f)
+                    podBloomColors[1] = glowColor.copy(alpha = if (isRightPressed) 0.40f else 0.15f)
+                    podBloomColors[2] = Color.Transparent
+                    drawCircle(
+                        brush = Brush.radialGradient(colors = podBloomColors, center = rightCenter, radius = podBloomR),
+                        radius = podBloomR,
+                        center = rightCenter
+                    )
                 }
             }
             .shadow(
@@ -540,7 +615,7 @@ fun FourLensesDPad(
             )
             .then(
                 if (isInteractive) {
-                    Modifier.pointerInput(isConnected) {
+                    Modifier.pointerInput(Unit) {
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)
                             down.consume()
@@ -611,7 +686,7 @@ fun FourLensesDPad(
                     // Inset shadow
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)),
+                            colors = hubShadowColors,
                             center = c,
                             radius = r
                         ),
@@ -621,12 +696,12 @@ fun FourLensesDPad(
                     // Central Luminous Pip (6dp diameter at 0.60 opacity)
                     drawCircle(
                         color = glowColor.copy(alpha = 0.20f),
-                        radius = 5.dp.toPx(),
+                        radius = 5f * density,
                         center = c
                     )
                     drawCircle(
                         color = glowColor.copy(alpha = 0.60f),
-                        radius = 3.dp.toPx(),
+                        radius = 3f * density,
                         center = c
                     )
                 }

@@ -8,7 +8,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
@@ -23,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -32,9 +30,9 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.model.NexpadKeys
@@ -127,13 +125,48 @@ fun TargetTrigger(
         )
     }
 
+    val chassisBorderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.50f),
+                Color.Black.copy(alpha = 0.80f)
+            )
+        )
+    }
+
+    val insetShadowColorsPressed = remember {
+        listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f))
+    }
+    val insetShadowColorsNormal = remember {
+        listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f))
+    }
+    val lensColorsPressed = remember {
+        listOf(Color.White.copy(alpha = 0.06f), Color.White.copy(alpha = 0.02f), Color.Transparent)
+    }
+    val lensColorsNormal = remember {
+        listOf(Color.White.copy(alpha = 0.14f), Color.White.copy(alpha = 0.05f), Color.Transparent)
+    }
+    val specularSheenColors = remember {
+        listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)
+    }
+    val windowLipShadowColors = remember {
+        listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent)
+    }
+    val windowVignetteColors = remember {
+        arrayOf(
+            0.0f to Color.Transparent,
+            0.38f to Color.Transparent,
+            1.0f to Color.Black.copy(alpha = 0.85f)
+        )
+    }
+
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
 
     val triggerShape = CircleShape
     val windowShape = CircleShape
 
-    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val density = LocalDensity.current.density
     val strokeOuterReticle = remember(density) {
         Stroke(
             width = 1.5f * density,
@@ -141,6 +174,12 @@ fun TargetTrigger(
         )
     }
     val strokeInnerReticle = remember(density) { Stroke(width = 1f * density) }
+    val strokeChassisRingBloom = remember(density) { Stroke(width = 3.5f * density) }
+    val strokeChassisRingCore = remember(density) { Stroke(width = 1.5f * density) }
+    val strokeTargetRingBloom = remember(density) { Stroke(width = 4f * density) }
+    val strokeTargetRingCore = remember(density) { Stroke(width = 1.5f * density) }
+    val strokeLensArc = remember(density) { Stroke(width = 1f * density) }
+
     val targetHaloColors = remember(neonColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
@@ -176,8 +215,8 @@ fun TargetTrigger(
 
                     // 2. Concentric Sniper Reticle Rings tightening with pull
                     val reticleTighten = 1f - 0.20f * fillProgress.value
-                    val outerReticleR = (baseRadius + 8.dp.toPx()) * reticleTighten
-                    val innerReticleR = (baseRadius + 3.dp.toPx()) * reticleTighten
+                    val outerReticleR = (baseRadius + 8f * density) * reticleTighten
+                    val innerReticleR = (baseRadius + 3f * density) * reticleTighten
 
                     drawCircle(
                         color = neonColor.copy(alpha = rgbBloomAlpha.value * (if (isPressed) 0.85f else 0.45f)),
@@ -193,8 +232,8 @@ fun TargetTrigger(
                     )
 
                     // 3. 4-Axis Laser Crosshair Beams (N, S, E, W)
-                    val crosshairStart = innerReticleR + 2.dp.toPx()
-                    val crosshairLen = (if (isPressed) 16.dp else 8.dp).toPx()
+                    val crosshairStart = innerReticleR + 2f * density
+                    val crosshairLen = (if (isPressed) 16f else 8f) * density
                     val crosshairEnd = crosshairStart + crosshairLen
                     val crosshairAlpha = rgbBloomAlpha.value * (if (isPressed) 0.90f else 0.50f)
 
@@ -263,12 +302,7 @@ fun TargetTrigger(
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
             .border(
                 width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.50f),
-                        Color.Black.copy(alpha = 0.80f)
-                    )
-                ),
+                brush = chassisBorderBrush,
                 shape = triggerShape
             )
             .then(
@@ -300,7 +334,7 @@ fun TargetTrigger(
             val insetH = h * 0.32f
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (isPressed) 0.85f else 0.70f)),
+                    colors = if (isPressed) insetShadowColorsPressed else insetShadowColorsNormal,
                     startY = h - insetH,
                     endY = h
                 ),
@@ -309,18 +343,18 @@ fun TargetTrigger(
             )
 
             // Outer chassis neon ring (.lx-ring)
-            val ringRadius = outerRadius - 2.5.dp.toPx()
+            val ringRadius = outerRadius - 2.5f * density
             drawCircle(
                 color = neonColor.copy(alpha = rgbBloomAlpha.value * 0.50f),
                 center = center,
                 radius = ringRadius,
-                style = Stroke(width = 3.5.dp.toPx())
+                style = strokeChassisRingBloom
             )
             drawCircle(
                 color = neonColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
                 center = center,
                 radius = ringRadius,
-                style = Stroke(width = 1.5.dp.toPx())
+                style = strokeChassisRingCore
             )
 
             // =========================================================================
@@ -329,9 +363,9 @@ fun TargetTrigger(
             // opacity = clamp(0.14, (fillProgress - i * 0.30) * 12, 1.0)
             // =========================================================================
             val targetRadii = floatArrayOf(
-                37.dp.toPx(), // Ring 0 (Outer: diameter 74dp)
-                28.dp.toPx(), // Ring 1 (Middle: diameter 56dp)
-                19.dp.toPx()  // Ring 2 (Inner: diameter 38dp)
+                37f * density, // Ring 0 (Outer: diameter 74dp)
+                28f * density, // Ring 1 (Middle: diameter 56dp)
+                19f * density  // Ring 2 (Inner: diameter 38dp)
             )
 
             for (i in 0..2) {
@@ -345,7 +379,7 @@ fun TargetTrigger(
                         color = neonColor.copy(alpha = (ringOpacity * 0.40f).coerceAtMost(0.40f)),
                         center = center,
                         radius = r,
-                        style = Stroke(width = 4.dp.toPx())
+                        style = strokeTargetRingBloom
                     )
                 }
 
@@ -354,19 +388,15 @@ fun TargetTrigger(
                     color = neonColor.copy(alpha = ringOpacity),
                     center = center,
                     radius = r,
-                    style = Stroke(width = 1.5.dp.toPx())
+                    style = strokeTargetRingCore
                 )
             }
 
             // Top crescent specular highlight arc (.lx-lens)
-            val lensInset = 1.dp.toPx()
+            val lensInset = 1f * density
             drawArc(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isPressed) 0.06f else 0.14f),
-                        Color.White.copy(alpha = if (isPressed) 0.02f else 0.05f),
-                        Color.Transparent
-                    ),
+                    colors = if (isPressed) lensColorsPressed else lensColorsNormal,
                     startY = 0f,
                     endY = h * 0.38f
                 ),
@@ -375,13 +405,13 @@ fun TargetTrigger(
                 useCenter = false,
                 topLeft = Offset(lensInset, lensInset),
                 size = Size(w - lensInset * 2f, h - lensInset * 2f),
-                style = Stroke(width = 1.dp.toPx())
+                style = strokeLensArc
             )
 
             // Bottom-right specular sheen oval
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                    colors = specularSheenColors,
                     center = Offset(w * 0.70f, h * 0.78f),
                     radius = w * 0.22f
                 ),
@@ -418,19 +448,17 @@ fun TargetTrigger(
                 // Top lip shadow inside optical cavity
                 drawRect(
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent),
+                        colors = windowLipShadowColors,
                         startY = 0f,
-                        endY = 5.dp.toPx()
+                        endY = 5f * density
                     ),
-                    size = Size(winW, 5.dp.toPx())
+                    size = Size(winW, 5f * density)
                 )
 
                 // Perimeter circular vignette (.lx-window::after)
                 drawRect(
                     brush = Brush.radialGradient(
-                        0.0f to Color.Transparent,
-                        0.38f to Color.Transparent,
-                        1.0f to Color.Black.copy(alpha = 0.85f),
+                        colorStops = windowVignetteColors,
                         center = Offset(winW / 2f, winH / 2f),
                         radius = winW * 0.50f
                     )

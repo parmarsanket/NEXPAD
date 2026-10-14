@@ -31,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -39,6 +40,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
@@ -153,20 +155,78 @@ fun LiquidOrbTrigger(
         )
     }
 
+    val chassisBorderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.50f),
+                Color.Black.copy(alpha = 0.80f)
+            )
+        )
+    }
+
+    val insetShadowColorsPressed = remember {
+        listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f))
+    }
+    val insetShadowColorsNormal = remember {
+        listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f))
+    }
+    val chamberCavityColors = remember {
+        listOf(Color(0xFF0D0E12), Color(0xFF040405))
+    }
+    val fluidLayer1Colors = remember(neonColor) {
+        listOf(
+            neonColor.copy(alpha = 0.75f),
+            neonColor.copy(alpha = 0.35f),
+            Color.Transparent
+        )
+    }
+    val fluidLayer2Colors = remember(neonColor) {
+        listOf(
+            neonColor.copy(alpha = 0.50f),
+            Color.Transparent
+        )
+    }
+    val lensColorsPressed = remember {
+        listOf(Color.White.copy(alpha = 0.06f), Color.White.copy(alpha = 0.02f), Color.Transparent)
+    }
+    val lensColorsNormal = remember {
+        listOf(Color.White.copy(alpha = 0.14f), Color.White.copy(alpha = 0.05f), Color.Transparent)
+    }
+    val specularSheenColors = remember {
+        listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)
+    }
+    val windowLipShadowColors = remember {
+        listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent)
+    }
+    val windowVignetteColors = remember {
+        arrayOf(
+            0.0f to Color.Transparent,
+            0.32f to Color.Transparent,
+            1.0f to Color.Black.copy(alpha = 0.82f)
+        )
+    }
+
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
 
     val triggerShape = CircleShape
     val windowShape = RoundedCornerShape(13.dp)
 
-    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val density = LocalDensity.current.density
     val strokeCorona = remember(density) { Stroke(width = 1.5f * density) }
+    val strokeRimOutline = remember(density) { Stroke(width = 1f * density) }
+    val strokeRingBloom = remember(density) { Stroke(width = 4f * density) }
+    val strokeRingCore = remember(density) { Stroke(width = 2f * density) }
+    val strokeLensArc = remember(density) { Stroke(width = 1f * density) }
+
     val poolBloomColors = remember(neonColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
     val meniscusColors = remember(neonColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
+
+    val chamberPath = remember { Path() }
 
     Box(
         modifier = modifier
@@ -181,7 +241,7 @@ fun LiquidOrbTrigger(
                     val fluidH = size.height * fillProgress.value
                     val poolCenterY = size.height - fluidH * 0.45f
                     val dropletW = size.width * (0.80f + 0.15f * swayScaleY.value)
-                    val dropletH = fluidH + 16.dp.toPx()
+                    val dropletH = fluidH + 16f * density
 
                     poolBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha.value * (if (isPressed) 0.65f else 0.35f))
                     poolBloomColors[1] = neonColor.copy(alpha = rgbBloomAlpha.value * 0.18f)
@@ -199,7 +259,7 @@ fun LiquidOrbTrigger(
                     // 2. Liquid surface tension meniscus wave halo
                     val meniscusY = size.height - fluidH
                     val meniscusW = size.width * 0.70f
-                    val meniscusH = 10.dp.toPx() * swayScaleY.value
+                    val meniscusH = 10f * density * swayScaleY.value
 
                     meniscusColors[0] = Color.White.copy(alpha = rgbBloomAlpha.value * (if (isPressed) 0.80f else 0.40f))
                     meniscusColors[1] = neonColor.copy(alpha = rgbBloomAlpha.value * 0.60f)
@@ -217,7 +277,7 @@ fun LiquidOrbTrigger(
                     // 3. Ambient glass orb containment corona ring
                     drawCircle(
                         color = neonColor.copy(alpha = rgbBloomAlpha.value * (if (isPressed) 0.70f else 0.35f)),
-                        radius = baseR + 3.dp.toPx(),
+                        radius = baseR + 3f * density,
                         center = center,
                         style = strokeCorona
                     )
@@ -238,12 +298,7 @@ fun LiquidOrbTrigger(
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
             .border(
                 width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.50f),
-                        Color.Black.copy(alpha = 0.80f)
-                    )
-                ),
+                brush = chassisBorderBrush,
                 shape = triggerShape
             )
             .then(
@@ -273,7 +328,7 @@ fun LiquidOrbTrigger(
             val insetH = h * 0.32f
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (isPressed) 0.85f else 0.70f)),
+                    colors = if (isPressed) insetShadowColorsPressed else insetShadowColorsNormal,
                     startY = h - insetH,
                     endY = h
                 ),
@@ -285,45 +340,44 @@ fun LiquidOrbTrigger(
             drawCircle(
                 color = Color.Black.copy(alpha = 0.50f),
                 radius = (w / 2f) - 0.5f,
-                style = Stroke(width = 1.dp.toPx())
+                style = strokeRimOutline
             )
 
             // Multi-pass emissive neon ring (.lx-ring)
-            val ringInset = 3.dp.toPx()
+            val ringInset = 3f * density
             val ringRadius = (w / 2f) - ringInset
             drawCircle(
                 color = neonColor.copy(alpha = rgbBloomAlpha.value * 0.55f),
                 radius = ringRadius,
-                style = Stroke(width = 4.dp.toPx())
+                style = strokeRingBloom
             )
             drawCircle(
                 color = neonColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
                 radius = ringRadius,
-                style = Stroke(width = 2.dp.toPx())
+                style = strokeRingCore
             )
 
             // =========================================================================
             // RECESSED SPHERICAL LIQUID CHAMBER (.liq-wrap)
             // =========================================================================
-            val chamberInset = 7.dp.toPx()
+            val chamberInset = 7f * density
             val chamberRadius = (w / 2f) - chamberInset
             val chamberCenter = Offset(w / 2f, h / 2f)
 
             // Circular clip path isolating liquid inside the chamber
-            val chamberPath = Path().apply {
-                addOval(
-                    androidx.compose.ui.geometry.Rect(
-                        center = chamberCenter,
-                        radius = chamberRadius
-                    )
+            chamberPath.reset()
+            chamberPath.addOval(
+                Rect(
+                    center = chamberCenter,
+                    radius = chamberRadius
                 )
-            }
+            )
 
             clipPath(chamberPath) {
                 // Dark internal cavity well
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(Color(0xFF0D0E12), Color(0xFF040405)),
+                        colors = chamberCavityColors,
                         center = chamberCenter,
                         radius = chamberRadius
                     ),
@@ -342,11 +396,7 @@ fun LiquidOrbTrigger(
                 // Layer 1: Ambient deep fluid bloom
                 drawRect(
                     brush = Brush.verticalGradient(
-                        colors = listOf(
-                            neonColor.copy(alpha = 0.75f),
-                            neonColor.copy(alpha = 0.35f),
-                            Color.Transparent
-                        ),
+                        colors = fluidLayer1Colors,
                         startY = liquidTopY,
                         endY = liquidBottomY
                     ),
@@ -357,10 +407,7 @@ fun LiquidOrbTrigger(
                 // Layer 2: Core luminous fluid radiance
                 drawRect(
                     brush = Brush.verticalGradient(
-                        colors = listOf(
-                            neonColor.copy(alpha = 0.50f),
-                            Color.Transparent
-                        ),
+                        colors = fluidLayer2Colors,
                         startY = liquidTopY,
                         endY = liquidTopY + liquidHeight * 0.60f
                     ),
@@ -371,10 +418,10 @@ fun LiquidOrbTrigger(
                 // ---------------------------------------------------------------------
                 // GLOWING MENISCUS SURFACE CREST (.liq::before with sway animation)
                 // ---------------------------------------------------------------------
-                val activeSwayX = if (isPressed) swayOffsetX.value.dp.toPx() else 0f
+                val activeSwayX = if (isPressed) swayOffsetX.value * density else 0f
                 val activeSwayScaleY = if (isPressed) swayScaleY.value else 1.0f
                 val meniscusWidth = chamberDiameter * 1.30f
-                val meniscusHeight = 11.dp.toPx() * activeSwayScaleY
+                val meniscusHeight = 11f * density * activeSwayScaleY
 
                 val meniscusLeft = (chamberCenter.x + activeSwayX) - (meniscusWidth / 2f)
                 val meniscusTop = liquidTopY - (meniscusHeight / 2f)
@@ -382,8 +429,8 @@ fun LiquidOrbTrigger(
                 // Meniscus diffuse bloom halo
                 drawOval(
                     color = neonColor.copy(alpha = 0.50f),
-                    topLeft = Offset(meniscusLeft, meniscusTop - 3.dp.toPx()),
-                    size = Size(meniscusWidth, meniscusHeight + 6.dp.toPx())
+                    topLeft = Offset(meniscusLeft, meniscusTop - 3f * density),
+                    size = Size(meniscusWidth, meniscusHeight + 6f * density)
                 )
 
                 // Meniscus core glowing surface oval
@@ -395,7 +442,7 @@ fun LiquidOrbTrigger(
 
                 // Meniscus specular wave crest glint
                 val glintWidth = meniscusWidth * 0.50f
-                val glintHeight = 3.5.dp.toPx() * activeSwayScaleY
+                val glintHeight = 3.5f * density * activeSwayScaleY
                 drawOval(
                     color = Color.White.copy(alpha = 0.85f),
                     topLeft = Offset(chamberCenter.x + activeSwayX * 0.6f - (glintWidth / 2f), liquidTopY - (glintHeight / 2f)),
@@ -404,14 +451,10 @@ fun LiquidOrbTrigger(
             }
 
             // Top crescent specular highlight arc (.lx-lens)
-            val lensInset = 1.dp.toPx()
+            val lensInset = 1f * density
             drawArc(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isPressed) 0.06f else 0.14f),
-                        Color.White.copy(alpha = if (isPressed) 0.02f else 0.05f),
-                        Color.Transparent
-                    ),
+                    colors = if (isPressed) lensColorsPressed else lensColorsNormal,
                     startY = 0f,
                     endY = h * 0.38f
                 ),
@@ -420,13 +463,13 @@ fun LiquidOrbTrigger(
                 useCenter = false,
                 topLeft = Offset(lensInset, lensInset),
                 size = Size(w - lensInset * 2f, h - lensInset * 2f),
-                style = Stroke(width = 1.dp.toPx())
+                style = strokeLensArc
             )
 
             // Bottom-right specular sheen oval
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                    colors = specularSheenColors,
                     center = Offset(w * 0.70f, h * 0.78f),
                     radius = w * 0.22f
                 ),
@@ -464,19 +507,17 @@ fun LiquidOrbTrigger(
                 // Top lip shadow inside optical cavity
                 drawRect(
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent),
+                        colors = windowLipShadowColors,
                         startY = 0f,
-                        endY = 5.dp.toPx()
+                        endY = 5f * density
                     ),
-                    size = Size(winW, 5.dp.toPx())
+                    size = Size(winW, 5f * density)
                 )
 
                 // Perimeter shadow vignette (.lx-window::after)
                 drawRect(
                     brush = Brush.radialGradient(
-                        0.0f to Color.Transparent,
-                        0.32f to Color.Transparent,
-                        1.0f to Color.Black.copy(alpha = 0.82f),
+                        colorStops = windowVignetteColors,
                         center = Offset(winW / 2f, winH / 2f),
                         radius = winW * 0.50f
                     )
