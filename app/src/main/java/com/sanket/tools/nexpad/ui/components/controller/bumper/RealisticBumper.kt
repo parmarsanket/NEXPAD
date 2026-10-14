@@ -55,12 +55,13 @@ import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 @Composable
 fun RealisticBumper(
     key: String,
-    isConnected: Boolean,
-    onVibrate: () -> Unit,
-    viewModel: GamepadViewModel,
-    isRgbEnabled: Boolean,
+    isConnected: Boolean = true,
+    onVibrate: () -> Unit = {},
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
     modifier: Modifier = Modifier,
-    displayLabel: String? = null
+    displayLabel: String? = null,
+    isInteractive: Boolean = true
 ) {
     var isPressed by remember { mutableStateOf(false) }
     val isLeft = remember(key) {
@@ -251,18 +252,22 @@ fun RealisticBumper(
                 color = Color.Black.copy(alpha = 0.50f),
                 shape = bumperShape
             )
-            .pointerInput(key) {
-                detectTapGestures(
-                    onPress = {
-                        currentOnVibrate()
-                        isPressed = true
-                        currentViewModel.updateButton(key, true)
-                        tryAwaitRelease()
-                        isPressed = false
-                        currentViewModel.updateButton(key, false)
+            .then(
+                if (isInteractive && isConnected) {
+                    Modifier.pointerInput(key) {
+                        detectTapGestures(
+                            onPress = {
+                                currentOnVibrate()
+                                isPressed = true
+                                currentViewModel?.updateButton(key, true)
+                                tryAwaitRelease()
+                                isPressed = false
+                                currentViewModel?.updateButton(key, false)
+                            }
+                        )
                     }
-                )
-            },
+                } else Modifier
+            ),
         contentAlignment = Alignment.Center
     ) {
         // Layer 2 & 3: Plunging Actuator Body (.lx-body)

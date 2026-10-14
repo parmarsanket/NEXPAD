@@ -371,12 +371,13 @@ private fun DrawScope.drawActiveCapacitiveTouch(
 @Composable
 fun RealisticTouchPad(
     isLeft: Boolean,
-    isConnected: Boolean,
-    viewModel: GamepadViewModel,
+    isConnected: Boolean = true,
+    viewModel: GamepadViewModel? = null,
     onVibrate: () -> Unit = {},
     isRgbEnabled: Boolean = false,
     sensitivity: Float? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isInteractive: Boolean = true
 ) {
     val coroutineScope = rememberCoroutineScope()
     val auraColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
@@ -464,7 +465,9 @@ fun RealisticTouchPad(
                 ),
                 shape
             )
-            .pointerInput(isLeft, effectiveSensitivity, density) {
+            .then(
+                if (isInteractive && isConnected) {
+                    Modifier.pointerInput(isLeft, effectiveSensitivity, density) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     var previousTouchX = down.position.x
@@ -482,9 +485,9 @@ fun RealisticTouchPad(
                     anchorY = down.position.y
 
                     if (isLeft) {
-                        viewModel.updateLeftStick(0f, 0f)
+                        viewModel?.updateLeftStick(0f, 0f)
                     } else {
-                        viewModel.updateRightStick(0f, 0f)
+                        viewModel?.updateRightStick(0f, 0f)
                     }
 
                     while (true) {
@@ -541,9 +544,9 @@ fun RealisticTouchPad(
                                 currentStickY = 0.55f * targetStickY + 0.45f * currentStickY
 
                                 if (isLeft) {
-                                    viewModel.updateLeftStick(currentStickX, currentStickY)
+                                    viewModel?.updateLeftStick(currentStickX, currentStickY)
                                 } else {
-                                    viewModel.updateRightStick(currentStickX, currentStickY)
+                                    viewModel?.updateRightStick(currentStickX, currentStickY)
                                 }
 
                                 val decayTimeoutMs = (120L - (smoothedSpeed / 20f).toLong()).coerceIn(50L, 120L)
@@ -553,25 +556,25 @@ fun RealisticTouchPad(
                                     currentStickX *= 0.5f
                                     currentStickY *= 0.5f
                                     if (isLeft) {
-                                        viewModel.updateLeftStick(currentStickX, currentStickY)
+                                        viewModel?.updateLeftStick(currentStickX, currentStickY)
                                     } else {
-                                        viewModel.updateRightStick(currentStickX, currentStickY)
+                                        viewModel?.updateRightStick(currentStickX, currentStickY)
                                     }
                                     delay(30.milliseconds)
                                     currentStickX *= 0.2f
                                     currentStickY *= 0.2f
                                     if (isLeft) {
-                                        viewModel.updateLeftStick(currentStickX, currentStickY)
+                                        viewModel?.updateLeftStick(currentStickX, currentStickY)
                                     } else {
-                                        viewModel.updateRightStick(currentStickX, currentStickY)
+                                        viewModel?.updateRightStick(currentStickX, currentStickY)
                                     }
                                     delay(25.milliseconds)
                                     currentStickX = 0f
                                     currentStickY = 0f
                                     if (isLeft) {
-                                        viewModel.updateLeftStick(0f, 0f)
+                                        viewModel?.updateLeftStick(0f, 0f)
                                     } else {
-                                        viewModel.updateRightStick(0f, 0f)
+                                        viewModel?.updateRightStick(0f, 0f)
                                     }
                                 }
                             }
@@ -591,27 +594,29 @@ fun RealisticTouchPad(
                                 coastX *= 0.68f
                                 coastY *= 0.68f
                                 if (isLeft) {
-                                    viewModel.updateLeftStick(coastX, coastY)
+                                    viewModel?.updateLeftStick(coastX, coastY)
                                 } else {
-                                    viewModel.updateRightStick(coastX, coastY)
+                                    viewModel?.updateRightStick(coastX, coastY)
                                 }
                                 delay(16.milliseconds)
                             }
                             if (isLeft) {
-                                viewModel.updateLeftStick(0f, 0f)
+                                viewModel?.updateLeftStick(0f, 0f)
                             } else {
-                                viewModel.updateRightStick(0f, 0f)
+                                viewModel?.updateRightStick(0f, 0f)
                             }
                         }
                     } else {
                         if (isLeft) {
-                            viewModel.updateLeftStick(0f, 0f)
+                            viewModel?.updateLeftStick(0f, 0f)
                         } else {
-                            viewModel.updateRightStick(0f, 0f)
+                            viewModel?.updateRightStick(0f, 0f)
                         }
                     }
                 }
-            },
+            }
+        } else Modifier
+    ),
         contentAlignment = Alignment.Center
     ) {
         // Layer 4: Recessed Optical Sensor Well
@@ -685,87 +690,10 @@ fun StaticRealisticTouchPad(
     isRgbEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    val auraColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
-    val shape = RoundedCornerShape(26.dp)
-    val innerShape = RoundedCornerShape(18.dp)
-
-    val surfaceGradient = Brush.radialGradient(
-        colors = listOf(Color(0xFF23252B), Color(0xFF131418), Color(0xFF0B0C0E)),
-        center = Offset(0.4f, 0.4f),
-        radius = 280f
+    RealisticTouchPad(
+        isLeft = isLeft,
+        isRgbEnabled = isRgbEnabled,
+        modifier = modifier,
+        isInteractive = false
     )
-
-    Box(
-        modifier = modifier
-            .graphicsLayer {
-                // Root RenderNode isolation
-            }
-            .size(180.dp)
-            // Layer 0: Bespoke Kinetic Outer Aura
-            .drawBehind {
-                if (isRgbEnabled) {
-                    drawTouchPadAura(
-                        auraColor = auraColor,
-                        rgbBloomAlpha = 0.45f,
-                        isDragging = false
-                    )
-                }
-            }
-            .shadow(
-                elevation = 8.dp,
-                shape = shape,
-                ambientColor = if (isRgbEnabled) auraColor else Color.Black,
-                spotColor = if (isRgbEnabled) auraColor else Color.Black
-            )
-            .clip(shape)
-            .background(surfaceGradient)
-            .border(
-                BorderStroke(
-                    2.dp,
-                    if (isRgbEnabled) auraColor.copy(alpha = 0.65f) else Color(0xFF353C4A)
-                ),
-                shape
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        // Layer 4: Recessed Optical Sensor Well
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(14.dp)
-                .clip(innerShape)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(Color.White.copy(alpha = 0.03f), Color.Transparent),
-                        radius = 200f
-                    )
-                )
-                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)), innerShape)
-        )
-
-        // Layer 2 & 6: Background Precision Radar Matrix & Top Specular Lens
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            drawTouchPadBackgroundMatrix(
-                auraColor = auraColor,
-                isRgbEnabled = isRgbEnabled
-            )
-        }
-
-        // Layer 5: Clean Precision Aiming Reticle Dot & Ring
-        Canvas(modifier = Modifier.size(16.dp)) {
-            val centerPt = Offset(size.width / 2f, size.height / 2f)
-            val dotColor = if (isRgbEnabled) auraColor else Color.White
-            drawCircle(
-                color = dotColor.copy(alpha = 0.25f),
-                radius = 6.dp.toPx(),
-                center = centerPt,
-                style = Stroke(width = 1.dp.toPx())
-            )
-            drawCircle(
-                color = dotColor.copy(alpha = 0.50f),
-                radius = 2.dp.toPx(),
-                center = centerPt
-            )
-        }
-    }
 }

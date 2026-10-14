@@ -150,10 +150,11 @@ val RightHorizonClipShape = GenericShape { size, _ ->
 fun RealisticButton(
     key: String,
     buttonColor: Color,
-    isConnected: Boolean,
-    onVibrate: () -> Unit,
-    viewModel: GamepadViewModel,
-    isRgbEnabled: Boolean,
+    isConnected: Boolean = true,
+    onVibrate: () -> Unit = {},
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
+    isInteractive: Boolean = true,
     modifier: Modifier = Modifier,
     displayLabel: String? = null
 ) {
@@ -331,18 +332,22 @@ fun RealisticButton(
             .clip(CircleShape)
             // .cap base dome: radial-gradient(circle at 50% 55%, #232527 0%, #0c0d0e 75%, #000 100%)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
-            .pointerInput(key) {
-                detectTapGestures(
-                    onPress = {
-                        currentOnVibrate()
-                        isPressed = true
-                        currentViewModel.updateButton(key, true)
-                        tryAwaitRelease()
-                        isPressed = false
-                        currentViewModel.updateButton(key, false)
+            .then(
+                if (isInteractive && isConnected) {
+                    Modifier.pointerInput(key) {
+                        detectTapGestures(
+                            onPress = {
+                                currentOnVibrate()
+                                isPressed = true
+                                currentViewModel?.updateButton(key, true)
+                                tryAwaitRelease()
+                                isPressed = false
+                                currentViewModel?.updateButton(key, false)
+                            }
+                        )
                     }
-                )
-            },
+                } else Modifier
+            ),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {

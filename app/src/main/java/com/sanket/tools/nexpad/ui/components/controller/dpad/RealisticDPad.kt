@@ -127,10 +127,11 @@ fun updateContouredCrossPath(path: Path, size: Size) {
  */
 @Composable
 fun RealisticDPad(
-    isConnected: Boolean,
-    viewModel: GamepadViewModel,
-    isRgbEnabled: Boolean,
+    isConnected: Boolean = true,
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
     onVibrate: () -> Unit = {},
+    isInteractive: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     var pressedDirs by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -316,101 +317,105 @@ fun RealisticDPad(
         )
     }
 
+    val gestureModifier = if (isInteractive && isConnected) {
+        Modifier.pointerInput(isConnected) {
+            awaitEachGesture {
+                var activeDirs = emptySet<String>()
+
+                fun evaluatePointers(pointers: List<androidx.compose.ui.input.pointer.PointerInputChange>) {
+                    val cx = size.width / 2f
+                    val cy = size.height / 2f
+                    val minDim = min(size.width, size.height).toFloat()
+                    val orbitRadius = minDim * 0.285f
+                    val satelliteRadius = minDim * 0.155f
+
+                    // Strict Button Hitbox Radii
+                    // Only touches directly within or comfortably touching the satellite key area trigger presses.
+                    // Touches in the outside margins or center void are ignored (0 presses).
+                    val singleHitRadius = satelliteRadius * 1.25f
+
+                    val upCenter = Offset(cx, cy - orbitRadius)
+                    val downCenter = Offset(cx, cy + orbitRadius)
+                    val leftCenter = Offset(cx - orbitRadius, cy)
+                    val rightCenter = Offset(cx + orbitRadius, cy)
+
+                    val newDirs = mutableSetOf<String>()
+
+                    for (pointer in pointers) {
+                        if (!pointer.pressed) continue
+                        val p = pointer.position
+
+                        val dUp = hypot(p.x - upCenter.x, p.y - upCenter.y)
+                        val dDown = hypot(p.x - downCenter.x, p.y - downCenter.y)
+                        val dLeft = hypot(p.x - leftCenter.x, p.y - leftCenter.y)
+                        val dRight = hypot(p.x - rightCenter.x, p.y - rightCenter.y)
+
+                        // 1. Direct Single Button Hitbox Checks
+                        if (dUp <= singleHitRadius) newDirs.add(K.UP)
+                        if (dDown <= singleHitRadius) newDirs.add(K.DOWN)
+                        if (dLeft <= singleHitRadius) newDirs.add(K.LEFT)
+                        if (dRight <= singleHitRadius) newDirs.add(K.RIGHT)
+
+                        // 2. Multi-Button Broad Thumb Zone
+                        // If a player's thumb covers the physical intersection between two buttons (e.g. UP and RIGHT),
+                        // both are activated when the touch point reaches within reach of both button centers.
+                        val diagonalBridgeRadius = satelliteRadius * 1.55f
+                        if (dUp <= diagonalBridgeRadius && dRight <= diagonalBridgeRadius) {
+                            newDirs.add(K.UP)
+                            newDirs.add(K.RIGHT)
+                        }
+                        if (dDown <= diagonalBridgeRadius && dRight <= diagonalBridgeRadius) {
+                            newDirs.add(K.DOWN)
+                            newDirs.add(K.RIGHT)
+                        }
+                        if (dDown <= diagonalBridgeRadius && dLeft <= diagonalBridgeRadius) {
+                            newDirs.add(K.DOWN)
+                            newDirs.add(K.LEFT)
+                        }
+                        if (dUp <= diagonalBridgeRadius && dLeft <= diagonalBridgeRadius) {
+                            newDirs.add(K.UP)
+                            newDirs.add(K.LEFT)
+                        }
+                    }
+
+                    if (newDirs != activeDirs) {
+                        val added = newDirs - activeDirs
+                        val removed = activeDirs - newDirs
+                        removed.forEach { dir -> currentViewModel?.updateButton(dir, false) }
+                        added.forEach { dir -> currentViewModel?.updateButton(dir, true) }
+                        if (added.isNotEmpty()) currentOnVibrate()
+                        activeDirs = newDirs
+                        pressedDirs = newDirs
+                    }
+                }
+
+                try {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    down.consume()
+                    evaluatePointers(listOf(down))
+
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val pressedChanges = event.changes.filter { it.pressed }
+                        if (pressedChanges.isEmpty()) break
+                        event.changes.forEach { it.consume() }
+                        evaluatePointers(pressedChanges)
+                    }
+                } finally {
+                    activeDirs.forEach { dir -> currentViewModel?.updateButton(dir, false) }
+                    pressedDirs = emptySet()
+                }
+            }
+        }
+    } else Modifier
+
     Box(
         modifier = modifier
             .size(161.5.dp)
             .graphicsLayer {
                 // Root RenderNode isolation
             }
-            .pointerInput(isConnected) {
-                awaitEachGesture {
-                    var activeDirs = emptySet<String>()
-
-                    fun evaluatePointers(pointers: List<androidx.compose.ui.input.pointer.PointerInputChange>) {
-                        val cx = size.width / 2f
-                        val cy = size.height / 2f
-                        val minDim = min(size.width, size.height).toFloat()
-                        val orbitRadius = minDim * 0.285f
-                        val satelliteRadius = minDim * 0.155f
-
-                        // Strict Button Hitbox Radii
-                        // Only touches directly within or comfortably touching the satellite key area trigger presses.
-                        // Touches in the outside margins or center void are ignored (0 presses).
-                        val singleHitRadius = satelliteRadius * 1.25f
-
-                        val upCenter = Offset(cx, cy - orbitRadius)
-                        val downCenter = Offset(cx, cy + orbitRadius)
-                        val leftCenter = Offset(cx - orbitRadius, cy)
-                        val rightCenter = Offset(cx + orbitRadius, cy)
-
-                        val newDirs = mutableSetOf<String>()
-
-                        for (pointer in pointers) {
-                            if (!pointer.pressed) continue
-                            val p = pointer.position
-
-                            val dUp = hypot(p.x - upCenter.x, p.y - upCenter.y)
-                            val dDown = hypot(p.x - downCenter.x, p.y - downCenter.y)
-                            val dLeft = hypot(p.x - leftCenter.x, p.y - leftCenter.y)
-                            val dRight = hypot(p.x - rightCenter.x, p.y - rightCenter.y)
-
-                            // 1. Direct Single Button Hitbox Checks
-                            if (dUp <= singleHitRadius) newDirs.add(K.UP)
-                            if (dDown <= singleHitRadius) newDirs.add(K.DOWN)
-                            if (dLeft <= singleHitRadius) newDirs.add(K.LEFT)
-                            if (dRight <= singleHitRadius) newDirs.add(K.RIGHT)
-
-                            // 2. Multi-Button Broad Thumb Zone
-                            // If a player's thumb covers the physical intersection between two buttons (e.g. UP and RIGHT),
-                            // both are activated when the touch point reaches within reach of both button centers.
-                            val diagonalBridgeRadius = satelliteRadius * 1.55f
-                            if (dUp <= diagonalBridgeRadius && dRight <= diagonalBridgeRadius) {
-                                newDirs.add(K.UP)
-                                newDirs.add(K.RIGHT)
-                            }
-                            if (dDown <= diagonalBridgeRadius && dRight <= diagonalBridgeRadius) {
-                                newDirs.add(K.DOWN)
-                                newDirs.add(K.RIGHT)
-                            }
-                            if (dDown <= diagonalBridgeRadius && dLeft <= diagonalBridgeRadius) {
-                                newDirs.add(K.DOWN)
-                                newDirs.add(K.LEFT)
-                            }
-                            if (dUp <= diagonalBridgeRadius && dLeft <= diagonalBridgeRadius) {
-                                newDirs.add(K.UP)
-                                newDirs.add(K.LEFT)
-                            }
-                        }
-
-                        if (newDirs != activeDirs) {
-                            val added = newDirs - activeDirs
-                            val removed = activeDirs - newDirs
-                            removed.forEach { dir -> currentViewModel.updateButton(dir, false) }
-                            added.forEach { dir -> currentViewModel.updateButton(dir, true) }
-                            if (added.isNotEmpty()) currentOnVibrate()
-                            activeDirs = newDirs
-                            pressedDirs = newDirs
-                        }
-                    }
-
-                    try {
-                        val down = awaitFirstDown(requireUnconsumed = false)
-                        down.consume()
-                        evaluatePointers(listOf(down))
-
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val pressedChanges = event.changes.filter { it.pressed }
-                            if (pressedChanges.isEmpty()) break
-                            event.changes.forEach { it.consume() }
-                            evaluatePointers(pressedChanges)
-                        }
-                    } finally {
-                        activeDirs.forEach { dir -> currentViewModel.updateButton(dir, false) }
-                        pressedDirs = emptySet()
-                    }
-                }
-            },
+            .then(gestureModifier),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
@@ -875,10 +880,11 @@ fun RealisticDPad(
 @Composable
 fun RealisticDPadButton(
     direction: String,
-    isConnected: Boolean,
-    onVibrate: () -> Unit,
-    viewModel: GamepadViewModel,
-    isRgbEnabled: Boolean,
+    isConnected: Boolean = true,
+    onVibrate: () -> Unit = {},
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
+    isInteractive: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     var isPressed by remember { mutableStateOf(false) }
@@ -975,18 +981,22 @@ fun RealisticDPadButton(
                 translationY = pressOffsetYAnimState.value * density
             }
             .clip(CircleShape)
-            .pointerInput(direction) {
-                detectTapGestures(
-                    onPress = {
-                        isPressed = true
-                        currentOnVibrate()
-                        currentViewModel.updateButton(direction, true)
-                        tryAwaitRelease()
-                        isPressed = false
-                        currentViewModel.updateButton(direction, false)
+            .then(
+                if (isInteractive && isConnected) {
+                    Modifier.pointerInput(direction) {
+                        detectTapGestures(
+                            onPress = {
+                                isPressed = true
+                                currentOnVibrate()
+                                currentViewModel?.updateButton(direction, true)
+                                tryAwaitRelease()
+                                isPressed = false
+                                currentViewModel?.updateButton(direction, false)
+                            }
+                        )
                     }
-                )
-            },
+                } else Modifier
+            ),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {

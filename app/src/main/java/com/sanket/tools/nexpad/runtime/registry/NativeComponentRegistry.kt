@@ -104,9 +104,10 @@ object RealisticLeftJoystickVariant : BaseNativeVariant("builtin.default_ls", Co
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = K.LS,
-            labelStyle = context.labelStyle,
+        RealisticJoystick(
+            isLeft = true,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
             modifier = context.modifier
         )
     }
@@ -153,9 +154,10 @@ object RealisticRightJoystickVariant : BaseNativeVariant("builtin.default_rs", C
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = K.RS,
-            labelStyle = context.labelStyle,
+        RealisticJoystick(
+            isLeft = false,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
             modifier = context.modifier
         )
     }
@@ -400,9 +402,12 @@ object RealisticLeftStickButtonVariant : BaseNativeVariant("builtin.default_lsb"
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = K.LSB,
-            labelStyle = context.labelStyle,
+        RealisticStickButton(
+            isLeft = true,
+            key = K.LSB,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
             modifier = context.modifier
         )
     }
@@ -454,9 +459,12 @@ object RealisticRightStickButtonVariant : BaseNativeVariant("builtin.default_rsb
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = K.RSB,
-            labelStyle = context.labelStyle,
+        RealisticStickButton(
+            isLeft = false,
+            key = K.RSB,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
             modifier = context.modifier
         )
     }
@@ -738,9 +746,18 @@ class RealisticButtonVariant(
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
+        val effectiveColor = resolveButtonColor(
             controlKey = controlKey.key,
             labelStyle = context.labelStyle,
+            displayLabel = context.displayLabel,
+            fallbackColor = buttonColor
+        )
+        RealisticButton(
+            key = controlKey.key,
+            buttonColor = effectiveColor,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
             modifier = context.modifier
         )
     }
@@ -1014,9 +1031,11 @@ object RealisticLeftTriggerVariant : BaseNativeVariant("builtin.default_lt", Con
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = K.LT,
-            labelStyle = context.labelStyle,
+        RealisticTrigger(
+            key = K.LT,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
             modifier = context.modifier
         )
     }
@@ -1040,9 +1059,11 @@ object RealisticRightTriggerVariant : BaseNativeVariant("builtin.default_rt", Co
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = K.RT,
-            labelStyle = context.labelStyle,
+        RealisticTrigger(
+            key = K.RT,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
             modifier = context.modifier
         )
     }
@@ -1066,9 +1087,11 @@ object RealisticLeftBumperVariant : BaseNativeVariant("builtin.default_lb", Cont
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = K.LB,
-            labelStyle = context.labelStyle,
+        RealisticBumper(
+            key = K.LB,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
             modifier = context.modifier
         )
     }
@@ -1092,9 +1115,11 @@ object RealisticRightBumperVariant : BaseNativeVariant("builtin.default_rb", Con
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = K.RB,
-            labelStyle = context.labelStyle,
+        RealisticBumper(
+            key = K.RB,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
             modifier = context.modifier
         )
     }
@@ -1895,9 +1920,9 @@ object RealisticDPadVariant : BaseNativeVariant("builtin.default_dpad", ControlK
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = K.DPAD,
-            labelStyle = context.labelStyle,
+        RealisticDPad(
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
             modifier = context.modifier
         )
     }
@@ -1921,9 +1946,10 @@ class RealisticDPadButtonVariant(controlKey: ControlKey, seedCode: Int) :
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = controlKey.key,
-            labelStyle = context.labelStyle,
+        RealisticDPadButton(
+            direction = controlKey.key,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
             modifier = context.modifier
         )
     }
@@ -2081,8 +2107,9 @@ object RealisticLeftTouchPadVariant : BaseNativeVariant("builtin.default_ltp", C
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticRealisticTouchPad(
+        RealisticTouchPad(
             isLeft = true,
+            isInteractive = false,
             isRgbEnabled = context.isRgbEnabled,
             modifier = context.modifier
         )
@@ -2107,8 +2134,9 @@ object RealisticRightTouchPadVariant : BaseNativeVariant("builtin.default_rtp", 
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticRealisticTouchPad(
+        RealisticTouchPad(
             isLeft = false,
+            isInteractive = false,
             isRgbEnabled = context.isRgbEnabled,
             modifier = context.modifier
         )
@@ -2185,9 +2213,10 @@ class RealisticSystemButtonVariant(controlKey: ControlKey, seedCode: Int) :
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = controlKey.key,
-            labelStyle = context.labelStyle,
+        RealisticSystemButton(
+            key = controlKey.key,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
             modifier = context.modifier
         )
     }
@@ -2235,9 +2264,11 @@ class RealisticMacroButtonVariant(controlKey: ControlKey, seedCode: Int) :
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = controlKey.key,
-            labelStyle = context.labelStyle,
+        RealisticMacroButton(
+            key = controlKey.key,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
             modifier = context.modifier
         )
     }

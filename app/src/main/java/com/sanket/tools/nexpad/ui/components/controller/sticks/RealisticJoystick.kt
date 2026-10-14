@@ -55,10 +55,11 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 fun RealisticJoystick(
     isLeft: Boolean,
-    isConnected: Boolean,
-    viewModel: GamepadViewModel,
-    isRgbEnabled: Boolean,
+    isConnected: Boolean = true,
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
     isLocked: Boolean = true,
+    isInteractive: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     var thumbOffsetX by remember { mutableFloatStateOf(0f) }
@@ -94,8 +95,8 @@ fun RealisticJoystick(
     )
 
     val neonColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
-    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
-    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+    val stickX = if (viewModel != null) (if (isLeft) viewModel.leftStickX else viewModel.rightStickX) else 0f
+    val stickY = if (viewModel != null) (if (isLeft) viewModel.leftStickY else viewModel.rightStickY) else 0f
     val effX = if (isLocked) thumbOffsetX else stickX * maxRadius
     val effY = if (isLocked) thumbOffsetY else -stickY * maxRadius
     val deflectionFraction = (hypot(effX, effY) / maxRadius).coerceIn(0f, 1f)
@@ -190,7 +191,9 @@ fun RealisticJoystick(
                 ),
                 shape = CircleShape
             )
-            .pointerInput(isConnected, isLocked, isLeft, isCameraMode, cameraSensitivity, density) {
+            .then(
+                if (isInteractive && isConnected) {
+                    Modifier.pointerInput(isConnected, isLocked, isLeft, isCameraMode, cameraSensitivity, density) {
                 if (!isLocked) return@pointerInput
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -209,7 +212,7 @@ fun RealisticJoystick(
 
                     if (isCameraMode) {
                         // ── Right Stick Camera Mode: Pure relative touch ──
-                        viewModel.updateRightStick(0f, 0f)
+                        viewModel?.updateRightStick(0f, 0f)
                     } else {
                         // ── Traditional analog stick steering: Direct vector from center to finger ──
                         val downVecX = down.position.x - centerX
@@ -230,9 +233,9 @@ fun RealisticJoystick(
                         val normY = if (downDist < deadzoneRadius) 0f else (-clampedY / maxRadius).coerceIn(-1f, 1f)
 
                         if (isLeft) {
-                            viewModel.updateLeftStick(normX, normY)
+                            viewModel?.updateLeftStick(normX, normY)
                         } else {
-                            viewModel.updateRightStick(normX, normY)
+                            viewModel?.updateRightStick(normX, normY)
                         }
                     }
 
@@ -288,7 +291,7 @@ fun RealisticJoystick(
                                     currentStickX = 0.55f * targetStickX + 0.45f * currentStickX
                                     currentStickY = 0.55f * targetStickY + 0.45f * currentStickY
 
-                                    viewModel.updateRightStick(currentStickX, currentStickY)
+                                    viewModel?.updateRightStick(currentStickX, currentStickY)
 
                                     // VISUAL THUMB KNOB DEFLECTS PROPORTIONAL TO SPEED AND DIRECTION!
                                     thumbOffsetX = (currentStickX * maxRadius).coerceIn(-maxRadius, maxRadius)
@@ -302,19 +305,19 @@ fun RealisticJoystick(
                                         // 3-stage gentle decay
                                         currentStickX *= 0.5f
                                         currentStickY *= 0.5f
-                                        viewModel.updateRightStick(currentStickX, currentStickY)
+                                        viewModel?.updateRightStick(currentStickX, currentStickY)
                                         thumbOffsetX = (currentStickX * maxRadius)
                                         thumbOffsetY = (-currentStickY * maxRadius)
                                         delay(30.milliseconds)
                                         currentStickX *= 0.2f
                                         currentStickY *= 0.2f
-                                        viewModel.updateRightStick(currentStickX, currentStickY)
+                                        viewModel?.updateRightStick(currentStickX, currentStickY)
                                         thumbOffsetX = (currentStickX * maxRadius)
                                         thumbOffsetY = (-currentStickY * maxRadius)
                                         delay(25.milliseconds)
                                         currentStickX = 0f
                                         currentStickY = 0f
-                                        viewModel.updateRightStick(0f, 0f)
+                                        viewModel?.updateRightStick(0f, 0f)
                                         thumbOffsetX = 0f
                                         thumbOffsetY = 0f
                                         lastSpeed = 0f
@@ -341,9 +344,9 @@ fun RealisticJoystick(
                             val normY = if (dist < deadzoneRadius) 0f else (-clampedY / maxRadius).coerceIn(-1f, 1f) // Invert Y so up is positive
 
                             if (isLeft) {
-                                viewModel.updateLeftStick(normX, normY)
+                                viewModel?.updateLeftStick(normX, normY)
                             } else {
-                                viewModel.updateRightStick(normX, normY)
+                                viewModel?.updateRightStick(normX, normY)
                             }
                         }
                     }
@@ -353,7 +356,7 @@ fun RealisticJoystick(
                     if (isLeft) {
                         thumbOffsetX = 0f
                         thumbOffsetY = 0f
-                        viewModel.updateLeftStick(0f, 0f)
+                        viewModel?.updateLeftStick(0f, 0f)
                     } else {
                         val releaseSpeed = velocityBuffer.peakSpeed()
                         if (isCameraMode && releaseSpeed > 400f) {
@@ -364,23 +367,25 @@ fun RealisticJoystick(
                                 repeat(coastSteps) {
                                     coastX *= 0.68f
                                     coastY *= 0.68f
-                                    viewModel.updateRightStick(coastX, coastY)
+                                    viewModel?.updateRightStick(coastX, coastY)
                                     thumbOffsetX = (coastX * maxRadius)
                                     thumbOffsetY = (-coastY * maxRadius)
                                     delay(16.milliseconds)
                                 }
-                                viewModel.updateRightStick(0f, 0f)
+                                viewModel?.updateRightStick(0f, 0f)
                                 thumbOffsetX = 0f
                                 thumbOffsetY = 0f
                             }
                         } else {
                             thumbOffsetX = 0f
                             thumbOffsetY = 0f
-                            viewModel.updateRightStick(0f, 0f)
+                            viewModel?.updateRightStick(0f, 0f)
                         }
                     }
                 }
-            },
+            }
+        } else Modifier
+    ),
         contentAlignment = Alignment.Center
     ) {
         // Inner depth shadow
@@ -474,12 +479,13 @@ fun RealisticJoystick(
 fun RealisticStickButton(
     isLeft: Boolean,
     key: String = if (isLeft) "LSB" else "RSB",
-    isConnected: Boolean,
-    onVibrate: () -> Unit,
-    viewModel: GamepadViewModel,
-    isRgbEnabled: Boolean,
+    isConnected: Boolean = true,
+    onVibrate: () -> Unit = {},
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
     modifier: Modifier = Modifier,
-    displayLabel: String? = null
+    displayLabel: String? = null,
+    isInteractive: Boolean = true
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
@@ -631,18 +637,22 @@ fun RealisticStickButton(
                 brush = if (isPressed) borderBrushPressed else borderBrushNormal,
                 shape = CircleShape
             )
-            .pointerInput(key) {
-                detectTapGestures(
-                    onPress = {
-                        currentOnVibrate()
-                        isPressed = true
-                        currentViewModel.updateButton(key, true)
-                        tryAwaitRelease()
-                        isPressed = false
-                        currentViewModel.updateButton(key, false)
+            .then(
+                if (isInteractive && isConnected) {
+                    Modifier.pointerInput(key) {
+                        detectTapGestures(
+                            onPress = {
+                                currentOnVibrate()
+                                isPressed = true
+                                currentViewModel?.updateButton(key, true)
+                                tryAwaitRelease()
+                                isPressed = false
+                                currentViewModel?.updateButton(key, false)
+                            }
+                        )
                     }
-                )
-            },
+                } else Modifier
+            ),
         contentAlignment = Alignment.Center
     ) {
         // Outer knurled ring texture + 3D bevel stroke

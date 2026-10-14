@@ -55,12 +55,13 @@ import kotlin.math.roundToInt
 @Composable
 fun RealisticTrigger(
     key: String,
-    isConnected: Boolean,
-    onVibrate: () -> Unit,
-    viewModel: GamepadViewModel,
-    isRgbEnabled: Boolean,
+    isConnected: Boolean = true,
+    onVibrate: () -> Unit = {},
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
     modifier: Modifier = Modifier,
-    displayLabel: String? = null
+    displayLabel: String? = null,
+    isInteractive: Boolean = true
 ) {
     var isPressed by remember { mutableStateOf(false) }
     val isLeft = key.uppercase() == com.sanket.tools.nexpad.model.NexpadKeys.LT
@@ -225,18 +226,22 @@ fun RealisticTrigger(
                 brush = chassisBorderBrush,
                 shape = triggerShape
             )
-            .pointerInput(key) {
-                detectTapGestures(
-                    onPress = {
-                        currentOnVibrate()
-                        isPressed = true
-                        currentViewModel.updateButton(key, true)
-                        tryAwaitRelease()
-                        isPressed = false
-                        currentViewModel.updateButton(key, false)
+            .then(
+                if (isInteractive && isConnected) {
+                    Modifier.pointerInput(key) {
+                        detectTapGestures(
+                            onPress = {
+                                currentOnVibrate()
+                                isPressed = true
+                                currentViewModel?.updateButton(key, true)
+                                tryAwaitRelease()
+                                isPressed = false
+                                currentViewModel?.updateButton(key, false)
+                            }
+                        )
                     }
-                )
-            },
+                } else Modifier
+            ),
         contentAlignment = Alignment.TopCenter
     ) {
         // Multi-layer visual canvas: Meter fluid surge, undercut shadow, neon ring, specular lens
