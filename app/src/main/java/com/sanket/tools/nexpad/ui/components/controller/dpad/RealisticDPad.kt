@@ -154,7 +154,7 @@ fun RealisticDPad(
         label = "dpad_up_scale"
     )
     val upOffsetY = animateFloatAsState(
-        targetValue = if (isUpPressed) 2.5f else 0f,
+        targetValue = if (isUpPressed) 2.1f else 0f,
         animationSpec = spring(dampingRatio = 0.65f, stiffness = 850f),
         label = "dpad_up_offset"
     )
@@ -170,7 +170,7 @@ fun RealisticDPad(
         label = "dpad_down_scale"
     )
     val downOffsetY = animateFloatAsState(
-        targetValue = if (isDownPressed) 2.5f else 0f,
+        targetValue = if (isDownPressed) 2.1f else 0f,
         animationSpec = spring(dampingRatio = 0.65f, stiffness = 850f),
         label = "dpad_down_offset"
     )
@@ -186,7 +186,7 @@ fun RealisticDPad(
         label = "dpad_left_scale"
     )
     val leftOffsetY = animateFloatAsState(
-        targetValue = if (isLeftPressed) 2.5f else 0f,
+        targetValue = if (isLeftPressed) 2.1f else 0f,
         animationSpec = spring(dampingRatio = 0.65f, stiffness = 850f),
         label = "dpad_left_offset"
     )
@@ -202,7 +202,7 @@ fun RealisticDPad(
         label = "dpad_right_scale"
     )
     val rightOffsetY = animateFloatAsState(
-        targetValue = if (isRightPressed) 2.5f else 0f,
+        targetValue = if (isRightPressed) 2.1f else 0f,
         animationSpec = spring(dampingRatio = 0.65f, stiffness = 850f),
         label = "dpad_right_offset"
     )
@@ -254,17 +254,17 @@ fun RealisticDPad(
     val rightChevronPath = remember { Path() }
     val diagonalDiamondPath = remember { Path() }
 
-    val stroke0_8dp = remember(density) { Stroke(width = 0.8f * density) }
-    val stroke1dp = remember(density) { Stroke(width = 1f * density) }
-    val stroke1_5dp = remember(density) { Stroke(width = 1.5f * density) }
-    val stroke1_8dp = remember(density) { Stroke(width = 1.8f * density) }
-    val stroke2_4dp = remember(density) { Stroke(width = 2.4f * density, cap = StrokeCap.Round, join = StrokeJoin.Round) }
-    val stroke3_5dp = remember(density) { Stroke(width = 3.5f * density) }
-    val stroke4_5dp = remember(density) { Stroke(width = 4.5f * density, cap = StrokeCap.Round, join = StrokeJoin.Round) }
-    val stroke5dp = remember(density) { Stroke(width = 5.2f * density, cap = StrokeCap.Round) }
-    val strokeArcCore = remember(density) { Stroke(width = 1.8f * density, cap = StrokeCap.Round) }
-    val strokeArcVibrant = remember(density) { Stroke(width = 3.8f * density, cap = StrokeCap.Round) }
-    val strokeArcHalo = remember(density) { Stroke(width = 7.5f * density, cap = StrokeCap.Round) }
+    val stroke0_8dp = remember(density) { Stroke(width = 0.7f * density) }
+    val stroke1dp = remember(density) { Stroke(width = 0.9f * density) }
+    val stroke1_5dp = remember(density) { Stroke(width = 1.3f * density) }
+    val stroke1_8dp = remember(density) { Stroke(width = 1.5f * density) }
+    val stroke2_4dp = remember(density) { Stroke(width = 2.0f * density, cap = StrokeCap.Round, join = StrokeJoin.Round) }
+    val stroke3_5dp = remember(density) { Stroke(width = 3.0f * density) }
+    val stroke4_5dp = remember(density) { Stroke(width = 3.8f * density, cap = StrokeCap.Round, join = StrokeJoin.Round) }
+    val stroke5dp = remember(density) { Stroke(width = 4.4f * density, cap = StrokeCap.Round) }
+    val strokeArcCore = remember(density) { Stroke(width = 1.5f * density, cap = StrokeCap.Round) }
+    val strokeArcVibrant = remember(density) { Stroke(width = 3.2f * density, cap = StrokeCap.Round) }
+    val strokeArcHalo = remember(density) { Stroke(width = 6.4f * density, cap = StrokeCap.Round) }
 
     // Reusable color arrays for multi-tiered radial bloom
     val bloomTier1 = remember(neonColor) { arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent) }
@@ -318,7 +318,7 @@ fun RealisticDPad(
 
     Box(
         modifier = modifier
-            .size(190.dp)
+            .size(161.5.dp)
             .graphicsLayer {
                 // Root RenderNode isolation
             }
@@ -472,7 +472,7 @@ fun RealisticDPad(
             for (i in 0 until 16) {
                 val angleRad = (i * 22.5f) * (Math.PI / 180f).toFloat()
                 val isMajor = i % 2 == 0
-                val tickLen = (if (isMajor) 4.5f else 2.5f) * density
+                val tickLen = (if (isMajor) 3.8f else 2.1f) * density
                 val startX = cx + cos(angleRad) * (rimRadius - tickLen)
                 val startY = cy + sin(angleRad) * (rimRadius - tickLen)
                 val endX = cx + cos(angleRad) * rimRadius
@@ -517,12 +517,12 @@ fun RealisticDPad(
                     val midY = (cy + target.y) / 2f
                     drawCircle(
                         color = Color.White.copy(alpha = alpha * 0.95f),
-                        radius = 2.2f * density,
+                        radius = 1.9f * density,
                         center = Offset(midX, midY)
                     )
                     drawCircle(
                         color = neonColor.copy(alpha = alpha * 0.70f),
-                        radius = 4.5f * density,
+                        radius = 3.8f * density,
                         center = Offset(midX, midY)
                     )
                 }
@@ -575,7 +575,7 @@ fun RealisticDPad(
 
                     // Diagonal diamond energy flare
                     diagonalDiamondPath.reset()
-                    val dSize = 5f * density
+                    val dSize = 4.25f * density
                     diagonalDiamondPath.moveTo(tickX, tickY - dSize)
                     diagonalDiamondPath.lineTo(tickX + dSize, tickY)
                     diagonalDiamondPath.lineTo(tickX, tickY + dSize)
@@ -584,14 +584,14 @@ fun RealisticDPad(
                     drawPath(diagonalDiamondPath, color = Color.White)
                     drawCircle(
                         color = neonColor.copy(alpha = 0.85f),
-                        radius = 6f * density,
+                        radius = 5.1f * density,
                         center = Offset(tickX, tickY)
                     )
                 } else {
                     // Subtle inactive diagonal guide pip
                     drawCircle(
                         color = Color(0xFF3B485A).copy(alpha = 0.45f),
-                        radius = 2.2f * density,
+                        radius = 1.9f * density,
                         center = Offset(tickX, tickY)
                     )
                 }
@@ -624,7 +624,7 @@ fun RealisticDPad(
                 style = stroke1_8dp
             )
             // Tactical crosshair reticles extending from center
-            val reticleLen = 4f * density
+            val reticleLen = 3.4f * density
             val reticleColor = neonColor.copy(alpha = pulse * 0.60f)
             drawLine(reticleColor, Offset(cx - coreRadius * 0.55f, cy), Offset(cx - coreRadius * 0.55f - reticleLen, cy), strokeWidth = stroke1dp.width)
             drawLine(reticleColor, Offset(cx + coreRadius * 0.55f, cy), Offset(cx + coreRadius * 0.55f + reticleLen, cy), strokeWidth = stroke1dp.width)
@@ -710,8 +710,8 @@ fun RealisticDPad(
                 val shadowAlpha = if (isPressed) 0.35f else 0.60f
                 drawCircle(
                     color = Color.Black.copy(alpha = shadowAlpha),
-                    radius = r + 2.5f * density,
-                    center = Offset(nodeCenter.x, nodeCenter.y + 3.5f * density)
+                    radius = r + 2.1f * density,
+                    center = Offset(nodeCenter.x, nodeCenter.y + 3.0f * density)
                 )
 
                 // C. Obsidian Dome Surface (matching Action Buttons)
@@ -724,13 +724,13 @@ fun RealisticDPad(
                 // D. Inset outer cap edge rim
                 drawCircle(
                     color = Color.Black.copy(alpha = 0.65f),
-                    radius = r - 0.5f * density,
+                    radius = r - 0.4f * density,
                     center = nodeCenter,
                     style = stroke1dp
                 )
 
                 // E. Inner Glowing Double Neon Rings
-                val ringRadius = r - 3f * density
+                val ringRadius = r - 2.5f * density
                 // Outer diffuse ring bloom
                 drawCircle(
                     color = neonColor.copy(alpha = if (isPressed) 0.70f else 0.24f),
@@ -748,13 +748,13 @@ fun RealisticDPad(
                 // Micro-bevel accent ring inside
                 drawCircle(
                     color = neonColor.copy(alpha = if (isPressed) 0.45f else 0.15f),
-                    radius = ringRadius - 2f * density,
+                    radius = ringRadius - 1.7f * density,
                     center = nodeCenter,
                     style = stroke0_8dp
                 )
 
                 // F. Double Acrylic Glass Specular Arc Reflection (Top Crescent)
-                val lensInset = 2f * density
+                val lensInset = 1.7f * density
                 drawArc(
                     color = Color.White.copy(alpha = if (isPressed) 0.28f else 0.16f),
                     startAngle = 190f,
@@ -765,7 +765,7 @@ fun RealisticDPad(
                     style = stroke1_5dp
                 )
                 // Secondary subtle soft reflection
-                val lensInset2 = 3.5f * density
+                val lensInset2 = 3.0f * density
                 drawArc(
                     color = Color.White.copy(alpha = if (isPressed) 0.14f else 0.08f),
                     startAngle = 205f,
@@ -780,9 +780,9 @@ fun RealisticDPad(
                 drawChevron(nodeCenter)
             }
 
-            // Directional Chevron Dimensions
-            val chW = 8.5f * density
-            val chH = 5.5f * density
+            // Directional Chevron Dimensions (proportionally scaled down 15%)
+            val chW = 7.2f * density
+            val chH = 4.7f * density
 
             // Draw UP Satellite
             drawSatelliteNode(upCenter, upScale.value, upOffsetY.value, upBloomAlpha.value, upAuraGrowth.value, isUpPressed) { nodeCenter ->
@@ -802,7 +802,7 @@ fun RealisticDPad(
                 // Apex laser pip
                 drawCircle(
                     color = if (isUpPressed) Color.White else neonColor,
-                    radius = 1.4f * density,
+                    radius = 1.2f * density,
                     center = Offset(nodeCenter.x, nodeCenter.y - chH * 0.7f)
                 )
             }
@@ -821,7 +821,7 @@ fun RealisticDPad(
                 drawPath(downChevronPath, color = if (isDownPressed) Color.White else neonColor, style = stroke2_4dp)
                 drawCircle(
                     color = if (isDownPressed) Color.White else neonColor,
-                    radius = 1.4f * density,
+                    radius = 1.2f * density,
                     center = Offset(nodeCenter.x, nodeCenter.y + chH * 0.7f)
                 )
             }
@@ -840,7 +840,7 @@ fun RealisticDPad(
                 drawPath(leftChevronPath, color = if (isLeftPressed) Color.White else neonColor, style = stroke2_4dp)
                 drawCircle(
                     color = if (isLeftPressed) Color.White else neonColor,
-                    radius = 1.4f * density,
+                    radius = 1.2f * density,
                     center = Offset(nodeCenter.x - chH * 0.7f, nodeCenter.y)
                 )
             }
@@ -859,7 +859,7 @@ fun RealisticDPad(
                 drawPath(rightChevronPath, color = if (isRightPressed) Color.White else neonColor, style = stroke2_4dp)
                 drawCircle(
                     color = if (isRightPressed) Color.White else neonColor,
-                    radius = 1.4f * density,
+                    radius = 1.2f * density,
                     center = Offset(nodeCenter.x + chH * 0.7f, nodeCenter.y)
                 )
             }
