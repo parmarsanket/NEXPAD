@@ -692,7 +692,7 @@ fun ButtonStudioScreen(
             componentDef = target,
             isAppliedToActiveProfile = false,
             applyButtonLabel = null, // Viewer mode: test & preview only
-            gamepadViewModel = gamepadViewModel,
+            gamepadViewModel = null,
             labelStyle = studioLabelStyle,
             onDismiss = { previewTarget = null },
             onApplyToProfile = {},

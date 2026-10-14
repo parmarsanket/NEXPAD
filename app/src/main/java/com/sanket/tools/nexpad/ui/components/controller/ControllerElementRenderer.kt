@@ -10,6 +10,7 @@ import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.runtime.engine.NxprcCanvasRenderer
 import com.sanket.tools.nexpad.runtime.engine.NxpComposeInterpreter
 import com.sanket.tools.nexpad.runtime.model.NexPadControl
+import com.sanket.tools.nexpad.runtime.model.NoOpInputTarget
 import com.sanket.tools.nexpad.runtime.model.asInputTarget
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
@@ -31,7 +32,7 @@ fun ControllerElementRenderer(
     key: String,
     isConnected: Boolean,
     isRgbEnabled: Boolean,
-    viewModel: GamepadViewModel,
+    viewModel: GamepadViewModel? = null,
     onVibrate: () -> Unit = {},
     customComponentId: String? = null,
     sensitivity: Float? = null,
@@ -51,7 +52,7 @@ fun ControllerElementRenderer(
         val remoteDoc = remember(customComponentId, loadedDocs) { remoteRegistry.getComponent(customComponentId) }
         val K = com.sanket.tools.nexpad.model.NexpadKeys
         if (remoteDoc != null) {
-            val feedback by viewModel.feedbackFlow.collectAsState(initial = null)
+            val feedback = viewModel?.feedbackFlow?.collectAsState(initial = null)?.value
             val rumbleIntensity = remember(feedback) {
                 val fb = feedback
                 if (fb != null && (fb.leftMotorSpeed > 0 || fb.rightMotorSpeed > 0)) {
@@ -77,7 +78,7 @@ fun ControllerElementRenderer(
                 document = remoteDoc,
                 assignedControl = targetControl,
                 isConnected = isConnected,
-                inputTarget = viewModel.asInputTarget(onVibrate),
+                inputTarget = viewModel?.asInputTarget(onVibrate) ?: NoOpInputTarget,
                 rumbleIntensity = rumbleIntensity,
                 labelStyle = labelStyle,
                 sizingPolicy = com.sanket.tools.nexpad.runtime.engine.NxprcSizingPolicy.GamepadHud
@@ -128,7 +129,7 @@ fun ControllerElementRenderer(
             definition = customDef,
             assignedControl = targetControl,
             isConnected = isConnected,
-            inputTarget = viewModel.asInputTarget(onVibrate)
+            inputTarget = viewModel?.asInputTarget(onVibrate) ?: NoOpInputTarget
         )
         return
     }
