@@ -252,7 +252,7 @@ fun PeekBumper(
                 shape = bumperShape
             )
             .then(
-                if (isInteractive && isConnected) {
+                if (isInteractive) {
                     Modifier.pointerInput(key) {
                         detectTapGestures(
                             onPress = {

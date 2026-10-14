@@ -247,7 +247,7 @@ fun SliderTrigger(
                 shape = chassisShape
             )
             .then(
-                if (isInteractive && isConnected) {
+                if (isInteractive) {
                     Modifier.pointerInput(key, isFlipped, travelSpanDp, topRestCenterDp, bottomRestCenterDp) {
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)

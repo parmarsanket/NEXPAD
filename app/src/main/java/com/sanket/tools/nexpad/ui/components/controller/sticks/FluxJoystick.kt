@@ -277,7 +277,7 @@ fun FluxJoystick(
                 shape = CircleShape
             )
             .then(
-                if (isInteractive && isConnected) {
+                if (isInteractive) {
                     Modifier.pointerInput(isConnected, isLocked, isLeft, isCameraMode, cameraSensitivity, density, maxTravelPx, tapThresholdPx) {
                         if (!isLocked) return@pointerInput
                         awaitEachGesture {
@@ -990,7 +990,7 @@ fun FluxStickButton(
                 shape = CircleShape
             )
             .then(
-                if (isInteractive && isConnected) {
+                if (isInteractive) {
                     Modifier.pointerInput(key) {
                         detectTapGestures(
                             onPress = {

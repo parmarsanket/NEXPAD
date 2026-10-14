@@ -295,7 +295,7 @@ fun CompassJoystick(
                 shape = CircleShape
             )
             .then(
-                if (isInteractive && isConnected) {
+                if (isInteractive) {
                     Modifier.pointerInput(isConnected, isLocked, isLeft, isCameraMode, cameraSensitivity, density, maxTravelPx) {
                 if (!isLocked) return@pointerInput
                 awaitEachGesture {
@@ -1032,7 +1032,7 @@ fun CompassStickButton(
             .background(capDomeGradient)
             .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape)
             .then(
-                if (isInteractive && isConnected) {
+                if (isInteractive) {
                     Modifier.pointerInput(key) {
                         detectTapGestures(
                             onPress = {

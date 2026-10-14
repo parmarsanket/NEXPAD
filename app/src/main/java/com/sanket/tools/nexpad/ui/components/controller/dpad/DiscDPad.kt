@@ -349,7 +349,7 @@ fun DiscDPad(
                 }
             }
             .then(
-                if (isInteractive && isConnected) {
+                if (isInteractive) {
                     Modifier.pointerInput(isConnected) {
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)

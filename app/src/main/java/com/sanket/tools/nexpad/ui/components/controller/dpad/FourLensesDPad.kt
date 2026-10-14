@@ -539,7 +539,7 @@ fun FourLensesDPad(
                 spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
             .then(
-                if (isInteractive && isConnected) {
+                if (isInteractive) {
                     Modifier.pointerInput(isConnected) {
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)

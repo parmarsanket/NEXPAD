@@ -333,7 +333,7 @@ fun RealisticButton(
             // .cap base dome: radial-gradient(circle at 50% 55%, #232527 0%, #0c0d0e 75%, #000 100%)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
             .then(
-                if (isInteractive && isConnected) {
+                if (isInteractive) {
                     Modifier.pointerInput(key) {
                         detectTapGestures(
                             onPress = {

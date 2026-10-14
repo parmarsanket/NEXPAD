@@ -206,7 +206,7 @@ fun RealisticMacroButton(
                 shape = shape
             )
             .then(
-                if (isInteractive && isConnected) {
+                if (isInteractive) {
                     Modifier.pointerInput(key) {
                         detectTapGestures(
                             onPress = {

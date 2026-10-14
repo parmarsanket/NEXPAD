@@ -266,7 +266,7 @@ fun SpotlightJoystick(
                 shape = CircleShape
             )
             .then(
-                if (isInteractive && isConnected) {
+                if (isInteractive) {
                     Modifier.pointerInput(isConnected, isLocked, isLeft, isCameraMode, cameraSensitivity, density, maxTravelPx) {
                 if (!isLocked) return@pointerInput
                 awaitEachGesture {
@@ -919,7 +919,7 @@ fun SpotlightStickButton(
             .background(puckDomeGradient)
             .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape)
             .then(
-                if (isInteractive && isConnected) {
+                if (isInteractive) {
                     Modifier.pointerInput(key) {
                         detectTapGestures(
                             onPress = {

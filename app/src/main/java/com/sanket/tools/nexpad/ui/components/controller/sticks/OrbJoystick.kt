@@ -254,7 +254,7 @@ fun OrbJoystick(
                 shape = CircleShape
             )
             .then(
-                if (isInteractive && isConnected) {
+                if (isInteractive) {
                     Modifier.pointerInput(isConnected, isLocked, isLeft, isCameraMode, cameraSensitivity, density, maxTravelPx) {
                 if (!isLocked) return@pointerInput
                 awaitEachGesture {
@@ -929,7 +929,7 @@ fun OrbStickButton(
                 shape = CircleShape
             )
             .then(
-                if (isInteractive && isConnected) {
+                if (isInteractive) {
                     Modifier.pointerInput(key) {
                         detectTapGestures(
                             onPress = {

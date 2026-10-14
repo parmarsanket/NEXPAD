@@ -252,7 +252,7 @@ fun NeedleTrigger(
                 shape = chassisShape
             )
             .then(
-                if (isInteractive && isConnected) {
+                if (isInteractive) {
                     Modifier.pointerInput(key) {
                         detectTapGestures(
                             onPress = {

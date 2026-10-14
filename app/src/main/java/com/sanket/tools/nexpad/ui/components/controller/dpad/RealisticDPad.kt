@@ -317,7 +317,7 @@ fun RealisticDPad(
         )
     }
 
-    val gestureModifier = if (isInteractive && isConnected) {
+    val gestureModifier = if (isInteractive) {
         Modifier.pointerInput(isConnected) {
             awaitEachGesture {
                 var activeDirs = emptySet<String>()
@@ -982,7 +982,7 @@ fun RealisticDPadButton(
             }
             .clip(CircleShape)
             .then(
-                if (isInteractive && isConnected) {
+                if (isInteractive) {
                     Modifier.pointerInput(direction) {
                         detectTapGestures(
                             onPress = {

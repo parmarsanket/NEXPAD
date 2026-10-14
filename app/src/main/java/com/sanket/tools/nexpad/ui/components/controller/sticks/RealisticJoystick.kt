@@ -192,7 +192,7 @@ fun RealisticJoystick(
                 shape = CircleShape
             )
             .then(
-                if (isInteractive && isConnected) {
+                if (isInteractive) {
                     Modifier.pointerInput(isConnected, isLocked, isLeft, isCameraMode, cameraSensitivity, density) {
                 if (!isLocked) return@pointerInput
                 awaitEachGesture {
@@ -638,7 +638,7 @@ fun RealisticStickButton(
                 shape = CircleShape
             )
             .then(
-                if (isInteractive && isConnected) {
+                if (isInteractive) {
                     Modifier.pointerInput(key) {
                         detectTapGestures(
                             onPress = {

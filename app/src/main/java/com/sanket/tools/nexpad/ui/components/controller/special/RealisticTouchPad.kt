@@ -466,7 +466,7 @@ fun RealisticTouchPad(
                 shape
             )
             .then(
-                if (isInteractive && isConnected) {
+                if (isInteractive) {
                     Modifier.pointerInput(isLeft, effectiveSensitivity, density) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
