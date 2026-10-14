@@ -66,14 +66,15 @@ import kotlin.math.roundToInt
 @Composable
 fun SliderTrigger(
     key: String,
-    isConnected: Boolean,
-    onVibrate: () -> Unit,
-    viewModel: GamepadViewModel,
-    isRgbEnabled: Boolean,
+    isConnected: Boolean = true,
+    onVibrate: () -> Unit = {},
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
     modifier: Modifier = Modifier,
     displayLabel: String? = null,
     heightScale: Float = 1.0f,
-    isFlipped: Boolean = false
+    isFlipped: Boolean = false,
+    isInteractive: Boolean = true
 ) {
     val isLeft = key.uppercase() == NexpadKeys.LT
     // HTML source palette: Amber Gold (#FFB13F) for LT, Hot Coral (#FF5A7A) for RT
@@ -245,55 +246,59 @@ fun SliderTrigger(
                 ),
                 shape = chassisShape
             )
-            .pointerInput(key, isFlipped, travelSpanDp, topRestCenterDp, bottomRestCenterDp) {
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    isDragging = true
-                    currentOnVibrate()
+            .then(
+                if (isInteractive && isConnected) {
+                    Modifier.pointerInput(key, isFlipped, travelSpanDp, topRestCenterDp, bottomRestCenterDp) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            isDragging = true
+                            currentOnVibrate()
 
-                    val topPx = with(density) { topRestCenterDp.toPx() }
-                    val spanPx = with(density) { travelSpanDp.toPx() }
+                            val topPx = with(density) { topRestCenterDp.toPx() }
+                            val spanPx = with(density) { travelSpanDp.toPx() }
 
-                    fun calculateFill(yPos: Float): Float {
-                        val normalized = ((yPos - topPx) / spanPx).coerceIn(0f, 1f)
-                        return if (isFlipped) (1.0f - normalized) else normalized
-                    }
+                            fun calculateFill(yPos: Float): Float {
+                                val normalized = ((yPos - topPx) / spanPx).coerceIn(0f, 1f)
+                                return if (isFlipped) (1.0f - normalized) else normalized
+                            }
 
-                    val initialFill = calculateFill(down.position.y)
-                    coroutineScope.launch {
-                        fillAnim.snapTo(initialFill)
-                        currentViewModel.updateTrigger(key, initialFill)
-                    }
+                            val initialFill = calculateFill(down.position.y)
+                            coroutineScope.launch {
+                                fillAnim.snapTo(initialFill)
+                                currentViewModel?.updateTrigger(key, initialFill)
+                            }
 
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        val change = event.changes.firstOrNull { it.id == down.id }
-                        if (change == null || !change.pressed) break
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull { it.id == down.id }
+                                if (change == null || !change.pressed) break
 
-                        change.consume()
-                        val newFill = calculateFill(change.position.y)
-                        coroutineScope.launch {
-                            fillAnim.snapTo(newFill)
-                            currentViewModel.updateTrigger(key, newFill)
+                                change.consume()
+                                val newFill = calculateFill(change.position.y)
+                                coroutineScope.launch {
+                                    fillAnim.snapTo(newFill)
+                                    currentViewModel?.updateTrigger(key, newFill)
+                                }
+                            }
+
+                            // On release: Damped harmonic spring back to idle (0f)
+                            isDragging = false
+                            coroutineScope.launch {
+                                fillAnim.animateTo(
+                                    targetValue = 0f,
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                        stiffness = Spring.StiffnessMedium
+                                    )
+                                ) {
+                                    currentViewModel?.updateTrigger(key, value)
+                                }
+                                currentViewModel?.updateTrigger(key, 0f)
+                            }
                         }
                     }
-
-                    // On release: Damped harmonic spring back to idle (0f)
-                    isDragging = false
-                    coroutineScope.launch {
-                        fillAnim.animateTo(
-                            targetValue = 0f,
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioLowBouncy,
-                                stiffness = Spring.StiffnessMedium
-                            )
-                        ) {
-                            currentViewModel.updateTrigger(key, value)
-                        }
-                        currentViewModel.updateTrigger(key, 0f)
-                    }
-                }
-            }
+                } else Modifier
+            )
     ) {
         // Layer 1: Track and Glowing Active Fill Bar
         Canvas(modifier = Modifier.fillMaxSize()) {
@@ -576,4 +581,30 @@ fun SliderTrigger(
             )
         }
     }
+}
+
+/**
+ * Static preview delegate for SliderTrigger with 0 touch overhead and 0 coroutines.
+ */
+@Composable
+fun StaticSliderTrigger(
+    key: String = "LT",
+    isRgbEnabled: Boolean = true,
+    displayLabel: String? = null,
+    modifier: Modifier = Modifier,
+    heightScale: Float = 1.0f,
+    isFlipped: Boolean = false
+) {
+    SliderTrigger(
+        key = key,
+        isConnected = false,
+        onVibrate = {},
+        viewModel = null,
+        isRgbEnabled = isRgbEnabled,
+        modifier = modifier,
+        displayLabel = displayLabel,
+        heightScale = heightScale,
+        isFlipped = isFlipped,
+        isInteractive = false
+    )
 }

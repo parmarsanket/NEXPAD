@@ -125,11 +125,12 @@ fun resolveMetaballsTouch(pos: Offset, sizePx: Float): Set<String> {
  */
 @Composable
 fun MetaballsDPad(
-    isConnected: Boolean,
-    viewModel: GamepadViewModel?,
+    isConnected: Boolean = true,
+    viewModel: GamepadViewModel? = null,
     isRgbEnabled: Boolean = false,
     onVibrate: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isInteractive: Boolean = true
 ) {
     var pressedDirs by remember { mutableStateOf<Set<String>>(emptySet()) }
     val currentlyPressed = pressedDirs
@@ -331,40 +332,44 @@ fun MetaballsDPad(
                     drawFluidSatellite(1f, 0f, rightProgress)
                 }
             }
-            .pointerInput(isConnected) {
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    down.consume()
-                    var activeDirs = emptySet<String>()
+            .then(
+                if (isInteractive && isConnected) {
+                    Modifier.pointerInput(isConnected) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            down.consume()
+                            var activeDirs = emptySet<String>()
 
-                    fun evaluateOffset(pos: Offset) {
-                        val newDirs = resolveMetaballsTouch(pos, size.width.toFloat())
-                        if (newDirs != activeDirs) {
-                            val added = newDirs - activeDirs
-                            val removed = activeDirs - newDirs
-                            removed.forEach { dir -> currentViewModel?.updateButton(dir, false) }
-                            added.forEach { dir -> currentViewModel?.updateButton(dir, true) }
-                            if (added.isNotEmpty()) currentOnVibrate()
-                            activeDirs = newDirs
-                            pressedDirs = newDirs
+                            fun evaluateOffset(pos: Offset) {
+                                val newDirs = resolveMetaballsTouch(pos, size.width.toFloat())
+                                if (newDirs != activeDirs) {
+                                    val added = newDirs - activeDirs
+                                    val removed = activeDirs - newDirs
+                                    removed.forEach { dir -> currentViewModel?.updateButton(dir, false) }
+                                    added.forEach { dir -> currentViewModel?.updateButton(dir, true) }
+                                    if (added.isNotEmpty()) currentOnVibrate()
+                                    activeDirs = newDirs
+                                    pressedDirs = newDirs
+                                }
+                            }
+
+                            try {
+                                evaluateOffset(down.position)
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    val pointer = event.changes.firstOrNull { it.id == down.id }
+                                    if (pointer == null || !pointer.pressed) break
+                                    pointer.consume()
+                                    evaluateOffset(pointer.position)
+                                }
+                            } finally {
+                                activeDirs.forEach { dir -> currentViewModel?.updateButton(dir, false) }
+                                pressedDirs = emptySet()
+                            }
                         }
                     }
-
-                    try {
-                        evaluateOffset(down.position)
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val pointer = event.changes.firstOrNull { it.id == down.id }
-                            if (pointer == null || !pointer.pressed) break
-                            pointer.consume()
-                            evaluateOffset(pointer.position)
-                        }
-                    } finally {
-                        activeDirs.forEach { dir -> currentViewModel?.updateButton(dir, false) }
-                        pressedDirs = emptySet()
-                    }
-                }
-            },
+                } else Modifier
+            ),
         contentAlignment = Alignment.Center
     ) {
         // --- 1. Tiltable 3D Physical Rocker Body Container ---
@@ -774,3 +779,19 @@ fun SatelliteCap(
         }
     }
 }
+
+@Composable
+fun StaticMetaballsDPad(
+    isRgbEnabled: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    MetaballsDPad(
+        isConnected = false,
+        viewModel = null,
+        isRgbEnabled = isRgbEnabled,
+        onVibrate = {},
+        modifier = modifier,
+        isInteractive = false
+    )
+}
+

@@ -66,11 +66,12 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 fun SpotlightJoystick(
     isLeft: Boolean,
-    isConnected: Boolean,
-    viewModel: GamepadViewModel,
-    isRgbEnabled: Boolean,
+    isConnected: Boolean = true,
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
     isLocked: Boolean = true,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isInteractive: Boolean = true
 ) {
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current.density
@@ -170,8 +171,8 @@ fun SpotlightJoystick(
             .graphicsLayer { /* Root RenderNode isolation */ }
             .drawBehind {
                 if (isRgbEnabled) {
-                    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
-                    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                    val stickX = if (isLeft) viewModel?.leftStickX ?: 0f else viewModel?.rightStickX ?: 0f
+                    val stickY = if (isLeft) viewModel?.leftStickY ?: 0f else viewModel?.rightStickY ?: 0f
                     val curX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
                     val curY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
                     val curDist = hypot(curX, curY)
@@ -264,7 +265,9 @@ fun SpotlightJoystick(
                 color = Color.Black.copy(alpha = 0.60f),
                 shape = CircleShape
             )
-            .pointerInput(isConnected, isLocked, isLeft, isCameraMode, cameraSensitivity, density, maxTravelPx) {
+            .then(
+                if (isInteractive && isConnected) {
+                    Modifier.pointerInput(isConnected, isLocked, isLeft, isCameraMode, cameraSensitivity, density, maxTravelPx) {
                 if (!isLocked) return@pointerInput
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -290,7 +293,7 @@ fun SpotlightJoystick(
                     maxDragDistance = initialDist
 
                     if (isCameraMode) {
-                        viewModel.updateRightStick(0f, 0f)
+                        viewModel?.updateRightStick(0f, 0f)
                     } else {
                         val (clampedX, clampedY) = if (initialDist > maxTravelPx) {
                             val angle = atan2(initialDownVecY, initialDownVecX)
@@ -308,9 +311,9 @@ fun SpotlightJoystick(
                         val normY = if (initialDist < deadzoneRadiusPx) 0f else (-clampedY / maxTravelPx).coerceIn(-1f, 1f)
 
                         if (isLeft) {
-                            viewModel.updateLeftStick(normX, normY)
+                            viewModel?.updateLeftStick(normX, normY)
                         } else {
-                            viewModel.updateRightStick(normX, normY)
+                            viewModel?.updateRightStick(normX, normY)
                         }
                     }
 
@@ -362,7 +365,7 @@ fun SpotlightJoystick(
                                     currentStickX = 0.55f * targetStickX + 0.45f * currentStickX
                                     currentStickY = 0.55f * targetStickY + 0.45f * currentStickY
 
-                                    viewModel.updateRightStick(currentStickX, currentStickY)
+                                    viewModel?.updateRightStick(currentStickX, currentStickY)
 
                                     val targetOffsetX = (currentStickX * maxTravelPx).coerceIn(-maxTravelPx, maxTravelPx)
                                     val targetOffsetY = (-currentStickY * maxTravelPx).coerceIn(-maxTravelPx, maxTravelPx)
@@ -377,19 +380,19 @@ fun SpotlightJoystick(
                                         delay(decayTimeoutMs.milliseconds)
                                         currentStickX *= 0.5f
                                         currentStickY *= 0.5f
-                                        viewModel.updateRightStick(currentStickX, currentStickY)
+                                        viewModel?.updateRightStick(currentStickX, currentStickY)
                                         animOffsetX.snapTo(currentStickX * maxTravelPx)
                                         animOffsetY.snapTo(-currentStickY * maxTravelPx)
                                         delay(30.milliseconds)
                                         currentStickX *= 0.2f
                                         currentStickY *= 0.2f
-                                        viewModel.updateRightStick(currentStickX, currentStickY)
+                                        viewModel?.updateRightStick(currentStickX, currentStickY)
                                         animOffsetX.snapTo(currentStickX * maxTravelPx)
                                         animOffsetY.snapTo(-currentStickY * maxTravelPx)
                                         delay(25.milliseconds)
                                         currentStickX = 0f
                                         currentStickY = 0f
-                                        viewModel.updateRightStick(0f, 0f)
+                                        viewModel?.updateRightStick(0f, 0f)
                                         animOffsetX.snapTo(0f)
                                         animOffsetY.snapTo(0f)
                                     }
@@ -417,9 +420,9 @@ fun SpotlightJoystick(
                             val normY = if (dist < deadzoneRadiusPx) 0f else (-clampedY / maxTravelPx).coerceIn(-1f, 1f)
 
                             if (isLeft) {
-                                viewModel.updateLeftStick(normX, normY)
+                                viewModel?.updateLeftStick(normX, normY)
                             } else {
-                                viewModel.updateRightStick(normX, normY)
+                                viewModel?.updateRightStick(normX, normY)
                             }
                         }
                     }
@@ -427,10 +430,10 @@ fun SpotlightJoystick(
                     // Release handling: check stationary tap (L3/R3 click) vs drag release
                     val touchDuration = System.currentTimeMillis() - startTime
                     if (maxDragDistance <= tapThresholdPx && touchDuration < 300L) {
-                        viewModel.updateButton(stickKey, true)
+                        viewModel?.updateButton(stickKey, true)
                         coroutineScope.launch {
                             delay(60.milliseconds)
-                            viewModel.updateButton(stickKey, false)
+                            viewModel?.updateButton(stickKey, false)
                         }
                     }
 
@@ -439,7 +442,7 @@ fun SpotlightJoystick(
                     decayJob?.cancel()
 
                     if (isLeft) {
-                        viewModel.updateLeftStick(0f, 0f)
+                        viewModel?.updateLeftStick(0f, 0f)
                         coroutineScope.launch {
                             launch { animOffsetX.animateTo(0f, spring(dampingRatio = 0.65f, stiffness = 420f)) }
                             launch { animOffsetY.animateTo(0f, spring(dampingRatio = 0.65f, stiffness = 420f)) }
@@ -454,17 +457,17 @@ fun SpotlightJoystick(
                                 repeat(coastSteps) {
                                     coastX *= 0.68f
                                     coastY *= 0.68f
-                                    viewModel.updateRightStick(coastX, coastY)
+                                    viewModel?.updateRightStick(coastX, coastY)
                                     animOffsetX.snapTo(coastX * maxTravelPx)
                                     animOffsetY.snapTo(-coastY * maxTravelPx)
                                     delay(16.milliseconds)
                                 }
-                                viewModel.updateRightStick(0f, 0f)
+                                viewModel?.updateRightStick(0f, 0f)
                                 animOffsetX.animateTo(0f, spring(dampingRatio = 0.65f, stiffness = 420f))
                                 animOffsetY.animateTo(0f, spring(dampingRatio = 0.65f, stiffness = 420f))
                             }
                         } else {
-                            viewModel.updateRightStick(0f, 0f)
+                            viewModel?.updateRightStick(0f, 0f)
                             coroutineScope.launch {
                                 launch { animOffsetX.animateTo(0f, spring(dampingRatio = 0.65f, stiffness = 420f)) }
                                 launch { animOffsetY.animateTo(0f, spring(dampingRatio = 0.65f, stiffness = 420f)) }
@@ -472,13 +475,15 @@ fun SpotlightJoystick(
                         }
                     }
                 }
-            },
+            }
+        } else Modifier
+    ),
         contentAlignment = Alignment.Center
     ) {
         // Stationary Socket Background Canvas: Inset Depth, Spotlight Pool, and Floor Dots Matrix
         Canvas(modifier = Modifier.fillMaxSize().clip(CircleShape)) {
-            val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
-            val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+            val stickX = if (isLeft) viewModel?.leftStickX ?: 0f else viewModel?.rightStickX ?: 0f
+            val stickY = if (isLeft) viewModel?.leftStickY ?: 0f else viewModel?.rightStickY ?: 0f
             val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
             val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
             val curDist = hypot(curOffsetX, curOffsetY)
@@ -619,8 +624,8 @@ fun SpotlightJoystick(
         Box(
             modifier = Modifier
                 .offset {
-                    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
-                    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                    val stickX = if (isLeft) viewModel?.leftStickX ?: 0f else viewModel?.rightStickX ?: 0f
+                    val stickY = if (isLeft) viewModel?.leftStickY ?: 0f else viewModel?.rightStickY ?: 0f
                     val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
                     val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
                     IntOffset(curOffsetX.roundToInt(), curOffsetY.roundToInt())
@@ -642,8 +647,8 @@ fun SpotlightJoystick(
             contentAlignment = Alignment.Center
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
-                val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
-                val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                val stickX = if (isLeft) viewModel?.leftStickX ?: 0f else viewModel?.rightStickX ?: 0f
+                val stickY = if (isLeft) viewModel?.leftStickY ?: 0f else viewModel?.rightStickY ?: 0f
                 val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
                 val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
                 val curNormX = (curOffsetX / maxTravelPx).coerceIn(-1f, 1f)
@@ -796,12 +801,13 @@ fun SpotlightJoystick(
 fun SpotlightStickButton(
     isLeft: Boolean,
     key: String = if (isLeft) "LSB" else "RSB",
-    isConnected: Boolean,
-    onVibrate: () -> Unit,
-    viewModel: GamepadViewModel,
-    isRgbEnabled: Boolean,
+    isConnected: Boolean = true,
+    onVibrate: () -> Unit = {},
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
     modifier: Modifier = Modifier,
-    displayLabel: String? = null
+    displayLabel: String? = null,
+    isInteractive: Boolean = true
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
@@ -912,18 +918,22 @@ fun SpotlightStickButton(
             .clip(CircleShape)
             .background(puckDomeGradient)
             .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape)
-            .pointerInput(key) {
-                detectTapGestures(
-                    onPress = {
-                        currentOnVibrate()
-                        isPressed = true
-                        currentViewModel.updateButton(key, true)
-                        tryAwaitRelease()
-                        isPressed = false
-                        currentViewModel.updateButton(key, false)
+            .then(
+                if (isInteractive && isConnected) {
+                    Modifier.pointerInput(key) {
+                        detectTapGestures(
+                            onPress = {
+                                currentOnVibrate()
+                                isPressed = true
+                                currentViewModel?.updateButton(key, true)
+                                tryAwaitRelease()
+                                isPressed = false
+                                currentViewModel?.updateButton(key, false)
+                            }
+                        )
                     }
-                )
-            },
+                } else Modifier
+            ),
         contentAlignment = Alignment.Center
     ) {
         // Floor matrix dots and spotlight illumination
@@ -1043,3 +1053,42 @@ fun SpotlightStickButton(
         }
     }
 }
+
+@Composable
+fun StaticSpotlightJoystick(
+    isLeft: Boolean = true,
+    modifier: Modifier = Modifier,
+    isRgbEnabled: Boolean = true
+) {
+    SpotlightJoystick(
+        isLeft = isLeft,
+        isConnected = false,
+        viewModel = null,
+        isRgbEnabled = isRgbEnabled,
+        modifier = modifier,
+        isInteractive = false
+    )
+}
+
+@Composable
+fun StaticSpotlightStickButton(
+    isLeft: Boolean = true,
+    modifier: Modifier = Modifier,
+    label: String? = null,
+    isRgbEnabled: Boolean = true,
+    displayLabel: String? = label
+) {
+    val effectiveLabel = displayLabel ?: label
+    SpotlightStickButton(
+        isLeft = isLeft,
+        key = effectiveLabel ?: (if (isLeft) "LSB" else "RSB"),
+        isConnected = false,
+        onVibrate = {},
+        viewModel = null,
+        isRgbEnabled = isRgbEnabled,
+        modifier = modifier,
+        displayLabel = effectiveLabel,
+        isInteractive = false
+    )
+}
+

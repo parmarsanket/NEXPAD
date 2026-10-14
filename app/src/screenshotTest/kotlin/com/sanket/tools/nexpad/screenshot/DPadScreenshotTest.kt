@@ -10,13 +10,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.tools.screenshot.PreviewTest
-import com.sanket.tools.nexpad.ui.studio.components.StaticCapsulesDPad
+import com.sanket.tools.nexpad.ui.components.controller.dpad.*
 import com.sanket.tools.nexpad.ui.studio.components.StaticDefaultButtonPreview
-import com.sanket.tools.nexpad.ui.studio.components.StaticDiscDPad
-import com.sanket.tools.nexpad.ui.studio.components.StaticFourLensesDPad
-import com.sanket.tools.nexpad.ui.studio.components.StaticLensDPad
-import com.sanket.tools.nexpad.ui.studio.components.StaticMetaballsDPad
-import com.sanket.tools.nexpad.ui.studio.components.StaticRailsDPad
 
 /**
  * Compose Preview Screenshot Tests for NEXPAD D-Pad Directional Pad Variants.

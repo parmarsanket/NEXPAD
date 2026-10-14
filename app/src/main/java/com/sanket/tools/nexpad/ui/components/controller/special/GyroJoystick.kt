@@ -65,11 +65,12 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 fun GyroJoystick(
     isLeft: Boolean,
-    isConnected: Boolean,
-    viewModel: GamepadViewModel,
-    isRgbEnabled: Boolean,
+    isConnected: Boolean = true,
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
     isLocked: Boolean = true,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isInteractive: Boolean = true
 ) {
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current.density
@@ -169,8 +170,8 @@ fun GyroJoystick(
             .graphicsLayer { /* Root RenderNode isolation */ }
             .drawBehind {
                 if (isRgbEnabled) {
-                    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
-                    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                    val stickX = if (isLeft) viewModel?.leftStickX ?: 0f else viewModel?.rightStickX ?: 0f
+                    val stickY = if (isLeft) viewModel?.leftStickY ?: 0f else viewModel?.rightStickY ?: 0f
                     val curX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
                     val curY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
                     val curDist = hypot(curX, curY)
@@ -230,221 +231,225 @@ fun GyroJoystick(
                 color = Color.Black.copy(alpha = 0.60f),
                 shape = CircleShape
             )
-            .pointerInput(isConnected, isLocked, isLeft, isCameraMode, cameraSensitivity, density, maxTravelPx) {
-                if (!isLocked) return@pointerInput
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    val centerX = size.width / 2f
-                    val centerY = size.height / 2f
-                    val deadzoneRadiusPx = 6.dp.toPx()
+            .then(
+                if (isInteractive && isConnected) {
+                    Modifier.pointerInput(isConnected, isLocked, isLeft, isCameraMode, cameraSensitivity, density, maxTravelPx) {
+                        if (!isLocked) return@pointerInput
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            val centerX = size.width / 2f
+                            val centerY = size.height / 2f
+                            val deadzoneRadiusPx = 6.dp.toPx()
 
-                    val startTime = System.currentTimeMillis()
-                    var maxDragDistance = 0f
-                    var previousTouchX = down.position.x
-                    var previousTouchY = down.position.y
-                    var previousTimeMs = startTime
-                    var currentStickX = 0f
-                    var currentStickY = 0f
-                    val velocityBuffer = VelocityRingBuffer(8)
+                            val startTime = System.currentTimeMillis()
+                            var maxDragDistance = 0f
+                            var previousTouchX = down.position.x
+                            var previousTouchY = down.position.y
+                            var previousTimeMs = startTime
+                            var currentStickX = 0f
+                            var currentStickY = 0f
+                            val velocityBuffer = VelocityRingBuffer(8)
 
-                    isDragging = true
-                    isPressed = true
+                            isDragging = true
+                            isPressed = true
 
-                    val initialDownVecX = down.position.x - centerX
-                    val initialDownVecY = down.position.y - centerY
-                    val initialDist = hypot(initialDownVecX, initialDownVecY)
-                    maxDragDistance = initialDist
+                            val initialDownVecX = down.position.x - centerX
+                            val initialDownVecY = down.position.y - centerY
+                            val initialDist = hypot(initialDownVecX, initialDownVecY)
+                            maxDragDistance = initialDist
 
-                    if (isCameraMode) {
-                        viewModel.updateRightStick(0f, 0f)
-                    } else {
-                        val (clampedX, clampedY) = if (initialDist > maxTravelPx) {
-                            val angle = atan2(initialDownVecY, initialDownVecX)
-                            Pair(cos(angle) * maxTravelPx, sin(angle) * maxTravelPx)
-                        } else {
-                            Pair(initialDownVecX, initialDownVecY)
-                        }
+                            if (isCameraMode) {
+                                viewModel?.updateRightStick(0f, 0f)
+                            } else {
+                                val (clampedX, clampedY) = if (initialDist > maxTravelPx) {
+                                    val angle = atan2(initialDownVecY, initialDownVecX)
+                                    Pair(cos(angle) * maxTravelPx, sin(angle) * maxTravelPx)
+                                } else {
+                                    Pair(initialDownVecX, initialDownVecY)
+                                }
 
-                        coroutineScope.launch {
-                            animOffsetX.snapTo(clampedX)
-                            animOffsetY.snapTo(clampedY)
-                        }
+                                coroutineScope.launch {
+                                    animOffsetX.snapTo(clampedX)
+                                    animOffsetY.snapTo(clampedY)
+                                }
 
-                        val normX = if (initialDist < deadzoneRadiusPx) 0f else (clampedX / maxTravelPx).coerceIn(-1f, 1f)
-                        val normY = if (initialDist < deadzoneRadiusPx) 0f else (-clampedY / maxTravelPx).coerceIn(-1f, 1f)
+                                val normX = if (initialDist < deadzoneRadiusPx) 0f else (clampedX / maxTravelPx).coerceIn(-1f, 1f)
+                                val normY = if (initialDist < deadzoneRadiusPx) 0f else (-clampedY / maxTravelPx).coerceIn(-1f, 1f)
 
-                        if (isLeft) {
-                            viewModel.updateLeftStick(normX, normY)
-                        } else {
-                            viewModel.updateRightStick(normX, normY)
-                        }
-                    }
-
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        val change = event.changes.firstOrNull { it.id == down.id }
-                        if (change == null || !change.pressed) break
-
-                        val currentTouchX = change.position.x
-                        val currentTouchY = change.position.y
-                        val deltaX = currentTouchX - previousTouchX
-                        val deltaY = currentTouchY - previousTouchY
-
-                        previousTouchX = currentTouchX
-                        previousTouchY = currentTouchY
-                        change.consume()
-
-                        if (isCameraMode) {
-                            var finalDeltaX = deltaX
-                            var finalDeltaY = deltaY
-                            val absX = kotlin.math.abs(deltaX)
-                            val absY = kotlin.math.abs(deltaY)
-                            if (absX > 3.0f * absY) {
-                                finalDeltaY *= 0.5f
-                            } else if (absY > 3.0f * absX) {
-                                finalDeltaX *= 0.5f
+                                if (isLeft) {
+                                    viewModel?.updateLeftStick(normX, normY)
+                                } else {
+                                    viewModel?.updateRightStick(normX, normY)
+                                }
                             }
 
-                            val distPx = hypot(finalDeltaX, finalDeltaY)
-                            val distDp = distPx / density
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull { it.id == down.id }
+                                if (change == null || !change.pressed) break
 
-                            if (distDp > 0.15f) {
-                                val currentTimeMs = System.currentTimeMillis()
-                                val dtSec = ((currentTimeMs - previousTimeMs).coerceAtLeast(1L)) / 1000f
-                                previousTimeMs = currentTimeMs
+                                val currentTouchX = change.position.x
+                                val currentTouchY = change.position.y
+                                val deltaX = currentTouchX - previousTouchX
+                                val deltaY = currentTouchY - previousTouchY
 
-                                velocityBuffer.push(distDp, dtSec)
-                                val smoothedSpeed = velocityBuffer.averageSpeed()
+                                previousTouchX = currentTouchX
+                                previousTouchY = currentTouchY
+                                change.consume()
 
-                                val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, cameraSensitivity)
-
-                                if (stickMagnitude > 0f) {
-                                    val dirX = finalDeltaX / distPx
-                                    val dirY = finalDeltaY / distPx
-
-                                    val targetStickX = (dirX * stickMagnitude).coerceIn(-1f, 1f)
-                                    val targetStickY = (-dirY * stickMagnitude).coerceIn(-1f, 1f)
-
-                                    currentStickX = 0.55f * targetStickX + 0.45f * currentStickX
-                                    currentStickY = 0.55f * targetStickY + 0.45f * currentStickY
-
-                                    viewModel.updateRightStick(currentStickX, currentStickY)
-
-                                    val targetOffsetX = (currentStickX * maxTravelPx).coerceIn(-maxTravelPx, maxTravelPx)
-                                    val targetOffsetY = (-currentStickY * maxTravelPx).coerceIn(-maxTravelPx, maxTravelPx)
-                                    coroutineScope.launch {
-                                        animOffsetX.snapTo(targetOffsetX)
-                                        animOffsetY.snapTo(targetOffsetY)
+                                if (isCameraMode) {
+                                    var finalDeltaX = deltaX
+                                    var finalDeltaY = deltaY
+                                    val absX = kotlin.math.abs(deltaX)
+                                    val absY = kotlin.math.abs(deltaY)
+                                    if (absX > 3.0f * absY) {
+                                        finalDeltaY *= 0.5f
+                                    } else if (absY > 3.0f * absX) {
+                                        finalDeltaX *= 0.5f
                                     }
 
-                                    val decayTimeoutMs = (120L - (smoothedSpeed / 20f).toLong()).coerceIn(50L, 120L)
-                                    decayJob?.cancel()
-                                    decayJob = coroutineScope.launch {
-                                        delay(decayTimeoutMs.milliseconds)
-                                        currentStickX *= 0.5f
-                                        currentStickY *= 0.5f
-                                        viewModel.updateRightStick(currentStickX, currentStickY)
-                                        animOffsetX.snapTo(currentStickX * maxTravelPx)
-                                        animOffsetY.snapTo(-currentStickY * maxTravelPx)
-                                        delay(30.milliseconds)
-                                        currentStickX *= 0.2f
-                                        currentStickY *= 0.2f
-                                        viewModel.updateRightStick(currentStickX, currentStickY)
-                                        animOffsetX.snapTo(currentStickX * maxTravelPx)
-                                        animOffsetY.snapTo(-currentStickY * maxTravelPx)
-                                        delay(25.milliseconds)
-                                        currentStickX = 0f
-                                        currentStickY = 0f
-                                        viewModel.updateRightStick(0f, 0f)
-                                        animOffsetX.snapTo(0f)
-                                        animOffsetY.snapTo(0f)
+                                    val distPx = hypot(finalDeltaX, finalDeltaY)
+                                    val distDp = distPx / density
+
+                                    if (distDp > 0.15f) {
+                                        val currentTimeMs = System.currentTimeMillis()
+                                        val dtSec = ((currentTimeMs - previousTimeMs).coerceAtLeast(1L)) / 1000f
+                                        previousTimeMs = currentTimeMs
+
+                                        velocityBuffer.push(distDp, dtSec)
+                                        val smoothedSpeed = velocityBuffer.averageSpeed()
+
+                                        val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, cameraSensitivity)
+
+                                        if (stickMagnitude > 0f) {
+                                            val dirX = finalDeltaX / distPx
+                                            val dirY = finalDeltaY / distPx
+
+                                            val targetStickX = (dirX * stickMagnitude).coerceIn(-1f, 1f)
+                                            val targetStickY = (-dirY * stickMagnitude).coerceIn(-1f, 1f)
+
+                                            currentStickX = 0.55f * targetStickX + 0.45f * currentStickX
+                                            currentStickY = 0.55f * targetStickY + 0.45f * currentStickY
+
+                                            viewModel?.updateRightStick(currentStickX, currentStickY)
+
+                                            val targetOffsetX = (currentStickX * maxTravelPx).coerceIn(-maxTravelPx, maxTravelPx)
+                                            val targetOffsetY = (-currentStickY * maxTravelPx).coerceIn(-maxTravelPx, maxTravelPx)
+                                            coroutineScope.launch {
+                                                animOffsetX.snapTo(targetOffsetX)
+                                                animOffsetY.snapTo(targetOffsetY)
+                                            }
+
+                                            val decayTimeoutMs = (120L - (smoothedSpeed / 20f).toLong()).coerceIn(50L, 120L)
+                                            decayJob?.cancel()
+                                            decayJob = coroutineScope.launch {
+                                                delay(decayTimeoutMs.milliseconds)
+                                                currentStickX *= 0.5f
+                                                currentStickY *= 0.5f
+                                                viewModel?.updateRightStick(currentStickX, currentStickY)
+                                                animOffsetX.snapTo(currentStickX * maxTravelPx)
+                                                animOffsetY.snapTo(-currentStickY * maxTravelPx)
+                                                delay(30.milliseconds)
+                                                currentStickX *= 0.2f
+                                                currentStickY *= 0.2f
+                                                viewModel?.updateRightStick(currentStickX, currentStickY)
+                                                animOffsetX.snapTo(currentStickX * maxTravelPx)
+                                                animOffsetY.snapTo(-currentStickY * maxTravelPx)
+                                                delay(25.milliseconds)
+                                                currentStickX = 0f
+                                                currentStickY = 0f
+                                                viewModel?.updateRightStick(0f, 0f)
+                                                animOffsetX.snapTo(0f)
+                                                animOffsetY.snapTo(0f)
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    val vecX = change.position.x - centerX
+                                    val vecY = change.position.y - centerY
+                                    val dist = hypot(vecX, vecY)
+                                    if (dist > maxDragDistance) maxDragDistance = dist
+
+                                    val (clampedX, clampedY) = if (dist > maxTravelPx) {
+                                        val angle = atan2(vecY, vecX)
+                                        Pair(cos(angle) * maxTravelPx, sin(angle) * maxTravelPx)
+                                    } else {
+                                        Pair(vecX, vecY)
+                                    }
+
+                                    coroutineScope.launch {
+                                        animOffsetX.snapTo(clampedX)
+                                        animOffsetY.snapTo(clampedY)
+                                    }
+
+                                    val normX = if (dist < deadzoneRadiusPx) 0f else (clampedX / maxTravelPx).coerceIn(-1f, 1f)
+                                    val normY = if (dist < deadzoneRadiusPx) 0f else (-clampedY / maxTravelPx).coerceIn(-1f, 1f)
+
+                                    if (isLeft) {
+                                        viewModel?.updateLeftStick(normX, normY)
+                                    } else {
+                                        viewModel?.updateRightStick(normX, normY)
                                     }
                                 }
                             }
-                        } else {
-                            val vecX = change.position.x - centerX
-                            val vecY = change.position.y - centerY
-                            val dist = hypot(vecX, vecY)
-                            if (dist > maxDragDistance) maxDragDistance = dist
 
-                            val (clampedX, clampedY) = if (dist > maxTravelPx) {
-                                val angle = atan2(vecY, vecX)
-                                Pair(cos(angle) * maxTravelPx, sin(angle) * maxTravelPx)
-                            } else {
-                                Pair(vecX, vecY)
+                            // Release handling: check stationary tap (L3/R3 click) vs drag release
+                            val touchDuration = System.currentTimeMillis() - startTime
+                            if (maxDragDistance <= tapThresholdPx && touchDuration < 300L) {
+                                viewModel?.updateButton(stickKey, true)
+                                coroutineScope.launch {
+                                    delay(60.milliseconds)
+                                    viewModel?.updateButton(stickKey, false)
+                                }
                             }
 
-                            coroutineScope.launch {
-                                animOffsetX.snapTo(clampedX)
-                                animOffsetY.snapTo(clampedY)
-                            }
-
-                            val normX = if (dist < deadzoneRadiusPx) 0f else (clampedX / maxTravelPx).coerceIn(-1f, 1f)
-                            val normY = if (dist < deadzoneRadiusPx) 0f else (-clampedY / maxTravelPx).coerceIn(-1f, 1f)
+                            isDragging = false
+                            isPressed = false
+                            decayJob?.cancel()
 
                             if (isLeft) {
-                                viewModel.updateLeftStick(normX, normY)
-                            } else {
-                                viewModel.updateRightStick(normX, normY)
-                            }
-                        }
-                    }
-
-                    // Release handling: check stationary tap (L3/R3 click) vs drag release
-                    val touchDuration = System.currentTimeMillis() - startTime
-                    if (maxDragDistance <= tapThresholdPx && touchDuration < 300L) {
-                        viewModel.updateButton(stickKey, true)
-                        coroutineScope.launch {
-                            delay(60.milliseconds)
-                            viewModel.updateButton(stickKey, false)
-                        }
-                    }
-
-                    isDragging = false
-                    isPressed = false
-                    decayJob?.cancel()
-
-                    if (isLeft) {
-                        viewModel.updateLeftStick(0f, 0f)
-                        coroutineScope.launch {
-                            launch { animOffsetX.animateTo(0f, spring(dampingRatio = 0.65f, stiffness = 420f)) }
-                            launch { animOffsetY.animateTo(0f, spring(dampingRatio = 0.65f, stiffness = 420f)) }
-                        }
-                    } else {
-                        val releaseSpeed = velocityBuffer.peakSpeed()
-                        if (isCameraMode && releaseSpeed > 400f) {
-                            val coastSteps = ((releaseSpeed / 200f).toInt()).coerceIn(3, 7)
-                            coroutineScope.launch {
-                                var coastX = currentStickX
-                                var coastY = currentStickY
-                                repeat(coastSteps) {
-                                    coastX *= 0.68f
-                                    coastY *= 0.68f
-                                    viewModel.updateRightStick(coastX, coastY)
-                                    animOffsetX.snapTo(coastX * maxTravelPx)
-                                    animOffsetY.snapTo(-coastY * maxTravelPx)
-                                    delay(16.milliseconds)
+                                viewModel?.updateLeftStick(0f, 0f)
+                                coroutineScope.launch {
+                                    launch { animOffsetX.animateTo(0f, spring(dampingRatio = 0.65f, stiffness = 420f)) }
+                                    launch { animOffsetY.animateTo(0f, spring(dampingRatio = 0.65f, stiffness = 420f)) }
                                 }
-                                viewModel.updateRightStick(0f, 0f)
-                                animOffsetX.animateTo(0f, spring(dampingRatio = 0.65f, stiffness = 420f))
-                                animOffsetY.animateTo(0f, spring(dampingRatio = 0.65f, stiffness = 420f))
-                            }
-                        } else {
-                            viewModel.updateRightStick(0f, 0f)
-                            coroutineScope.launch {
-                                launch { animOffsetX.animateTo(0f, spring(dampingRatio = 0.65f, stiffness = 420f)) }
-                                launch { animOffsetY.animateTo(0f, spring(dampingRatio = 0.65f, stiffness = 420f)) }
+                            } else {
+                                val releaseSpeed = velocityBuffer.peakSpeed()
+                                if (isCameraMode && releaseSpeed > 400f) {
+                                    val coastSteps = ((releaseSpeed / 200f).toInt()).coerceIn(3, 7)
+                                    coroutineScope.launch {
+                                        var coastX = currentStickX
+                                        var coastY = currentStickY
+                                        repeat(coastSteps) {
+                                            coastX *= 0.68f
+                                            coastY *= 0.68f
+                                            viewModel?.updateRightStick(coastX, coastY)
+                                            animOffsetX.snapTo(coastX * maxTravelPx)
+                                            animOffsetY.snapTo(-coastY * maxTravelPx)
+                                            delay(16.milliseconds)
+                                        }
+                                        viewModel?.updateRightStick(0f, 0f)
+                                        animOffsetX.animateTo(0f, spring(dampingRatio = 0.65f, stiffness = 420f))
+                                        animOffsetY.animateTo(0f, spring(dampingRatio = 0.65f, stiffness = 420f))
+                                    }
+                                } else {
+                                    viewModel?.updateRightStick(0f, 0f)
+                                    coroutineScope.launch {
+                                        launch { animOffsetX.animateTo(0f, spring(dampingRatio = 0.65f, stiffness = 420f)) }
+                                        launch { animOffsetY.animateTo(0f, spring(dampingRatio = 0.65f, stiffness = 420f)) }
+                                    }
+                                }
                             }
                         }
                     }
-                }
-            },
+                } else Modifier
+            ),
         contentAlignment = Alignment.Center
     ) {
         // Stationary Socket Background Canvas: Inset Depth and Directional Gate Arc
         Canvas(modifier = Modifier.fillMaxSize().clip(CircleShape)) {
-            val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
-            val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+            val stickX = if (isLeft) viewModel?.leftStickX ?: 0f else viewModel?.rightStickX ?: 0f
+            val stickY = if (isLeft) viewModel?.leftStickY ?: 0f else viewModel?.rightStickY ?: 0f
             val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
             val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
             val curDist = hypot(curOffsetX, curOffsetY)
@@ -525,8 +530,8 @@ fun GyroJoystick(
             modifier = Modifier
                 .size(120.dp)
                 .graphicsLayer {
-                    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
-                    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                    val stickX = if (isLeft) viewModel?.leftStickX ?: 0f else viewModel?.rightStickX ?: 0f
+                    val stickY = if (isLeft) viewModel?.leftStickY ?: 0f else viewModel?.rightStickY ?: 0f
                     val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
                     val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
                     val curNormX = (curOffsetX / maxTravelPx).coerceIn(-1f, 1f)
@@ -566,8 +571,8 @@ fun GyroJoystick(
             modifier = Modifier
                 .size(92.dp)
                 .graphicsLayer {
-                    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
-                    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                    val stickX = if (isLeft) viewModel?.leftStickX ?: 0f else viewModel?.rightStickX ?: 0f
+                    val stickY = if (isLeft) viewModel?.leftStickY ?: 0f else viewModel?.rightStickY ?: 0f
                     val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
                     val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
                     val curNormX = (curOffsetX / maxTravelPx).coerceIn(-1f, 1f)
@@ -606,8 +611,8 @@ fun GyroJoystick(
         Box(
             modifier = Modifier
                 .offset {
-                    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
-                    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                    val stickX = if (isLeft) viewModel?.leftStickX ?: 0f else viewModel?.rightStickX ?: 0f
+                    val stickY = if (isLeft) viewModel?.leftStickY ?: 0f else viewModel?.rightStickY ?: 0f
                     val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
                     val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
                     IntOffset(curOffsetX.roundToInt(), curOffsetY.roundToInt())
@@ -629,8 +634,8 @@ fun GyroJoystick(
             contentAlignment = Alignment.Center
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
-                val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
-                val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                val stickX = if (isLeft) viewModel?.leftStickX ?: 0f else viewModel?.rightStickX ?: 0f
+                val stickY = if (isLeft) viewModel?.leftStickY ?: 0f else viewModel?.rightStickY ?: 0f
                 val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
                 val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
                 val curNormX = (curOffsetX / maxTravelPx).coerceIn(-1f, 1f)
@@ -785,14 +790,15 @@ fun GyroJoystick(
  */
 @Composable
 fun GyroStickButton(
-    isLeft: Boolean,
+    isLeft: Boolean = true,
     key: String = if (isLeft) "LSB" else "RSB",
-    isConnected: Boolean,
-    onVibrate: () -> Unit,
-    viewModel: GamepadViewModel,
-    isRgbEnabled: Boolean,
+    isConnected: Boolean = true,
+    onVibrate: () -> Unit = {},
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
     modifier: Modifier = Modifier,
-    displayLabel: String? = null
+    displayLabel: String? = null,
+    isInteractive: Boolean = true
 ) {
     var isPressed by remember { mutableStateOf(false) }
     val density = LocalDensity.current.density
@@ -913,18 +919,22 @@ fun GyroStickButton(
             .clip(CircleShape)
             .background(puckDomeGradient)
             .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape)
-            .pointerInput(key) {
-                detectTapGestures(
-                    onPress = {
-                        currentOnVibrate()
-                        isPressed = true
-                        currentViewModel.updateButton(key, true)
-                        tryAwaitRelease()
-                        isPressed = false
-                        currentViewModel.updateButton(key, false)
+            .then(
+                if (isInteractive && isConnected) {
+                    Modifier.pointerInput(key) {
+                        detectTapGestures(
+                            onPress = {
+                                currentOnVibrate()
+                                isPressed = true
+                                currentViewModel?.updateButton(key, true)
+                                tryAwaitRelease()
+                                isPressed = false
+                                currentViewModel?.updateButton(key, false)
+                            }
+                        )
                     }
-                )
-            },
+                } else Modifier
+            ),
         contentAlignment = Alignment.Center
     ) {
         // Concentric Gimbal Rings & Specular Sheen
@@ -1019,3 +1029,42 @@ fun GyroStickButton(
         }
     }
 }
+
+@Composable
+fun StaticGyroJoystick(
+    isLeft: Boolean = true,
+    modifier: Modifier = Modifier,
+    isRgbEnabled: Boolean = true
+) {
+    GyroJoystick(
+        isLeft = isLeft,
+        isConnected = false,
+        viewModel = null,
+        isRgbEnabled = isRgbEnabled,
+        modifier = modifier,
+        isInteractive = false
+    )
+}
+
+@Composable
+fun StaticGyroStickButton(
+    isLeft: Boolean = true,
+    modifier: Modifier = Modifier,
+    label: String? = null,
+    isRgbEnabled: Boolean = true,
+    displayLabel: String? = label
+) {
+    val effectiveLabel = displayLabel ?: label
+    GyroStickButton(
+        isLeft = isLeft,
+        key = effectiveLabel ?: (if (isLeft) "LSB" else "RSB"),
+        isConnected = false,
+        onVibrate = {},
+        viewModel = null,
+        isRgbEnabled = isRgbEnabled,
+        modifier = modifier,
+        displayLabel = effectiveLabel,
+        isInteractive = false
+    )
+}
+

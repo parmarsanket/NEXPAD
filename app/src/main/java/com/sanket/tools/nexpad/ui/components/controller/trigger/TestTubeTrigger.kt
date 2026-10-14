@@ -66,12 +66,13 @@ import kotlin.math.sin
 @Composable
 fun TestTubeTrigger(
     key: String,
-    isConnected: Boolean,
-    onVibrate: () -> Unit,
-    viewModel: GamepadViewModel,
-    isRgbEnabled: Boolean,
+    isConnected: Boolean = true,
+    onVibrate: () -> Unit = {},
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
     modifier: Modifier = Modifier,
-    displayLabel: String? = null
+    displayLabel: String? = null,
+    isInteractive: Boolean = true
 ) {
     var isPressed by remember { mutableStateOf(false) }
     val isLeft = key.uppercase() == NexpadKeys.LT
@@ -243,18 +244,22 @@ fun TestTubeTrigger(
                 ),
                 shape = chassisShape
             )
-            .pointerInput(key) {
-                detectTapGestures(
-                    onPress = {
-                        currentOnVibrate()
-                        isPressed = true
-                        currentViewModel.updateButton(key, true)
-                        tryAwaitRelease()
-                        isPressed = false
-                        currentViewModel.updateButton(key, false)
+            .then(
+                if (isInteractive && isConnected) {
+                    Modifier.pointerInput(key) {
+                        detectTapGestures(
+                            onPress = {
+                                currentOnVibrate()
+                                isPressed = true
+                                currentViewModel?.updateButton(key, true)
+                                tryAwaitRelease()
+                                isPressed = false
+                                currentViewModel?.updateButton(key, false)
+                            }
+                        )
                     }
-                )
-            }
+                } else Modifier
+            )
     ) {
         // Layer 1: Recessed Glass Chamber & Dynamic Rising Liquid
         Box(
@@ -462,4 +467,26 @@ fun TestTubeTrigger(
             )
         }
     }
+}
+
+/**
+ * Static preview delegate for TestTubeTrigger with 0 touch overhead and 0 coroutines.
+ */
+@Composable
+fun StaticTestTubeTrigger(
+    key: String = "LT",
+    isRgbEnabled: Boolean = true,
+    displayLabel: String? = null,
+    modifier: Modifier = Modifier
+) {
+    TestTubeTrigger(
+        key = key,
+        isConnected = false,
+        onVibrate = {},
+        viewModel = null,
+        isRgbEnabled = isRgbEnabled,
+        modifier = modifier,
+        displayLabel = displayLabel,
+        isInteractive = false
+    )
 }

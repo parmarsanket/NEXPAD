@@ -351,11 +351,12 @@ fun CapsuleKey(
  */
 @Composable
 fun CapsulesDPad(
-    isConnected: Boolean,
-    viewModel: GamepadViewModel?,
+    isConnected: Boolean = true,
+    viewModel: GamepadViewModel? = null,
     isRgbEnabled: Boolean = false,
     onVibrate: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isInteractive: Boolean = true
 ) {
     var pressedDirs by remember { mutableStateOf<Set<String>>(emptySet()) }
     val currentlyPressed = pressedDirs
@@ -484,40 +485,44 @@ fun CapsulesDPad(
                 ambientColor = if (isRgbEnabled) neonColor else Color.Black,
                 spotColor = if (isRgbEnabled) neonColor else Color.Black
             )
-            .pointerInput(isConnected) {
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    down.consume()
-                    var activeDirs = emptySet<String>()
+            .then(
+                if (isInteractive && isConnected) {
+                    Modifier.pointerInput(isConnected) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            down.consume()
+                            var activeDirs = emptySet<String>()
 
-                    fun evaluateOffset(pos: Offset) {
-                        val newDirs = resolveCapsulesTouch(pos, size.width.toFloat())
-                        if (newDirs != activeDirs) {
-                            val added = newDirs - activeDirs
-                            val removed = activeDirs - newDirs
-                            removed.forEach { dir -> currentViewModel?.updateButton(dir, false) }
-                            added.forEach { dir -> currentViewModel?.updateButton(dir, true) }
-                            if (added.isNotEmpty()) currentOnVibrate()
-                            activeDirs = newDirs
-                            pressedDirs = newDirs
+                            fun evaluateOffset(pos: Offset) {
+                                val newDirs = resolveCapsulesTouch(pos, size.width.toFloat())
+                                if (newDirs != activeDirs) {
+                                    val added = newDirs - activeDirs
+                                    val removed = activeDirs - newDirs
+                                    removed.forEach { dir -> currentViewModel?.updateButton(dir, false) }
+                                    added.forEach { dir -> currentViewModel?.updateButton(dir, true) }
+                                    if (added.isNotEmpty()) currentOnVibrate()
+                                    activeDirs = newDirs
+                                    pressedDirs = newDirs
+                                }
+                            }
+
+                            try {
+                                evaluateOffset(down.position)
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    val pointer = event.changes.firstOrNull { it.id == down.id }
+                                    if (pointer == null || !pointer.pressed) break
+                                    pointer.consume()
+                                    evaluateOffset(pointer.position)
+                                }
+                            } finally {
+                                activeDirs.forEach { dir -> currentViewModel?.updateButton(dir, false) }
+                                pressedDirs = emptySet()
+                            }
                         }
                     }
-
-                    try {
-                        evaluateOffset(down.position)
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val pointer = event.changes.firstOrNull { it.id == down.id }
-                            if (pointer == null || !pointer.pressed) break
-                            pointer.consume()
-                            evaluateOffset(pointer.position)
-                        }
-                    } finally {
-                        activeDirs.forEach { dir -> currentViewModel?.updateButton(dir, false) }
-                        pressedDirs = emptySet()
-                    }
-                }
-            },
+                } else Modifier
+            ),
         contentAlignment = Alignment.Center
     ) {
         // --- 1. Tiltable 3D Physical Rocker Container ---
@@ -613,3 +618,19 @@ fun CapsulesDPad(
         }
     }
 }
+
+@Composable
+fun StaticCapsulesDPad(
+    isRgbEnabled: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    CapsulesDPad(
+        isConnected = false,
+        viewModel = null,
+        isRgbEnabled = isRgbEnabled,
+        onVibrate = {},
+        modifier = modifier,
+        isInteractive = false
+    )
+}
+

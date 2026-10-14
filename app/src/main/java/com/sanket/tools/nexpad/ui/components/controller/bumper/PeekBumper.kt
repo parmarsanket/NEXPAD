@@ -51,12 +51,13 @@ import kotlin.math.roundToInt
 @Composable
 fun PeekBumper(
     key: String,
-    isConnected: Boolean,
-    onVibrate: () -> Unit,
-    viewModel: GamepadViewModel,
-    isRgbEnabled: Boolean,
+    isConnected: Boolean = true,
+    onVibrate: () -> Unit = {},
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
     modifier: Modifier = Modifier,
-    displayLabel: String? = null
+    displayLabel: String? = null,
+    isInteractive: Boolean = true
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
@@ -250,18 +251,22 @@ fun PeekBumper(
                 ),
                 shape = bumperShape
             )
-            .pointerInput(key) {
-                detectTapGestures(
-                    onPress = {
-                        currentOnVibrate()
-                        isPressed = true
-                        currentViewModel.updateButton(key, true)
-                        tryAwaitRelease()
-                        isPressed = false
-                        currentViewModel.updateButton(key, false)
+            .then(
+                if (isInteractive && isConnected) {
+                    Modifier.pointerInput(key) {
+                        detectTapGestures(
+                            onPress = {
+                                currentOnVibrate()
+                                isPressed = true
+                                currentViewModel?.updateButton(key, true)
+                                tryAwaitRelease()
+                                isPressed = false
+                                currentViewModel?.updateButton(key, false)
+                            }
+                        )
                     }
-                )
-            },
+                } else Modifier
+            ),
         contentAlignment = Alignment.Center
     ) {
         // Multi-Layer Canvas: Undercut shadow, Neon Ring, Glass Specular Sheen
@@ -409,4 +414,26 @@ fun PeekBumper(
             )
         }
     }
+}
+
+/**
+ * Static preview delegate for PeekBumper with 0 touch overhead and 0 coroutines.
+ */
+@Composable
+fun StaticPeekBumper(
+    key: String = "LB",
+    isRgbEnabled: Boolean = true,
+    displayLabel: String? = null,
+    modifier: Modifier = Modifier
+) {
+    PeekBumper(
+        key = key,
+        isConnected = false,
+        onVibrate = {},
+        viewModel = null,
+        isRgbEnabled = isRgbEnabled,
+        modifier = modifier,
+        displayLabel = displayLabel,
+        isInteractive = false
+    )
 }

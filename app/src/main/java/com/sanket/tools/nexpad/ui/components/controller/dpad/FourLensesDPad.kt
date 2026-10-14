@@ -392,11 +392,12 @@ fun FourLensesKey(
  */
 @Composable
 fun FourLensesDPad(
-    isConnected: Boolean,
-    viewModel: GamepadViewModel,
-    isRgbEnabled: Boolean,
+    isConnected: Boolean = true,
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
     onVibrate: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isInteractive: Boolean = true
 ) {
     var pressedDirs by remember { mutableStateOf<Set<String>>(emptySet()) }
     val currentOnVibrate by rememberUpdatedState(onVibrate)
@@ -537,40 +538,44 @@ fun FourLensesDPad(
                 ambientColor = if (isRgbEnabled) glowColor else Color.Black,
                 spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
-            .pointerInput(isConnected) {
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    down.consume()
-                    var activeDirs = emptySet<String>()
+            .then(
+                if (isInteractive && isConnected) {
+                    Modifier.pointerInput(isConnected) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            down.consume()
+                            var activeDirs = emptySet<String>()
 
-                    fun evaluate(pos: Offset) {
-                        val newDirs = resolveFourLensesTouch(pos, size.width.toFloat())
-                        if (newDirs != activeDirs) {
-                            val added = newDirs - activeDirs
-                            val removed = activeDirs - newDirs
-                            removed.forEach { dir -> currentViewModel.updateButton(dir, false) }
-                            added.forEach { dir -> currentViewModel.updateButton(dir, true) }
-                            if (added.isNotEmpty()) currentOnVibrate()
-                            activeDirs = newDirs
-                            pressedDirs = newDirs
+                            fun evaluate(pos: Offset) {
+                                val newDirs = resolveFourLensesTouch(pos, size.width.toFloat())
+                                if (newDirs != activeDirs) {
+                                    val added = newDirs - activeDirs
+                                    val removed = activeDirs - newDirs
+                                    removed.forEach { dir -> currentViewModel?.updateButton(dir, false) }
+                                    added.forEach { dir -> currentViewModel?.updateButton(dir, true) }
+                                    if (added.isNotEmpty()) currentOnVibrate()
+                                    activeDirs = newDirs
+                                    pressedDirs = newDirs
+                                }
+                            }
+
+                            try {
+                                evaluate(down.position)
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    val pointer = event.changes.firstOrNull { it.id == down.id }
+                                    if (pointer == null || !pointer.pressed) break
+                                    pointer.consume()
+                                    evaluate(pointer.position)
+                                }
+                            } finally {
+                                activeDirs.forEach { dir -> currentViewModel?.updateButton(dir, false) }
+                                pressedDirs = emptySet()
+                            }
                         }
                     }
-
-                    try {
-                        evaluate(down.position)
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val pointer = event.changes.firstOrNull { it.id == down.id }
-                            if (pointer == null || !pointer.pressed) break
-                            pointer.consume()
-                            evaluate(pointer.position)
-                        }
-                    } finally {
-                        activeDirs.forEach { dir -> currentViewModel.updateButton(dir, false) }
-                        pressedDirs = emptySet()
-                    }
-                }
-            },
+                } else Modifier
+            ),
         contentAlignment = Alignment.Center
     ) {
         // Outer Ambient Halo (164dp circle, 1px border at 0.16 opacity)
@@ -666,3 +671,19 @@ fun FourLensesDPad(
         }
     }
 }
+
+@Composable
+fun StaticFourLensesDPad(
+    isRgbEnabled: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    FourLensesDPad(
+        isConnected = false,
+        viewModel = null,
+        isRgbEnabled = isRgbEnabled,
+        onVibrate = {},
+        modifier = modifier,
+        isInteractive = false
+    )
+}
+

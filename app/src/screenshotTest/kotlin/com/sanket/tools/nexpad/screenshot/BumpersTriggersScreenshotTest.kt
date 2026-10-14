@@ -13,22 +13,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.tools.screenshot.PreviewTest
-import com.sanket.tools.nexpad.ui.studio.components.StaticArcBumper
-import com.sanket.tools.nexpad.ui.studio.components.StaticBloomTrigger
+import com.sanket.tools.nexpad.ui.components.controller.bumper.*
+import com.sanket.tools.nexpad.ui.components.controller.trigger.*
 import com.sanket.tools.nexpad.ui.studio.components.StaticDefaultButtonPreview
-import com.sanket.tools.nexpad.ui.studio.components.StaticDialTrigger
-import com.sanket.tools.nexpad.ui.studio.components.StaticFlipBumper
-import com.sanket.tools.nexpad.ui.studio.components.StaticLedBumper
-import com.sanket.tools.nexpad.ui.studio.components.StaticLiquidOrbTrigger
-import com.sanket.tools.nexpad.ui.studio.components.StaticNeedleTrigger
-import com.sanket.tools.nexpad.ui.studio.components.StaticPeekBumper
-import com.sanket.tools.nexpad.ui.studio.components.StaticRibbedBumper
-import com.sanket.tools.nexpad.ui.studio.components.StaticSliderTrigger
-import com.sanket.tools.nexpad.ui.studio.components.StaticTargetTrigger
-import com.sanket.tools.nexpad.ui.studio.components.StaticTestTubeTrigger
-import com.sanket.tools.nexpad.ui.studio.components.StaticTubeBumper
-import com.sanket.tools.nexpad.ui.studio.components.StaticUnderglowBumper
-import com.sanket.tools.nexpad.ui.studio.components.StaticVuSlabsTrigger
 
 /**
  * Compose Preview Screenshot Tests for NEXPAD Shoulder Bumpers & Analog Triggers.

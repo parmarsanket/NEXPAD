@@ -63,12 +63,13 @@ import kotlin.math.roundToInt
 @Composable
 fun LiquidOrbTrigger(
     key: String,
-    isConnected: Boolean,
-    onVibrate: () -> Unit,
-    viewModel: GamepadViewModel,
-    isRgbEnabled: Boolean,
+    isConnected: Boolean = true,
+    onVibrate: () -> Unit = {},
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
     modifier: Modifier = Modifier,
-    displayLabel: String? = null
+    displayLabel: String? = null,
+    isInteractive: Boolean = true
 ) {
     var isPressed by remember { mutableStateOf(false) }
     val isLeft = key.uppercase() == NexpadKeys.LT
@@ -245,18 +246,22 @@ fun LiquidOrbTrigger(
                 ),
                 shape = triggerShape
             )
-            .pointerInput(key) {
-                detectTapGestures(
-                    onPress = {
-                        currentOnVibrate()
-                        isPressed = true
-                        currentViewModel.updateButton(key, true)
-                        tryAwaitRelease()
-                        isPressed = false
-                        currentViewModel.updateButton(key, false)
+            .then(
+                if (isInteractive && isConnected) {
+                    Modifier.pointerInput(key) {
+                        detectTapGestures(
+                            onPress = {
+                                currentOnVibrate()
+                                isPressed = true
+                                currentViewModel?.updateButton(key, true)
+                                tryAwaitRelease()
+                                isPressed = false
+                                currentViewModel?.updateButton(key, false)
+                            }
+                        )
                     }
-                )
-            },
+                } else Modifier
+            ),
         contentAlignment = Alignment.Center
     ) {
         // LAYER STACK CANVAS: Fluid Chamber + Rising Liquid + Swaying Meniscus + Lens Arc
@@ -489,4 +494,26 @@ fun LiquidOrbTrigger(
             )
         }
     }
+}
+
+/**
+ * Static preview delegate for LiquidOrbTrigger with 0 touch overhead and 0 coroutines.
+ */
+@Composable
+fun StaticLiquidOrbTrigger(
+    key: String = "LT",
+    isRgbEnabled: Boolean = true,
+    displayLabel: String? = null,
+    modifier: Modifier = Modifier
+) {
+    LiquidOrbTrigger(
+        key = key,
+        isConnected = false,
+        onVibrate = {},
+        viewModel = null,
+        isRgbEnabled = isRgbEnabled,
+        modifier = modifier,
+        displayLabel = displayLabel,
+        isInteractive = false
+    )
 }

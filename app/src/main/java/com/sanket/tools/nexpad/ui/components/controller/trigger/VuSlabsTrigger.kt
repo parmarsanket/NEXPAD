@@ -62,12 +62,13 @@ private val SLAB_WIDTHS_DP = floatArrayOf(54f, 58f, 62f, 65f, 68f, 70f, 72f)
 @Composable
 fun VuSlabsTrigger(
     key: String,
-    isConnected: Boolean,
-    onVibrate: () -> Unit,
-    viewModel: GamepadViewModel,
-    isRgbEnabled: Boolean,
+    isConnected: Boolean = true,
+    onVibrate: () -> Unit = {},
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
     modifier: Modifier = Modifier,
-    displayLabel: String? = null
+    displayLabel: String? = null,
+    isInteractive: Boolean = true
 ) {
     var isPressed by remember { mutableStateOf(false) }
     val isLeft = key.uppercase() == NexpadKeys.LT
@@ -260,18 +261,22 @@ fun VuSlabsTrigger(
                 ),
                 shape = triggerShape
             )
-            .pointerInput(key) {
-                detectTapGestures(
-                    onPress = {
-                        currentOnVibrate()
-                        isPressed = true
-                        currentViewModel.updateButton(key, true)
-                        tryAwaitRelease()
-                        isPressed = false
-                        currentViewModel.updateButton(key, false)
+            .then(
+                if (isInteractive && isConnected) {
+                    Modifier.pointerInput(key) {
+                        detectTapGestures(
+                            onPress = {
+                                currentOnVibrate()
+                                isPressed = true
+                                currentViewModel?.updateButton(key, true)
+                                tryAwaitRelease()
+                                isPressed = false
+                                currentViewModel?.updateButton(key, false)
+                            }
+                        )
                     }
-                )
-            },
+                } else Modifier
+            ),
         contentAlignment = Alignment.TopCenter
     ) {
         val ringPath = remember { Path() }
@@ -458,4 +463,26 @@ fun VuSlabsTrigger(
             )
         }
     }
+}
+
+/**
+ * Static preview delegate for VuSlabsTrigger with 0 touch overhead and 0 coroutines.
+ */
+@Composable
+fun StaticVuSlabsTrigger(
+    key: String = "LT",
+    isRgbEnabled: Boolean = true,
+    displayLabel: String? = null,
+    modifier: Modifier = Modifier
+) {
+    VuSlabsTrigger(
+        key = key,
+        isConnected = false,
+        onVibrate = {},
+        viewModel = null,
+        isRgbEnabled = isRgbEnabled,
+        modifier = modifier,
+        displayLabel = displayLabel,
+        isInteractive = false
+    )
 }

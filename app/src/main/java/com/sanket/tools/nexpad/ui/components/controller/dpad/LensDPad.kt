@@ -113,11 +113,12 @@ val contouredCrossShape = GenericShape { size, _ ->
  */
 @Composable
 fun LensDPad(
-    isConnected: Boolean,
-    viewModel: GamepadViewModel,
-    isRgbEnabled: Boolean,
+    isConnected: Boolean = true,
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
     onVibrate: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isInteractive: Boolean = true
 ) {
     var pressedDirs by remember { mutableStateOf<Set<String>>(emptySet()) }
     val currentOnVibrate by rememberUpdatedState(onVibrate)
@@ -348,67 +349,71 @@ fun LensDPad(
                 color = Color.Black.copy(alpha = 0.50f),
                 shape = CircleShape
             )
-            .pointerInput(isConnected) {
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    down.consume()
-                    var activeDirs = emptySet<String>()
+            .then(
+                if (isInteractive && isConnected) {
+                    Modifier.pointerInput(isConnected) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            down.consume()
+                            var activeDirs = emptySet<String>()
 
-                    fun evaluateOffset(pos: Offset) {
-                        val center = Offset(size.width / 2f, size.height / 2f)
-                        val dx = pos.x - center.x
-                        val dy = pos.y - center.y
-                        val dist = hypot(dx, dy)
-                        val scale = min(size.width, size.height) / 160f
-                        val armHalfWidth = 23f * scale
-                        val armMaxReach = 75f * scale
-                        val centerDeadzone = 14f * scale
+                            fun evaluateOffset(pos: Offset) {
+                                val center = Offset(size.width / 2f, size.height / 2f)
+                                val dx = pos.x - center.x
+                                val dy = pos.y - center.y
+                                val dist = hypot(dx, dy)
+                                val scale = min(size.width, size.height) / 160f
+                                val armHalfWidth = 23f * scale
+                                val armMaxReach = 75f * scale
+                                val centerDeadzone = 14f * scale
 
-                        // Check each arm's exact physical boundaries (matching HTML SVG hit rects):
-                        val isUp = dy in (-armMaxReach)..(-centerDeadzone) && abs(dx) <= armHalfWidth
-                        val isDown = dy in centerDeadzone..armMaxReach && abs(dx) <= armHalfWidth
-                        val isLeft = dx in (-armMaxReach)..(-centerDeadzone) && abs(dy) <= armHalfWidth
-                        val isRight = dx in centerDeadzone..armMaxReach && abs(dy) <= armHalfWidth
+                                // Check each arm's exact physical boundaries (matching HTML SVG hit rects):
+                                val isUp = dy in (-armMaxReach)..(-centerDeadzone) && abs(dx) <= armHalfWidth
+                                val isDown = dy in centerDeadzone..armMaxReach && abs(dx) <= armHalfWidth
+                                val isLeft = dx in (-armMaxReach)..(-centerDeadzone) && abs(dy) <= armHalfWidth
+                                val isRight = dx in centerDeadzone..armMaxReach && abs(dy) <= armHalfWidth
 
-                        val newDirs: Set<String> = when {
-                            // Strictly single cardinal arm resolution:
-                            isUp && isRight -> if (abs(dy) >= abs(dx)) setOf(K.UP) else setOf(K.RIGHT)
-                            isUp && isLeft  -> if (abs(dy) >= abs(dx)) setOf(K.UP) else setOf(K.LEFT)
-                            isDown && isRight -> if (abs(dy) >= abs(dx)) setOf(K.DOWN) else setOf(K.RIGHT)
-                            isDown && isLeft  -> if (abs(dy) >= abs(dx)) setOf(K.DOWN) else setOf(K.LEFT)
-                            isUp -> setOf(K.UP)
-                            isDown -> setOf(K.DOWN)
-                            isLeft -> setOf(K.LEFT)
-                            isRight -> setOf(K.RIGHT)
-                            else -> emptySet() // Diagonal corners, center hub & out-of-bounds are non-clickable
-                        }
+                                val newDirs: Set<String> = when {
+                                    // Strictly single cardinal arm resolution:
+                                    isUp && isRight -> if (abs(dy) >= abs(dx)) setOf(K.UP) else setOf(K.RIGHT)
+                                    isUp && isLeft  -> if (abs(dy) >= abs(dx)) setOf(K.UP) else setOf(K.LEFT)
+                                    isDown && isRight -> if (abs(dy) >= abs(dx)) setOf(K.DOWN) else setOf(K.RIGHT)
+                                    isDown && isLeft  -> if (abs(dy) >= abs(dx)) setOf(K.DOWN) else setOf(K.LEFT)
+                                    isUp -> setOf(K.UP)
+                                    isDown -> setOf(K.DOWN)
+                                    isLeft -> setOf(K.LEFT)
+                                    isRight -> setOf(K.RIGHT)
+                                    else -> emptySet() // Diagonal corners, center hub & out-of-bounds are non-clickable
+                                }
 
-                        if (newDirs != activeDirs) {
-                            val added = newDirs - activeDirs
-                            val removed = activeDirs - newDirs
-                            removed.forEach { dir -> currentViewModel.updateButton(dir, false) }
-                            added.forEach { dir -> currentViewModel.updateButton(dir, true) }
-                            if (added.isNotEmpty()) currentOnVibrate()
-                            activeDirs = newDirs
-                            pressedDirs = newDirs
+                                if (newDirs != activeDirs) {
+                                    val added = newDirs - activeDirs
+                                    val removed = activeDirs - newDirs
+                                    removed.forEach { dir -> currentViewModel?.updateButton(dir, false) }
+                                    added.forEach { dir -> currentViewModel?.updateButton(dir, true) }
+                                    if (added.isNotEmpty()) currentOnVibrate()
+                                    activeDirs = newDirs
+                                    pressedDirs = newDirs
+                                }
+                            }
+
+                            try {
+                                evaluateOffset(down.position)
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    val pointer = event.changes.firstOrNull { it.id == down.id }
+                                    if (pointer == null || !pointer.pressed) break
+                                    pointer.consume()
+                                    evaluateOffset(pointer.position)
+                                }
+                            } finally {
+                                activeDirs.forEach { dir -> currentViewModel?.updateButton(dir, false) }
+                                pressedDirs = emptySet()
+                            }
                         }
                     }
-
-                    try {
-                        evaluateOffset(down.position)
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val pointer = event.changes.firstOrNull { it.id == down.id }
-                            if (pointer == null || !pointer.pressed) break
-                            pointer.consume()
-                            evaluateOffset(pointer.position)
-                        }
-                    } finally {
-                        activeDirs.forEach { dir -> currentViewModel.updateButton(dir, false) }
-                        pressedDirs = emptySet()
-                    }
-                }
-            },
+                } else Modifier
+            ),
         contentAlignment = Alignment.Center
     ) {
         // Socket Inset Bottom Shadow: inset 0 -6px 9px rgba(0,0,0,0.70)
@@ -673,3 +678,19 @@ fun LensDPad(
         }
     }
 }
+
+@Composable
+fun StaticLensDPad(
+    isRgbEnabled: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    LensDPad(
+        isConnected = false,
+        viewModel = null,
+        isRgbEnabled = isRgbEnabled,
+        onVibrate = {},
+        modifier = modifier,
+        isInteractive = false
+    )
+}
+

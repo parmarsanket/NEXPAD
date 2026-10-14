@@ -12,12 +12,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.tools.screenshot.PreviewTest
-import com.sanket.tools.nexpad.ui.studio.components.StaticCompassJoystick
+import com.sanket.tools.nexpad.ui.components.controller.special.StaticGyroJoystick
+import com.sanket.tools.nexpad.ui.components.controller.sticks.*
 import com.sanket.tools.nexpad.ui.studio.components.StaticDefaultButtonPreview
-import com.sanket.tools.nexpad.ui.studio.components.StaticFluxJoystick
-import com.sanket.tools.nexpad.ui.studio.components.StaticGyroJoystick
-import com.sanket.tools.nexpad.ui.studio.components.StaticOrbJoystick
-import com.sanket.tools.nexpad.ui.studio.components.StaticSpotlightJoystick
 
 /**
  * Compose Preview Screenshot Tests for NEXPAD Analog Joystick Variants.

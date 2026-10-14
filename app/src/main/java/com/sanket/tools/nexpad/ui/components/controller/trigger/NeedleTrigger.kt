@@ -60,12 +60,13 @@ import kotlin.math.sin
 @Composable
 fun NeedleTrigger(
     key: String,
-    isConnected: Boolean,
-    onVibrate: () -> Unit,
-    viewModel: GamepadViewModel,
-    isRgbEnabled: Boolean,
+    isConnected: Boolean = true,
+    onVibrate: () -> Unit = {},
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
     modifier: Modifier = Modifier,
-    displayLabel: String? = null
+    displayLabel: String? = null,
+    isInteractive: Boolean = true
 ) {
     var isPressed by remember { mutableStateOf(false) }
     val isLeft = key.uppercase() == NexpadKeys.LT
@@ -250,18 +251,22 @@ fun NeedleTrigger(
                 ),
                 shape = chassisShape
             )
-            .pointerInput(key) {
-                detectTapGestures(
-                    onPress = {
-                        currentOnVibrate()
-                        isPressed = true
-                        currentViewModel.updateButton(key, true)
-                        tryAwaitRelease()
-                        isPressed = false
-                        currentViewModel.updateButton(key, false)
+            .then(
+                if (isInteractive && isConnected) {
+                    Modifier.pointerInput(key) {
+                        detectTapGestures(
+                            onPress = {
+                                currentOnVibrate()
+                                isPressed = true
+                                currentViewModel?.updateButton(key, true)
+                                tryAwaitRelease()
+                                isPressed = false
+                                currentViewModel?.updateButton(key, false)
+                            }
+                        )
                     }
-                )
-            }
+                } else Modifier
+            )
     ) {
         // Layer 1: Needle Gauge Face (Ticks, Background Track, Progress Arc, Pivot & Needle)
         Canvas(modifier = Modifier.fillMaxSize()) {
@@ -481,4 +486,26 @@ fun NeedleTrigger(
             )
         }
     }
+}
+
+/**
+ * Static preview delegate for NeedleTrigger with 0 touch overhead and 0 coroutines.
+ */
+@Composable
+fun StaticNeedleTrigger(
+    key: String = "LT",
+    isRgbEnabled: Boolean = true,
+    displayLabel: String? = null,
+    modifier: Modifier = Modifier
+) {
+    NeedleTrigger(
+        key = key,
+        isConnected = false,
+        onVibrate = {},
+        viewModel = null,
+        isRgbEnabled = isRgbEnabled,
+        modifier = modifier,
+        displayLabel = displayLabel,
+        isInteractive = false
+    )
 }
