@@ -54,12 +54,13 @@ import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 fun FacetButton(
     key: String,
     buttonColor: Color,
-    isConnected: Boolean,
-    onVibrate: () -> Unit,
-    viewModel: GamepadViewModel,
-    isRgbEnabled: Boolean,
+    isConnected: Boolean = true,
+    onVibrate: () -> Unit = {},
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
     modifier: Modifier = Modifier,
-    displayLabel: String? = null
+    displayLabel: String? = null,
+    isInteractive: Boolean = true
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
@@ -233,18 +234,22 @@ fun FacetButton(
                     brush = gemBorderBrush,
                     shape = gemShape
                 )
-                .pointerInput(key) {
-                    detectTapGestures(
-                        onPress = {
-                            currentOnVibrate()
-                            isPressed = true
-                            currentViewModel.updateButton(key, true)
-                            tryAwaitRelease()
-                            isPressed = false
-                            currentViewModel.updateButton(key, false)
+                .then(
+                    if (isInteractive) {
+                        Modifier.pointerInput(key) {
+                            detectTapGestures(
+                                onPress = {
+                                    currentOnVibrate()
+                                    isPressed = true
+                                    currentViewModel?.updateButton(key, true)
+                                    tryAwaitRelease()
+                                    isPressed = false
+                                    currentViewModel?.updateButton(key, false)
+                                }
+                            )
                         }
-                    )
-                },
+                    } else Modifier
+                ),
             contentAlignment = Alignment.Center
         ) {
             // ── 1. FLASH FILL & INNER SPINNING & SCALING DIAMOND (.f-in) + UNDERCUT SHADOW ──
@@ -377,174 +382,25 @@ fun FacetButton(
 }
 
 /**
- * Static non-interactive preview of FacetButton (idle state).
+ * Static non-interactive preview delegate for FacetButton with zero touch overhead.
  */
 @Composable
-internal fun StaticFacetButton(
+fun StaticFacetButton(
     controlKey: String,
-    labelStyle: ControllerLabelStyle,
+    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
     modifier: Modifier = Modifier
 ) {
     val displayLabel = CategoryManager.getLabelForStyle(controlKey, labelStyle)
     val buttonColor = resolveButtonColor(controlKey, labelStyle, displayLabel)
-    val psShape = getPlayStationShape(displayLabel)
-    val gemShape = remember { RoundedCornerShape(14.dp) }
-    val previewBloomColors = remember(buttonColor) {
-        listOf(
-            buttonColor.copy(alpha = 0.45f * 0.55f),
-            buttonColor.copy(alpha = 0.45f * 0.22f),
-            Color.Transparent
-        )
-    }
-
-    Box(
-        modifier = modifier
-            .size(80.dp)
-            .drawBehind {
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = previewBloomColors,
-                        center = center,
-                        radius = size.minDimension * 0.95f
-                    ),
-                    radius = size.minDimension * 0.95f
-                )
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .size(64.dp)
-                .graphicsLayer { rotationZ = 45f }
-                .shadow(
-                    elevation = 4.dp,
-                    shape = gemShape,
-                    spotColor = buttonColor,
-                    ambientColor = buttonColor
-                )
-                .clip(gemShape)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(Color(0xFF232527), Color(0xFF0C0D0E), Color.Black),
-                        center = Offset(0.5f, 0.55f),
-                        radius = 180f
-                    )
-                )
-                .border(
-                    width = 1.dp,
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.50f),
-                            Color.Black.copy(alpha = 0.85f)
-                        )
-                    ),
-                    shape = gemShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val w = size.width
-                val h = size.height
-
-                val insetH = h * 0.35f
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
-                        startY = h - insetH,
-                        endY = h
-                    ),
-                    topLeft = Offset(0f, h - insetH),
-                    size = Size(w, insetH)
-                )
-
-                // Inner diamond idle with glow bloom
-                val inset = 11.dp.toPx()
-                val innerW = w - inset * 2f
-                val innerH = h - inset * 2f
-                val cr = 7.dp.toPx()
-
-                drawRoundRect(
-                    color = buttonColor.copy(alpha = 0.30f * 0.55f),
-                    topLeft = Offset(inset - 1.5.dp.toPx(), inset - 1.5.dp.toPx()),
-                    size = Size(innerW + 3.dp.toPx(), innerH + 3.dp.toPx()),
-                    cornerRadius = CornerRadius(cr + 1.5.dp.toPx(), cr + 1.5.dp.toPx()),
-                    style = Stroke(width = 4.dp.toPx())
-                )
-                drawRoundRect(
-                    color = buttonColor.copy(alpha = 0.30f),
-                    topLeft = Offset(inset, inset),
-                    size = Size(innerW, innerH),
-                    cornerRadius = CornerRadius(cr, cr),
-                    style = Stroke(width = 1.5.dp.toPx())
-                )
-            }
-
-            Box(
-                modifier = Modifier.graphicsLayer { rotationZ = -45f },
-                contentAlignment = Alignment.Center
-            ) {
-                if (psShape != null) {
-                    PlayStationSymbol(
-                        shape = psShape,
-                        color = buttonColor,
-                        size = 32.dp
-                    )
-                } else {
-                    Text(
-                        text = displayLabel,
-                        color = buttonColor,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 32.sp,
-                        style = androidx.compose.ui.text.TextStyle(
-                            shadow = androidx.compose.ui.graphics.Shadow(
-                                color = buttonColor.copy(alpha = 0.50f),
-                                blurRadius = 14f
-                            )
-                        )
-                    )
-                }
-            }
-
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val w = size.width
-                val h = size.height
-
-                val ringInset = 3.dp.toPx()
-                val ringW = w - ringInset * 2f
-                val ringH = h - ringInset * 2f
-                val ringCr = 11.dp.toPx()
-
-                drawRoundRect(
-                    color = buttonColor.copy(alpha = 0.35f),
-                    topLeft = Offset(ringInset - 1f, ringInset - 1f),
-                    size = Size(ringW + 2f, ringH + 2f),
-                    cornerRadius = CornerRadius(ringCr + 1f, ringCr + 1f),
-                    style = Stroke(width = 4.dp.toPx())
-                )
-                drawRoundRect(
-                    color = buttonColor.copy(alpha = 0.70f),
-                    topLeft = Offset(ringInset, ringInset),
-                    size = Size(ringW, ringH),
-                    cornerRadius = CornerRadius(ringCr, ringCr),
-                    style = Stroke(width = 2.dp.toPx())
-                )
-
-                val lensInset = 1.dp.toPx()
-                drawRoundRect(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.16f),
-                            Color.White.copy(alpha = 0.05f),
-                            Color.Transparent
-                        ),
-                        startY = 0f,
-                        endY = h * 0.40f
-                    ),
-                    topLeft = Offset(lensInset, lensInset),
-                    size = Size(w - lensInset * 2f, h * 0.40f),
-                    cornerRadius = CornerRadius(13.dp.toPx(), 13.dp.toPx())
-                )
-            }
-        }
-    }
+    FacetButton(
+        key = controlKey,
+        buttonColor = buttonColor,
+        isConnected = false,
+        onVibrate = {},
+        viewModel = null,
+        isRgbEnabled = true,
+        modifier = modifier,
+        displayLabel = displayLabel,
+        isInteractive = false
+    )
 }

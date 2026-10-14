@@ -60,15 +60,18 @@ import kotlin.math.roundToInt
  */
 @Composable
 fun GyroToggleButton(
-    isConnected: Boolean,
-    onVibrate: () -> Unit,
-    viewModel: GamepadViewModel,
-    isRgbEnabled: Boolean,
+    isConnected: Boolean = true,
+    onVibrate: () -> Unit = {},
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
     modifier: Modifier = Modifier,
-    displayLabel: String? = null
+    displayLabel: String? = null,
+    isInteractive: Boolean = true
 ) {
     var isPressed by remember { mutableStateOf(false) }
-    val isGyroEnabled by viewModel.isGyroEnabled.collectAsState()
+    val isGyroEnabled = if (isInteractive) {
+        viewModel?.isGyroEnabled?.collectAsState()?.value ?: true
+    } else true
 
     val scaleAnim = animateFloatAsState(
         targetValue = if (isPressed) 0.94f else 1.0f,
@@ -198,17 +201,21 @@ fun GyroToggleButton(
                     brush = if (isGyroEnabled) borderBrushOn else borderBrushOff,
                     shape = CircleShape
                 )
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onPress = {
-                            isPressed = true
-                            currentOnVibrate()
-                            currentViewModel.toggleGyro()
-                            tryAwaitRelease()
-                            isPressed = false
+                .then(
+                    if (isInteractive) {
+                        Modifier.pointerInput(Unit) {
+                            detectTapGestures(
+                                onPress = {
+                                    isPressed = true
+                                    currentOnVibrate()
+                                    currentViewModel?.toggleGyro()
+                                    tryAwaitRelease()
+                                    isPressed = false
+                                }
+                            )
                         }
-                    )
-                },
+                    } else Modifier
+                ),
             contentAlignment = Alignment.Center
         ) {
             // Layer 4 & 5: Gimbal Rings, Reticle, and Acrylic Glare Arc
@@ -303,140 +310,15 @@ fun StaticGyroToggleButton(
     labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
     modifier: Modifier = Modifier
 ) {
-    val activeAccentColor = Color(0xFF00F0FF)
-    val statusDotColor = Color(0xFF3FD25A)
-
-    val domeBrush = remember {
-        Brush.radialGradient(
-            colors = listOf(
-                Color(0xFF23272D),
-                Color(0xFF131518),
-                Color(0xFF08090A)
-            ),
-            center = Offset(0.50f, 0.42f),
-            radius = 180f
-        )
-    }
-
-    val previewBloomColors = remember(activeAccentColor) {
-        listOf(
-            activeAccentColor.copy(alpha = 0.25f),
-            Color.Transparent
-        )
-    }
-
-    Box(
-        modifier = modifier
-            .graphicsLayer {
-                // Root RenderNode isolation
-            }
-            .size(76.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .size(66.dp)
-                .drawBehind {
-                    if (isRgbEnabled) {
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                colors = previewBloomColors,
-                                center = center,
-                                radius = size.minDimension * 0.95f
-                            ),
-                            radius = size.minDimension * 0.95f
-                        )
-                    }
-                }
-                .shadow(4.dp, CircleShape, ambientColor = activeAccentColor, spotColor = activeAccentColor)
-                .clip(CircleShape)
-                .background(domeBrush)
-                .border(
-                    width = 1.5.dp,
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            activeAccentColor.copy(alpha = 0.85f),
-                            activeAccentColor.copy(alpha = 0.30f)
-                        )
-                    ),
-                    shape = CircleShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val cx = size.width / 2f
-                val cy = size.height / 2f
-                val r = size.minDimension / 2f
-                val gimbalRadius = r - 5.dp.toPx()
-
-                drawCircle(
-                    color = activeAccentColor.copy(alpha = 0.65f),
-                    radius = gimbalRadius,
-                    center = Offset(cx, cy),
-                    style = Stroke(
-                        width = 1.5.dp.toPx(),
-                        pathEffect = PathEffect.dashPathEffect(
-                            floatArrayOf(6.dp.toPx(), 4.dp.toPx()), 0f
-                        )
-                    )
-                )
-
-                val crossHairLength = 8.dp.toPx()
-                drawLine(
-                    color = activeAccentColor.copy(alpha = 0.50f),
-                    start = Offset(cx - crossHairLength - 12.dp.toPx(), cy),
-                    end = Offset(cx - 12.dp.toPx(), cy),
-                    strokeWidth = 1.2.dp.toPx(),
-                    cap = StrokeCap.Round
-                )
-                drawLine(
-                    color = activeAccentColor.copy(alpha = 0.50f),
-                    start = Offset(cx + 12.dp.toPx(), cy),
-                    end = Offset(cx + crossHairLength + 12.dp.toPx(), cy),
-                    strokeWidth = 1.2.dp.toPx(),
-                    cap = StrokeCap.Round
-                )
-
-                drawArc(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(Color.White.copy(alpha = 0.22f), Color.Transparent),
-                        startY = 0f,
-                        endY = size.height * 0.35f
-                    ),
-                    startAngle = 180f,
-                    sweepAngle = 180f,
-                    useCenter = false,
-                    topLeft = Offset(2.dp.toPx(), 2.dp.toPx()),
-                    size = Size(size.width - 4.dp.toPx(), size.height - 4.dp.toPx()),
-                    style = Stroke(width = 1.2.dp.toPx())
-                )
-            }
-
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "GYRO",
-                    color = activeAccentColor,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    letterSpacing = 1.sp
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(5.dp)
-                            .clip(CircleShape)
-                            .background(statusDotColor)
-                    )
-                    Spacer(modifier = Modifier.width(3.dp))
-                    Text(
-                        text = "ON",
-                        color = Color(0xFFE2E8F0),
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 9.sp
-                    )
-                }
-            }
-        }
-    }
+    GyroToggleButton(
+        isConnected = false,
+        onVibrate = {},
+        viewModel = null,
+        isRgbEnabled = isRgbEnabled,
+        modifier = modifier,
+        displayLabel = null,
+        isInteractive = false
+    )
 }
+
+

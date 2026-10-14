@@ -543,12 +543,13 @@ fun InbuildTouchpadHalf(
 @Composable
 fun InbuildTouchpad(
     isLeft: Boolean,
-    isConnected: Boolean,
-    viewModel: GamepadViewModel,
+    isConnected: Boolean = true,
+    viewModel: GamepadViewModel? = null,
     onVibrate: () -> Unit = {},
     isRgbEnabled: Boolean = false,
     sensitivity: Float? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isInteractive: Boolean = true
 ) {
     val auraColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
     val shape = RoundedCornerShape(16.dp)
@@ -575,8 +576,8 @@ fun InbuildTouchpad(
 }
 
 /**
- * Static non-interactive preview of the Inbuild Touchpad for Button Studio card grids.
- * Displays the gaming small square grid lines.
+ * Static non-interactive preview delegate of the Inbuild Touchpad for Button Studio card grids.
+ * Displays the gaming small square grid lines with zero overhead.
  */
 @Composable
 fun StaticInbuildTouchpad(
@@ -584,26 +585,13 @@ fun StaticInbuildTouchpad(
     isRgbEnabled: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val auraColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
-    val shape = RoundedCornerShape(16.dp)
-
-    Box(
-        modifier = modifier
-            .size(180.dp)
-            .clip(shape)
-            .background(Color(0xFF06080C))
-            .border(
-                width = 1.dp,
-                color = if (isRgbEnabled) auraColor.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.08f),
-                shape = shape
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            drawInbuildTouchpadGrid(
-                isLeft = isLeft,
-                auraColor = auraColor
-            )
-        }
-    }
+    InbuildTouchpad(
+        isLeft = isLeft,
+        isConnected = false,
+        viewModel = null,
+        onVibrate = {},
+        isRgbEnabled = isRgbEnabled,
+        modifier = modifier,
+        isInteractive = false
+    )
 }

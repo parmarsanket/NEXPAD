@@ -482,7 +482,6 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     }
 
     override fun onCleared() {
-        super.onCleared()
         try {
             getApplication<Application>().unregisterReceiver(usbReceiver)
         } catch (_: Exception) {}

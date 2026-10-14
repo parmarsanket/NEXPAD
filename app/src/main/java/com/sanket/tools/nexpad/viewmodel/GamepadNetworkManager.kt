@@ -427,15 +427,9 @@ class GamepadNetworkManager(
                                 else -> 0
                             }
                             
-                            var rxSpeed: Int? = null
-                            var txSpeed: Int? = null
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                                rxSpeed = wifiInfo?.rxLinkSpeedMbps
-                                txSpeed = wifiInfo?.txLinkSpeedMbps
-                                if (rxSpeed == -1) rxSpeed = null
-                                if (txSpeed == -1) txSpeed = null
-                            }
-                            // Fallback for older devices or if Q API fails
+                            var rxSpeed: Int? = wifiInfo?.rxLinkSpeedMbps?.takeIf { it != -1 }
+                            var txSpeed: Int? = wifiInfo?.txLinkSpeedMbps?.takeIf { it != -1 }
+                            // Fallback if link speed is reported via legacy field
                             if (rxSpeed == null && wifiInfo?.linkSpeed != -1) {
                                 rxSpeed = wifiInfo?.linkSpeed
                                 txSpeed = wifiInfo?.linkSpeed

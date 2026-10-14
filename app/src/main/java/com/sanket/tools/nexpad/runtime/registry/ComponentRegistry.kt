@@ -139,6 +139,7 @@ class ComponentRegistry private constructor(private val context: Context) {
     }
 
     companion object {
+        @android.annotation.SuppressLint("StaticFieldLeak")
         @Volatile
         private var instance: ComponentRegistry? = null
 

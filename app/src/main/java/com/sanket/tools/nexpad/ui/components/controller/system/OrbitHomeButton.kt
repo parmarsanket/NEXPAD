@@ -51,11 +51,12 @@ import kotlin.math.sin
 @Composable
 fun OrbitHomeButton(
     key: String = ControlKey.GUIDE.key,
-    isConnected: Boolean,
-    onVibrate: () -> Unit,
-    viewModel: GamepadViewModel,
-    isRgbEnabled: Boolean,
-    modifier: Modifier = Modifier
+    isConnected: Boolean = true,
+    onVibrate: () -> Unit = {},
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
+    modifier: Modifier = Modifier,
+    isInteractive: Boolean = true
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
@@ -206,18 +207,22 @@ fun OrbitHomeButton(
                 brush = borderBrush,
                 shape = CircleShape
             )
-            .pointerInput(key) {
-                detectTapGestures(
-                    onPress = {
-                        currentOnVibrate()
-                        isPressed = true
-                        currentViewModel.updateButton(key, true)
-                        tryAwaitRelease()
-                        isPressed = false
-                        currentViewModel.updateButton(key, false)
+            .then(
+                if (isInteractive) {
+                    Modifier.pointerInput(key) {
+                        detectTapGestures(
+                            onPress = {
+                                currentOnVibrate()
+                                isPressed = true
+                                currentViewModel?.updateButton(key, true)
+                                tryAwaitRelease()
+                                isPressed = false
+                                currentViewModel?.updateButton(key, false)
+                            }
+                        )
                     }
-                )
-            },
+                } else Modifier
+            ),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
@@ -342,156 +347,22 @@ fun OrbitHomeButton(
 }
 
 /**
- * Non-interactive static preview of OrbitHomeButton (idle state).
+ * Static non-interactive preview delegate for OrbitHomeButton with zero touch overhead.
  */
 @Composable
-internal fun StaticOrbitHomeButton(
+fun StaticOrbitHomeButton(
     modifier: Modifier = Modifier,
     isRgbEnabled: Boolean = true
 ) {
-    val glowColor = if (isRgbEnabled) Color(0xFF00E5FF) else Color(0xFFF0F3F8)
-    val buttonSize = 74.dp
-
-    val domeGradient = remember {
-        Brush.radialGradient(
-            colors = listOf(Color(0xFF232527), Color(0xFF0C0D0E), Color(0xFF000000)),
-            center = Offset(0.50f, 0.55f),
-            radius = 180f
-        )
-    }
-
-    Box(
-        modifier = modifier
-            .size(buttonSize)
-            .drawBehind {
-                val auraR = size.minDimension * 0.85f
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            glowColor.copy(alpha = 0.35f),
-                            glowColor.copy(alpha = 0.15f),
-                            Color.Transparent
-                        ),
-                        center = center,
-                        radius = auraR
-                    ),
-                    radius = auraR,
-                    center = center
-                )
-                val trackR = size.minDimension * 0.5f + 6.dp.toPx()
-                drawCircle(
-                    color = glowColor.copy(alpha = 0.20f),
-                    radius = trackR,
-                    center = center,
-                    style = Stroke(
-                        width = 1.dp.toPx(),
-                        pathEffect = PathEffect.dashPathEffect(
-                            floatArrayOf(4.dp.toPx(), 8.dp.toPx()), 0f
-                        )
-                    )
-                )
-                for (i in 0 until 3) {
-                    val angleRad = Math.toRadians(i * 120.0)
-                    val pipX = center.x + trackR * cos(angleRad).toFloat()
-                    val pipY = center.y + trackR * sin(angleRad).toFloat()
-                    drawCircle(
-                        color = glowColor.copy(alpha = 0.45f),
-                        radius = 2.dp.toPx(),
-                        center = Offset(pipX, pipY)
-                    )
-                }
-            }
-            .shadow(6.dp, CircleShape, ambientColor = glowColor, spotColor = glowColor)
-            .clip(CircleShape)
-            .background(domeGradient)
-            .border(
-                width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(Color.Black.copy(alpha = 0.50f), Color.Black.copy(alpha = 0.85f))
-                ),
-                shape = CircleShape
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val w = size.width
-            val h = size.height
-            val r = size.minDimension / 2f
-
-            // Undercut shadow
-            val botShadowH = h * 0.38f
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
-                    startY = h - botShadowH,
-                    endY = h
-                ),
-                topLeft = Offset(0f, h - botShadowH),
-                size = Size(w, botShadowH)
-            )
-
-            // Neon ring
-            val ringR = r - 3.dp.toPx()
-            drawCircle(glowColor.copy(alpha = 0.30f), radius = ringR, style = Stroke(4.dp.toPx()))
-            drawCircle(glowColor.copy(alpha = 0.70f), radius = ringR, style = Stroke(2.dp.toPx()))
-
-            // 3-Segment Dashed Orbit Ring
-            val orbitR = r * (28f / 48f)
-            val strokeW = 3.6.dp.toPx()
-            val dashAngle = 93.6f
-            val gapAngle = 26.4f
-
-            for (i in 0 until 3) {
-                val startAngle = i * (dashAngle + gapAngle) + gapAngle / 2f
-                drawArc(
-                    color = glowColor,
-                    startAngle = startAngle,
-                    sweepAngle = dashAngle,
-                    useCenter = false,
-                    topLeft = Offset(center.x - orbitR, center.y - orbitR),
-                    size = Size(orbitR * 2f, orbitR * 2f),
-                    style = Stroke(width = strokeW, cap = StrokeCap.Round)
-                )
-            }
-
-            // Center core dot
-            val dotR = r * (6f / 48f)
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(glowColor.copy(alpha = 0.60f), Color.Transparent),
-                    center = center,
-                    radius = dotR * 3f
-                ),
-                radius = dotR * 3f,
-                center = center
-            )
-            drawCircle(color = glowColor, radius = dotR, center = center)
-
-            // Top specular arc
-            drawArc(
-                brush = Brush.verticalGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.16f), Color.Transparent),
-                    startY = 0f,
-                    endY = h * 0.38f
-                ),
-                startAngle = 180f,
-                sweepAngle = 180f,
-                useCenter = false,
-                topLeft = Offset(1.5.dp.toPx(), 1.5.dp.toPx()),
-                size = Size(w - 3.dp.toPx(), h - 3.dp.toPx()),
-                style = Stroke(width = 1.2.dp.toPx())
-            )
-
-            // Sheen oval
-            drawOval(
-                brush = Brush.radialGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.07f), Color.Transparent),
-                    center = Offset(w * 0.70f, h * 0.78f),
-                    radius = w * 0.28f
-                ),
-                topLeft = Offset(w * 0.50f, h * 0.60f),
-                size = Size(w * 0.38f, h * 0.32f)
-            )
-        }
-    }
+    OrbitHomeButton(
+        key = ControlKey.GUIDE.key,
+        isConnected = false,
+        onVibrate = {},
+        viewModel = null,
+        isRgbEnabled = isRgbEnabled,
+        modifier = modifier,
+        isInteractive = false
+    )
 }
+
+

@@ -196,9 +196,7 @@ fun GamepadScreen(
     //                     Linear actuator, 5-20ms response time.
     //                     (Samsung S/Note/Z, Pixel, OnePlus flagships)
     val motorProfile = remember {
-        val hasAmplitude = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator?.hasAmplitudeControl() == true
-        } else false
+        val hasAmplitude = vibrator?.hasAmplitudeControl() == true
         
         val hasPrimitives = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             // PRIMITIVE_CLICK is universally supported on LRA phones

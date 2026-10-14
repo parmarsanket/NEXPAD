@@ -184,6 +184,7 @@ class RemoteComponentRegistry private constructor(private val context: Context) 
     }
 
     companion object {
+        @android.annotation.SuppressLint("StaticFieldLeak")
         @Volatile
         private var instance: RemoteComponentRegistry? = null
 

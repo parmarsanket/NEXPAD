@@ -50,12 +50,13 @@ import kotlin.math.roundToInt
 fun CapsulesButton(
     key: String,
     buttonColor: Color,
-    isConnected: Boolean,
-    onVibrate: () -> Unit,
-    viewModel: GamepadViewModel,
-    isRgbEnabled: Boolean,
+    isConnected: Boolean = true,
+    onVibrate: () -> Unit = {},
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
     modifier: Modifier = Modifier,
-    displayLabel: String? = null
+    displayLabel: String? = null,
+    isInteractive: Boolean = true
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
@@ -210,18 +211,22 @@ fun CapsulesButton(
                     color = effectiveColor.copy(alpha = if (isPressed) 0.9f else 0.6f),
                     shape = pillShape
                 )
-                .pointerInput(key) {
-                    detectTapGestures(
-                        onPress = {
-                            currentOnVibrate()
-                            isPressed = true
-                            currentViewModel.updateButton(key, true)
-                            tryAwaitRelease()
-                            isPressed = false
-                            currentViewModel.updateButton(key, false)
+                .then(
+                    if (isInteractive) {
+                        Modifier.pointerInput(key) {
+                            detectTapGestures(
+                                onPress = {
+                                    currentOnVibrate()
+                                    isPressed = true
+                                    currentViewModel?.updateButton(key, true)
+                                    tryAwaitRelease()
+                                    isPressed = false
+                                    currentViewModel?.updateButton(key, false)
+                                }
+                            )
                         }
-                    )
-                },
+                    } else Modifier
+                ),
             contentAlignment = Alignment.Center
         ) {
             if (psShape != null) {
@@ -242,83 +247,26 @@ fun CapsulesButton(
     }
 }
 
+/**
+ * Static non-interactive preview delegate for CapsulesButton with zero touch overhead.
+ */
 @Composable
-internal fun StaticCapsulesButton(
+fun StaticCapsulesButton(
     controlKey: String,
-    labelStyle: ControllerLabelStyle,
+    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
     modifier: Modifier = Modifier
 ) {
     val displayLabel = CategoryManager.getLabelForStyle(controlKey, labelStyle)
     val buttonColor = resolveButtonColor(controlKey, labelStyle, displayLabel)
-    val psShape = getPlayStationShape(displayLabel)
-
-    val pillShape = RoundedCornerShape(26.dp)
-    val isVertical = controlKey.uppercase() == ControlKey.Y.key || controlKey.uppercase() == ControlKey.A.key
-    val pillW = if (isVertical) 52.dp else 84.dp
-    val pillH = if (isVertical) 84.dp else 52.dp
-
-    val domeBrush = remember {
-        Brush.radialGradient(
-            colors = listOf(
-                Color(0xFF232527),
-                Color(0xFF0C0D0E),
-                Color(0xFF000000)
-            )
-        )
-    }
-    val previewBloomColors = remember(buttonColor) {
-        listOf(
-            buttonColor.copy(alpha = 0.45f * 0.50f),
-            buttonColor.copy(alpha = 0.45f * 0.20f),
-            Color.Transparent
-        )
-    }
-
-    Box(
-        modifier = modifier.size(80.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .width(pillW)
-                .height(pillH)
-                .drawBehind {
-                    val pad = 10.dp.toPx()
-                    drawRoundRect(
-                        brush = Brush.radialGradient(
-                            colors = previewBloomColors,
-                            center = center,
-                            radius = size.minDimension * 0.95f
-                        ),
-                        topLeft = Offset(-pad, -pad),
-                        size = Size(size.width + pad * 2, size.height + pad * 2),
-                        cornerRadius = CornerRadius(26.dp.toPx() + pad, 26.dp.toPx() + pad)
-                    )
-                }
-                .shadow(elevation = 4.dp, shape = pillShape, spotColor = buttonColor, ambientColor = buttonColor)
-                .clip(pillShape)
-                .background(domeBrush)
-                .border(
-                    width = 2.dp,
-                    color = buttonColor.copy(alpha = 0.6f),
-                    shape = pillShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            if (psShape != null) {
-                PlayStationSymbol(
-                    shape = psShape,
-                    color = buttonColor,
-                    size = 24.dp
-                )
-            } else {
-                Text(
-                    text = displayLabel,
-                    color = buttonColor,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 24.sp
-                )
-            }
-        }
-    }
+    CapsulesButton(
+        key = controlKey,
+        buttonColor = buttonColor,
+        isConnected = false,
+        onVibrate = {},
+        viewModel = null,
+        isRgbEnabled = true,
+        modifier = modifier,
+        displayLabel = displayLabel,
+        isInteractive = false
+    )
 }
