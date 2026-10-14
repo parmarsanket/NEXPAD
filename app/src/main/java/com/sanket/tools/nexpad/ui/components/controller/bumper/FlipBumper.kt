@@ -70,23 +70,29 @@ fun FlipBumper(
     val bumperShape = remember { RoundedCornerShape(27.dp) }
 
     // 3D Horizontal Flip Kinematics: 0° (Face A) to 180° (Face B)
-    val flipRotationXAnim by animateFloatAsState(
+    val flipRotationXAnimState = animateFloatAsState(
         targetValue = if (isPressed) 180f else 0f,
         animationSpec = spring(dampingRatio = 0.70f, stiffness = 420f),
         label = "flip_rotation_x"
     )
 
-    val ringBloomAlpha by animateFloatAsState(
+    val ringBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.70f,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
         label = "flip_ring_bloom"
     )
 
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "flip_rgb_bloom"
     )
+
+    val isFaceA by remember {
+        androidx.compose.runtime.derivedStateOf {
+            abs(flipRotationXAnimState.value % 360f) <= 90f
+        }
+    }
 
     // CSS: --glow: #ffd23f (Cyber Gold / Amber Neon) for LB, Coral for RB
     val neonColor = remember(isRgbEnabled, isLeft) {
@@ -162,8 +168,13 @@ fun FlipBumper(
     Box(
         modifier = modifier
             .size(154.dp, 54.dp)
+            .graphicsLayer {
+                // Root RenderNode isolation
+            }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val flipRotationXAnim = flipRotationXAnimState.value
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
                     val rotRad = Math.toRadians(flipRotationXAnim.toDouble())
                     val cosFactor = abs(cos(rotRad)).toFloat().coerceIn(0.04f, 1f)
                     val isBackFace = abs(flipRotationXAnim % 360f) > 90f
@@ -252,14 +263,14 @@ fun FlipBumper(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    rotationX = flipRotationXAnim
+                    rotationX = flipRotationXAnimState.value
                     cameraDistance = 16f * density
                 },
             contentAlignment = Alignment.Center
         ) {
             val labelText = displayLabel ?: key
 
-            if (flipRotationXAnim <= 90f) {
+            if (isFaceA) {
                 // ==========================================
                 // FACE A: Resting Dark Glass Optical Dome
                 // ==========================================
@@ -414,6 +425,7 @@ fun FlipBumper(
                 .fillMaxSize()
                 .clip(bumperShape)
         ) {
+            val ringBloomAlpha = ringBloomAlphaState.value
             val w = size.width
             val h = size.height
             val ringInset = 2.5.dp.toPx()

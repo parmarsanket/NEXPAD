@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
@@ -68,22 +69,22 @@ fun ArcBumper(
     val bumperShape = remember { RoundedCornerShape(28.dp) }
 
     // Kinematic Physics Engine — Damped Harmonic Spring
-    val scaleAnim by animateFloatAsState(
+    val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.97f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "arc_scale"
     )
-    val pressOffsetYAnim by animateFloatAsState(
+    val pressOffsetYAnimState = animateFloatAsState(
         targetValue = if (isPressed) 2.0f else 0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "arc_offset"
     )
-    val bloomAlphaAnim by animateFloatAsState(
+    val bloomAlphaAnimState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.70f,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
         label = "arc_bloom_alpha"
     )
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "arc_rgb_bloom"
@@ -124,12 +125,11 @@ fun ArcBumper(
         modifier = modifier
             .size(154.dp, 56.dp)
             .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
+                // Root RenderNode isolation
             }
-            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
                     val w = size.width
                     val h = size.height
                     val ox = (w - 230f * s) / 2f
@@ -183,6 +183,12 @@ fun ArcBumper(
                 ambientColor = if (isRgbEnabled) neonColor else Color.Black,
                 spotColor = if (isRgbEnabled) neonColor else Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnimState.value
+                scaleY = scaleAnimState.value
+                translationY = pressOffsetYAnimState.value * density
+            }
+            .clip(bumperShape)
             .pointerInput(key) {
                 detectTapGestures(
                     onPress = {
@@ -198,6 +204,7 @@ fun ArcBumper(
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
+            val bloomAlphaAnim = bloomAlphaAnimState.value
             val w = size.width
             val h = size.height
             val s = min(w / 230f, h / 84f)

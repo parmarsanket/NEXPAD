@@ -106,21 +106,21 @@ fun SpotlightJoystick(
     }
 
     // Micro-compression: scale down to 0.97 on press (--cs: 0.97)
-    val capScaleAnim by animateFloatAsState(
+    val capScaleAnim = animateFloatAsState(
         targetValue = if (isPressed) 0.97f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "spotlight_cap_scale"
     )
 
     // Dynamic ring bloom: 0.70 idle, 1.00 when dragging
-    val puckRingAlpha by animateFloatAsState(
+    val puckRingAlpha = animateFloatAsState(
         targetValue = if (isDragging || isPressed) 1.0f else 0.70f,
         animationSpec = tween(durationMillis = 150),
         label = "spotlight_ring_alpha"
     )
 
     // Ambient glow bloom behind housing
-    val ambientBloomAlpha by animateFloatAsState(
+    val ambientBloomAlpha = animateFloatAsState(
         targetValue = if (isDragging || isPressed) 0.55f else 0.28f,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
         label = "spotlight_ambient_bloom"
@@ -154,18 +154,6 @@ fun SpotlightJoystick(
 
     val stickKey = remember(isLeft) { if (isLeft) "LSB" else "RSB" }
 
-    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
-    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
-    val effOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
-    val effOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
-
-    val deflectionFraction = (hypot(effOffsetX, effOffsetY) / maxTravelPx).coerceIn(0f, 1f)
-    val rgbBloomAlpha by animateFloatAsState(
-        targetValue = 0.40f + 0.55f * deflectionFraction,
-        animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
-        label = "spotlight_joystick_bloom"
-    )
-
     val socketGlowColors = remember(glowColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
@@ -179,16 +167,20 @@ fun SpotlightJoystick(
     Box(
         modifier = modifier
             .size(150.dp)
+            .graphicsLayer { /* Root RenderNode isolation */ }
             .drawBehind {
                 if (isRgbEnabled) {
-                    val curX = effOffsetX
-                    val curY = effOffsetY
+                    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+                    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                    val curX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
+                    val curY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
                     val curDist = hypot(curX, curY)
                     val defFraction = (curDist / maxTravelPx).coerceIn(0f, 1f)
+                    val dynRgbBloomAlpha = 0.40f + 0.55f * defFraction
 
                     // 1. Ambient projector socket glow
-                    socketGlowColors[0] = glowColor.copy(alpha = rgbBloomAlpha * 0.35f)
-                    socketGlowColors[1] = glowColor.copy(alpha = rgbBloomAlpha * 0.12f)
+                    socketGlowColors[0] = glowColor.copy(alpha = dynRgbBloomAlpha * 0.35f)
+                    socketGlowColors[1] = glowColor.copy(alpha = dynRgbBloomAlpha * 0.12f)
                     socketGlowColors[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
@@ -210,7 +202,7 @@ fun SpotlightJoystick(
                         val outerR = rimRadius + 2.dp.toPx()
                         val tickAlpha = if (i % 4 == 0) 0.55f else 0.25f
                         drawLine(
-                            color = glowColor.copy(alpha = rgbBloomAlpha * tickAlpha),
+                            color = glowColor.copy(alpha = dynRgbBloomAlpha * tickAlpha),
                             start = Offset(center.x + innerR * cosT, center.y + innerR * sinT),
                             end = Offset(center.x + outerR * cosT, center.y + outerR * sinT),
                             strokeWidth = if (i % 4 == 0) 2f else 1f
@@ -224,8 +216,8 @@ fun SpotlightJoystick(
                         val beamStart = beamAngleDeg - coneSpread / 2f
                         val beamLength = size.minDimension * (0.55f + 0.25f * defFraction)
 
-                        coneColors[0] = glowColor.copy(alpha = rgbBloomAlpha * (0.60f + 0.35f * defFraction))
-                        coneColors[1] = glowColor.copy(alpha = rgbBloomAlpha * 0.20f)
+                        coneColors[0] = glowColor.copy(alpha = dynRgbBloomAlpha * (0.60f + 0.35f * defFraction))
+                        coneColors[1] = glowColor.copy(alpha = dynRgbBloomAlpha * 0.20f)
                         coneColors[2] = Color.Transparent
                         drawArc(
                             brush = Brush.radialGradient(
@@ -244,8 +236,8 @@ fun SpotlightJoystick(
                         val beamRad = Math.toRadians(beamAngleDeg.toDouble())
                         val cosB = cos(beamRad).toFloat()
                         val sinB = sin(beamRad).toFloat()
-                        coreBeamColors[0] = Color.White.copy(alpha = rgbBloomAlpha * 0.90f)
-                        coreBeamColors[1] = glowColor.copy(alpha = rgbBloomAlpha * 0.50f)
+                        coreBeamColors[0] = Color.White.copy(alpha = dynRgbBloomAlpha * 0.90f)
+                        coreBeamColors[1] = glowColor.copy(alpha = dynRgbBloomAlpha * 0.50f)
                         coreBeamColors[2] = Color.Transparent
                         drawLine(
                             brush = Brush.linearGradient(
@@ -483,16 +475,16 @@ fun SpotlightJoystick(
             },
         contentAlignment = Alignment.Center
     ) {
-        val curOffsetX = effOffsetX
-        val curOffsetY = effOffsetY
-        val curDist = hypot(curOffsetX, curOffsetY)
-        val curMagnitude = min(1f, curDist / maxTravelPx)
-        val curAngleDeg = (atan2(curOffsetX, -curOffsetY) * 180f / Math.PI.toFloat() + 360f) % 360f
-        val curNormX = (curOffsetX / maxTravelPx).coerceIn(-1f, 1f)
-        val curNormY = (curOffsetY / maxTravelPx).coerceIn(-1f, 1f)
-
         // Stationary Socket Background Canvas: Inset Depth, Spotlight Pool, and Floor Dots Matrix
         Canvas(modifier = Modifier.fillMaxSize().clip(CircleShape)) {
+            val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+            val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+            val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
+            val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
+            val curDist = hypot(curOffsetX, curOffsetY)
+            val curMagnitude = min(1f, curDist / maxTravelPx)
+            val curAngleDeg = (atan2(curOffsetX, -curOffsetY) * 180f / Math.PI.toFloat() + 360f) % 360f
+
             val w = size.width
             val h = size.height
             val r = size.minDimension / 2f
@@ -626,24 +618,37 @@ fun SpotlightJoystick(
         // 76dp CENTER PUCK CAP (.cap-puck): translates with thumb displacement
         Box(
             modifier = Modifier
-                .offset { IntOffset(curOffsetX.roundToInt(), curOffsetY.roundToInt()) }
-                .graphicsLayer {
-                    scaleX = capScaleAnim
-                    scaleY = capScaleAnim
+                .offset {
+                    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+                    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                    val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
+                    val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
+                    IntOffset(curOffsetX.roundToInt(), curOffsetY.roundToInt())
                 }
-                .size(76.dp)
                 .shadow(
                     elevation = 10.dp,
                     shape = CircleShape,
                     ambientColor = if (isRgbEnabled) glowColor.copy(alpha = 0.5f) else Color.Black,
                     spotColor = if (isRgbEnabled) glowColor else Color.Black
                 )
+                .graphicsLayer {
+                    scaleX = capScaleAnim.value
+                    scaleY = capScaleAnim.value
+                }
+                .size(76.dp)
                 .clip(CircleShape)
                 .background(puckDomeGradient)
                 .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
+                val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+                val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
+                val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
+                val curNormX = (curOffsetX / maxTravelPx).coerceIn(-1f, 1f)
+                val curNormY = (curOffsetY / maxTravelPx).coerceIn(-1f, 1f)
+
                 val puckW = size.width
                 val puckH = size.height
                 val puckR = size.minDimension / 2f
@@ -676,13 +681,13 @@ fun SpotlightJoystick(
                 val ringRadius = puckR - 5.dp.toPx()
                 // Soft halo
                 drawCircle(
-                    color = glowColor.copy(alpha = puckRingAlpha * 0.16f),
+                    color = glowColor.copy(alpha = puckRingAlpha.value * 0.16f),
                     radius = ringRadius,
                     style = Stroke(width = 3.dp.toPx())
                 )
                 // Crisp core ring
                 drawCircle(
-                    color = glowColor.copy(alpha = puckRingAlpha * 0.85f),
+                    color = glowColor.copy(alpha = puckRingAlpha.value * 0.85f),
                     radius = ringRadius,
                     style = Stroke(width = 1.2.dp.toPx())
                 )
@@ -801,17 +806,17 @@ fun SpotlightStickButton(
     var isPressed by remember { mutableStateOf(false) }
 
     // Damped spring kinematics on button press
-    val scaleAnim by animateFloatAsState(
+    val scaleAnim = animateFloatAsState(
         targetValue = if (isPressed) 0.89f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "spotlight_btn_scale"
     )
-    val pressOffsetYAnim by animateFloatAsState(
+    val pressOffsetYAnim = animateFloatAsState(
         targetValue = if (isPressed) 2.0f else 0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "spotlight_btn_offset"
     )
-    val ringBloomAlpha by animateFloatAsState(
+    val ringBloomAlpha = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.70f,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
         label = "spotlight_btn_ring_bloom"
@@ -836,7 +841,7 @@ fun SpotlightStickButton(
         )
     }
 
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlpha = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "spotlight_stick_btn_bloom"
@@ -852,18 +857,15 @@ fun SpotlightStickButton(
     Box(
         modifier = modifier
             .size(70.dp)
-            .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
-            }
-            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
+            .graphicsLayer { /* Root RenderNode isolation */ }
+            .offset { IntOffset(0, (pressOffsetYAnim.value * density).roundToInt()) }
             .drawBehind {
                 if (isRgbEnabled) {
                     val buttonR = size.minDimension * 0.5f
 
                     // 1. Reflector dish parabolic ambient flare
-                    flareColors[0] = glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.65f else 0.35f))
-                    flareColors[1] = glowColor.copy(alpha = rgbBloomAlpha * 0.15f)
+                    flareColors[0] = glowColor.copy(alpha = rgbBloomAlpha.value * (if (isPressed) 0.65f else 0.35f))
+                    flareColors[1] = glowColor.copy(alpha = rgbBloomAlpha.value * 0.15f)
                     flareColors[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
@@ -876,12 +878,12 @@ fun SpotlightStickButton(
 
                     // 2. Dual concentric fresnel reflector rings
                     drawCircle(
-                        color = glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.80f else 0.40f)),
+                        color = glowColor.copy(alpha = rgbBloomAlpha.value * (if (isPressed) 0.80f else 0.40f)),
                         radius = buttonR + 3.dp.toPx(),
                         style = strokeRing1
                     )
                     drawCircle(
-                        color = glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.50f else 0.22f)),
+                        color = glowColor.copy(alpha = rgbBloomAlpha.value * (if (isPressed) 0.50f else 0.22f)),
                         radius = buttonR + 7.dp.toPx(),
                         style = strokeRing2
                     )
@@ -890,7 +892,7 @@ fun SpotlightStickButton(
                     val notchLen = 5.dp.toPx()
                     val notchStart = buttonR + 2.dp.toPx()
                     val notchEnd = notchStart + notchLen
-                    val notchAlpha = rgbBloomAlpha * (if (isPressed) 0.90f else 0.50f)
+                    val notchAlpha = rgbBloomAlpha.value * (if (isPressed) 0.90f else 0.50f)
                     drawLine(glowColor.copy(alpha = notchAlpha), Offset(center.x, center.y - notchEnd), Offset(center.x, center.y - notchStart), strokeWidth = 2f)
                     drawLine(glowColor.copy(alpha = notchAlpha), Offset(center.x, center.y + notchStart), Offset(center.x, center.y + notchEnd), strokeWidth = 2f)
                     drawLine(glowColor.copy(alpha = notchAlpha), Offset(center.x - notchEnd, center.y), Offset(center.x - notchStart, center.y), strokeWidth = 2f)
@@ -903,6 +905,10 @@ fun SpotlightStickButton(
                 ambientColor = if (isRgbEnabled) glowColor else Color.Black,
                 spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnim.value
+                scaleY = scaleAnim.value
+            }
             .clip(CircleShape)
             .background(puckDomeGradient)
             .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape)
@@ -991,12 +997,12 @@ fun SpotlightStickButton(
             // Outer Neon Containment Ring
             val outerRingR = r - 5.dp.toPx()
             drawCircle(
-                color = glowColor.copy(alpha = ringBloomAlpha * 0.25f),
+                color = glowColor.copy(alpha = ringBloomAlpha.value * 0.25f),
                 radius = outerRingR,
                 style = Stroke(width = 4.dp.toPx())
             )
             drawCircle(
-                color = glowColor.copy(alpha = ringBloomAlpha * 0.70f),
+                color = glowColor.copy(alpha = ringBloomAlpha.value * 0.70f),
                 radius = outerRingR,
                 style = Stroke(width = 1.8.dp.toPx())
             )

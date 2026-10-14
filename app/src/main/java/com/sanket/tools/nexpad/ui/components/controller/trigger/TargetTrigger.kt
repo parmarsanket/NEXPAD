@@ -70,18 +70,18 @@ fun TargetTrigger(
     val isLeft = key.uppercase() == NexpadKeys.LT
 
     // Physical Spring Kinematics
-    val scaleAnim by animateFloatAsState(
+    val scaleAnim = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "target_trigger_scale"
     )
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlpha = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "target_trigger_rgb_bloom"
     )
     // Dynamic Inward Target Pull Fill Progress (0.0 to 1.0)
-    val fillProgress by animateFloatAsState(
+    val fillProgress = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0f,
         animationSpec = spring(dampingRatio = 0.72f, stiffness = 380f),
         label = "target_trigger_pull_fill"
@@ -153,18 +153,15 @@ fun TargetTrigger(
     Box(
         modifier = modifier
             .size(92.dp, 92.dp)
-            .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
-            }
+            .graphicsLayer { /* Root RenderNode isolation */ }
             // Outer dynamic RGB aura
             .drawBehind {
                 if (isRgbEnabled) {
                     val baseRadius = size.minDimension * 0.5f
 
                     // 1. Ambient tactical target halo
-                    targetHaloColors[0] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.55f else 0.35f))
-                    targetHaloColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.15f)
+                    targetHaloColors[0] = neonColor.copy(alpha = rgbBloomAlpha.value * (if (isPressed) 0.55f else 0.35f))
+                    targetHaloColors[1] = neonColor.copy(alpha = rgbBloomAlpha.value * 0.15f)
                     targetHaloColors[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
@@ -177,18 +174,18 @@ fun TargetTrigger(
                     )
 
                     // 2. Concentric Sniper Reticle Rings tightening with pull
-                    val reticleTighten = 1f - 0.20f * fillProgress
+                    val reticleTighten = 1f - 0.20f * fillProgress.value
                     val outerReticleR = (baseRadius + 8.dp.toPx()) * reticleTighten
                     val innerReticleR = (baseRadius + 3.dp.toPx()) * reticleTighten
 
                     drawCircle(
-                        color = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.85f else 0.45f)),
+                        color = neonColor.copy(alpha = rgbBloomAlpha.value * (if (isPressed) 0.85f else 0.45f)),
                         radius = outerReticleR,
                         center = center,
                         style = strokeOuterReticle
                     )
                     drawCircle(
-                        color = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.95f else 0.60f)),
+                        color = neonColor.copy(alpha = rgbBloomAlpha.value * (if (isPressed) 0.95f else 0.60f)),
                         radius = innerReticleR,
                         center = center,
                         style = strokeInnerReticle
@@ -198,7 +195,7 @@ fun TargetTrigger(
                     val crosshairStart = innerReticleR + 2.dp.toPx()
                     val crosshairLen = (if (isPressed) 16.dp else 8.dp).toPx()
                     val crosshairEnd = crosshairStart + crosshairLen
-                    val crosshairAlpha = rgbBloomAlpha * (if (isPressed) 0.90f else 0.50f)
+                    val crosshairAlpha = rgbBloomAlpha.value * (if (isPressed) 0.90f else 0.50f)
 
                     crosshairColorsIn[0] = Color.Transparent
                     crosshairColorsIn[1] = neonColor.copy(alpha = crosshairAlpha)
@@ -250,13 +247,17 @@ fun TargetTrigger(
                     )
                 }
             }
-            // RGB-coordinated shadow
+            // RGB-coordinated shadow placed before motion scaling to prevent CPU shadow tessellation
             .shadow(
                 elevation = if (isPressed) 2.dp else 6.dp,
                 shape = triggerShape,
                 ambientColor = if (isRgbEnabled) neonColor else Color.Black,
                 spotColor = if (isRgbEnabled) neonColor else Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnim.value
+                scaleY = scaleAnim.value
+            }
             .clip(triggerShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
             .border(
@@ -305,7 +306,7 @@ fun TargetTrigger(
             // Outer chassis neon ring (.lx-ring)
             val ringRadius = outerRadius - 2.5.dp.toPx()
             drawCircle(
-                color = neonColor.copy(alpha = rgbBloomAlpha * 0.50f),
+                color = neonColor.copy(alpha = rgbBloomAlpha.value * 0.50f),
                 center = center,
                 radius = ringRadius,
                 style = Stroke(width = 3.5.dp.toPx())
@@ -329,7 +330,7 @@ fun TargetTrigger(
             )
 
             for (i in 0..2) {
-                val rawOpacity = (fillProgress - i * 0.30f) * 12f
+                val rawOpacity = (fillProgress.value - i * 0.30f) * 12f
                 val ringOpacity = rawOpacity.coerceIn(0.14f, 1.0f)
                 val r = targetRadii[i]
 
@@ -432,11 +433,12 @@ fun TargetTrigger(
             }
 
             // Dynamically reactive glyph brightness: 45% at idle to 100% full neon bloom on full pull
-            val glyphAlpha = (0.45f + fillProgress * 0.55f).coerceIn(0.45f, 1.0f)
-
             Text(
                 text = displayLabel ?: (if (isLeft) "LT" else "RT"),
-                color = neonColor.copy(alpha = glyphAlpha),
+                color = neonColor,
+                modifier = Modifier.graphicsLayer {
+                    alpha = (0.45f + fillProgress.value * 0.55f).coerceIn(0.45f, 1.0f)
+                },
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
                 letterSpacing = 0.sp,

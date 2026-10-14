@@ -73,18 +73,18 @@ fun VuSlabsTrigger(
     val isLeft = key.uppercase() == NexpadKeys.LT
 
     // Physical Spring Kinematics
-    val scaleAnim by animateFloatAsState(
+    val scaleAnim = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "vu_slabs_scale"
     )
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlpha = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "vu_slabs_rgb_bloom"
     )
     // Dynamic Trigger Pull Fill Progress (0.0 to 1.0)
-    val fillProgress by animateFloatAsState(
+    val fillProgress = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0f,
         animationSpec = spring(dampingRatio = 0.72f, stiffness = 380f),
         label = "vu_slabs_fill"
@@ -160,43 +160,41 @@ fun VuSlabsTrigger(
     Box(
         modifier = modifier
             .size(100.dp, 92.dp)
-            .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
-            }
+            .graphicsLayer { /* Root RenderNode isolation */ }
             // Outer dynamic RGB aura
             .drawBehind {
                 if (isRgbEnabled) {
                     val padX = 12.dp.toPx()
                     val padY = 8.dp.toPx()
+                    val curPull = fillProgress.value
 
                     val activeVuColor = when {
-                        fillProgress > 0.85f -> redOverdrive
-                        fillProgress > 0.60f -> orangeOverdrive
+                        curPull > 0.85f -> redOverdrive
+                        curPull > 0.60f -> orangeOverdrive
                         else -> neonColor
                     }
 
                     // 1. Tapered Hull Aura with VU color shifting
-                    hullAuraColors[0] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.50f else 0.30f))
-                    hullAuraColors[1] = activeVuColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.75f else 0.40f))
+                    hullAuraColors[0] = neonColor.copy(alpha = rgbBloomAlpha.value * (if (isPressed) 0.50f else 0.30f))
+                    hullAuraColors[1] = activeVuColor.copy(alpha = rgbBloomAlpha.value * (if (isPressed) 0.75f else 0.40f))
                     hullAuraColors[2] = Color.Transparent
                     drawRoundRect(
                         brush = Brush.verticalGradient(
                             colors = hullAuraColors,
                             startY = -padY,
-                            endY = size.height + padY + 12.dp.toPx() * fillProgress
+                            endY = size.height + padY + 12.dp.toPx() * curPull
                         ),
                         topLeft = Offset(-padX, -padY),
-                        size = Size(size.width + padX * 2f, size.height + padY * 2f + 12.dp.toPx() * fillProgress),
+                        size = Size(size.width + padX * 2f, size.height + padY * 2f + 12.dp.toPx() * curPull),
                         cornerRadius = CornerRadius(24.dp.toPx(), 36.dp.toPx())
                     )
 
                     // 2. Lateral Equalizer Soundwave Spectrum Wings (4 pairs on left & right)
-                    if (fillProgress > 0.15f) {
+                    if (curPull > 0.15f) {
                         val wingYStart = size.height * 0.40f
                         val wingYStep = 10.dp.toPx()
                         for (i in 0 until 4) {
-                            val wingFrac = (fillProgress - (i * 0.2f)).coerceIn(0f, 1f)
+                            val wingFrac = (curPull - (i * 0.2f)).coerceIn(0f, 1f)
                             if (wingFrac > 0f) {
                                 val wingLen = (6.dp + 12.dp * wingFrac).toPx()
                                 val wingY = wingYStart + i * wingYStep
@@ -205,7 +203,7 @@ fun VuSlabsTrigger(
                                     2 -> orangeOverdrive
                                     else -> neonColor
                                 }
-                                val barAlpha = rgbBloomAlpha * wingFrac * 0.85f
+                                val barAlpha = rgbBloomAlpha.value * wingFrac * 0.85f
 
                                 // Left wing
                                 leftWingColors[0] = Color.Transparent
@@ -239,13 +237,17 @@ fun VuSlabsTrigger(
                     }
                 }
             }
-            // RGB-coordinated shadow
+            // RGB-coordinated shadow placed before motion scaling to prevent CPU shadow tessellation
             .shadow(
                 elevation = if (isPressed) 2.dp else 6.dp,
                 shape = triggerShape,
                 ambientColor = if (isRgbEnabled) neonColor else Color.Black,
                 spotColor = if (isRgbEnabled) neonColor else Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnim.value
+                scaleY = scaleAnim.value
+            }
             .clip(triggerShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
             .border(
@@ -312,7 +314,7 @@ fun VuSlabsTrigger(
             // Outer atmospheric bloom stroke
             drawPath(
                 path = ringPath,
-                color = neonColor.copy(alpha = rgbBloomAlpha * 0.55f),
+                color = neonColor.copy(alpha = rgbBloomAlpha.value * 0.55f),
                 style = Stroke(width = 3.5.dp.toPx())
             )
             // Core crisp filament stroke
@@ -340,7 +342,7 @@ fun VuSlabsTrigger(
 
                 // Opacity curve translated directly from W3C CSS blueprint:
                 // opacity: clamp(0.13, (fill - i * 0.143) * 16, 1.0)
-                val rawOpacity = (fillProgress - i * 0.143f) * 16f
+                val rawOpacity = (fillProgress.value - i * 0.143f) * 16f
                 val slabOpacity = rawOpacity.coerceIn(0.13f, 1.0f)
 
                 val slabLeft = (w - slabW) / 2f

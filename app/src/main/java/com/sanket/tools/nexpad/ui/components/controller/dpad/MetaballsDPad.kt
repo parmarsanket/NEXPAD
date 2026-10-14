@@ -32,11 +32,13 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.sanket.tools.nexpad.model.NexpadKeys as K
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.abs
 import kotlin.math.hypot
+import kotlin.math.roundToInt
 
 /**
  * Snappy 3D physical rocker tilt kinematics for Metaballs D-Pad:
@@ -142,46 +144,46 @@ fun MetaballsDPad(
     val isAnyPressed = currentlyPressed.isNotEmpty()
 
     // 80ms ease for 3D physical rocker tilt
-    val rxAnim by animateFloatAsState(
+    val rxAnimState = animateFloatAsState(
         targetValue = targetRx,
         animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
         label = "meta_tilt_rx"
     )
-    val ryAnim by animateFloatAsState(
+    val ryAnimState = animateFloatAsState(
         targetValue = targetRy,
         animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
         label = "meta_tilt_ry"
     )
 
     // Plunging spring kinematics for overall stage
-    val stageScaleAnim by animateFloatAsState(
+    val stageScaleAnimState = animateFloatAsState(
         targetValue = if (isAnyPressed) 0.95f else 1.0f,
         animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
         label = "meta_stage_scale"
     )
-    val stageOffsetYAnim by animateFloatAsState(
+    val stageOffsetYAnimState = animateFloatAsState(
         targetValue = if (isAnyPressed) 2.0f else 0f,
         animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
         label = "meta_stage_offset_y"
     )
 
     // Dynamic satellite retraction springs (58dp -> ~31.9dp on press)
-    val upProgress by animateFloatAsState(
+    val upProgressState = animateFloatAsState(
         targetValue = if (currentlyPressed.contains(K.UP)) 1f else 0f,
         animationSpec = spring(dampingRatio = 0.55f, stiffness = 340f),
         label = "meta_sat_up"
     )
-    val rightProgress by animateFloatAsState(
+    val rightProgressState = animateFloatAsState(
         targetValue = if (currentlyPressed.contains(K.RIGHT)) 1f else 0f,
         animationSpec = spring(dampingRatio = 0.55f, stiffness = 340f),
         label = "meta_sat_right"
     )
-    val downProgress by animateFloatAsState(
+    val downProgressState = animateFloatAsState(
         targetValue = if (currentlyPressed.contains(K.DOWN)) 1f else 0f,
         animationSpec = spring(dampingRatio = 0.55f, stiffness = 340f),
         label = "meta_sat_down"
     )
-    val leftProgress by animateFloatAsState(
+    val leftProgressState = animateFloatAsState(
         targetValue = if (currentlyPressed.contains(K.LEFT)) 1f else 0f,
         animationSpec = spring(dampingRatio = 0.55f, stiffness = 340f),
         label = "meta_sat_left"
@@ -192,7 +194,7 @@ fun MetaballsDPad(
         if (isRgbEnabled) Color(0xFF3FD2C4) else Color(0xFF3FD2C4)
     }
 
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isAnyPressed) 0.95f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "meta_rgb_bloom"
@@ -255,8 +257,17 @@ fun MetaballsDPad(
     Box(
         modifier = modifier
             .size(172.dp)
+            .graphicsLayer {
+                // Root RenderNode isolation
+            }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val upProgress = upProgressState.value
+                    val downProgress = downProgressState.value
+                    val leftProgress = leftProgressState.value
+                    val rightProgress = rightProgressState.value
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
+
                     // 1. Central viscous fluid reservoir
                     val coreRadius = size.minDimension * 0.42f
                     coreBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * 0.50f)
@@ -360,20 +371,20 @@ fun MetaballsDPad(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer {
-                    scaleX = stageScaleAnim
-                    scaleY = stageScaleAnim
-                    translationY = stageOffsetYAnim * density
-                    rotationX = rxAnim
-                    rotationY = ryAnim
-                    cameraDistance = 12f * density
-                }
                 .shadow(
                     elevation = if (isAnyPressed) 3.dp else 8.dp,
                     shape = CircleShape,
                     spotColor = if (isRgbEnabled) neonColor else Color.Black,
                     ambientColor = if (isRgbEnabled) neonColor else Color.Black
                 )
+                .graphicsLayer {
+                    scaleX = stageScaleAnimState.value
+                    scaleY = stageScaleAnimState.value
+                    translationY = stageOffsetYAnimState.value * density
+                    rotationX = rxAnimState.value
+                    rotationY = ryAnimState.value
+                    cameraDistance = 12f * density
+                }
                 .clip(CircleShape)
                 .background(if (isAnyPressed) pressedDomeGradient else domeGradient)
                 .border(
@@ -403,6 +414,11 @@ fun MetaballsDPad(
 
             // --- 2. Dynamic Liquid Neon Metaballs Layer (.goo2) ---
             Canvas(modifier = Modifier.fillMaxSize()) {
+                val upProgress = upProgressState.value
+                val rightProgress = rightProgressState.value
+                val downProgress = downProgressState.value
+                val leftProgress = leftProgressState.value
+
                 val center = Offset(size.width / 2f, size.height / 2f)
                 val baseDistPx = 58.dp.toPx()
                 val rCenterPx = 19.dp.toPx() // c0 radius (diameter 38dp)
@@ -543,47 +559,55 @@ fun MetaballsDPad(
 
             // Four Satellite Caps (.cp2.sat, 36dp x 36dp with directional chevrons)
             // 1. UP
-            val upDistDp = 58.dp * (1f - upProgress * 0.45f)
             SatelliteCap(
                 direction = K.UP,
                 isPressed = currentlyPressed.contains(K.UP),
                 glowColor = neonColor,
                 capGradient = capGradient,
                 rotationAngle = 0f,
-                modifier = Modifier.offset(0.dp, -upDistDp)
+                modifier = Modifier.offset {
+                    val upDistPx = 58.dp.toPx() * (1f - upProgressState.value * 0.45f)
+                    IntOffset(0, -upDistPx.roundToInt())
+                }
             )
 
             // 2. RIGHT
-            val rightDistDp = 58.dp * (1f - rightProgress * 0.45f)
             SatelliteCap(
                 direction = K.RIGHT,
                 isPressed = currentlyPressed.contains(K.RIGHT),
                 glowColor = neonColor,
                 capGradient = capGradient,
                 rotationAngle = 90f,
-                modifier = Modifier.offset(rightDistDp, 0.dp)
+                modifier = Modifier.offset {
+                    val rightDistPx = 58.dp.toPx() * (1f - rightProgressState.value * 0.45f)
+                    IntOffset(rightDistPx.roundToInt(), 0)
+                }
             )
 
             // 3. DOWN
-            val downDistDp = 58.dp * (1f - downProgress * 0.45f)
             SatelliteCap(
                 direction = K.DOWN,
                 isPressed = currentlyPressed.contains(K.DOWN),
                 glowColor = neonColor,
                 capGradient = capGradient,
                 rotationAngle = 180f,
-                modifier = Modifier.offset(0.dp, downDistDp)
+                modifier = Modifier.offset {
+                    val downDistPx = 58.dp.toPx() * (1f - downProgressState.value * 0.45f)
+                    IntOffset(0, downDistPx.roundToInt())
+                }
             )
 
             // 4. LEFT
-            val leftDistDp = 58.dp * (1f - leftProgress * 0.45f)
             SatelliteCap(
                 direction = K.LEFT,
                 isPressed = currentlyPressed.contains(K.LEFT),
                 glowColor = neonColor,
                 capGradient = capGradient,
                 rotationAngle = 270f,
-                modifier = Modifier.offset(-leftDistDp, 0.dp)
+                modifier = Modifier.offset {
+                    val leftDistPx = 58.dp.toPx() * (1f - leftProgressState.value * 0.45f)
+                    IntOffset(-leftDistPx.roundToInt(), 0)
+                }
             )
         }
 

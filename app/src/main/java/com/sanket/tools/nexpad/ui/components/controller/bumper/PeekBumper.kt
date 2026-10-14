@@ -69,29 +69,29 @@ fun PeekBumper(
     val bumperShape = remember { RoundedCornerShape(27.dp) }
 
     // Kinematic Physics Engine — Damped Harmonic Spring
-    val scaleAnim by animateFloatAsState(
+    val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "peek_bumper_scale"
     )
-    val pressOffsetYAnim by animateFloatAsState(
+    val pressOffsetYAnimState = animateFloatAsState(
         targetValue = if (isPressed) 2.0f else 0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "peek_bumper_offset"
     )
-    val ringBloomAlpha by animateFloatAsState(
+    val ringBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.70f,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
         label = "peek_ring_bloom"
     )
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "peek_bumper_rgb_bloom"
     )
 
     // Iconic Peek feature: glyph is 2x smaller in idle (22sp) and zooms 2.0x on press (to 44sp) inside the magnifier aperture
-    val glyphScaleAnim by animateFloatAsState(
+    val glyphScaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 1.5f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "peek_glyph_scale"
@@ -160,12 +160,12 @@ fun PeekBumper(
         modifier = modifier
             .size(154.dp, 54.dp)
             .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
+                // Root RenderNode isolation
             }
-            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
+                    val glyphScaleAnim = glyphScaleAnimState.value
                     val padX = 14.dp.toPx()
                     val padY = 8.dp.toPx()
 
@@ -231,6 +231,11 @@ fun PeekBumper(
                 ambientColor = if (isRgbEnabled) neonColor else Color.Black,
                 spotColor = if (isRgbEnabled) neonColor else Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnimState.value
+                scaleY = scaleAnimState.value
+                translationY = pressOffsetYAnimState.value * density
+            }
             .clip(bumperShape)
             // Convex dark body
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
@@ -277,6 +282,7 @@ fun PeekBumper(
             )
 
             // Neon color ring — inset 2.5dp with pill corner radius
+            val ringBloomAlpha = ringBloomAlphaState.value
             val ringInset = 2.5.dp.toPx()
             val ringRadius = 27.dp.toPx() - ringInset
 
@@ -397,8 +403,8 @@ fun PeekBumper(
                 letterSpacing = 5.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.graphicsLayer {
-                    scaleX = glyphScaleAnim
-                    scaleY = glyphScaleAnim
+                    scaleX = glyphScaleAnimState.value
+                    scaleY = glyphScaleAnimState.value
                 }
             )
         }

@@ -77,27 +77,27 @@ fun RibbedBumper(
     }
 
     // Kinematic Physics Engine — Damped Harmonic Spring
-    val scaleAnim by animateFloatAsState(
+    val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "rib_bumper_scale"
     )
-    val pressOffsetYAnim by animateFloatAsState(
+    val pressOffsetYAnimState = animateFloatAsState(
         targetValue = if (isPressed) 2.0f else 0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "rib_bumper_offset"
     )
-    val ringBloomAlpha by animateFloatAsState(
+    val ringBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.70f,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
         label = "rib_ring_bloom"
     )
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "rib_bumper_rgb_bloom"
     )
-    val stripAlphaAnim by animateFloatAsState(
+    val stripAlphaAnimState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.22f,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 600f),
         label = "rib_strip_alpha"
@@ -166,12 +166,12 @@ fun RibbedBumper(
         modifier = modifier
             .size(154.dp, 54.dp)
             .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
+                // Root RenderNode isolation
             }
-            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
+                    val stripAlphaAnim = stripAlphaAnimState.value
                     val padX = 14.dp.toPx()
                     val padY = 8.dp.toPx()
 
@@ -241,6 +241,11 @@ fun RibbedBumper(
                 ambientColor = if (isRgbEnabled) neonColor else Color.Black,
                 spotColor = if (isRgbEnabled) neonColor else Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnimState.value
+                scaleY = scaleAnimState.value
+                translationY = pressOffsetYAnimState.value * density
+            }
             .clip(bumperShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
             // 1px casing rim
@@ -316,6 +321,7 @@ fun RibbedBumper(
                 )
             }
 
+            val ringBloomAlpha = ringBloomAlphaState.value
             // Outer bloom pass
             drawPath(
                 path = ringPath,
@@ -447,8 +453,11 @@ fun RibbedBumper(
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 9.dp)
                 .size(width = 110.dp, height = 4.dp)
+                .graphicsLayer {
+                    alpha = stripAlphaAnimState.value
+                }
                 .clip(stripShape)
-                .background(neonColor.copy(alpha = stripAlphaAnim))
+                .background(neonColor)
         )
     }
 }

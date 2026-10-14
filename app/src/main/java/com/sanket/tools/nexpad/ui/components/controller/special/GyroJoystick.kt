@@ -109,21 +109,21 @@ fun GyroJoystick(
     }
 
     // Micro-compression: scale down to 0.97 on press (--cs: 0.97)
-    val capScaleAnim by animateFloatAsState(
+    val capScaleAnim = animateFloatAsState(
         targetValue = if (isPressed) 0.97f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "gyro_cap_scale"
     )
 
     // Dynamic gimbal opacity: 0.55 idle, 1.00 when dragging
-    val gimbalAlpha by animateFloatAsState(
+    val gimbalAlpha = animateFloatAsState(
         targetValue = if (isDragging || isPressed) 1.0f else 0.55f,
         animationSpec = tween(durationMillis = 150),
         label = "gyro_gimbal_alpha"
     )
 
     // Ambient glow bloom behind housing
-    val ambientBloomAlpha by animateFloatAsState(
+    val ambientBloomAlpha = animateFloatAsState(
         targetValue = if (isDragging || isPressed) 0.55f else 0.28f,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
         label = "gyro_ambient_bloom"
@@ -157,18 +157,6 @@ fun GyroJoystick(
 
     val stickKey = remember(isLeft) { if (isLeft) "LSB" else "RSB" }
 
-    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
-    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
-    val effOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
-    val effOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
-
-    val deflectionFraction = (hypot(effOffsetX, effOffsetY) / maxTravelPx).coerceIn(0f, 1f)
-    val rgbBloomAlpha by animateFloatAsState(
-        targetValue = 0.40f + 0.55f * deflectionFraction,
-        animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
-        label = "gyro_joystick_bloom"
-    )
-
     val strokeOuterGimbal = remember { Stroke(width = 2.0f) }
     val strokeInnerGimbal = remember { Stroke(width = 1.6f) }
     val coreBloomColors = remember(glowColor) {
@@ -178,17 +166,21 @@ fun GyroJoystick(
     Box(
         modifier = modifier
             .size(150.dp)
+            .graphicsLayer { /* Root RenderNode isolation */ }
             .drawBehind {
                 if (isRgbEnabled) {
-                    val curX = effOffsetX
-                    val curY = effOffsetY
+                    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+                    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                    val curX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
+                    val curY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
                     val curDist = hypot(curX, curY)
                     val defFraction = (curDist / maxTravelPx).coerceIn(0f, 1f)
+                    val dynRgbBloomAlpha = 0.40f + 0.55f * defFraction
                     val stickAngleDeg = Math.toDegrees(atan2(curY.toDouble(), curX.toDouble())).toFloat()
 
                     // 1. Ambient gyroscope core bloom
-                    coreBloomColors[0] = glowColor.copy(alpha = rgbBloomAlpha * 0.40f)
-                    coreBloomColors[1] = glowColor.copy(alpha = rgbBloomAlpha * 0.15f)
+                    coreBloomColors[0] = glowColor.copy(alpha = dynRgbBloomAlpha * 0.40f)
+                    coreBloomColors[1] = glowColor.copy(alpha = dynRgbBloomAlpha * 0.15f)
                     coreBloomColors[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
@@ -449,53 +441,16 @@ fun GyroJoystick(
             },
         contentAlignment = Alignment.Center
     ) {
-        val curOffsetX = effOffsetX
-        val curOffsetY = effOffsetY
-        val curDist = hypot(curOffsetX, curOffsetY)
-        val curMagnitude = min(1f, curDist / maxTravelPx)
-        val curAngleDeg = (atan2(curOffsetX, -curOffsetY) * 180f / Math.PI.toFloat() + 360f) % 360f
-        val curNormX = (curOffsetX / maxTravelPx).coerceIn(-1f, 1f)
-        val curNormY = (curOffsetY / maxTravelPx).coerceIn(-1f, 1f)
-
-        // 3D Gimbal Tilts matching CSS physics:
-        // Outer gimbal: rotateX(-dyn * 38°), rotateY(dxn * 38°)
-        val outerRotX by animateFloatAsState(
-            targetValue = curNormY * -38f,
-            animationSpec = tween(
-                durationMillis = if (isDragging) 60 else 180,
-                easing = CubicBezierEasing(0.3f, 1.6f, 0.5f, 1.0f)
-            ),
-            label = "gyro_outer_rot_x"
-        )
-        val outerRotY by animateFloatAsState(
-            targetValue = curNormX * 38f,
-            animationSpec = tween(
-                durationMillis = if (isDragging) 60 else 180,
-                easing = CubicBezierEasing(0.3f, 1.6f, 0.5f, 1.0f)
-            ),
-            label = "gyro_outer_rot_y"
-        )
-
-        // Inner gimbal: counter-tilts rotateX(dyn * 56°), rotateY(-dxn * 56°)
-        val innerRotX by animateFloatAsState(
-            targetValue = curNormY * 56f,
-            animationSpec = tween(
-                durationMillis = if (isDragging) 60 else 180,
-                easing = CubicBezierEasing(0.3f, 1.6f, 0.5f, 1.0f)
-            ),
-            label = "gyro_inner_rot_x"
-        )
-        val innerRotY by animateFloatAsState(
-            targetValue = curNormX * -56f,
-            animationSpec = tween(
-                durationMillis = if (isDragging) 60 else 180,
-                easing = CubicBezierEasing(0.3f, 1.6f, 0.5f, 1.0f)
-            ),
-            label = "gyro_inner_rot_y"
-        )
-
         // Stationary Socket Background Canvas: Inset Depth and Directional Gate Arc
         Canvas(modifier = Modifier.fillMaxSize().clip(CircleShape)) {
+            val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+            val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+            val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
+            val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
+            val curDist = hypot(curOffsetX, curOffsetY)
+            val curMagnitude = min(1f, curDist / maxTravelPx)
+            val curAngleDeg = (atan2(curOffsetX, -curOffsetY) * 180f / Math.PI.toFloat() + 360f) % 360f
+
             val w = size.width
             val h = size.height
             val r = size.minDimension / 2f
@@ -570,8 +525,14 @@ fun GyroJoystick(
             modifier = Modifier
                 .size(120.dp)
                 .graphicsLayer {
-                    rotationX = outerRotX
-                    rotationY = outerRotY
+                    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+                    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                    val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
+                    val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
+                    val curNormX = (curOffsetX / maxTravelPx).coerceIn(-1f, 1f)
+                    val curNormY = (curOffsetY / maxTravelPx).coerceIn(-1f, 1f)
+                    rotationX = curNormY * -38f
+                    rotationY = curNormX * 38f
                     cameraDistance = 8f * density
                 }
         ) {
@@ -581,19 +542,19 @@ fun GyroJoystick(
 
                 // Soft atmospheric haze (zero hard edges)
                 drawCircle(
-                    color = glowColor.copy(alpha = gimbalAlpha * 0.06f),
+                    color = glowColor.copy(alpha = gimbalAlpha.value * 0.06f),
                     radius = ringRadius,
                     style = Stroke(width = 6.dp.toPx())
                 )
                 // Diffuse glow halo
                 drawCircle(
-                    color = glowColor.copy(alpha = gimbalAlpha * 0.20f),
+                    color = glowColor.copy(alpha = gimbalAlpha.value * 0.20f),
                     radius = ringRadius,
                     style = Stroke(width = 3.dp.toPx())
                 )
                 // Crisp core laser filament
                 drawCircle(
-                    color = glowColor.copy(alpha = gimbalAlpha * 0.90f),
+                    color = glowColor.copy(alpha = gimbalAlpha.value * 0.90f),
                     radius = ringRadius,
                     style = Stroke(width = 1.2.dp.toPx())
                 )
@@ -605,8 +566,14 @@ fun GyroJoystick(
             modifier = Modifier
                 .size(92.dp)
                 .graphicsLayer {
-                    rotationX = innerRotX
-                    rotationY = innerRotY
+                    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+                    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                    val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
+                    val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
+                    val curNormX = (curOffsetX / maxTravelPx).coerceIn(-1f, 1f)
+                    val curNormY = (curOffsetY / maxTravelPx).coerceIn(-1f, 1f)
+                    rotationX = curNormY * 56f
+                    rotationY = curNormX * -56f
                     cameraDistance = 8f * density
                 }
         ) {
@@ -616,19 +583,19 @@ fun GyroJoystick(
 
                 // Soft atmospheric haze
                 drawCircle(
-                    color = glowColor.copy(alpha = gimbalAlpha * 0.06f),
+                    color = glowColor.copy(alpha = gimbalAlpha.value * 0.06f),
                     radius = ringRadius,
                     style = Stroke(width = 6.dp.toPx())
                 )
                 // Diffuse glow halo
                 drawCircle(
-                    color = glowColor.copy(alpha = gimbalAlpha * 0.20f),
+                    color = glowColor.copy(alpha = gimbalAlpha.value * 0.20f),
                     radius = ringRadius,
                     style = Stroke(width = 3.dp.toPx())
                 )
                 // Crisp core laser filament
                 drawCircle(
-                    color = glowColor.copy(alpha = gimbalAlpha * 0.90f),
+                    color = glowColor.copy(alpha = gimbalAlpha.value * 0.90f),
                     radius = ringRadius,
                     style = Stroke(width = 1.2.dp.toPx())
                 )
@@ -638,24 +605,36 @@ fun GyroJoystick(
         // COMPACT CENTER PUCK CAP (.cap-puck .cap-gyro): 56dp diameter
         Box(
             modifier = Modifier
-                .offset { IntOffset(curOffsetX.roundToInt(), curOffsetY.roundToInt()) }
-                .graphicsLayer {
-                    scaleX = capScaleAnim
-                    scaleY = capScaleAnim
+                .offset {
+                    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+                    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                    val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
+                    val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
+                    IntOffset(curOffsetX.roundToInt(), curOffsetY.roundToInt())
                 }
-                .size(56.dp)
                 .shadow(
                     elevation = 8.dp,
                     shape = CircleShape,
                     ambientColor = if (isRgbEnabled) glowColor.copy(alpha = 0.5f) else Color.Black,
                     spotColor = if (isRgbEnabled) glowColor else Color.Black
                 )
+                .graphicsLayer {
+                    scaleX = capScaleAnim.value
+                    scaleY = capScaleAnim.value
+                }
+                .size(56.dp)
                 .clip(CircleShape)
                 .background(puckDomeGradient)
                 .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
+                val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+                val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
+                val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
+                val curNormX = (curOffsetX / maxTravelPx).coerceIn(-1f, 1f)
+                val curNormY = (curOffsetY / maxTravelPx).coerceIn(-1f, 1f)
                 val puckW = size.width
                 val puckH = size.height
                 val puckR = size.minDimension / 2f
@@ -816,20 +795,21 @@ fun GyroStickButton(
     displayLabel: String? = null
 ) {
     var isPressed by remember { mutableStateOf(false) }
+    val density = LocalDensity.current.density
 
-    val scaleAnim by animateFloatAsState(
+    val scaleAnim = animateFloatAsState(
         targetValue = if (isPressed) 0.90f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "gyro_btn_scale"
     )
 
-    val pressOffsetY by animateFloatAsState(
+    val pressOffsetY = animateFloatAsState(
         targetValue = if (isPressed) 2.5f else 0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "gyro_btn_offset"
     )
 
-    val ringBloomAlpha by animateFloatAsState(
+    val ringBloomAlpha = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.70f,
         animationSpec = tween(durationMillis = 120),
         label = "gyro_btn_ring_bloom"
@@ -858,7 +838,7 @@ fun GyroStickButton(
         )
     }
 
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlpha = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "gyro_stick_btn_bloom"
@@ -883,18 +863,15 @@ fun GyroStickButton(
     Box(
         modifier = modifier
             .size(70.dp)
-            .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
-            }
-            .offset { IntOffset(0, pressOffsetY.dp.roundToPx()) }
+            .graphicsLayer { /* Root RenderNode isolation */ }
+            .offset { IntOffset(0, (pressOffsetY.value * density).roundToInt()) }
             .drawBehind {
                 if (isRgbEnabled) {
                     val coreR = size.minDimension * (if (isPressed) 1.05f else 0.85f)
                     // 1. Gyro gimbal core beacon
-                    btnCoreBloomStops[0] = 0.00f to (if (isPressed) Color.White else glowColor).copy(alpha = rgbBloomAlpha * 0.65f)
-                    btnCoreBloomStops[1] = 0.35f to glowColor.copy(alpha = rgbBloomAlpha * 0.30f)
-                    btnCoreBloomStops[2] = 0.75f to glowColor.copy(alpha = rgbBloomAlpha * 0.10f)
+                    btnCoreBloomStops[0] = 0.00f to (if (isPressed) Color.White else glowColor).copy(alpha = rgbBloomAlpha.value * 0.65f)
+                    btnCoreBloomStops[1] = 0.35f to glowColor.copy(alpha = rgbBloomAlpha.value * 0.30f)
+                    btnCoreBloomStops[2] = 0.75f to glowColor.copy(alpha = rgbBloomAlpha.value * 0.10f)
                     btnCoreBloomStops[3] = 1.00f to Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
@@ -929,6 +906,10 @@ fun GyroStickButton(
                 ambientColor = if (isRgbEnabled) glowColor else Color.Black,
                 spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnim.value
+                scaleY = scaleAnim.value
+            }
             .clip(CircleShape)
             .background(puckDomeGradient)
             .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape)
@@ -979,12 +960,12 @@ fun GyroStickButton(
             // Outer Concentric Gimbal Ring
             val outerGimbalR = r - 5.dp.toPx()
             drawCircle(
-                color = glowColor.copy(alpha = ringBloomAlpha * 0.25f),
+                color = glowColor.copy(alpha = ringBloomAlpha.value * 0.25f),
                 radius = outerGimbalR,
                 style = Stroke(width = 4.dp.toPx())
             )
             drawCircle(
-                color = glowColor.copy(alpha = ringBloomAlpha * 0.70f),
+                color = glowColor.copy(alpha = ringBloomAlpha.value * 0.70f),
                 radius = outerGimbalR,
                 style = Stroke(width = 1.8.dp.toPx())
             )
@@ -992,12 +973,12 @@ fun GyroStickButton(
             // Inner Concentric Gimbal Ring
             val innerGimbalR = r - 13.dp.toPx()
             drawCircle(
-                color = glowColor.copy(alpha = ringBloomAlpha * 0.20f),
+                color = glowColor.copy(alpha = ringBloomAlpha.value * 0.20f),
                 radius = innerGimbalR,
                 style = Stroke(width = 3.dp.toPx())
             )
             drawCircle(
-                color = glowColor.copy(alpha = ringBloomAlpha * 0.55f),
+                color = glowColor.copy(alpha = ringBloomAlpha.value * 0.55f),
                 radius = innerGimbalR,
                 style = Stroke(width = 1.5.dp.toPx())
             )

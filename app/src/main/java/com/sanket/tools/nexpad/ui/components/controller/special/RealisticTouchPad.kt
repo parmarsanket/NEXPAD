@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
@@ -388,13 +389,13 @@ fun RealisticTouchPad(
     var anchorY by remember { mutableFloatStateOf(0f) }
     var decayJob by remember { mutableStateOf<Job?>(null) }
 
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlpha = animateFloatAsState(
         targetValue = if (isDragging) 0.95f else 0.40f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "touchpad_rgb_bloom"
     )
 
-    val activeAlpha by animateFloatAsState(
+    val activeAlpha = animateFloatAsState(
         targetValue = if (isDragging) 1.0f else 0.0f,
         animationSpec = tween(150),
         label = "touchpad_active_alpha"
@@ -434,13 +435,16 @@ fun RealisticTouchPad(
 
     Box(
         modifier = modifier
+            .graphicsLayer {
+                // Root RenderNode isolation
+            }
             .size(180.dp)
             // Layer 0: Bespoke Kinetic Outer Aura
             .drawBehind {
                 if (isRgbEnabled) {
                     drawTouchPadAura(
                         auraColor = auraColor,
-                        rgbBloomAlpha = rgbBloomAlpha,
+                        rgbBloomAlpha = rgbBloomAlpha.value,
                         isDragging = isDragging
                     )
                 }
@@ -638,15 +642,15 @@ fun RealisticTouchPad(
                 touchY = touchY,
                 anchorX = anchorX,
                 anchorY = anchorY,
-                activeAlpha = activeAlpha,
-                rgbBloomAlpha = rgbBloomAlpha,
+                activeAlpha = activeAlpha.value,
+                rgbBloomAlpha = rgbBloomAlpha.value,
                 auraColor = auraColor,
                 isRgbEnabled = isRgbEnabled
             )
         }
 
         // Layer 5: Clean Precision Aiming Reticle Dot & Ring (visible when idle or subtle drag)
-        if (!isDragging || activeAlpha < 0.2f) {
+        if (!isDragging || activeAlpha.value < 0.2f) {
             Canvas(modifier = Modifier.size(16.dp)) {
                 val centerPt = Offset(size.width / 2f, size.height / 2f)
                 val dotColor = if (isRgbEnabled) auraColor else Color.White
@@ -693,6 +697,9 @@ fun StaticRealisticTouchPad(
 
     Box(
         modifier = modifier
+            .graphicsLayer {
+                // Root RenderNode isolation
+            }
             .size(180.dp)
             // Layer 0: Bespoke Kinetic Outer Aura
             .drawBehind {

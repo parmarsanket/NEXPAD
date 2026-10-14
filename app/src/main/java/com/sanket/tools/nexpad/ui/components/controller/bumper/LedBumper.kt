@@ -81,17 +81,17 @@ fun LedBumper(
     }
 
     // Kinematic Physics Engine — Damped Harmonic Spring
-    val scaleAnim by animateFloatAsState(
+    val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.96f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "led_bumper_scale"
     )
-    val pressOffsetYAnim by animateFloatAsState(
+    val pressOffsetYAnimState = animateFloatAsState(
         targetValue = if (isPressed) 2.0f else 0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "led_bumper_offset"
     )
-    val ringBloomAlpha by animateFloatAsState(
+    val ringBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.70f,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
         label = "led_ring_bloom"
@@ -104,44 +104,44 @@ fun LedBumper(
         } else Color(0xFFD8DEE9)
     }
 
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "led_bumper_rgb_bloom"
     )
 
     // Cascading 6-LED Bar illumination wave on press (35ms stagger per LED)
-    val led0Alpha by animateFloatAsState(
+    val led0Alpha = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.18f,
         animationSpec = tween(durationMillis = 120, delayMillis = if (isPressed) 0 else 0),
         label = "led_0"
     )
-    val led1Alpha by animateFloatAsState(
+    val led1Alpha = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.18f,
         animationSpec = tween(durationMillis = 120, delayMillis = if (isPressed) 35 else 0),
         label = "led_1"
     )
-    val led2Alpha by animateFloatAsState(
+    val led2Alpha = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.18f,
         animationSpec = tween(durationMillis = 120, delayMillis = if (isPressed) 70 else 0),
         label = "led_2"
     )
-    val led3Alpha by animateFloatAsState(
+    val led3Alpha = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.18f,
         animationSpec = tween(durationMillis = 120, delayMillis = if (isPressed) 105 else 0),
         label = "led_3"
     )
-    val led4Alpha by animateFloatAsState(
+    val led4Alpha = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.18f,
         animationSpec = tween(durationMillis = 120, delayMillis = if (isPressed) 140 else 0),
         label = "led_4"
     )
-    val led5Alpha by animateFloatAsState(
+    val led5Alpha = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.18f,
         animationSpec = tween(durationMillis = 120, delayMillis = if (isPressed) 175 else 0),
         label = "led_5"
     )
-    val ledAlphas = listOf(led0Alpha, led1Alpha, led2Alpha, led3Alpha, led4Alpha, led5Alpha)
+    val ledAlphas = listOf(led0Alpha.value, led1Alpha.value, led2Alpha.value, led3Alpha.value, led4Alpha.value, led5Alpha.value)
 
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
@@ -194,12 +194,11 @@ fun LedBumper(
         modifier = modifier
             .size(154.dp, 54.dp)
             .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
+                // Root RenderNode isolation
             }
-            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
                     val padX = 14.dp.toPx()
                     val padY = 8.dp.toPx()
 
@@ -253,6 +252,11 @@ fun LedBumper(
                 ambientColor = if (isRgbEnabled) neonColor else Color.Black,
                 spotColor = if (isRgbEnabled) neonColor else Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnimState.value
+                scaleY = scaleAnimState.value
+                translationY = pressOffsetYAnimState.value * density
+            }
             .clip(bumperShape)
             // Convex dark body
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
@@ -314,6 +318,7 @@ fun LedBumper(
                 )
             }
 
+            val ringBloomAlpha = ringBloomAlphaState.value
             // Outer bloom pass
             drawPath(
                 path = ringPath,

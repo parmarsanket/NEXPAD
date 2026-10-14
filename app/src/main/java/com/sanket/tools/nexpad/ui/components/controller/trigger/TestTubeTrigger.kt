@@ -88,17 +88,17 @@ fun TestTubeTrigger(
     val windowShape = remember { RoundedCornerShape(10.dp) }
 
     // Physical Spring Kinematics — standard console trigger spec
-    val scaleAnim by animateFloatAsState(
+    val scaleAnim = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "testtube_scale"
     )
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlpha = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "testtube_bloom"
     )
-    val fillProgress by animateFloatAsState(
+    val fillProgress = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0f,
         animationSpec = spring(dampingRatio = 0.72f, stiffness = 380f),
         label = "testtube_fill"
@@ -106,7 +106,7 @@ fun TestTubeTrigger(
 
     // Meniscus rocking cycle & bubble rising drive
     val infiniteTransition = rememberInfiniteTransition(label = "tube_effects")
-    val swayProgress by infiniteTransition.animateFloat(
+    val swayProgress = infiniteTransition.animateFloat(
         initialValue = -1f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
@@ -115,7 +115,7 @@ fun TestTubeTrigger(
         ),
         label = "meniscus_sway"
     )
-    val bubbleTime by infiniteTransition.animateFloat(
+    val bubbleTime = infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
@@ -158,10 +158,7 @@ fun TestTubeTrigger(
     Box(
         modifier = modifier
             .size(widthDp, heightDp)
-            .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
-            }
+            .graphicsLayer { /* Root RenderNode isolation */ }
             // Outer dynamic RGB aura
             .drawBehind {
                 if (isRgbEnabled) {
@@ -169,8 +166,8 @@ fun TestTubeTrigger(
                     val padY = 8.dp.toPx()
 
                     // 1. Elongated Test Tube Capsule Aura
-                    tubeCapsuleColors[0] = glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.35f else 0.15f))
-                    tubeCapsuleColors[1] = glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.70f else 0.40f))
+                    tubeCapsuleColors[0] = glowColor.copy(alpha = rgbBloomAlpha.value * (if (isPressed) 0.35f else 0.15f))
+                    tubeCapsuleColors[1] = glowColor.copy(alpha = rgbBloomAlpha.value * (if (isPressed) 0.70f else 0.40f))
                     tubeCapsuleColors[2] = Color.Transparent
                     drawRoundRect(
                         brush = Brush.verticalGradient(
@@ -184,11 +181,11 @@ fun TestTubeTrigger(
                     )
 
                     // 2. Rising Bioluminescent Liquid Reservoir Pool (surges with fillProgress)
-                    if (fillProgress > 0.05f) {
-                        val poolH = (size.height * 0.70f) * fillProgress
+                    if (fillProgress.value > 0.05f) {
+                        val poolH = (size.height * 0.70f) * fillProgress.value
                         val poolTop = size.height - poolH
-                        reservoirPoolColors[0] = glowColor.copy(alpha = rgbBloomAlpha * fillProgress * 0.85f)
-                        reservoirPoolColors[1] = glowColor.copy(alpha = rgbBloomAlpha * fillProgress * 0.30f)
+                        reservoirPoolColors[0] = glowColor.copy(alpha = rgbBloomAlpha.value * fillProgress.value * 0.85f)
+                        reservoirPoolColors[1] = glowColor.copy(alpha = rgbBloomAlpha.value * fillProgress.value * 0.30f)
                         reservoirPoolColors[2] = Color.Transparent
                         drawRoundRect(
                             brush = Brush.radialGradient(
@@ -204,32 +201,36 @@ fun TestTubeTrigger(
 
                     // 3. Effervescent Rising Micro-Bubble Glow Pips
                     if (isPressed) {
-                        val bubblePhase = bubbleTime
+                        val bubblePhase = bubbleTime.value
                         val bY1 = size.height * (1f - ((bubblePhase * 0.9f) % 1f))
-                        val bX1 = center.x - 14.dp.toPx() + (swayProgress * 3.dp.toPx())
+                        val bX1 = center.x - 14.dp.toPx() + (swayProgress.value * 3.dp.toPx())
                         val bY2 = size.height * (1f - (((bubblePhase + 0.4f) * 0.8f) % 1f))
-                        val bX2 = center.x + 14.dp.toPx() - (swayProgress * 2.dp.toPx())
+                        val bX2 = center.x + 14.dp.toPx() - (swayProgress.value * 2.dp.toPx())
 
                         drawCircle(
-                            color = Color.White.copy(alpha = rgbBloomAlpha * 0.85f),
+                            color = Color.White.copy(alpha = rgbBloomAlpha.value * 0.85f),
                             radius = 2.5.dp.toPx(),
                             center = Offset(bX1, bY1)
                         )
                         drawCircle(
-                            color = glowColor.copy(alpha = rgbBloomAlpha * 0.70f),
+                            color = glowColor.copy(alpha = rgbBloomAlpha.value * 0.70f),
                             radius = 2.dp.toPx(),
                             center = Offset(bX2, bY2)
                         )
                     }
                 }
             }
-            // RGB-coordinated shadow
+            // RGB-coordinated shadow placed before motion scaling to prevent CPU shadow tessellation
             .shadow(
                 elevation = if (isPressed) 2.dp else 6.dp,
                 shape = chassisShape,
                 ambientColor = if (isRgbEnabled) glowColor else Color.Black,
                 spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnim.value
+                scaleY = scaleAnim.value
+            }
             .clip(chassisShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
             .border(
@@ -255,8 +256,6 @@ fun TestTubeTrigger(
                 )
             }
     ) {
-        val currentFill = fillProgress
-
         // Layer 1: Recessed Glass Chamber & Dynamic Rising Liquid
         Box(
             modifier = Modifier
@@ -266,6 +265,7 @@ fun TestTubeTrigger(
                 .background(Color(0xFF07080A))
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
+                val currentFill = fillProgress.value
                 val w = size.width
                 val h = size.height
 
@@ -304,7 +304,7 @@ fun TestTubeTrigger(
                     )
 
                     // Swaying Meniscus Crest (.tt-liq::before)
-                    val swayOffsetPx = if (isPressed) swayProgress * 3.dp.toPx() else 0f
+                    val swayOffsetPx = if (isPressed) swayProgress.value * 3.dp.toPx() else 0f
                     val meniscusHeight = 6.dp.toPx()
                     drawOval(
                         color = glowColor,
@@ -323,9 +323,10 @@ fun TestTubeTrigger(
                         val bubbleOffsetsX = floatArrayOf(0.20f, 0.42f, 0.65f, 0.32f, 0.78f)
                         val bubbleSpeeds = floatArrayOf(1.0f, 1.4f, 0.9f, 1.2f, 1.5f)
                         val bubbleDelays = floatArrayOf(0.0f, 0.25f, 0.5f, 0.75f, 0.1f)
+                        val bTime = bubbleTime.value
 
                         for (i in bubbleOffsetsX.indices) {
-                            val progress = ((bubbleTime * bubbleSpeeds[i] + bubbleDelays[i]) % 1.0f)
+                            val progress = ((bTime * bubbleSpeeds[i] + bubbleDelays[i]) % 1.0f)
                             val bY = h - (progress * liquidHeight)
                             val wobble = sin(progress * 6.28f * 2f) * 1.8f
                             val bX = w * bubbleOffsetsX[i] + wobble
@@ -410,7 +411,10 @@ fun TestTubeTrigger(
             val label = displayLabel ?: key
             Text(
                 text = label,
-                color = glowColor.copy(alpha = 0.85f + currentFill * 0.15f),
+                color = glowColor,
+                modifier = Modifier.graphicsLayer {
+                    alpha = 0.85f + fillProgress.value * 0.15f
+                },
                 fontWeight = FontWeight.Bold,
                 fontSize = 11.sp,
                 textAlign = TextAlign.Center
@@ -443,7 +447,7 @@ fun TestTubeTrigger(
             val ringInset = 2.dp.toPx()
             val ringCorner = rPx - ringInset
             drawRoundRect(
-                color = glowColor.copy(alpha = rgbBloomAlpha * 0.55f),
+                color = glowColor.copy(alpha = rgbBloomAlpha.value * 0.55f),
                 topLeft = Offset(ringInset - 1f, ringInset - 1f),
                 size = Size(w - (ringInset - 1f) * 2f, h - (ringInset - 1f) * 2f),
                 cornerRadius = CornerRadius(ringCorner, ringCorner),

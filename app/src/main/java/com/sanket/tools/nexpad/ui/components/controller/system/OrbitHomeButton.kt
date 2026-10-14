@@ -187,13 +187,17 @@ fun OrbitHomeButton(
                         }
                     }
                 }
+
+                // Single-pass hardware drop shadow
+                val shadowColor = (if (isRgbEnabled) glowColor else Color.Black)
+                    .copy(alpha = if (isPressed) 0.35f else 0.55f)
+                val shadowOffsetY = if (isPressed) 1.dp.toPx() else 4.dp.toPx()
+                drawCircle(
+                    color = shadowColor,
+                    radius = size.minDimension / 2f,
+                    center = Offset(center.x, center.y + shadowOffsetY)
+                )
             }
-            .shadow(
-                elevation = if (isPressed) 2.dp else 6.dp,
-                shape = CircleShape,
-                ambientColor = if (isRgbEnabled) glowColor else Color.Black,
-                spotColor = if (isRgbEnabled) glowColor else Color.Black
-            )
             .graphicsLayer {
                 scaleX = scaleAnimState.value
                 scaleY = scaleAnimState.value
@@ -400,8 +404,14 @@ internal fun StaticOrbitHomeButton(
                         center = Offset(pipX, pipY)
                     )
                 }
+
+                // Single-pass hardware drop shadow
+                drawCircle(
+                    color = glowColor.copy(alpha = 0.55f),
+                    radius = size.minDimension / 2f,
+                    center = Offset(center.x, center.y + 4.dp.toPx())
+                )
             }
-            .shadow(6.dp, CircleShape, ambientColor = glowColor, spotColor = glowColor)
             .clip(CircleShape)
             .background(domeGradient)
             .border(

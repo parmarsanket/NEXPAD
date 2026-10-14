@@ -77,17 +77,17 @@ fun BloomTrigger(
     val buttonSize = 92.dp
 
     // Physical Spring Kinematics — standard console trigger spec
-    val scaleAnim by animateFloatAsState(
+    val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "bloom_scale"
     )
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "bloom_bloom"
     )
-    val fillProgress by animateFloatAsState(
+    val fillProgressState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0f,
         animationSpec = spring(dampingRatio = 0.72f, stiffness = 380f),
         label = "bloom_fill"
@@ -129,12 +129,13 @@ fun BloomTrigger(
         modifier = modifier
             .size(buttonSize)
             .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
+                // Root RenderNode isolation
             }
             // Outer dynamic RGB aura
             .drawBehind {
                 if (isRgbEnabled) {
+                    val fillProgress = fillProgressState.value
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
                     val baseR = size.minDimension * 0.5f
                     val bloomExpansion = 0.55f + 0.35f * fillProgress
                     val outerBloomR = size.minDimension * bloomExpansion
@@ -201,6 +202,10 @@ fun BloomTrigger(
                 ambientColor = if (isRgbEnabled) glowColor else Color.Black,
                 spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnimState.value
+                scaleY = scaleAnimState.value
+            }
             .clip(CircleShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
             .border(
@@ -227,10 +232,9 @@ fun BloomTrigger(
             },
         contentAlignment = Alignment.Center
     ) {
-        val currentFill = fillProgress
-
         // Layer 1: Radiant Expanding Light Bloom & Expanding Bloom Rim (.bloom & .bloom-rim)
         Canvas(modifier = Modifier.fillMaxSize()) {
+            val currentFill = fillProgressState.value
             val center = Offset(size.width / 2f, size.height / 2f)
             val maxRadius = size.minDimension / 2f - 4.dp.toPx()
 
@@ -317,15 +321,19 @@ fun BloomTrigger(
             val label = displayLabel ?: key
             Text(
                 text = label,
-                color = glowColor.copy(alpha = 0.85f + currentFill * 0.15f),
+                color = glowColor,
                 fontWeight = FontWeight.Bold,
                 fontSize = 12.sp,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                modifier = Modifier.graphicsLayer {
+                    alpha = 0.85f + fillProgressState.value * 0.15f
+                }
             )
         }
 
         // Layer 3: Specular Glass Lens & Outer Chassis Ring (.lx-lens & .lx-ring)
         Canvas(modifier = Modifier.fillMaxSize()) {
+            val rgbBloomAlpha = rgbBloomAlphaState.value
             val r = size.minDimension / 2f
             val center = Offset(size.width / 2f, size.height / 2f)
 

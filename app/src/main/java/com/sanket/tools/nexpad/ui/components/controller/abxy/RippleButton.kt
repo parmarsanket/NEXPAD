@@ -72,17 +72,17 @@ fun RippleButton(
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
-    val scaleAnim by animateFloatAsState(
+    val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "rip_scale"
     )
-    val pressOffsetYAnim by animateFloatAsState(
+    val pressOffsetYAnimState = animateFloatAsState(
         targetValue = if (isPressed) 2f else 0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "rip_depth"
     )
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "rip_rgb_bloom"
@@ -170,8 +170,12 @@ fun RippleButton(
     Box(
         modifier = modifier
             .size(80.dp)
+            .graphicsLayer {
+                // Root RenderNode isolation
+            }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
                     // 1. Acoustic shockwave epicenter bloom
                     val epicenterRadius = size.minDimension * 0.95f
                     bloomColorsList[0] = effectiveColor.copy(alpha = rgbBloomAlpha * 0.45f)
@@ -218,17 +222,17 @@ fun RippleButton(
                 drawRipple(ring2Progress.value)
                 drawRipple(ring3Progress.value)
             }
-            .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
-            }
-            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .shadow(
                 elevation = if (isPressed) 1.dp else 4.dp,
                 shape = CircleShape,
                 ambientColor = if (isRgbEnabled) effectiveColor else Color.Black,
                 spotColor = if (isRgbEnabled) effectiveColor else Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnimState.value
+                scaleY = scaleAnimState.value
+                translationY = pressOffsetYAnimState.value * density
+            }
             .clip(CircleShape)
             .background(baseDomeGradient)
             .border(

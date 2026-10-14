@@ -290,13 +290,17 @@ fun RealisticSystemButton(
                     drawLine(auraColor.copy(alpha = pipAlpha), Offset(center.x - pipEnd, center.y), Offset(center.x - pipStart, center.y), strokeWidth = 2f)
                     drawLine(auraColor.copy(alpha = pipAlpha), Offset(center.x + pipStart, center.y), Offset(center.x + pipEnd, center.y), strokeWidth = 2f)
                 }
+
+                // Single-pass hardware drop shadow
+                val shadowColor = (if (isRgbEnabled) auraColor else Color.Black)
+                    .copy(alpha = if (isPressed) 0.35f else 0.55f)
+                val shadowOffsetY = if (isPressed) 1.dp.toPx() else 4.dp.toPx()
+                drawCircle(
+                    color = shadowColor,
+                    radius = size.minDimension / 2f,
+                    center = Offset(center.x, center.y + shadowOffsetY)
+                )
             }
-            .shadow(
-                elevation = if (isPressed) 2.dp else 6.dp,
-                shape = CircleShape,
-                ambientColor = if (isRgbEnabled) auraColor else Color.Black,
-                spotColor = if (isRgbEnabled) auraColor else Color.Black
-            )
             .graphicsLayer {
                 val s = scaleAnimState.value
                 scaleX = s

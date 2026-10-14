@@ -63,29 +63,28 @@ fun EclipseButton(
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
-    val scaleAnim by animateFloatAsState(
+    val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "ecl_scale"
     )
-    val pressOffsetYAnim by animateFloatAsState(
+    val pressOffsetYAnimState = animateFloatAsState(
         targetValue = if (isPressed) 2f else 0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "ecl_depth"
     )
-    // Dark disc: translate(-5.1dp, -5.1dp) in default state, slides to (-20.5dp, -20.5dp) on press
-    val slideOffset by animateFloatAsState(
+    val slideOffsetState = animateFloatAsState(
         targetValue = if (isPressed) -20.5f else -5.1f,
         animationSpec = spring(dampingRatio = 0.65f, stiffness = 380f),
         label = "ecl_slide"
     )
     // Corona: opacity 0.90 at rest, blooms to 1.0 on press
-    val coronaAlpha by animateFloatAsState(
+    val coronaAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.90f,
         animationSpec = tween(durationMillis = 200),
         label = "ecl_corona"
     )
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "ecl_rgb_bloom"
@@ -160,12 +159,12 @@ fun EclipseButton(
         modifier = modifier
             .size(80.dp)
             .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
+                // Root RenderNode isolation
             }
-            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
+                    val slideOffset = slideOffsetState.value
                     // 1. Asymmetric Solar Corona & Penumbra shifted opposite to moon slide
                     val penumbraCenter = Offset(
                         center.x - slideOffset * 0.55f,
@@ -232,6 +231,11 @@ fun EclipseButton(
                 ambientColor = if (isRgbEnabled) effectiveColor else Color.Black,
                 spotColor = if (isRgbEnabled) effectiveColor else Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnimState.value
+                scaleY = scaleAnimState.value
+                translationY = pressOffsetYAnimState.value * density
+            }
             .clip(CircleShape)
             // .lx-body background #040405
             .background(Color(0xFF040405))
@@ -257,6 +261,7 @@ fun EclipseButton(
         // ── 1. SOLAR CORONA LAYER (.e-light) ──
         // Always present at bottom-right (70%, 70%)
         Canvas(modifier = Modifier.fillMaxSize()) {
+            val coronaAlpha = coronaAlphaState.value
             val w = size.width
             val h = size.height
             val coronaCenter = Offset(w * 0.70f, h * 0.70f)
@@ -281,7 +286,10 @@ fun EclipseButton(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .offset { IntOffset(slideOffset.dp.roundToPx(), slideOffset.dp.roundToPx()) }
+                .offset {
+                    val s = (slideOffsetState.value * density).roundToInt()
+                    IntOffset(s, s)
+                }
                 .shadow(
                     elevation = 10.dp,
                     shape = CircleShape,

@@ -111,21 +111,21 @@ fun FluxJoystick(
     }
 
     // Tactile micro-compression: scale down to 0.97 on press (matches --cs: 0.97)
-    val capScaleAnim by animateFloatAsState(
+    val capScaleAnim = animateFloatAsState(
         targetValue = if (isPressed) 0.97f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "flux_cap_scale"
     )
 
     // Dynamic neon bloom intensity on cap ring during active touch
-    val capBloomAlpha by animateFloatAsState(
+    val capBloomAlpha = animateFloatAsState(
         targetValue = if (isDragging || isPressed) 1.0f else 0.70f,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
         label = "flux_cap_bloom"
     )
 
     // Ambient glow bloom behind housing
-    val ambientBloomAlpha by animateFloatAsState(
+    val ambientBloomAlpha = animateFloatAsState(
         targetValue = if (isDragging || isPressed) 0.55f else 0.28f,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
         label = "flux_ambient_bloom"
@@ -174,18 +174,6 @@ fun FluxJoystick(
     val stickKey = remember(isLeft) { if (isLeft) "LSB" else "RSB" }
     val glyphLabel = remember(isLeft) { if (isLeft) "L" else "R" }
 
-    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
-    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
-    val effOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
-    val effOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
-
-    val deflectionFraction = (hypot(effOffsetX, effOffsetY) / maxTravelPx).coerceIn(0f, 1f)
-    val rgbBloomAlpha by animateFloatAsState(
-        targetValue = 0.40f + 0.55f * deflectionFraction,
-        animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
-        label = "flux_joystick_bloom"
-    )
-
     val strokeMagneticFlare = remember(density) { androidx.compose.ui.graphics.drawscope.Stroke(width = 8f * density) }
     val strokeElectricArc = remember { androidx.compose.ui.graphics.drawscope.Stroke(width = 2.5f) }
     val coreBloomColors = remember(glowColor) {
@@ -198,17 +186,21 @@ fun FluxJoystick(
     Box(
         modifier = modifier
             .size(150.dp)
+            .graphicsLayer { /* Root RenderNode isolation */ }
             .drawBehind {
                 if (isRgbEnabled) {
-                    val fluxRadius = size.minDimension * 0.52f
-                    val curX = effOffsetX
-                    val curY = effOffsetY
+                    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+                    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                    val curX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
+                    val curY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
                     val curDist = hypot(curX, curY)
                     val defFraction = (curDist / maxTravelPx).coerceIn(0f, 1f)
+                    val dynRgbBloomAlpha = 0.40f + 0.55f * defFraction
+                    val fluxRadius = size.minDimension * 0.52f
 
                     // 1. Ambient reactor plasma core bloom
-                    coreBloomColors[0] = glowColor.copy(alpha = rgbBloomAlpha * 0.40f)
-                    coreBloomColors[1] = glowColor.copy(alpha = rgbBloomAlpha * 0.15f)
+                    coreBloomColors[0] = glowColor.copy(alpha = dynRgbBloomAlpha * 0.40f)
+                    coreBloomColors[1] = glowColor.copy(alpha = dynRgbBloomAlpha * 0.15f)
                     coreBloomColors[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
@@ -484,15 +476,17 @@ fun FluxJoystick(
             },
         contentAlignment = Alignment.Center
     ) {
-        val curOffsetX = effOffsetX
-        val curOffsetY = effOffsetY
-        val curDist = hypot(curOffsetX, curOffsetY)
-        val curMagnitude = (curDist / maxTravelPx).coerceIn(0f, 1f)
-        val curAngleRad = atan2(curOffsetY, curOffsetX)
-        val curAngleDeg = Math.toDegrees(curAngleRad.toDouble()).toFloat()
-
         // Socket Housing Canvas: Ticks, Directional Gate Arc, Outer Neon Ring, Drop Shadow
         Canvas(modifier = Modifier.fillMaxSize()) {
+            val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+            val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+            val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
+            val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
+            val curDist = hypot(curOffsetX, curOffsetY)
+            val curMagnitude = (curDist / maxTravelPx).coerceIn(0f, 1f)
+            val curAngleRad = atan2(curOffsetY, curOffsetX)
+            val curAngleDeg = Math.toDegrees(curAngleRad.toDouble()).toFloat()
+
             val w = size.width
             val h = size.height
             val r = size.minDimension / 2f
@@ -544,11 +538,11 @@ fun FluxJoystick(
                 val gateRadius = r - 5.dp.toPx()
                 val gateSweep = 84f
                 val gateStart = curAngleDeg - 42f
-                val gateAlpha = curMagnitude.coerceIn(0f, 1f) * 0.95f
+                val gateAlpha = (curMagnitude * 0.95f).coerceIn(0f, 1f)
 
                 // Outer beam bloom
                 drawArc(
-                    color = glowColor.copy(alpha = gateAlpha * 0.40f),
+                    color = glowColor.copy(alpha = (gateAlpha * 0.40f).coerceIn(0f, 1f)),
                     startAngle = gateStart,
                     sweepAngle = gateSweep,
                     useCenter = false,
@@ -558,7 +552,7 @@ fun FluxJoystick(
                 )
                 // Core beam
                 drawArc(
-                    color = glowColor.copy(alpha = gateAlpha),
+                    color = glowColor.copy(alpha = gateAlpha.coerceIn(0f, 1f)),
                     startAngle = gateStart + 10f,
                     sweepAngle = gateSweep - 20f,
                     useCenter = false,
@@ -587,11 +581,12 @@ fun FluxJoystick(
         // Moving Thumbstick Cap (.lx-cap): 96dp circle
         Box(
             modifier = Modifier
-                .offset { IntOffset(curOffsetX.roundToInt(), curOffsetY.roundToInt()) }
-                .size(96.dp)
-                .graphicsLayer {
-                    scaleX = capScaleAnim
-                    scaleY = capScaleAnim
+                .offset {
+                    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+                    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                    val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
+                    val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
+                    IntOffset(curOffsetX.roundToInt(), curOffsetY.roundToInt())
                 }
                 .shadow(
                     elevation = 10.dp,
@@ -599,6 +594,11 @@ fun FluxJoystick(
                     ambientColor = if (isRgbEnabled) glowColor.copy(alpha = 0.5f) else Color.Black,
                     spotColor = if (isRgbEnabled) glowColor else Color.Black
                 )
+                .graphicsLayer {
+                    scaleX = capScaleAnim.value
+                    scaleY = capScaleAnim.value
+                }
+                .size(96.dp)
                 .clip(CircleShape)
                 .background(capDomeGradient)
                 .border(
@@ -609,6 +609,10 @@ fun FluxJoystick(
             contentAlignment = Alignment.Center
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
+                val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+                val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
+                val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
                 val capW = size.width
                 val capH = size.height
                 val capR = size.minDimension / 2f
@@ -652,19 +656,19 @@ fun FluxJoystick(
                 val capRingRadius = capR - 13.dp.toPx()
                 // Outer glow bloom
                 drawCircle(
-                    color = glowColor.copy(alpha = capBloomAlpha * 0.35f),
+                    color = glowColor.copy(alpha = (capBloomAlpha.value * 0.35f).coerceIn(0f, 1f)),
                     radius = capRingRadius,
                     style = Stroke(width = if (isDragging || isPressed) 7.dp.toPx() else 4.dp.toPx())
                 )
                 // Inner inset glow bloom
                 drawCircle(
-                    color = glowColor.copy(alpha = capBloomAlpha * 0.20f),
+                    color = glowColor.copy(alpha = (capBloomAlpha.value * 0.20f).coerceIn(0f, 1f)),
                     radius = capRingRadius - 2.dp.toPx(),
                     style = Stroke(width = if (isDragging || isPressed) 5.dp.toPx() else 3.dp.toPx())
                 )
                 // Core crisp ring
                 drawCircle(
-                    color = glowColor.copy(alpha = capBloomAlpha * 0.85f),
+                    color = glowColor.copy(alpha = (capBloomAlpha.value * 0.85f).coerceIn(0f, 1f)),
                     radius = capRingRadius,
                     style = Stroke(width = 2.dp.toPx())
                 )
@@ -858,13 +862,14 @@ fun FluxStickButton(
     displayLabel: String? = null
 ) {
     var isPressed by remember { mutableStateOf(false) }
+    val density = LocalDensity.current.density
 
-    val scaleAnim by animateFloatAsState(
+    val scaleAnim = animateFloatAsState(
         targetValue = if (isPressed) 0.89f else 1.0f,
         animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
         label = "flux_stick_btn_scale"
     )
-    val pressOffsetYAnim by animateFloatAsState(
+    val pressOffsetYAnim = animateFloatAsState(
         targetValue = if (isPressed) 3.5f else 0f,
         animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
         label = "flux_stick_btn_offset"
@@ -906,7 +911,7 @@ fun FluxStickButton(
         )
     }
 
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlpha = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "flux_stick_btn_bloom"
@@ -924,18 +929,15 @@ fun FluxStickButton(
     Box(
         modifier = modifier
             .size(70.dp)
-            .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
-            }
-            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
+            .graphicsLayer { /* Root RenderNode isolation */ }
+            .offset { IntOffset(0, (pressOffsetYAnim.value * density).roundToInt()) }
             .drawBehind {
                 if (isRgbEnabled) {
                     val coreR = size.minDimension * (if (isPressed) 1.05f else 0.85f)
                     // 1. Turbine core halo
-                    btnCoreBloomStops[0] = 0.00f to (if (isPressed) Color.White else glowColor).copy(alpha = rgbBloomAlpha * 0.65f)
-                    btnCoreBloomStops[1] = 0.35f to glowColor.copy(alpha = rgbBloomAlpha * 0.30f)
-                    btnCoreBloomStops[2] = 0.75f to glowColor.copy(alpha = rgbBloomAlpha * 0.10f)
+                    btnCoreBloomStops[0] = 0.00f to (if (isPressed) Color.White else glowColor).copy(alpha = rgbBloomAlpha.value * 0.65f)
+                    btnCoreBloomStops[1] = 0.35f to glowColor.copy(alpha = rgbBloomAlpha.value * 0.30f)
+                    btnCoreBloomStops[2] = 0.75f to glowColor.copy(alpha = rgbBloomAlpha.value * 0.10f)
                     btnCoreBloomStops[3] = 1.00f to Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
@@ -970,6 +972,10 @@ fun FluxStickButton(
                 ambientColor = if (isRgbEnabled) glowColor else Color.Black,
                 spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnim.value
+                scaleY = scaleAnim.value
+            }
             .clip(CircleShape)
             .background(capDomeGradient)
             .border(

@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -58,26 +59,27 @@ fun CapsulesButton(
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
-    val scaleAnim by animateFloatAsState(
+    val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "caps_scale"
     )
-    val pressOffsetYAnim by animateFloatAsState(
+    val pressOffsetYAnimState = animateFloatAsState(
         targetValue = if (isPressed) 2f else 0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "caps_depth"
     )
-    val floodAlpha by animateFloatAsState(
+    val floodAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 0.5f else 0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "caps_flood"
     )
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "caps_rgb_bloom"
     )
+    val density = LocalDensity.current.density
 
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
@@ -90,6 +92,7 @@ fun CapsulesButton(
     val pillW = if (isVertical) 52.dp else 84.dp
     val pillH = if (isVertical) 84.dp else 52.dp
 
+    val floodAlpha = floodAlphaState.value
     // Flood gradient direction based on key
     val floodBrush = when (key.uppercase()) {
         ControlKey.Y.key -> Brush.verticalGradient(
@@ -129,7 +132,10 @@ fun CapsulesButton(
 
     Box(
         modifier = modifier
-            .size(80.dp),
+            .size(80.dp)
+            .graphicsLayer {
+                // Root RenderNode isolation
+            },
         contentAlignment = Alignment.Center
     ) {
         Box(
@@ -138,6 +144,7 @@ fun CapsulesButton(
                 .height(pillH)
                 .drawBehind {
                     if (isRgbEnabled) {
+                        val rgbBloomAlpha = rgbBloomAlphaState.value
                         val pad = 12.dp.toPx()
                         val capR = 26.dp.toPx()
 
@@ -184,17 +191,17 @@ fun CapsulesButton(
                         )
                     }
                 }
-                .graphicsLayer {
-                    scaleX = scaleAnim
-                    scaleY = scaleAnim
-                }
-                .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
                 .shadow(
                     elevation = if (isPressed) 1.dp else 4.dp,
                     shape = pillShape,
                     spotColor = if (isRgbEnabled) effectiveColor else Color.Black,
                     ambientColor = if (isRgbEnabled) effectiveColor else Color.Black
                 )
+                .graphicsLayer {
+                    scaleX = scaleAnimState.value
+                    scaleY = scaleAnimState.value
+                    translationY = pressOffsetYAnimState.value * density
+                }
                 .clip(pillShape)
                 .background(domeBrush)
                 .background(floodBrush)

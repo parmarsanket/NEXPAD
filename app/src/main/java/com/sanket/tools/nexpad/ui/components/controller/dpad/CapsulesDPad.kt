@@ -114,22 +114,22 @@ fun CapsuleKey(
     isRgbEnabled: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val scaleAnim by animateFloatAsState(
+    val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
         animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
         label = "capsule_key_scale_$direction"
     )
-    val pressOffsetYAnim by animateFloatAsState(
+    val pressOffsetYAnimState = animateFloatAsState(
         targetValue = if (isPressed) 2.0f else 0f,
         animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
         label = "capsule_key_offset_$direction"
     )
-    val ringBloomAlpha by animateFloatAsState(
+    val ringBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.70f,
         animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
         label = "capsule_key_ring_$direction"
     )
-    val keyBloomAlpha by animateFloatAsState(
+    val keyBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "capsule_key_rgb_bloom_$direction"
@@ -164,6 +164,7 @@ fun CapsuleKey(
 
     val capsuleWidth = if (isVertical) 46.dp else 68.dp
     val capsuleHeight = if (isVertical) 68.dp else 46.dp
+    val density = LocalDensity.current.density
 
     val btnBloomColors = remember(glowColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
@@ -172,8 +173,12 @@ fun CapsuleKey(
     Box(
         modifier = modifier
             .size(capsuleWidth, capsuleHeight)
+            .graphicsLayer {
+                // 1. Root RenderNode isolation
+            }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val keyBloomAlpha = keyBloomAlphaState.value
                     val pad = 6.dp.toPx()
                     btnBloomColors[0] = glowColor.copy(alpha = keyBloomAlpha * 0.50f)
                     btnBloomColors[1] = glowColor.copy(alpha = keyBloomAlpha * 0.20f)
@@ -190,17 +195,17 @@ fun CapsuleKey(
                     )
                 }
             }
-            .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
-            }
-            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .shadow(
                 elevation = if (isPressed) 2.dp else 6.dp,
                 shape = capsuleShape,
                 ambientColor = if (isRgbEnabled) glowColor else Color.Black,
                 spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnimState.value
+                scaleY = scaleAnimState.value
+                translationY = pressOffsetYAnimState.value * density
+            }
             .clip(capsuleShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
             .border(
@@ -279,7 +284,7 @@ fun CapsuleKey(
             )
             // Crisp core ring
             drawRoundRect(
-                color = glowColor.copy(alpha = ringBloomAlpha),
+                color = glowColor.copy(alpha = ringBloomAlphaState.value),
                 topLeft = Offset(ringInset, ringInset),
                 size = Size(ringW, ringH),
                 cornerRadius = androidx.compose.ui.geometry.CornerRadius(ringCorner, ringCorner),
@@ -365,12 +370,12 @@ fun CapsulesDPad(
     val isAnyPressed = currentlyPressed.isNotEmpty()
 
     // 80ms ease for 3D physical rocker tilt
-    val rxAnim by animateFloatAsState(
+    val rxAnimState = animateFloatAsState(
         targetValue = targetRx,
         animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
         label = "capsules_tilt_rx"
     )
-    val ryAnim by animateFloatAsState(
+    val ryAnimState = animateFloatAsState(
         targetValue = targetRy,
         animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
         label = "capsules_tilt_ry"
@@ -381,7 +386,7 @@ fun CapsulesDPad(
         if (isRgbEnabled) Color(0xFFB58CFF) else Color(0xFFB58CFF)
     }
 
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isAnyPressed) 0.95f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "capsules_rgb_bloom"
@@ -415,8 +420,12 @@ fun CapsulesDPad(
     Box(
         modifier = modifier
             .size(170.dp)
+            .graphicsLayer {
+                // Root RenderNode isolation
+            }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
                     val w = size.width
                     val h = size.height
 
@@ -516,8 +525,8 @@ fun CapsulesDPad(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    rotationX = rxAnim
-                    rotationY = ryAnim
+                    rotationX = rxAnimState.value
+                    rotationY = ryAnimState.value
                     cameraDistance = 12f * density
                 }
         ) {

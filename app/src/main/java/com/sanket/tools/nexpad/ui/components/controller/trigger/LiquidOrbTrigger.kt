@@ -74,19 +74,19 @@ fun LiquidOrbTrigger(
     val isLeft = key.uppercase() == NexpadKeys.LT
 
     // Physical Spring Kinematics
-    val scaleAnim by animateFloatAsState(
+    val scaleAnim = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "liquid_orb_scale"
     )
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlpha = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "liquid_orb_rgb_bloom"
     )
     // Rising liquid fill level: starts at 14% ambient fluid, capped at 80% (0.80f) on full pull
     // so the fluid meniscus remains clearly visible rocking beneath the top dome!
-    val fillProgress by animateFloatAsState(
+    val fillProgress = animateFloatAsState(
         targetValue = if (isPressed) 0.80f else 0.14f,
         animationSpec = spring(dampingRatio = 0.72f, stiffness = 380f),
         label = "liquid_orb_fill"
@@ -94,7 +94,7 @@ fun LiquidOrbTrigger(
 
     // Fluid Meniscus Sway Animation (simulating fluid surface rocking back and forth)
     val infiniteTransition = rememberInfiniteTransition(label = "liquid_sway")
-    val swayOffsetX by infiniteTransition.animateFloat(
+    val swayOffsetX = infiniteTransition.animateFloat(
         initialValue = -6f,
         targetValue = 6f,
         animationSpec = infiniteRepeatable(
@@ -103,7 +103,7 @@ fun LiquidOrbTrigger(
         ),
         label = "sway_offset_x"
     )
-    val swayScaleY by infiniteTransition.animateFloat(
+    val swayScaleY = infiniteTransition.animateFloat(
         initialValue = 0.70f,
         targetValue = 1.30f,
         animationSpec = infiniteRepeatable(
@@ -170,68 +170,69 @@ fun LiquidOrbTrigger(
     Box(
         modifier = modifier
             .size(92.dp, 92.dp)
-            .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
-            }
+            .graphicsLayer { /* Root RenderNode isolation */ }
             // Outer dynamic RGB aura
             .drawBehind {
                 if (isRgbEnabled) {
                     val baseR = size.minDimension * 0.5f
 
                     // 1. Buoyant bottom-weighted fluid reservoir pool
-                    val fluidH = size.height * fillProgress
+                    val fluidH = size.height * fillProgress.value
                     val poolCenterY = size.height - fluidH * 0.45f
-                    val dropletW = size.width * (0.80f + 0.15f * swayScaleY)
+                    val dropletW = size.width * (0.80f + 0.15f * swayScaleY.value)
                     val dropletH = fluidH + 16.dp.toPx()
 
-                    poolBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.65f else 0.35f))
-                    poolBloomColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.18f)
+                    poolBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha.value * (if (isPressed) 0.65f else 0.35f))
+                    poolBloomColors[1] = neonColor.copy(alpha = rgbBloomAlpha.value * 0.18f)
                     poolBloomColors[2] = Color.Transparent
                     drawOval(
                         brush = Brush.radialGradient(
                             colors = poolBloomColors,
-                            center = Offset(center.x + swayOffsetX, poolCenterY),
+                            center = Offset(center.x + swayOffsetX.value, poolCenterY),
                             radius = size.minDimension * 0.65f
                         ),
-                        topLeft = Offset(center.x - dropletW / 2f + swayOffsetX, poolCenterY - dropletH / 2f),
+                        topLeft = Offset(center.x - dropletW / 2f + swayOffsetX.value, poolCenterY - dropletH / 2f),
                         size = Size(dropletW, dropletH)
                     )
 
                     // 2. Liquid surface tension meniscus wave halo
                     val meniscusY = size.height - fluidH
                     val meniscusW = size.width * 0.70f
-                    val meniscusH = 10.dp.toPx() * swayScaleY
+                    val meniscusH = 10.dp.toPx() * swayScaleY.value
 
-                    meniscusColors[0] = Color.White.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.80f else 0.40f))
-                    meniscusColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.60f)
+                    meniscusColors[0] = Color.White.copy(alpha = rgbBloomAlpha.value * (if (isPressed) 0.80f else 0.40f))
+                    meniscusColors[1] = neonColor.copy(alpha = rgbBloomAlpha.value * 0.60f)
                     meniscusColors[2] = Color.Transparent
                     drawOval(
                         brush = Brush.radialGradient(
                             colors = meniscusColors,
-                            center = Offset(center.x + swayOffsetX, meniscusY),
+                            center = Offset(center.x + swayOffsetX.value, meniscusY),
                             radius = meniscusW * 0.50f
                         ),
-                        topLeft = Offset(center.x - meniscusW / 2f + swayOffsetX, meniscusY - meniscusH / 2f),
+                        topLeft = Offset(center.x - meniscusW / 2f + swayOffsetX.value, meniscusY - meniscusH / 2f),
                         size = Size(meniscusW, meniscusH)
                     )
 
                     // 3. Ambient glass orb containment corona ring
                     drawCircle(
-                        color = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.70f else 0.35f)),
+                        color = neonColor.copy(alpha = rgbBloomAlpha.value * (if (isPressed) 0.70f else 0.35f)),
                         radius = baseR + 3.dp.toPx(),
                         center = center,
                         style = strokeCorona
                     )
                 }
             }
-            // RGB-coordinated shadow
+            // RGB-coordinated shadow placed before motion scaling to prevent CPU shadow tessellation
             .shadow(
                 elevation = if (isPressed) 2.dp else 6.dp,
                 shape = triggerShape,
                 ambientColor = if (isRgbEnabled) neonColor else Color.Black,
                 spotColor = if (isRgbEnabled) neonColor else Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnim.value
+                scaleY = scaleAnim.value
+            }
             .clip(triggerShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
             .border(
@@ -286,7 +287,7 @@ fun LiquidOrbTrigger(
             val ringInset = 3.dp.toPx()
             val ringRadius = (w / 2f) - ringInset
             drawCircle(
-                color = neonColor.copy(alpha = rgbBloomAlpha * 0.55f),
+                color = neonColor.copy(alpha = rgbBloomAlpha.value * 0.55f),
                 radius = ringRadius,
                 style = Stroke(width = 4.dp.toPx())
             )
@@ -329,7 +330,7 @@ fun LiquidOrbTrigger(
                 // RISING FLUID BODY (.liq)
                 // ---------------------------------------------------------------------
                 val chamberDiameter = chamberRadius * 2f
-                val liquidHeight = chamberDiameter * fillProgress
+                val liquidHeight = chamberDiameter * fillProgress.value
                 val liquidTopY = (chamberCenter.y + chamberRadius) - liquidHeight
                 val liquidBottomY = chamberCenter.y + chamberRadius
 
@@ -365,8 +366,8 @@ fun LiquidOrbTrigger(
                 // ---------------------------------------------------------------------
                 // GLOWING MENISCUS SURFACE CREST (.liq::before with sway animation)
                 // ---------------------------------------------------------------------
-                val activeSwayX = if (isPressed) swayOffsetX.dp.toPx() else 0f
-                val activeSwayScaleY = if (isPressed) swayScaleY else 1.0f
+                val activeSwayX = if (isPressed) swayOffsetX.value.dp.toPx() else 0f
+                val activeSwayScaleY = if (isPressed) swayScaleY.value else 1.0f
                 val meniscusWidth = chamberDiameter * 1.30f
                 val meniscusHeight = 11.dp.toPx() * activeSwayScaleY
 

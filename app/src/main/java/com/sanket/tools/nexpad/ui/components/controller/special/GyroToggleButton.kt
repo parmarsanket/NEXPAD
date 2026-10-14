@@ -70,17 +70,17 @@ fun GyroToggleButton(
     var isPressed by remember { mutableStateOf(false) }
     val isGyroEnabled by viewModel.isGyroEnabled.collectAsState()
 
-    val scaleAnim by animateFloatAsState(
+    val scaleAnim = animateFloatAsState(
         targetValue = if (isPressed) 0.94f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "gyro_scale"
     )
-    val pressOffsetYAnim by animateFloatAsState(
+    val pressOffsetYAnim = animateFloatAsState(
         targetValue = if (isPressed) 2.5f else 0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "gyro_depth"
     )
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlpha = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else if (isGyroEnabled) 0.50f else 0.15f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "gyro_bloom"
@@ -154,6 +154,9 @@ fun GyroToggleButton(
 
     Box(
         modifier = modifier
+            .graphicsLayer {
+                // Root RenderNode isolation
+            }
             .size(76.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -161,15 +164,22 @@ fun GyroToggleButton(
         Box(
             modifier = Modifier
                 .size(66.dp)
-                .offset { IntOffset(0, pressOffsetYAnim.roundToInt()) }
+                .shadow(
+                    elevation = if (isPressed) 1.dp else if (isGyroEnabled) 6.dp else 2.dp,
+                    shape = CircleShape,
+                    ambientColor = if (isRgbEnabled && isGyroEnabled) activeAccentColor else Color.Black,
+                    spotColor = if (isRgbEnabled && isGyroEnabled) activeAccentColor else Color.Black
+                )
+                .offset { IntOffset(0, pressOffsetYAnim.value.roundToInt()) }
                 .graphicsLayer {
-                    scaleX = scaleAnim
-                    scaleY = scaleAnim
+                    scaleX = scaleAnim.value
+                    scaleY = scaleAnim.value
                 }
                 .drawBehind {
                     if (isRgbEnabled && isGyroEnabled) {
-                        bloomColorsList[0] = activeAccentColor.copy(alpha = rgbBloomAlpha * 0.45f)
-                        bloomColorsList[1] = activeAccentColor.copy(alpha = rgbBloomAlpha * 0.15f)
+                        val bloomAlpha = rgbBloomAlpha.value
+                        bloomColorsList[0] = activeAccentColor.copy(alpha = bloomAlpha * 0.45f)
+                        bloomColorsList[1] = activeAccentColor.copy(alpha = bloomAlpha * 0.15f)
                         bloomColorsList[2] = Color.Transparent
                         drawCircle(
                             brush = Brush.radialGradient(
@@ -181,12 +191,6 @@ fun GyroToggleButton(
                         )
                     }
                 }
-                .shadow(
-                    elevation = if (isPressed) 1.dp else if (isGyroEnabled) 6.dp else 2.dp,
-                    shape = CircleShape,
-                    ambientColor = if (isRgbEnabled && isGyroEnabled) activeAccentColor else Color.Black,
-                    spotColor = if (isRgbEnabled && isGyroEnabled) activeAccentColor else Color.Black
-                )
                 .clip(CircleShape)
                 .background(domeBrush)
                 .border(
@@ -322,7 +326,11 @@ fun StaticGyroToggleButton(
     }
 
     Box(
-        modifier = modifier.size(76.dp),
+        modifier = modifier
+            .graphicsLayer {
+                // Root RenderNode isolation
+            }
+            .size(76.dp),
         contentAlignment = Alignment.Center
     ) {
         Box(

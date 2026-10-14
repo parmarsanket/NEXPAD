@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,16 +40,19 @@ fun GamepadButton(
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
-    val scaleAnim by animateFloatAsState(
+    val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.92f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "gp_btn_scale"
     )
-    val bloomAlpha by animateFloatAsState(
+    val bloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 0.40f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "gp_btn_bloom"
     )
+
+    val currentOnVibrate by rememberUpdatedState(onVibrate)
+    val currentViewModel by rememberUpdatedState(viewModel)
 
     val primaryColor = MaterialTheme.colorScheme.primary
     val bloomStops = remember(primaryColor) {
@@ -65,10 +69,10 @@ fun GamepadButton(
             .padding(4.dp)
             .size(64.dp)
             .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
+                // Root RenderNode isolation
             }
             .drawBehind {
+                val bloomAlpha = bloomAlphaState.value
                 val auraRadius = size.minDimension * (if (isPressed) 1.05f else 0.90f)
                 // Dual-layer primary neon pulse in drawBehind
                 bloomStops[0] = 0.00f to (if (isPressed) Color.White else primaryColor).copy(alpha = bloomAlpha * 0.65f)
@@ -91,6 +95,10 @@ fun GamepadButton(
                 spotColor = primaryColor,
                 ambientColor = Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnimState.value
+                scaleY = scaleAnimState.value
+            }
             .clip(CircleShape)
             .background(
                 color = if (isPressed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
@@ -99,12 +107,12 @@ fun GamepadButton(
             .pointerInput(isConnected) {
                 detectTapGestures(
                     onPress = {
-                        onVibrate()
+                        currentOnVibrate()
                         isPressed = true
-                        viewModel.updateButton(text, true)
+                        currentViewModel.updateButton(text, true)
                         tryAwaitRelease()
                         isPressed = false
-                        viewModel.updateButton(text, false)
+                        currentViewModel.updateButton(text, false)
                     }
                 )
             },

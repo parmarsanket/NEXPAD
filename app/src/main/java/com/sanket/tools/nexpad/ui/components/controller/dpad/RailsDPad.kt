@@ -143,80 +143,80 @@ fun RailsDPad(
     val isAnyPressed = currentlyPressed.isNotEmpty()
 
     // 80ms ease for 3D physical rocker tilt
-    val rxAnim by animateFloatAsState(
+    val rxAnimState = animateFloatAsState(
         targetValue = targetRx,
         animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
         label = "rails_tilt_rx"
     )
-    val ryAnim by animateFloatAsState(
+    val ryAnimState = animateFloatAsState(
         targetValue = targetRy,
         animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
         label = "rails_tilt_ry"
     )
 
     // Plunging spring kinematics for overall stage
-    val stageScaleAnim by animateFloatAsState(
+    val stageScaleAnimState = animateFloatAsState(
         targetValue = if (isAnyPressed) 0.95f else 1.0f,
         animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
         label = "rails_stage_scale"
     )
-    val stageOffsetYAnim by animateFloatAsState(
+    val stageOffsetYAnimState = animateFloatAsState(
         targetValue = if (isAnyPressed) 2.0f else 0f,
         animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
         label = "rails_stage_offset_y"
     )
 
     // Sliding Puck Spring Kinematics (dampingRatio 0.55, stiffness 380 matches cubic-bezier(.3, 1.5, .5, 1))
-    val puckOffsetXAnim by animateFloatAsState(
+    val puckOffsetXAnimState = animateFloatAsState(
         targetValue = targetPuckX,
         animationSpec = spring(dampingRatio = 0.55f, stiffness = 380f),
         label = "rails_puck_x"
     )
-    val puckOffsetYAnim by animateFloatAsState(
+    val puckOffsetYAnimState = animateFloatAsState(
         targetValue = targetPuckY,
         animationSpec = spring(dampingRatio = 0.55f, stiffness = 380f),
         label = "rails_puck_y"
     )
 
     // Light Beam Expansion (0 to 56dp, 180ms ease-out)
-    val litRightWidth by animateFloatAsState(
+    val litRightWidthState = animateFloatAsState(
         targetValue = if (currentlyPressed.contains(K.RIGHT)) 56f else 0f,
         animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "rails_lit_r"
     )
-    val litLeftWidth by animateFloatAsState(
+    val litLeftWidthState = animateFloatAsState(
         targetValue = if (currentlyPressed.contains(K.LEFT)) 56f else 0f,
         animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "rails_lit_l"
     )
-    val litDownHeight by animateFloatAsState(
+    val litDownHeightState = animateFloatAsState(
         targetValue = if (currentlyPressed.contains(K.DOWN)) 56f else 0f,
         animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "rails_lit_d"
     )
-    val litUpHeight by animateFloatAsState(
+    val litUpHeightState = animateFloatAsState(
         targetValue = if (currentlyPressed.contains(K.UP)) 56f else 0f,
         animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "rails_lit_u"
     )
 
     // End LED Opacity Transitions (0.28 to 1.0, 100ms ease)
-    val ledUpAlpha by animateFloatAsState(
+    val ledUpAlphaState = animateFloatAsState(
         targetValue = if (currentlyPressed.contains(K.UP)) 1.0f else 0.28f,
         animationSpec = tween(durationMillis = 100),
         label = "rails_led_u"
     )
-    val ledDownAlpha by animateFloatAsState(
+    val ledDownAlphaState = animateFloatAsState(
         targetValue = if (currentlyPressed.contains(K.DOWN)) 1.0f else 0.28f,
         animationSpec = tween(durationMillis = 100),
         label = "rails_led_d"
     )
-    val ledLeftAlpha by animateFloatAsState(
+    val ledLeftAlphaState = animateFloatAsState(
         targetValue = if (currentlyPressed.contains(K.LEFT)) 1.0f else 0.28f,
         animationSpec = tween(durationMillis = 100),
         label = "rails_led_l"
     )
-    val ledRightAlpha by animateFloatAsState(
+    val ledRightAlphaState = animateFloatAsState(
         targetValue = if (currentlyPressed.contains(K.RIGHT)) 1.0f else 0.28f,
         animationSpec = tween(durationMillis = 100),
         label = "rails_led_r"
@@ -227,7 +227,7 @@ fun RailsDPad(
         if (isRgbEnabled) Color(0xFFFFB13F) else Color(0xFFFFB13F)
     }
 
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isAnyPressed) 0.95f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "rails_rgb_bloom"
@@ -311,8 +311,14 @@ fun RailsDPad(
     Box(
         modifier = modifier
             .size(160.dp)
+            .graphicsLayer {
+                // Root RenderNode isolation
+            }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
+                    val puckOffsetXAnim = puckOffsetXAnimState.value
+                    val puckOffsetYAnim = puckOffsetYAnimState.value
                     val w = size.width
                     val h = size.height
 
@@ -440,20 +446,20 @@ fun RailsDPad(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer {
-                    scaleX = stageScaleAnim
-                    scaleY = stageScaleAnim
-                    translationY = stageOffsetYAnim * density
-                    rotationX = rxAnim
-                    rotationY = ryAnim
-                    cameraDistance = 12f * density
-                }
                 .shadow(
                     elevation = if (isAnyPressed) 3.dp else 8.dp,
                     shape = CircleShape,
                     spotColor = if (isRgbEnabled) neonColor else Color.Black,
                     ambientColor = if (isRgbEnabled) neonColor else Color.Black
                 )
+                .graphicsLayer {
+                    scaleX = stageScaleAnimState.value
+                    scaleY = stageScaleAnimState.value
+                    translationY = stageOffsetYAnimState.value * density
+                    rotationX = rxAnimState.value
+                    rotationY = ryAnimState.value
+                    cameraDistance = 12f * density
+                }
                 .clip(CircleShape)
                 .background(if (isAnyPressed) pressedDomeGradient else domeGradient)
                 .border(
@@ -518,6 +524,15 @@ fun RailsDPad(
 
             // --- 3. Dynamic Light Beams (.lit) & End Target LEDs (.ed) ---
             Canvas(modifier = Modifier.fillMaxSize()) {
+                val litRightWidth = litRightWidthState.value
+                val litLeftWidth = litLeftWidthState.value
+                val litDownHeight = litDownHeightState.value
+                val litUpHeight = litUpHeightState.value
+                val ledUpAlpha = ledUpAlphaState.value
+                val ledDownAlpha = ledDownAlphaState.value
+                val ledLeftAlpha = ledLeftAlphaState.value
+                val ledRightAlpha = ledRightAlphaState.value
+
                 val center = Offset(size.width / 2f, size.height / 2f)
 
                 // Dynamic Light Beams (.lit, height/width 3px, neonColor, box-shadow: 0 0 8px var(--glow))
@@ -642,7 +657,7 @@ fun RailsDPad(
             // --- 4. Sliding Tactile Puck (.rail-puck, 40dp x 40dp) ---
             Box(
                 modifier = Modifier
-                    .offset { IntOffset((puckOffsetXAnim * density).roundToInt(), (puckOffsetYAnim * density).roundToInt()) }
+                    .offset { IntOffset((puckOffsetXAnimState.value * density).roundToInt(), (puckOffsetYAnimState.value * density).roundToInt()) }
                     .size(40.dp)
                     .shadow(
                         elevation = if (isAnyPressed) 4.dp else 6.dp,

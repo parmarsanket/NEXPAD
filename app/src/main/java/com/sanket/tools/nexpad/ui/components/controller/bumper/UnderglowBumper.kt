@@ -76,32 +76,32 @@ fun UnderglowBumper(
     }
 
     // Kinematic Physics Engine — Damped Harmonic Spring
-    val scaleAnim by animateFloatAsState(
+    val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "under_bumper_scale"
     )
-    val pressOffsetYAnim by animateFloatAsState(
+    val pressOffsetYAnimState = animateFloatAsState(
         targetValue = if (isPressed) 2.0f else 0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "under_bumper_offset"
     )
 
     // Dynamic Neon Flood surge: sweeps from 0% to 100% height on press
-    val floodHeightProgress by animateFloatAsState(
+    val floodHeightProgressState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0f,
         animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "under_flood_height"
     )
 
     // Underglow ground bar bloom intensity
-    val underglowBloomAlpha by animateFloatAsState(
+    val underglowBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.85f,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 600f),
         label = "underglow_bloom"
     )
 
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "under_bumper_rgb_bloom"
@@ -158,12 +158,13 @@ fun UnderglowBumper(
         modifier = modifier
             .size(154.dp, 54.dp)
             .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
+                // 1. Root RenderNode isolation: prevents screen-wide invalidation
             }
-            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
+                    val floodHeightProgress = floodHeightProgressState.value
+                    val underglowBloomAlpha = underglowBloomAlphaState.value
                     val padX = 14.dp.toPx()
                     val padY = 6.dp.toPx()
 
@@ -230,6 +231,11 @@ fun UnderglowBumper(
                 ambientColor = if (isRgbEnabled) neonColor else Color.Black,
                 spotColor = if (isRgbEnabled) neonColor else Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnimState.value
+                scaleY = scaleAnimState.value
+                translationY = pressOffsetYAnimState.value * density
+            }
             .clip(bumperShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
             // 1px casing rim
@@ -275,6 +281,7 @@ fun UnderglowBumper(
             )
 
             // Dynamic Neon Surge Flood: Linear gradient surging upwards from the bottom ground bar
+            val floodHeightProgress = floodHeightProgressState.value
             if (floodHeightProgress > 0f) {
                 val currentFloodH = h * floodHeightProgress
                 drawRect(
@@ -358,6 +365,7 @@ fun UnderglowBumper(
                 .align(Alignment.BottomCenter)
                 .fillMaxSize()
         ) {
+            val underglowBloomAlpha = underglowBloomAlphaState.value
             val barInsetX = 12.dp.toPx()
             val barBottomY = size.height - 3.dp.toPx()
             val barH = 3.dp.toPx()

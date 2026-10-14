@@ -118,21 +118,21 @@ fun OrbJoystick(
     }
 
     // Micro-compression: scale down to 0.97 on press (--cs: 0.97)
-    val capScaleAnim by animateFloatAsState(
+    val capScaleAnim = animateFloatAsState(
         targetValue = if (isPressed) 0.97f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "orb_cap_scale"
     )
 
     // Dynamic core glow intensity: 0.70 idle, 1.00 when dragging/active (CSS: opacity 0.7 -> 1.0, 0.15s ease)
-    val coreBloomAlpha by animateFloatAsState(
+    val coreBloomAlpha = animateFloatAsState(
         targetValue = if (isDragging || isPressed) 1.0f else 0.70f,
         animationSpec = tween(durationMillis = 150, easing = LinearEasing),
         label = "orb_core_bloom"
     )
 
     // Ambient glow bloom behind housing
-    val ambientBloomAlpha by animateFloatAsState(
+    val ambientBloomAlpha = animateFloatAsState(
         targetValue = if (isDragging || isPressed) 0.55f else 0.28f,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
         label = "orb_ambient_bloom"
@@ -165,35 +165,6 @@ fun OrbJoystick(
 
     val stickKey = remember(isLeft) { if (isLeft) "LSB" else "RSB" }
 
-    // Floating liquid core inertial lag offset (-dxn * 13px, -dyn * 13px)
-    // CSS specification: transition: transform 0.14s ease-out, opacity 0.15s ease;
-    // CubicBezierEasing(0f, 0f, 0.2f, 1f) precisely mirrors CSS ease-out
-    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
-    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
-    val effOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
-    val effOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
-
-    val curNormX = (effOffsetX / maxTravelPx).coerceIn(-1f, 1f)
-    val curNormY = (effOffsetY / maxTravelPx).coerceIn(-1f, 1f)
-
-    val coreLagOffsetX by animateFloatAsState(
-        targetValue = -curNormX * maxCoreLagPx,
-        animationSpec = tween(durationMillis = 140, easing = CubicBezierEasing(0.0f, 0.0f, 0.2f, 1.0f)),
-        label = "orb_core_lag_x"
-    )
-    val coreLagOffsetY by animateFloatAsState(
-        targetValue = -curNormY * maxCoreLagPx,
-        animationSpec = tween(durationMillis = 140, easing = CubicBezierEasing(0.0f, 0.0f, 0.2f, 1.0f)),
-        label = "orb_core_lag_y"
-    )
-
-    val deflectionFraction = (hypot(effOffsetX, effOffsetY) / maxTravelPx).coerceIn(0f, 1f)
-    val rgbBloomAlpha by animateFloatAsState(
-        targetValue = 0.40f + 0.55f * deflectionFraction,
-        animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
-        label = "orb_joystick_bloom"
-    )
-
     val strokeCoronaRing = remember { androidx.compose.ui.graphics.drawscope.Stroke(width = 2.2f) }
     val prominenceColors = remember { listOf(Color.White.copy(alpha = 0.8f), Color.Transparent) }
     val coronaStops = remember(glowColor) {
@@ -208,18 +179,28 @@ fun OrbJoystick(
     Box(
         modifier = modifier
             .size(150.dp)
+            .graphicsLayer { /* Root RenderNode isolation */ }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+                    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                    val effOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
+                    val effOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
+                    val curNormX = (effOffsetX / maxTravelPx).coerceIn(-1f, 1f)
+                    val curNormY = (effOffsetY / maxTravelPx).coerceIn(-1f, 1f)
+                    val defFraction = (hypot(effOffsetX, effOffsetY) / maxTravelPx).coerceIn(0f, 1f)
+                    val dynRgbBloomAlpha = 0.40f + 0.55f * defFraction
+
                     val plasmaCenter = Offset(
-                        center.x + coreLagOffsetX * 0.75f,
-                        center.y + coreLagOffsetY * 0.75f
+                        center.x + (-curNormX * maxCoreLagPx) * 0.75f,
+                        center.y + (-curNormY * maxCoreLagPx) * 0.75f
                     )
                     val coronaRadius = size.minDimension * 0.54f
 
                     // 1. Levitating plasma containment sphere corona
-                    coronaStops[0] = 0.00f to Color.White.copy(alpha = rgbBloomAlpha * 0.60f)
-                    coronaStops[1] = 0.35f to glowColor.copy(alpha = rgbBloomAlpha * 0.40f)
-                    coronaStops[2] = 0.75f to glowColor.copy(alpha = rgbBloomAlpha * 0.14f)
+                    coronaStops[0] = 0.00f to Color.White.copy(alpha = dynRgbBloomAlpha * 0.60f)
+                    coronaStops[1] = 0.35f to glowColor.copy(alpha = dynRgbBloomAlpha * 0.40f)
+                    coronaStops[2] = 0.75f to glowColor.copy(alpha = dynRgbBloomAlpha * 0.14f)
                     coronaStops[3] = 1.00f to Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
@@ -233,7 +214,7 @@ fun OrbJoystick(
 
                     // 2. Magnetic containment corona ring
                     drawCircle(
-                        color = glowColor.copy(alpha = if (deflectionFraction > 0.3f) 0.85f else 0.45f),
+                        color = glowColor.copy(alpha = if (defFraction > 0.3f) 0.85f else 0.45f),
                         radius = coronaRadius,
                         center = plasmaCenter,
                         style = strokeCoronaRing
@@ -241,11 +222,11 @@ fun OrbJoystick(
 
                     // 3. Solar prominences (6 flaring coronal plasma arcs)
                     for (i in 0 until 6) {
-                        val arcAngle = (i * 60f) + (deflectionFraction * 30f)
+                        val arcAngle = (i * 60f) + (defFraction * 30f)
                         val arcRad = Math.toRadians(arcAngle.toDouble())
                         val cosA = kotlin.math.cos(arcRad).toFloat()
                         val sinA = kotlin.math.sin(arcRad).toFloat()
-                        val promLen = 8.dp.toPx() + (6.dp.toPx() * deflectionFraction)
+                        val promLen = 8.dp.toPx() + (6.dp.toPx() * defFraction)
                         drawLine(
                             brush = Brush.linearGradient(
                                 colors = prominenceColors,
@@ -481,14 +462,16 @@ fun OrbJoystick(
             },
         contentAlignment = Alignment.Center
     ) {
-        val curOffsetX = effOffsetX
-        val curOffsetY = effOffsetY
-        val curDist = hypot(curOffsetX, curOffsetY)
-        val curMagnitude = min(1f, curDist / maxTravelPx)
-        val curAngleDeg = (atan2(curOffsetX, -curOffsetY) * 180f / Math.PI.toFloat() + 360f) % 360f
-
         // Stationary Socket Background Canvas: Inset Depth, 12 Ticks, and Directional Gate Arc
         Canvas(modifier = Modifier.fillMaxSize().clip(CircleShape)) {
+            val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+            val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+            val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
+            val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
+            val curDist = hypot(curOffsetX, curOffsetY)
+            val curMagnitude = min(1f, curDist / maxTravelPx)
+            val curAngleDeg = (atan2(curOffsetX, -curOffsetY) * 180f / Math.PI.toFloat() + 360f) % 360f
+
             val w = size.width
             val h = size.height
             val r = size.minDimension / 2f
@@ -564,11 +547,12 @@ fun OrbJoystick(
         // Moving Glass Spherical Cap (.cap-orb): 100dp circle with floating liquid core
         Box(
             modifier = Modifier
-                .offset { IntOffset(curOffsetX.roundToInt(), curOffsetY.roundToInt()) }
-                .size(100.dp)
-                .graphicsLayer {
-                    scaleX = capScaleAnim
-                    scaleY = capScaleAnim
+                .offset {
+                    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+                    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                    val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
+                    val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
+                    IntOffset(curOffsetX.roundToInt(), curOffsetY.roundToInt())
                 }
                 .shadow(
                     elevation = 10.dp,
@@ -576,6 +560,11 @@ fun OrbJoystick(
                     ambientColor = if (isRgbEnabled) glowColor.copy(alpha = 0.5f) else Color.Black,
                     spotColor = if (isRgbEnabled) glowColor else Color.Black
                 )
+                .graphicsLayer {
+                    scaleX = capScaleAnim.value
+                    scaleY = capScaleAnim.value
+                }
+                .size(100.dp)
                 .clip(CircleShape)
                 .background(orbCavityGradient)
                 .border(
@@ -620,8 +609,14 @@ fun OrbJoystick(
                 modifier = Modifier
                     .size(60.dp)
                     .graphicsLayer {
-                        translationX = coreLagOffsetX
-                        translationY = coreLagOffsetY
+                        val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+                        val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                        val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
+                        val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
+                        val curNormX = (curOffsetX / maxTravelPx).coerceIn(-1f, 1f)
+                        val curNormY = (curOffsetY / maxTravelPx).coerceIn(-1f, 1f)
+                        translationX = -curNormX * maxCoreLagPx
+                        translationY = -curNormY * maxCoreLagPx
                     }
                     .blur(radius = 5.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
                     .clip(CircleShape)
@@ -635,13 +630,13 @@ fun OrbJoystick(
                     drawCircle(
                         brush = Brush.radialGradient(
                             colorStops = arrayOf(
-                                0.00f to glowColor.copy(alpha = coreBloomAlpha * 0.95f),
-                                0.16f to glowColor.copy(alpha = coreBloomAlpha * 0.85f),
-                                0.32f to glowColor.copy(alpha = coreBloomAlpha * 0.68f),
-                                0.48f to glowColor.copy(alpha = coreBloomAlpha * 0.48f),
-                                0.62f to glowColor.copy(alpha = coreBloomAlpha * 0.28f),
-                                0.74f to glowColor.copy(alpha = coreBloomAlpha * 0.14f),
-                                0.88f to glowColor.copy(alpha = coreBloomAlpha * 0.04f),
+                                0.00f to glowColor.copy(alpha = coreBloomAlpha.value * 0.95f),
+                                0.16f to glowColor.copy(alpha = coreBloomAlpha.value * 0.85f),
+                                0.32f to glowColor.copy(alpha = coreBloomAlpha.value * 0.68f),
+                                0.48f to glowColor.copy(alpha = coreBloomAlpha.value * 0.48f),
+                                0.62f to glowColor.copy(alpha = coreBloomAlpha.value * 0.28f),
+                                0.74f to glowColor.copy(alpha = coreBloomAlpha.value * 0.14f),
+                                0.88f to glowColor.copy(alpha = coreBloomAlpha.value * 0.04f),
                                 1.00f to Color.Transparent
                             ),
                             center = coreCenter,
@@ -655,9 +650,9 @@ fun OrbJoystick(
                     drawCircle(
                         brush = Brush.radialGradient(
                             colorStops = arrayOf(
-                                0.00f to glowColor.copy(alpha = coreBloomAlpha * 0.50f),
-                                0.40f to glowColor.copy(alpha = coreBloomAlpha * 0.28f),
-                                0.70f to glowColor.copy(alpha = coreBloomAlpha * 0.10f),
+                                0.00f to glowColor.copy(alpha = coreBloomAlpha.value * 0.50f),
+                                0.40f to glowColor.copy(alpha = coreBloomAlpha.value * 0.28f),
+                                0.70f to glowColor.copy(alpha = coreBloomAlpha.value * 0.10f),
                                 1.00f to Color.Transparent
                             ),
                             center = coreCenter,
@@ -671,6 +666,11 @@ fun OrbJoystick(
 
             // Inner Orb Containment Ring (.orb-ring) & Specular Reflections (.orb-spec)
             Canvas(modifier = Modifier.fillMaxSize()) {
+                val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+                val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
+                val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
+
                 val capW = size.width
                 val capH = size.height
                 val capR = size.minDimension / 2f
@@ -815,18 +815,19 @@ fun OrbStickButton(
     displayLabel: String? = null
 ) {
     var isPressed by remember { mutableStateOf(false) }
+    val density = LocalDensity.current.density
 
-    val scaleAnim by animateFloatAsState(
+    val scaleAnim = animateFloatAsState(
         targetValue = if (isPressed) 0.92f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "orb_stick_btn_scale"
     )
-    val pressOffsetYAnim by animateFloatAsState(
+    val pressOffsetYAnim = animateFloatAsState(
         targetValue = if (isPressed) 2.0f else 0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "orb_stick_btn_offset"
     )
-    val coreBloomAlpha by animateFloatAsState(
+    val coreBloomAlpha = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.70f,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
         label = "orb_stick_btn_bloom"
@@ -856,7 +857,7 @@ fun OrbStickButton(
 
     val labelText = displayLabel ?: (if (isLeft) "LSB" else "RSB")
 
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlpha = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "orb_stick_btn_bloom"
@@ -875,18 +876,15 @@ fun OrbStickButton(
     Box(
         modifier = modifier
             .size(70.dp)
-            .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
-            }
-            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
+            .graphicsLayer { /* Root RenderNode isolation */ }
+            .offset { IntOffset(0, (pressOffsetYAnim.value * density).roundToInt()) }
             .drawBehind {
                 if (isRgbEnabled) {
                     val flareR = size.minDimension * (if (isPressed) 1.05f else 0.85f)
                     // 1. Plasma caustic core flare
-                    btnFlareStops[0] = 0.00f to (if (isPressed) Color.White else glowColor).copy(alpha = rgbBloomAlpha * 0.70f)
-                    btnFlareStops[1] = 0.35f to glowColor.copy(alpha = rgbBloomAlpha * 0.35f)
-                    btnFlareStops[2] = 0.75f to glowColor.copy(alpha = rgbBloomAlpha * 0.12f)
+                    btnFlareStops[0] = 0.00f to (if (isPressed) Color.White else glowColor).copy(alpha = rgbBloomAlpha.value * 0.70f)
+                    btnFlareStops[1] = 0.35f to glowColor.copy(alpha = rgbBloomAlpha.value * 0.35f)
+                    btnFlareStops[2] = 0.75f to glowColor.copy(alpha = rgbBloomAlpha.value * 0.12f)
                     btnFlareStops[3] = 1.00f to Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
@@ -913,6 +911,10 @@ fun OrbStickButton(
                 ambientColor = if (isRgbEnabled) glowColor else Color.Black,
                 spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnim.value
+                scaleY = scaleAnim.value
+            }
             .clip(CircleShape)
             .background(orbCavityGradient)
             .border(
@@ -969,11 +971,11 @@ fun OrbStickButton(
             drawCircle(
                 brush = Brush.radialGradient(
                     colorStops = arrayOf(
-                        0.00f to glowColor.copy(alpha = coreBloomAlpha * 0.95f),
-                        0.20f to glowColor.copy(alpha = coreBloomAlpha * 0.80f),
-                        0.40f to glowColor.copy(alpha = coreBloomAlpha * 0.58f),
-                        0.60f to glowColor.copy(alpha = coreBloomAlpha * 0.32f),
-                        0.78f to glowColor.copy(alpha = coreBloomAlpha * 0.12f),
+                        0.00f to glowColor.copy(alpha = coreBloomAlpha.value * 0.95f),
+                        0.20f to glowColor.copy(alpha = coreBloomAlpha.value * 0.80f),
+                        0.40f to glowColor.copy(alpha = coreBloomAlpha.value * 0.58f),
+                        0.60f to glowColor.copy(alpha = coreBloomAlpha.value * 0.32f),
+                        0.78f to glowColor.copy(alpha = coreBloomAlpha.value * 0.12f),
                         1.00f to Color.Transparent
                     ),
                     center = center,
@@ -985,8 +987,8 @@ fun OrbStickButton(
             drawCircle(
                 brush = Brush.radialGradient(
                     colorStops = arrayOf(
-                        0.00f to glowColor.copy(alpha = coreBloomAlpha * 0.45f),
-                        0.50f to glowColor.copy(alpha = coreBloomAlpha * 0.20f),
+                        0.00f to glowColor.copy(alpha = coreBloomAlpha.value * 0.45f),
+                        0.50f to glowColor.copy(alpha = coreBloomAlpha.value * 0.20f),
                         1.00f to Color.Transparent
                     ),
                     center = center,

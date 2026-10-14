@@ -63,33 +63,33 @@ fun FacetButton(
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
-    val scaleAnim by animateFloatAsState(
+    val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.93f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "facet_scale"
     )
     // Inner diamond: rotate 90° + scale 0.85 on press (cubic-bezier .3, 1.5, .5, 1)
-    val innerRotAnim by animateFloatAsState(
+    val innerRotAnimState = animateFloatAsState(
         targetValue = if (isPressed) 90f else 0f,
         animationSpec = spring(dampingRatio = 0.55f, stiffness = 360f),
         label = "facet_inner_rot"
     )
-    val innerScaleAnim by animateFloatAsState(
+    val innerScaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.85f else 1.0f,
         animationSpec = spring(dampingRatio = 0.55f, stiffness = 360f),
         label = "facet_inner_scale"
     )
-    val innerAlpha by animateFloatAsState(
+    val innerAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 0.90f else 0.30f,
         animationSpec = tween(durationMillis = 150),
         label = "facet_inner_alpha"
     )
-    val fillAlpha by animateFloatAsState(
+    val fillAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 0.25f else 0f,
         animationSpec = tween(durationMillis = 100),
         label = "facet_fill_alpha"
     )
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.50f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "facet_rgb_bloom"
@@ -134,11 +134,16 @@ fun FacetButton(
     Box(
         modifier = modifier
             .size(80.dp)
+            .graphicsLayer {
+                // Root RenderNode isolation
+            }
             .drawBehind {
                 if (isRgbEnabled) {
                     val cr = 16.dp.toPx()
                     val halfSize = 31.dp.toPx()
                     val pad = 6.dp.toPx()
+                    val innerRotAnim = innerRotAnimState.value
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
 
                     // 1. Rotating crystalline diamond aura (tracks 45° chassis + innerRotAnim spring)
                     rotate(degrees = 45f + innerRotAnim * 0.5f, pivot = center) {
@@ -210,17 +215,17 @@ fun FacetButton(
         Box(
             modifier = Modifier
                 .size(64.dp)
-                .graphicsLayer {
-                    rotationZ = 45f
-                    scaleX = scaleAnim
-                    scaleY = scaleAnim
-                }
                 .shadow(
                     elevation = if (isPressed) 1.dp else 4.dp,
                     shape = gemShape,
                     spotColor = if (isRgbEnabled) effectiveColor else Color.Black,
                     ambientColor = if (isRgbEnabled) effectiveColor else Color.Black
                 )
+                .graphicsLayer {
+                    rotationZ = 45f
+                    scaleX = scaleAnimState.value
+                    scaleY = scaleAnimState.value
+                }
                 .clip(gemShape)
                 .background(gemBackgroundBrush)
                 .border(
@@ -242,17 +247,15 @@ fun FacetButton(
                 },
             contentAlignment = Alignment.Center
         ) {
-            // ── 1. FLASH FILL LAYER (.f-fill) ──
-            if (fillAlpha > 0.001f) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(effectiveColor.copy(alpha = fillAlpha))
-                )
-            }
-
-            // ── 2. INNER SPINNING & SCALING DIAMOND (.f-in) + UNDERCUT SHADOW ──
+            // ── 1. FLASH FILL & INNER SPINNING & SCALING DIAMOND (.f-in) + UNDERCUT SHADOW ──
             Canvas(modifier = Modifier.fillMaxSize()) {
+                val fillAlpha = fillAlphaState.value
+                if (fillAlpha > 0.001f) {
+                    drawRect(effectiveColor.copy(alpha = fillAlpha))
+                }
+                val innerRotAnim = innerRotAnimState.value
+                val innerScaleAnim = innerScaleAnimState.value
+                val innerAlpha = innerAlphaState.value
                 val w = size.width
                 val h = size.height
                 val center = Offset(w / 2f, h / 2f)

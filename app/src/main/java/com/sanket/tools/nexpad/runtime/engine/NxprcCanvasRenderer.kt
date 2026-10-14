@@ -1127,6 +1127,9 @@ fun NxprcCanvasRenderer(
     Box(
         modifier = modifier
             .size(widthDp.dp, heightDp.dp)
+            .graphicsLayer {
+                // Root RenderNode isolation
+            }
             .drawBehind {
                 val progress = timelineProgressState?.value ?: 0f
                 val activeHueDegrees = if (hasDynamicTracks) {

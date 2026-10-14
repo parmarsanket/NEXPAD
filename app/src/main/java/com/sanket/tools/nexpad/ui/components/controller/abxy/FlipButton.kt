@@ -61,12 +61,12 @@ fun FlipButton(
     var isPressed by remember { mutableStateOf(false) }
 
     // 3D rotation around Y axis with spring overshoot bounce (cubic-bezier .3, 1.4, .5, 1)
-    val flipAngle by animateFloatAsState(
+    val flipAngleState = animateFloatAsState(
         targetValue = if (isPressed) 180f else 0f,
         animationSpec = spring(dampingRatio = 0.60f, stiffness = 340f),
         label = "flip_angle"
     )
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "flip_rgb_bloom"
@@ -128,13 +128,21 @@ fun FlipButton(
         )
     }
 
-    val isBackFace = flipAngle > 90f
+    val isBackFace by remember {
+        androidx.compose.runtime.derivedStateOf { flipAngleState.value > 90f }
+    }
 
     Box(
         modifier = modifier
             .size(80.dp)
+            .graphicsLayer {
+                // Root RenderNode isolation
+            }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val flipAngle = flipAngleState.value
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
+                    val isBackFaceDraw = flipAngle > 90f
                     val cosFactor = kotlin.math.abs(kotlin.math.cos(Math.toRadians(flipAngle.toDouble()))).toFloat()
                     val squashedWidth = (size.width * 1.15f) * cosFactor.coerceAtLeast(0.08f)
                     val auraHeight = size.height * 1.10f
@@ -142,7 +150,7 @@ fun FlipButton(
                     val auraSize = Size(squashedWidth, auraHeight)
 
                     // 1. 3D squashed anamorphic aura oval tracking flipAngle
-                    flipBloomStops[0] = 0.00f to (if (isBackFace) Color.White else effectiveColor).copy(alpha = rgbBloomAlpha * 0.60f)
+                    flipBloomStops[0] = 0.00f to (if (isBackFaceDraw) Color.White else effectiveColor).copy(alpha = rgbBloomAlpha * 0.60f)
                     flipBloomStops[1] = 0.40f to effectiveColor.copy(alpha = rgbBloomAlpha * 0.30f)
                     flipBloomStops[2] = 1.00f to Color.Transparent
                     drawOval(
@@ -206,7 +214,8 @@ fun FlipButton(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    rotationY = if (isBackFace) flipAngle - 180f else flipAngle
+                    val angle = flipAngleState.value
+                    rotationY = if (angle > 90f) angle - 180f else angle
                     cameraDistance = 16f
                 }
                 .clip(CircleShape)

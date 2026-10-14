@@ -84,17 +84,17 @@ fun NeedleTrigger(
     val windowShape = remember { RoundedCornerShape(10.dp) }
 
     // Physical Spring Kinematics — standard console trigger spec
-    val scaleAnim by animateFloatAsState(
+    val scaleAnim = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "needle_scale"
     )
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlpha = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "needle_bloom"
     )
-    val fillProgress by animateFloatAsState(
+    val fillProgress = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0f,
         animationSpec = spring(dampingRatio = 0.72f, stiffness = 380f),
         label = "needle_fill"
@@ -139,20 +139,17 @@ fun NeedleTrigger(
     Box(
         modifier = modifier
             .size(widthDp, heightDp)
-            .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
-            }
+            .graphicsLayer { /* Root RenderNode isolation */ }
             // Outer dynamic RGB aura
             .drawBehind {
                 if (isRgbEnabled) {
                     val padX = 12.dp.toPx()
                     val padY = 8.dp.toPx()
-                    val curPull = fillProgress
+                    val curPull = fillProgress.value
 
                     // 1. Arched Dome Chassis Aura (54dp top curve, 14dp bottom)
-                    domeAuraColors[0] = glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.50f else 0.30f))
-                    domeAuraColors[1] = glowColor.copy(alpha = rgbBloomAlpha * 0.12f)
+                    domeAuraColors[0] = glowColor.copy(alpha = rgbBloomAlpha.value * (if (isPressed) 0.50f else 0.30f))
+                    domeAuraColors[1] = glowColor.copy(alpha = rgbBloomAlpha.value * 0.12f)
                     domeAuraColors[2] = Color.Transparent
                     drawRoundRect(
                         brush = Brush.radialGradient(
@@ -173,7 +170,7 @@ fun NeedleTrigger(
                     val sweepTotal = 140f
 
                     // Base tachometer track glow
-                    tachoTrackColors[0] = glowColor.copy(alpha = rgbBloomAlpha * 0.25f)
+                    tachoTrackColors[0] = glowColor.copy(alpha = rgbBloomAlpha.value * 0.25f)
                     tachoTrackColors[1] = Color.Transparent
                     drawArc(
                         brush = Brush.radialGradient(
@@ -191,8 +188,8 @@ fun NeedleTrigger(
                     // Active sweeping sector plume
                     if (curPull > 0.02f) {
                         val activeSweep = sweepTotal * curPull
-                        sectorPlumeColors[0] = Color.White.copy(alpha = rgbBloomAlpha * curPull * 0.70f)
-                        sectorPlumeColors[1] = glowColor.copy(alpha = rgbBloomAlpha * curPull * 0.85f)
+                        sectorPlumeColors[0] = Color.White.copy(alpha = rgbBloomAlpha.value * curPull * 0.70f)
+                        sectorPlumeColors[1] = glowColor.copy(alpha = rgbBloomAlpha.value * curPull * 0.85f)
                         sectorPlumeColors[2] = Color.Transparent
                         drawArc(
                             brush = Brush.radialGradient(
@@ -215,8 +212,8 @@ fun NeedleTrigger(
                         val tipX = pivotX + (arcR + 4.dp.toPx()) * cosN
                         val tipY = pivotY + (arcR + 4.dp.toPx()) * sinN
 
-                        tipBeaconColors[0] = Color.White.copy(alpha = rgbBloomAlpha * 0.90f)
-                        tipBeaconColors[1] = glowColor.copy(alpha = rgbBloomAlpha * 0.80f)
+                        tipBeaconColors[0] = Color.White.copy(alpha = rgbBloomAlpha.value * 0.90f)
+                        tipBeaconColors[1] = glowColor.copy(alpha = rgbBloomAlpha.value * 0.80f)
                         tipBeaconColors[2] = Color.Transparent
                         drawCircle(
                             brush = Brush.radialGradient(
@@ -230,13 +227,17 @@ fun NeedleTrigger(
                     }
                 }
             }
-            // RGB-coordinated shadow
+            // RGB-coordinated shadow placed before motion scaling to prevent CPU shadow tessellation
             .shadow(
                 elevation = if (isPressed) 2.dp else 6.dp,
                 shape = chassisShape,
                 ambientColor = if (isRgbEnabled) glowColor else Color.Black,
                 spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnim.value
+                scaleY = scaleAnim.value
+            }
             .clip(chassisShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
             .border(
@@ -262,10 +263,9 @@ fun NeedleTrigger(
                 )
             }
     ) {
-        val currentFill = fillProgress
-
         // Layer 1: Needle Gauge Face (Ticks, Background Track, Progress Arc, Pivot & Needle)
         Canvas(modifier = Modifier.fillMaxSize()) {
+            val currentFill = fillProgress.value
             val w = size.width
             val h = size.height
 
@@ -430,7 +430,10 @@ fun NeedleTrigger(
             val label = displayLabel ?: key
             Text(
                 text = label,
-                color = glowColor.copy(alpha = 0.75f + currentFill * 0.25f),
+                color = glowColor,
+                modifier = Modifier.graphicsLayer {
+                    alpha = 0.75f + fillProgress.value * 0.25f
+                },
                 fontWeight = FontWeight.Bold,
                 fontSize = 12.sp,
                 textAlign = TextAlign.Center
@@ -462,7 +465,7 @@ fun NeedleTrigger(
             val ringInset = 2.dp.toPx()
             // Outer bloom
             drawRoundRect(
-                color = glowColor.copy(alpha = rgbBloomAlpha * 0.55f),
+                color = glowColor.copy(alpha = rgbBloomAlpha.value * 0.55f),
                 topLeft = Offset(ringInset - 1f, ringInset - 1f),
                 size = Size(w - (ringInset - 1f) * 2f, h - (ringInset - 1f) * 2f),
                 cornerRadius = CornerRadius(52.dp.toPx(), 52.dp.toPx()),

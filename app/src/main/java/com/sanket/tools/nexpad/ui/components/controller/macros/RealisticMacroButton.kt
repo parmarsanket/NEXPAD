@@ -48,12 +48,12 @@ fun RealisticMacroButton(
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
-    val scaleAnim by animateFloatAsState(
+    val scaleAnim = animateFloatAsState(
         targetValue = if (isPressed) 0.91f else 1.0f,
         animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
         label = "macro_btn_scale"
     )
-    val pressOffsetYAnim by animateFloatAsState(
+    val pressOffsetYAnim = animateFloatAsState(
         targetValue = if (isPressed) 2.5f else 0f,
         animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
         label = "macro_btn_offset"
@@ -64,7 +64,7 @@ fun RealisticMacroButton(
 
     val shape = remember { RoundedCornerShape(16.dp) }
 
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlpha = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 0.40f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "macro_btn_rgb_bloom"
@@ -113,22 +113,23 @@ fun RealisticMacroButton(
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent, Color.Transparent, Color.Transparent)
     }
 
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+
     Box(
         modifier = modifier
-            .size(80.dp, 40.dp)
             .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
+                // Root RenderNode isolation
             }
-            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
+            .size(80.dp, 40.dp)
             .drawBehind {
                 if (isRgbEnabled) {
                     val padX = 12.dp.toPx()
                     val padY = 8.dp.toPx()
+                    val bloomAlpha = rgbBloomAlpha.value
 
                     // 1. Stadium Macro Toggle Switch Aura
-                    bloomColorsList[0] = auraColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.55f else 0.32f))
-                    bloomColorsList[1] = auraColor.copy(alpha = rgbBloomAlpha * 0.12f)
+                    bloomColorsList[0] = auraColor.copy(alpha = bloomAlpha * (if (isPressed) 0.55f else 0.32f))
+                    bloomColorsList[1] = auraColor.copy(alpha = bloomAlpha * 0.12f)
                     bloomColorsList[2] = Color.Transparent
                     drawRoundRect(
                         brush = Brush.radialGradient(
@@ -142,7 +143,7 @@ fun RealisticMacroButton(
                     )
 
                     // 2. 4 Corner Tactical Bracket Pips
-                    val bracketAlpha = rgbBloomAlpha * (if (isPressed) 0.90f else 0.45f)
+                    val bracketAlpha = bloomAlpha * (if (isPressed) 0.90f else 0.45f)
                     val bracketLen = (if (isPressed) 8.dp else 5.dp).toPx()
                     val insetX = 4.dp.toPx()
                     val insetY = 3.dp.toPx()
@@ -168,9 +169,9 @@ fun RealisticMacroButton(
                         val slitW = size.width * 0.75f
                         val slitLeft = center.x - slitW / 2f
                         slitColorsList[0] = Color.Transparent
-                        slitColorsList[1] = auraColor.copy(alpha = rgbBloomAlpha * 0.85f)
-                        slitColorsList[2] = Color.White.copy(alpha = rgbBloomAlpha * 0.95f)
-                        slitColorsList[3] = auraColor.copy(alpha = rgbBloomAlpha * 0.85f)
+                        slitColorsList[1] = auraColor.copy(alpha = bloomAlpha * 0.85f)
+                        slitColorsList[2] = Color.White.copy(alpha = bloomAlpha * 0.95f)
+                        slitColorsList[3] = auraColor.copy(alpha = bloomAlpha * 0.85f)
                         slitColorsList[4] = Color.Transparent
                         drawLine(
                             brush = Brush.horizontalGradient(
@@ -191,6 +192,11 @@ fun RealisticMacroButton(
                 ambientColor = if (isRgbEnabled) auraColor else Color.Black,
                 spotColor = if (isRgbEnabled) auraColor else Color.Black
             )
+            .offset { IntOffset(0, (pressOffsetYAnim.value * density).roundToInt()) }
+            .graphicsLayer {
+                scaleX = scaleAnim.value
+                scaleY = scaleAnim.value
+            }
             .clip(shape)
             .background(if (isPressed) baseGradientPressed else baseGradientNormal)
             .border(
@@ -232,7 +238,7 @@ fun RealisticMacroButton(
             letterSpacing = 0.5.sp,
             style = androidx.compose.ui.text.TextStyle(
                 shadow = androidx.compose.ui.graphics.Shadow(
-                    color = if (isRgbEnabled) auraColor.copy(alpha = rgbBloomAlpha * 0.85f) else Color.Black.copy(alpha = 0.8f),
+                    color = if (isRgbEnabled) auraColor.copy(alpha = rgbBloomAlpha.value * 0.85f) else Color.Black.copy(alpha = 0.8f),
                     offset = Offset(0f, 1.5f),
                     blurRadius = 4f
                 )

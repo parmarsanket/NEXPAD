@@ -67,29 +67,29 @@ fun TubeBumper(
     val bumperShape = remember { RoundedCornerShape(27.dp) }
 
     // Kinematic Physics Engine — Damped Harmonic Spring
-    val scaleAnim by animateFloatAsState(
+    val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "tube_bumper_scale"
     )
-    val pressOffsetYAnim by animateFloatAsState(
+    val pressOffsetYAnimState = animateFloatAsState(
         targetValue = if (isPressed) 2.0f else 0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "tube_bumper_offset"
     )
-    val ringBloomAlpha by animateFloatAsState(
+    val ringBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.70f,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
         label = "tube_ring_bloom"
     )
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "tube_bumper_rgb_bloom"
     )
 
     // Dynamic horizontal liquid surge animation: sweeps from 0% to 100% width on press
-    val liquidProgress by animateFloatAsState(
+    val liquidProgressState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0f,
         animationSpec = spring(dampingRatio = 0.72f, stiffness = 380f),
         label = "tube_liquid_level"
@@ -158,12 +158,12 @@ fun TubeBumper(
         modifier = modifier
             .size(154.dp, 54.dp)
             .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
+                // Root RenderNode isolation
             }
-            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
+                    val liquidProgress = liquidProgressState.value
                     val padX = 14.dp.toPx()
                     val padY = 8.dp.toPx()
 
@@ -238,6 +238,11 @@ fun TubeBumper(
                 ambientColor = if (isRgbEnabled) neonColor else Color.Black,
                 spotColor = if (isRgbEnabled) neonColor else Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnimState.value
+                scaleY = scaleAnimState.value
+                translationY = pressOffsetYAnimState.value * density
+            }
             .clip(bumperShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
             // 1px casing rim
@@ -283,6 +288,7 @@ fun TubeBumper(
             )
 
             // Dynamic Liquid Surge (.tube-liq: sweeps left to right with glowing meniscus)
+            val liquidProgress = liquidProgressState.value
             if (liquidProgress > 0.01f) {
                 val liqW = w * liquidProgress
                 // Liquid column body
@@ -335,6 +341,7 @@ fun TubeBumper(
             }
 
             // Neon perimeter ring — inset 2.5dp with pill radii
+            val ringBloomAlpha = ringBloomAlphaState.value
             val ringInset = 2.5.dp.toPx()
             val ringRadius = 27.dp.toPx() - ringInset
             // Outer bloom pass

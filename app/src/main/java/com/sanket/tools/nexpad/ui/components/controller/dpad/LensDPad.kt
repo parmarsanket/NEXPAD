@@ -145,56 +145,56 @@ fun LensDPad(
         tilt
     }
 
-    val tiltXAnim by animateFloatAsState(
+    val tiltXAnimState = animateFloatAsState(
         targetValue = targetTiltX,
         animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
         label = "lens_dpad_tilt_x"
     )
-    val tiltYAnim by animateFloatAsState(
+    val tiltYAnimState = animateFloatAsState(
         targetValue = targetTiltY,
         animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
         label = "lens_dpad_tilt_y"
     )
 
     // Animated Active Arm Fills (.af: opacity 0.30, transition: opacity 0.1s ease)
-    val upFillAlpha by animateFloatAsState(
+    val upFillAlphaState = animateFloatAsState(
         targetValue = if (isUpPressed) 0.30f else 0.0f,
         animationSpec = tween(durationMillis = 100, easing = FastOutSlowInEasing),
         label = "lens_dpad_up_fill"
     )
-    val downFillAlpha by animateFloatAsState(
+    val downFillAlphaState = animateFloatAsState(
         targetValue = if (isDownPressed) 0.30f else 0.0f,
         animationSpec = tween(durationMillis = 100, easing = FastOutSlowInEasing),
         label = "lens_dpad_down_fill"
     )
-    val leftFillAlpha by animateFloatAsState(
+    val leftFillAlphaState = animateFloatAsState(
         targetValue = if (isLeftPressed) 0.30f else 0.0f,
         animationSpec = tween(durationMillis = 100, easing = FastOutSlowInEasing),
         label = "lens_dpad_left_fill"
     )
-    val rightFillAlpha by animateFloatAsState(
+    val rightFillAlphaState = animateFloatAsState(
         targetValue = if (isRightPressed) 0.30f else 0.0f,
         animationSpec = tween(durationMillis = 100, easing = FastOutSlowInEasing),
         label = "lens_dpad_right_fill"
     )
 
     // Animated Chevron Drop-Shadow Glow Bloom (.ch: filter drop-shadow(0 0 3px var(--glow)))
-    val upGlowAlpha by animateFloatAsState(
+    val upGlowAlphaState = animateFloatAsState(
         targetValue = if (isUpPressed) 1.0f else 0.0f,
         animationSpec = tween(durationMillis = 100, easing = FastOutSlowInEasing),
         label = "lens_dpad_up_glow"
     )
-    val downGlowAlpha by animateFloatAsState(
+    val downGlowAlphaState = animateFloatAsState(
         targetValue = if (isDownPressed) 1.0f else 0.0f,
         animationSpec = tween(durationMillis = 100, easing = FastOutSlowInEasing),
         label = "lens_dpad_down_glow"
     )
-    val leftGlowAlpha by animateFloatAsState(
+    val leftGlowAlphaState = animateFloatAsState(
         targetValue = if (isLeftPressed) 1.0f else 0.0f,
         animationSpec = tween(durationMillis = 100, easing = FastOutSlowInEasing),
         label = "lens_dpad_left_glow"
     )
-    val rightGlowAlpha by animateFloatAsState(
+    val rightGlowAlphaState = animateFloatAsState(
         targetValue = if (isRightPressed) 1.0f else 0.0f,
         animationSpec = tween(durationMillis = 100, easing = FastOutSlowInEasing),
         label = "lens_dpad_right_glow"
@@ -206,7 +206,7 @@ fun LensDPad(
     }
 
     val hasActivePress = pressedDirs.isNotEmpty()
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (hasActivePress) 0.95f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "lens_dpad_rgb_bloom"
@@ -276,8 +276,14 @@ fun LensDPad(
     Box(
         modifier = modifier
             .size(160.dp)
+            .graphicsLayer {
+                // Root RenderNode isolation
+            }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val tiltXAnim = tiltXAnimState.value
+                    val tiltYAnim = tiltYAnimState.value
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
                     val causticCenter = Offset(
                         center.x + tiltYAnim * 1.8f,
                         center.y - tiltXAnim * 1.8f
@@ -441,13 +447,22 @@ fun LensDPad(
             modifier = Modifier
                 .size(150.dp)
                 .graphicsLayer {
-                    rotationX = tiltXAnim
-                    rotationY = tiltYAnim
+                    rotationX = tiltXAnimState.value
+                    rotationY = tiltYAnimState.value
                     cameraDistance = 14f * density
                 },
             contentAlignment = Alignment.Center
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
+                val upFillAlpha = upFillAlphaState.value
+                val downFillAlpha = downFillAlphaState.value
+                val leftFillAlpha = leftFillAlphaState.value
+                val rightFillAlpha = rightFillAlphaState.value
+                val upGlowAlpha = upGlowAlphaState.value
+                val downGlowAlpha = downGlowAlphaState.value
+                val leftGlowAlpha = leftGlowAlphaState.value
+                val rightGlowAlpha = rightGlowAlphaState.value
+
                 val crossPath = createContouredCrossPath(size, insetDp = 0f)
                 val insetNeonPath = createContouredCrossPath(size, insetDp = 3.6f)
                 val scale = min(size.width, size.height) / 150f

@@ -69,18 +69,18 @@ fun DialTrigger(
     val isLeft = key.uppercase() == NexpadKeys.LT
 
     // Physical Spring Kinematics
-    val scaleAnim by animateFloatAsState(
+    val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "dial_trigger_scale"
     )
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.55f,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
         label = "dial_trigger_rgb_bloom"
     )
     // 270° Gauge Fill Progress (0.0 to 1.0)
-    val fillProgress by animateFloatAsState(
+    val fillProgressState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0f,
         animationSpec = spring(dampingRatio = 0.72f, stiffness = 380f),
         label = "dial_trigger_gauge_fill"
@@ -146,10 +146,14 @@ fun DialTrigger(
     Box(
         modifier = modifier
             .size(92.dp, 92.dp)
+            .graphicsLayer {
+                // Root RenderNode isolation
+            }
             .drawBehind {
                 if (isRgbEnabled) {
                     val baseR = size.minDimension * 0.5f
-                    val curPull = fillProgress
+                    val curPull = fillProgressState.value
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
 
                     // 1. Ambient dial circular halo
                     ambientHaloColors[0] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.55f else 0.35f))
@@ -229,16 +233,16 @@ fun DialTrigger(
                     }
                 }
             }
-            .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
-            }
             .shadow(
                 elevation = if (isPressed) 2.dp else 6.dp,
                 shape = triggerShape,
                 ambientColor = if (isRgbEnabled) neonColor else Color.Black,
                 spotColor = if (isRgbEnabled) neonColor else Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnimState.value
+                scaleY = scaleAnimState.value
+            }
             .clip(triggerShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
             .border(
@@ -324,6 +328,7 @@ fun DialTrigger(
             )
 
             // Live active gauge: sweeps dynamically from 135° based on fillProgress
+            val fillProgress = fillProgressState.value
             if (fillProgress > 0.001f) {
                 val liveSweep = 270f * fillProgress
                 // Outer glow bloom pass

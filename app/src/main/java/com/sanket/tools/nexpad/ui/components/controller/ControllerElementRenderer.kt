@@ -44,14 +44,6 @@ fun ControllerElementRenderer(
     val context = LocalContext.current
     val isNative = remember(customComponentId) { NativeComponentRegistry.isNativeBuiltin(customComponentId) }
 
-    val feedback by viewModel.feedbackFlow.collectAsState(initial = null)
-    val rumbleIntensity = remember(feedback) {
-        val fb = feedback
-        if (fb != null && (fb.leftMotorSpeed > 0 || fb.rightMotorSpeed > 0)) {
-            maxOf(fb.leftMotorSpeed, fb.rightMotorSpeed) / 255f
-        } else 0f
-    }
-
     // 1. Remote Compose (.nxprc) Document
     if (customComponentId != null && customComponentId.startsWith("rc.")) {
         val remoteRegistry = remember { RemoteComponentRegistry.getInstance(context) }
@@ -59,6 +51,13 @@ fun ControllerElementRenderer(
         val remoteDoc = remember(customComponentId, loadedDocs) { remoteRegistry.getComponent(customComponentId) }
         val K = com.sanket.tools.nexpad.model.NexpadKeys
         if (remoteDoc != null) {
+            val feedback by viewModel.feedbackFlow.collectAsState(initial = null)
+            val rumbleIntensity = remember(feedback) {
+                val fb = feedback
+                if (fb != null && (fb.leftMotorSpeed > 0 || fb.rightMotorSpeed > 0)) {
+                    maxOf(fb.leftMotorSpeed, fb.rightMotorSpeed) / 255f
+                } else 0f
+            }
             val targetControl = remember(key, remoteDoc) {
                 when {
                     key.equals(K.LSB, ignoreCase = true) || key.equals(K.RSB, ignoreCase = true) || key.equals("L3", ignoreCase = true) || key.equals("R3", ignoreCase = true) -> NexPadControl.Button(key)

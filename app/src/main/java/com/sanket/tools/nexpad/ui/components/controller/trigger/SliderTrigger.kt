@@ -36,6 +36,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -108,7 +109,7 @@ fun SliderTrigger(
     var isDragging by remember { mutableStateOf(false) }
     val fillAnim = remember { Animatable(0f) }
 
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlpha = animateFloatAsState(
         targetValue = if (isDragging || fillAnim.value > 0.05f) 1.0f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "slider_rgb_bloom"
@@ -147,6 +148,7 @@ fun SliderTrigger(
     Box(
         modifier = modifier
             .size(widthDp, totalHeightDp)
+            .graphicsLayer { /* Root RenderNode isolation */ }
             // Outer dynamic RGB aura
             .drawBehind {
                 if (isRgbEnabled) {
@@ -155,8 +157,8 @@ fun SliderTrigger(
                     val curPull = fillAnim.value
 
                     // 1. Vertical Track Channel Capsule Aura
-                    channelCapsuleColors[0] = glowColor.copy(alpha = rgbBloomAlpha * (if (isDragging) 0.50f else 0.30f))
-                    channelCapsuleColors[1] = glowColor.copy(alpha = rgbBloomAlpha * 0.12f)
+                    channelCapsuleColors[0] = glowColor.copy(alpha = rgbBloomAlpha.value * (if (isDragging) 0.50f else 0.30f))
+                    channelCapsuleColors[1] = glowColor.copy(alpha = rgbBloomAlpha.value * 0.12f)
                     channelCapsuleColors[2] = Color.Transparent
                     drawRoundRect(
                         brush = Brush.radialGradient(
@@ -176,8 +178,8 @@ fun SliderTrigger(
                     val puckY = if (isFlipped) bottomRestPx - curPull * travelSpanPx else topRestPx + curPull * travelSpanPx
 
                     trackGuideColors[0] = Color.Transparent
-                    trackGuideColors[1] = glowColor.copy(alpha = rgbBloomAlpha * 0.40f)
-                    trackGuideColors[2] = glowColor.copy(alpha = rgbBloomAlpha * 0.40f)
+                    trackGuideColors[1] = glowColor.copy(alpha = rgbBloomAlpha.value * 0.40f)
+                    trackGuideColors[2] = glowColor.copy(alpha = rgbBloomAlpha.value * 0.40f)
                     trackGuideColors[3] = Color.Transparent
                     drawLine(
                         brush = Brush.verticalGradient(
@@ -192,7 +194,7 @@ fun SliderTrigger(
 
                     // 3. Travelling Puck Beacon Flare tracking puck coordinates
                     val beaconRadius = (if (isDragging) 18.dp else 12.dp).toPx()
-                    val beaconAlpha = rgbBloomAlpha * (if (isDragging) 0.90f else 0.55f)
+                    val beaconAlpha = rgbBloomAlpha.value * (if (isDragging) 0.90f else 0.55f)
 
                     beaconFlareColors[0] = Color.White.copy(alpha = beaconAlpha)
                     beaconFlareColors[1] = glowColor.copy(alpha = beaconAlpha * 0.85f)
@@ -293,10 +295,9 @@ fun SliderTrigger(
                 }
             }
     ) {
-        val currentFill = fillAnim.value
-
         // Layer 1: Track and Glowing Active Fill Bar
         Canvas(modifier = Modifier.fillMaxSize()) {
+            val currentFill = fillAnim.value
             val w = size.width
             val centerX = w / 2f
             val topPx = topRestCenterDp.toPx()
@@ -353,26 +354,27 @@ fun SliderTrigger(
         }
 
         // Layer 2: Sliding Puck Handle
-        val puckCenterDp = if (isFlipped) {
-            bottomRestCenterDp - travelSpanDp * currentFill
-        } else {
-            topRestCenterDp + travelSpanDp * currentFill
-        }
-
         Box(
             modifier = Modifier
                 .size(puckDiameterDp)
                 .offset {
+                    val currentFill = fillAnim.value
+                    val puckCenterDp = if (isFlipped) {
+                        bottomRestCenterDp - travelSpanDp * currentFill
+                    } else {
+                        topRestCenterDp + travelSpanDp * currentFill
+                    }
                     IntOffset(
                         x = ((widthDp - puckDiameterDp) / 2f).roundToPx(),
                         y = (puckCenterDp - puckRadiusDp).roundToPx()
                     )
                 }
+                .graphicsLayer { /* Puck RenderNode isolation */ }
                 // Active puck bloom
                 .drawBehind {
                     if (isRgbEnabled) {
-                        puckBloomColors[0] = glowColor.copy(alpha = rgbBloomAlpha * 0.60f)
-                        puckBloomColors[1] = glowColor.copy(alpha = rgbBloomAlpha * 0.25f)
+                        puckBloomColors[0] = glowColor.copy(alpha = rgbBloomAlpha.value * 0.60f)
+                        puckBloomColors[1] = glowColor.copy(alpha = rgbBloomAlpha.value * 0.25f)
                         puckBloomColors[2] = Color.Transparent
                         drawCircle(
                             brush = Brush.radialGradient(
@@ -405,6 +407,7 @@ fun SliderTrigger(
                 .border(1.dp, Color.Black.copy(alpha = 0.6f), CircleShape)
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
+                val currentFill = fillAnim.value
                 val r = size.minDimension / 2f
                 val center = Offset(size.width / 2f, size.height / 2f)
 
@@ -520,7 +523,10 @@ fun SliderTrigger(
             val label = displayLabel ?: key
             Text(
                 text = label,
-                color = glowColor.copy(alpha = 0.75f + currentFill * 0.25f),
+                color = glowColor,
+                modifier = Modifier.graphicsLayer {
+                    alpha = 0.75f + fillAnim.value * 0.25f
+                },
                 fontWeight = FontWeight.Bold,
                 fontSize = 11.sp,
                 textAlign = TextAlign.Center
@@ -554,7 +560,7 @@ fun SliderTrigger(
             val ringCorner = rPx - ringInset
             // Bloom
             drawRoundRect(
-                color = glowColor.copy(alpha = rgbBloomAlpha * 0.50f),
+                color = glowColor.copy(alpha = rgbBloomAlpha.value * 0.50f),
                 topLeft = Offset(ringInset - 1f, ringInset - 1f),
                 size = Size(w - (ringInset - 1f) * 2f, h - (ringInset - 1f) * 2f),
                 cornerRadius = CornerRadius(ringCorner, ringCorner),

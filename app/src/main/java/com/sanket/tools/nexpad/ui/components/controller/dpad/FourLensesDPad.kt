@@ -119,26 +119,28 @@ fun FourLensesKey(
     rotationAngle: Float,
     modifier: Modifier = Modifier
 ) {
-    val scaleAnim by animateFloatAsState(
+    val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
         animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
         label = "four_lenses_key_scale_$direction"
     )
-    val pressOffsetYAnim by animateFloatAsState(
+    val pressOffsetYAnimState = animateFloatAsState(
         targetValue = if (isPressed) 2.0f else 0f,
         animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
         label = "four_lenses_key_offset_$direction"
     )
-    val ringBloomAlpha by animateFloatAsState(
+    val ringBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.70f,
         animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
         label = "four_lenses_key_ring_$direction"
     )
-    val keyBloomAlpha by animateFloatAsState(
+    val keyBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "four_lenses_key_rgb_bloom_$direction"
     )
+
+    val density = LocalDensity.current.density
 
     val baseDomeGradient = remember {
         Brush.radialGradient(
@@ -182,8 +184,12 @@ fun FourLensesKey(
     Box(
         modifier = modifier
             .size(54.dp)
+            .graphicsLayer {
+                // Root RenderNode isolation
+            }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val keyBloomAlpha = keyBloomAlphaState.value
                     btnBloomColors[0] = glowColor.copy(alpha = keyBloomAlpha * 0.50f)
                     btnBloomColors[1] = glowColor.copy(alpha = keyBloomAlpha * 0.20f)
                     btnBloomColors[2] = Color.Transparent
@@ -197,17 +203,17 @@ fun FourLensesKey(
                     )
                 }
             }
-            .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
-            }
-            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .shadow(
                 elevation = if (isPressed) 1.dp else 4.dp,
                 shape = CircleShape,
                 ambientColor = if (isRgbEnabled) glowColor else Color.Black,
                 spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnimState.value
+                scaleY = scaleAnimState.value
+                translationY = pressOffsetYAnimState.value * density
+            }
             .clip(CircleShape)
             .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
             .border(
@@ -324,7 +330,7 @@ fun FourLensesKey(
             )
             // Crisp core
             drawCircle(
-                color = glowColor.copy(alpha = ringBloomAlpha),
+                color = glowColor.copy(alpha = ringBloomAlphaState.value),
                 radius = ringRadius,
                 center = center,
                 style = Stroke(width = if (isPressed) 2.2.dp.toPx() else 1.8.dp.toPx())
@@ -410,12 +416,12 @@ fun FourLensesDPad(
         calculateFourLensesTilt(pressedDirs)
     }
 
-    val tiltXAnim by animateFloatAsState(
+    val tiltXAnimState = animateFloatAsState(
         targetValue = targetTiltX,
         animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
         label = "four_lenses_tilt_x"
     )
-    val tiltYAnim by animateFloatAsState(
+    val tiltYAnimState = animateFloatAsState(
         targetValue = targetTiltY,
         animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
         label = "four_lenses_tilt_y"
@@ -427,7 +433,7 @@ fun FourLensesDPad(
     }
 
     val hasActivePress = pressedDirs.isNotEmpty()
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (hasActivePress) 0.95f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "four_lenses_rgb_bloom"
@@ -457,8 +463,12 @@ fun FourLensesDPad(
     Box(
         modifier = modifier
             .size(164.dp)
+            .graphicsLayer {
+                // Root RenderNode isolation
+            }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
                     val podR = 27.dp.toPx()
                     val upCenter = Offset(center.x, podR)
                     val downCenter = Offset(center.x, size.height - podR)
@@ -575,8 +585,8 @@ fun FourLensesDPad(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    rotationX = tiltXAnim
-                    rotationY = tiltYAnim
+                    rotationX = tiltXAnimState.value
+                    rotationY = tiltYAnimState.value
                     cameraDistance = 8f * density
                 }
         ) {

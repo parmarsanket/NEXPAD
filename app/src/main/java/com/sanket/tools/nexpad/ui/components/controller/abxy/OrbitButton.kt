@@ -67,38 +67,38 @@ fun OrbitButton(
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
-    val scaleAnim by animateFloatAsState(
+    val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "orbit_scale"
     )
-    val pressOffsetYAnim by animateFloatAsState(
+    val pressOffsetYAnimState = animateFloatAsState(
         targetValue = if (isPressed) 2f else 0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "orbit_depth"
     )
     // Counter-rotating angles with elastic spring rebound (cubic-bezier .3, 1.5, .5, 1)
-    val rotation1 by animateFloatAsState(
+    val rotation1State = animateFloatAsState(
         targetValue = if (isPressed) 120f else 0f,
         animationSpec = spring(dampingRatio = 0.55f, stiffness = 320f),
         label = "orbit_rot1"
     )
-    val rotation2 by animateFloatAsState(
+    val rotation2State = animateFloatAsState(
         targetValue = if (isPressed) -120f else 0f,
         animationSpec = spring(dampingRatio = 0.55f, stiffness = 320f),
         label = "orbit_rot2"
     )
-    val orbit1Alpha by animateFloatAsState(
+    val orbit1AlphaState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.75f,
         animationSpec = tween(durationMillis = 150),
         label = "orbit_o1_alpha"
     )
-    val orbit2Alpha by animateFloatAsState(
+    val orbit2AlphaState = animateFloatAsState(
         targetValue = if (isPressed) 0.90f else 0.45f,
         animationSpec = tween(durationMillis = 150),
         label = "orbit_o2_alpha"
     )
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "orbit_rgb_bloom"
@@ -199,12 +199,13 @@ fun OrbitButton(
         modifier = modifier
             .size(80.dp)
             .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
+                // Root RenderNode isolation
             }
-            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
+                    val rotation1 = rotation1State.value
+                    val rotation2 = rotation2State.value
                     // 1. Ambient planetary core bloom
                     val coreRadius = size.minDimension * 0.95f
                     bloomColorsList[0] = effectiveColor.copy(alpha = rgbBloomAlpha * 0.50f)
@@ -276,6 +277,11 @@ fun OrbitButton(
                 ambientColor = if (isRgbEnabled) effectiveColor else Color.Black,
                 spotColor = if (isRgbEnabled) effectiveColor else Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnimState.value
+                scaleY = scaleAnimState.value
+                translationY = pressOffsetYAnimState.value * density
+            }
             .clip(CircleShape)
             .background(baseDomeGradient)
             .border(
@@ -299,6 +305,10 @@ fun OrbitButton(
     ) {
         // ── 1. ORBIT SVG RINGS & UNDERCUT SHADOW ──
         Canvas(modifier = Modifier.fillMaxSize()) {
+            val rotation1 = rotation1State.value
+            val rotation2 = rotation2State.value
+            val orbit1Alpha = orbit1AlphaState.value
+            val orbit2Alpha = orbit2AlphaState.value
             val w = size.width
             val h = size.height
             val cx = w / 2f

@@ -166,50 +166,50 @@ fun DiscDPad(
     val isAnyPressed = currentlyPressed.isNotEmpty()
 
     // 80ms ease for 3D physical rocker tilt
-    val rxAnim by animateFloatAsState(
+    val rxAnimState = animateFloatAsState(
         targetValue = targetRx,
         animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
         label = "disc_tilt_rx"
     )
-    val ryAnim by animateFloatAsState(
+    val ryAnimState = animateFloatAsState(
         targetValue = targetRy,
         animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
         label = "disc_tilt_ry"
     )
 
     // Dynamic puck sliding displacement: 140ms with spring overshoot kinematics
-    val puckXAnim by animateFloatAsState(
+    val puckXAnimState = animateFloatAsState(
         targetValue = targetPuckX,
         animationSpec = spring(dampingRatio = 0.55f, stiffness = 400f),
         label = "disc_puck_x"
     )
-    val puckYAnim by animateFloatAsState(
+    val puckYAnimState = animateFloatAsState(
         targetValue = targetPuckY,
         animationSpec = spring(dampingRatio = 0.55f, stiffness = 400f),
         label = "disc_puck_y"
     )
 
     // Plunging spring kinematics for overall stage
-    val stageScaleAnim by animateFloatAsState(
+    val stageScaleAnimState = animateFloatAsState(
         targetValue = if (isAnyPressed) 0.95f else 1.0f,
         animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
         label = "disc_stage_scale"
     )
-    val stageOffsetYAnim by animateFloatAsState(
+    val stageOffsetYAnimState = animateFloatAsState(
         targetValue = if (isAnyPressed) 2.0f else 0f,
         animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
         label = "disc_stage_offset_y"
     )
 
     // Outer neon ring bloom
-    val ringAlphaAnim by animateFloatAsState(
+    val ringAlphaAnimState = animateFloatAsState(
         targetValue = if (isAnyPressed) 1.0f else 0.40f,
         animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
         label = "disc_ring_alpha"
     )
 
     // Directional gate sweep alpha
-    val gateAlphaAnim by animateFloatAsState(
+    val gateAlphaAnimState = animateFloatAsState(
         targetValue = if (isAnyPressed) 1.0f else 0f,
         animationSpec = tween(durationMillis = 120, easing = FastOutSlowInEasing),
         label = "disc_gate_alpha"
@@ -220,7 +220,7 @@ fun DiscDPad(
         if (isRgbEnabled) Color(0xFFE055B8) else Color(0xFFE055B8)
     }
 
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isAnyPressed) 0.95f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "disc_rgb_bloom"
@@ -282,8 +282,13 @@ fun DiscDPad(
     Box(
         modifier = modifier
             .size(160.dp)
+            .graphicsLayer {
+                // Root RenderNode isolation
+            }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
+                    val gateAlphaAnim = gateAlphaAnimState.value
                     val rimRadius = size.minDimension * 0.52f
 
                     // 1. Holographic turntable base bloom
@@ -382,20 +387,20 @@ fun DiscDPad(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer {
-                    scaleX = stageScaleAnim
-                    scaleY = stageScaleAnim
-                    translationY = stageOffsetYAnim * density
-                    rotationX = rxAnim
-                    rotationY = ryAnim
-                    cameraDistance = 12f * density
-                }
                 .shadow(
                     elevation = if (isAnyPressed) 3.dp else 8.dp,
                     shape = CircleShape,
                     spotColor = if (isRgbEnabled) neonColor else Color.Black,
                     ambientColor = if (isRgbEnabled) neonColor else Color.Black
                 )
+                .graphicsLayer {
+                    scaleX = stageScaleAnimState.value
+                    scaleY = stageScaleAnimState.value
+                    translationY = stageOffsetYAnimState.value * density
+                    rotationX = rxAnimState.value
+                    rotationY = ryAnimState.value
+                    cameraDistance = 12f * density
+                }
                 .clip(CircleShape)
                 .background(if (isAnyPressed) pressedDomeGradient else domeGradient)
                 .border(
@@ -498,7 +503,7 @@ fun DiscDPad(
             // D. Central Sliding Puck (.disc-puck)
             Box(
                 modifier = Modifier
-                    .offset { IntOffset(puckXAnim.dp.roundToPx(), puckYAnim.dp.roundToPx()) }
+                    .offset { IntOffset(puckXAnimState.value.dp.roundToPx(), puckYAnimState.value.dp.roundToPx()) }
                     .size(34.dp)
                     .shadow(
                         elevation = 6.dp,
@@ -572,6 +577,8 @@ fun DiscDPad(
 
         // --- 2. Outer Neon Ring (.lx-ring) & Dynamic Directional Gate (.lx-gate) ---
         Canvas(modifier = Modifier.fillMaxSize()) {
+            val ringAlphaAnim = ringAlphaAnimState.value
+            val gateAlphaAnim = gateAlphaAnimState.value
             val w = size.width
             val h = size.height
             val r = size.minDimension / 2f

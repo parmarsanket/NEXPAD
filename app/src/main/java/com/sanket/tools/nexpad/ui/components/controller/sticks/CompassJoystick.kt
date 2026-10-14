@@ -112,21 +112,21 @@ fun CompassJoystick(
     }
 
     // Micro-compression: scale down to 0.97 on press (--cs: 0.97)
-    val capScaleAnim by animateFloatAsState(
+    val capScaleAnim = animateFloatAsState(
         targetValue = if (isPressed) 0.97f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "compass_cap_scale"
     )
 
     // Dynamic ring bloom intensity: 0.70 idle, 1.00 when dragging/active
-    val capRingAlpha by animateFloatAsState(
+    val capRingAlpha = animateFloatAsState(
         targetValue = if (isDragging || isPressed) 1.0f else 0.70f,
         animationSpec = tween(durationMillis = 150),
         label = "compass_ring_bloom"
     )
 
     // Ambient glow bloom behind housing
-    val ambientBloomAlpha by animateFloatAsState(
+    val ambientBloomAlpha = animateFloatAsState(
         targetValue = if (isDragging || isPressed) 0.55f else 0.28f,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
         label = "compass_ambient_bloom"
@@ -172,18 +172,6 @@ fun CompassJoystick(
 
     val stickKey = remember(isLeft) { if (isLeft) "LSB" else "RSB" }
 
-    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
-    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
-    val effOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
-    val effOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
-
-    val deflectionFraction = (hypot(effOffsetX, effOffsetY) / maxTravelPx).coerceIn(0f, 1f)
-    val rgbBloomAlpha by animateFloatAsState(
-        targetValue = 0.40f + 0.55f * deflectionFraction,
-        animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
-        label = "compass_joystick_bloom"
-    )
-
     val strokeAzimuth = remember {
         androidx.compose.ui.graphics.drawscope.Stroke(
             width = 1.8f,
@@ -206,17 +194,21 @@ fun CompassJoystick(
     Box(
         modifier = modifier
             .size(150.dp)
+            .graphicsLayer { /* Root RenderNode isolation */ }
             .drawBehind {
                 if (isRgbEnabled) {
-                    val azimuthR = size.minDimension * 0.52f
-                    val curX = effOffsetX
-                    val curY = effOffsetY
+                    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+                    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                    val curX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
+                    val curY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
                     val curDist = hypot(curX, curY)
                     val defFraction = (curDist / maxTravelPx).coerceIn(0f, 1f)
+                    val dynRgbBloomAlpha = 0.40f + 0.55f * defFraction
+                    val azimuthR = size.minDimension * 0.52f
 
                     // 1. Ambient navigational core bloom
-                    coreBloomColors[0] = glowColor.copy(alpha = rgbBloomAlpha * 0.40f)
-                    coreBloomColors[1] = glowColor.copy(alpha = rgbBloomAlpha * 0.15f)
+                    coreBloomColors[0] = glowColor.copy(alpha = dynRgbBloomAlpha * 0.40f)
+                    coreBloomColors[1] = glowColor.copy(alpha = dynRgbBloomAlpha * 0.15f)
                     coreBloomColors[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
@@ -512,23 +504,23 @@ fun CompassJoystick(
             },
         contentAlignment = Alignment.Center
     ) {
-        val curOffsetX = effOffsetX
-        val curOffsetY = effOffsetY
-        val curDist = hypot(curOffsetX, curOffsetY)
-        val curMagnitude = min(1f, curDist / maxTravelPx)
-        val curAngleDeg = (atan2(curOffsetX, -curOffsetY) * 180f / Math.PI.toFloat() + 360f) % 360f
-        val curNormX = (curOffsetX / maxTravelPx).coerceIn(-1f, 1f)
-        val curNormY = (curOffsetY / maxTravelPx).coerceIn(-1f, 1f)
-
-        // Which compass pip is illuminated (index 0..7 matching 0° North to 315° North-West)
-        val activePipIndex = if (curMagnitude > 0.40f) {
-            (Math.round(curAngleDeg / 45.0).toInt() % 8)
-        } else {
-            -1
-        }
-
         // Stationary Socket Background Canvas: Inset Depth, 8 Compass Pips, and Directional Gate Arc
         Canvas(modifier = Modifier.fillMaxSize().clip(CircleShape)) {
+            val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+            val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+            val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
+            val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
+            val curDist = hypot(curOffsetX, curOffsetY)
+            val curMagnitude = min(1f, curDist / maxTravelPx)
+            val curAngleDeg = (atan2(curOffsetX, -curOffsetY) * 180f / Math.PI.toFloat() + 360f) % 360f
+
+            // Which compass pip is illuminated (index 0..7 matching 0° North to 315° North-West)
+            val activePipIndex = if (curMagnitude > 0.40f) {
+                (Math.round(curAngleDeg / 45.0).toInt() % 8)
+            } else {
+                -1
+            }
+
             val w = size.width
             val h = size.height
             val r = size.minDimension / 2f
@@ -644,18 +636,24 @@ fun CompassJoystick(
         // Spherical Compass Moving Cap (.cap-compass): 92dp diameter
         Box(
             modifier = Modifier
-                .offset { IntOffset(curOffsetX.roundToInt(), curOffsetY.roundToInt()) }
-                .graphicsLayer {
-                    scaleX = capScaleAnim
-                    scaleY = capScaleAnim
+                .offset {
+                    val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+                    val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                    val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
+                    val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
+                    IntOffset(curOffsetX.roundToInt(), curOffsetY.roundToInt())
                 }
-                .size(92.dp)
                 .shadow(
                     elevation = 10.dp,
                     shape = CircleShape,
                     ambientColor = if (isRgbEnabled) glowColor.copy(alpha = 0.5f) else Color.Black,
                     spotColor = if (isRgbEnabled) glowColor else Color.Black
                 )
+                .graphicsLayer {
+                    scaleX = capScaleAnim.value
+                    scaleY = capScaleAnim.value
+                }
+                .size(92.dp)
                 .clip(CircleShape)
                 .background(capDomeGradient)
                 .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape),
@@ -663,6 +661,16 @@ fun CompassJoystick(
         ) {
             // Cap Surface Artwork: Inset Shadows, Rotating Pointer, Cap Neon Ring, Lens Sheen
             Canvas(modifier = Modifier.fillMaxSize()) {
+                val stickX = if (isLeft) viewModel.leftStickX else viewModel.rightStickX
+                val stickY = if (isLeft) viewModel.leftStickY else viewModel.rightStickY
+                val curOffsetX = if (isLocked) animOffsetX.value else stickX * maxTravelPx
+                val curOffsetY = if (isLocked) animOffsetY.value else -stickY * maxTravelPx
+                val curDist = hypot(curOffsetX, curOffsetY)
+                val curMagnitude = min(1f, curDist / maxTravelPx)
+                val curAngleDeg = (atan2(curOffsetX, -curOffsetY) * 180f / Math.PI.toFloat() + 360f) % 360f
+                val curNormX = (curOffsetX / maxTravelPx).coerceIn(-1f, 1f)
+                val curNormY = (curOffsetY / maxTravelPx).coerceIn(-1f, 1f)
+
                 val capW = size.width
                 val capH = size.height
                 val capR = size.minDimension / 2f
@@ -725,13 +733,13 @@ fun CompassJoystick(
                 val capRingRadius = capR - 19.dp.toPx()
                 // Soft halo
                 drawCircle(
-                    color = glowColor.copy(alpha = capRingAlpha * 0.16f),
+                    color = glowColor.copy(alpha = capRingAlpha.value * 0.16f),
                     radius = capRingRadius,
                     style = Stroke(width = 3.dp.toPx())
                 )
                 // Crisp core ring
                 drawCircle(
-                    color = glowColor.copy(alpha = capRingAlpha * 0.85f),
+                    color = glowColor.copy(alpha = capRingAlpha.value * 0.85f),
                     radius = capRingRadius,
                     style = Stroke(width = 1.2.dp.toPx())
                 )
@@ -895,19 +903,19 @@ fun CompassStickButton(
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
-    val scaleAnim by animateFloatAsState(
+    val scaleAnim = animateFloatAsState(
         targetValue = if (isPressed) 0.90f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "compass_btn_scale"
     )
 
-    val pressOffsetY by animateFloatAsState(
+    val pressOffsetY = animateFloatAsState(
         targetValue = if (isPressed) 2.5f else 0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "compass_btn_offset"
     )
 
-    val ringBloomAlpha by animateFloatAsState(
+    val ringBloomAlpha = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.70f,
         animationSpec = tween(durationMillis = 120),
         label = "compass_btn_ring_bloom"
@@ -947,7 +955,7 @@ fun CompassStickButton(
         )
     }
 
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlpha = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "compass_stick_btn_bloom"
@@ -962,21 +970,20 @@ fun CompassStickButton(
         )
     }
 
+    val density = LocalDensity.current.density
+
     Box(
         modifier = modifier
             .size(70.dp)
-            .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
-            }
-            .offset { IntOffset(0, pressOffsetY.dp.roundToPx()) }
+            .graphicsLayer { /* Root RenderNode isolation */ }
+            .offset { IntOffset(0, (pressOffsetY.value * density).roundToInt()) }
             .drawBehind {
                 if (isRgbEnabled) {
                     val coreR = size.minDimension * (if (isPressed) 1.05f else 0.85f)
                     // 1. Core azimuth beacon bloom
-                    btnCoreBloomStops[0] = 0.00f to (if (isPressed) Color.White else glowColor).copy(alpha = rgbBloomAlpha * 0.65f)
-                    btnCoreBloomStops[1] = 0.35f to glowColor.copy(alpha = rgbBloomAlpha * 0.30f)
-                    btnCoreBloomStops[2] = 0.75f to glowColor.copy(alpha = rgbBloomAlpha * 0.10f)
+                    btnCoreBloomStops[0] = 0.00f to (if (isPressed) Color.White else glowColor).copy(alpha = rgbBloomAlpha.value * 0.65f)
+                    btnCoreBloomStops[1] = 0.35f to glowColor.copy(alpha = rgbBloomAlpha.value * 0.30f)
+                    btnCoreBloomStops[2] = 0.75f to glowColor.copy(alpha = rgbBloomAlpha.value * 0.10f)
                     btnCoreBloomStops[3] = 1.00f to Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
@@ -1004,12 +1011,17 @@ fun CompassStickButton(
                     }
                 }
             }
+            // RGB-coordinated shadow placed before motion scaling to prevent CPU shadow tessellation
             .shadow(
                 elevation = if (isPressed) 2.dp else 8.dp,
                 shape = CircleShape,
                 ambientColor = if (isRgbEnabled) glowColor else Color.Black,
                 spotColor = if (isRgbEnabled) glowColor else Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnim.value
+                scaleY = scaleAnim.value
+            }
             .clip(CircleShape)
             .background(capDomeGradient)
             .border(1.dp, Color.Black.copy(alpha = 0.60f), CircleShape)
@@ -1076,12 +1088,12 @@ fun CompassStickButton(
             // Cap Neon Ring: inset 12px
             val ringRadius = r - 12.dp.toPx()
             drawCircle(
-                color = glowColor.copy(alpha = ringBloomAlpha * 0.35f),
+                color = glowColor.copy(alpha = ringBloomAlpha.value * 0.35f),
                 radius = ringRadius,
                 style = Stroke(width = 4.dp.toPx())
             )
             drawCircle(
-                color = glowColor.copy(alpha = ringBloomAlpha),
+                color = glowColor.copy(alpha = ringBloomAlpha.value),
                 radius = ringRadius,
                 style = Stroke(width = 1.8.dp.toPx())
             )

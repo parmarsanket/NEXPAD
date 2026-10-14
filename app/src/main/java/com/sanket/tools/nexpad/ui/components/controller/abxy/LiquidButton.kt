@@ -67,29 +67,29 @@ fun LiquidButton(
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
-    val scaleAnim by animateFloatAsState(
+    val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "liq_scale"
     )
-    val pressOffsetYAnim by animateFloatAsState(
+    val pressOffsetYAnimState = animateFloatAsState(
         targetValue = if (isPressed) 2f else 0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "liq_depth"
     )
     // Liquid fill fraction: spring with overshoot replicating cubic-bezier(.3, 1.2, .5, 1)
-    val fillFraction by animateFloatAsState(
+    val fillFractionState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.0f,
         animationSpec = spring(dampingRatio = 0.65f, stiffness = 280f),
         label = "liq_fill"
     )
     // Label ink color transition with 150ms delay
-    val labelInkAlpha by animateFloatAsState(
+    val labelInkAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.0f,
         animationSpec = tween(durationMillis = 150, delayMillis = 150),
         label = "liq_ink_alpha"
     )
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "liq_rgb_bloom"
@@ -97,7 +97,7 @@ fun LiquidButton(
 
     // Meniscus wave horizontal sway and vertical wobble (sway 0.7s alternate)
     val infiniteTransition = rememberInfiniteTransition(label = "liq_wave")
-    val swayXPercent by infiniteTransition.animateFloat(
+    val swayXPercentState = infiniteTransition.animateFloat(
         initialValue = -0.09f,
         targetValue = 0.09f,
         animationSpec = infiniteRepeatable(
@@ -106,7 +106,7 @@ fun LiquidButton(
         ),
         label = "liq_sway_x"
     )
-    val waveScaleY by infiniteTransition.animateFloat(
+    val waveScaleYState = infiniteTransition.animateFloat(
         initialValue = 0.70f,
         targetValue = 1.25f,
         animationSpec = infiniteRepeatable(
@@ -184,8 +184,14 @@ fun LiquidButton(
     Box(
         modifier = modifier
             .size(80.dp)
+            .graphicsLayer {
+                // Root RenderNode isolation
+            }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val fillFraction = fillFractionState.value
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
+                    val swayXPercent = swayXPercentState.value
                     val clampedFill = fillFraction.coerceIn(0f, 1f)
                     // 1. Buoyant fluid reservoir pool that rises and expands upward with fillFraction
                     val poolCenterY = center.y + (1f - clampedFill * 0.75f) * (size.height * 0.26f)
@@ -228,17 +234,17 @@ fun LiquidButton(
                     }
                 }
             }
-            .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
-            }
-            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .shadow(
                 elevation = if (isPressed) 1.dp else 4.dp,
                 shape = CircleShape,
                 ambientColor = if (isRgbEnabled) effectiveColor else Color.Black,
                 spotColor = if (isRgbEnabled) effectiveColor else Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnimState.value
+                scaleY = scaleAnimState.value
+                translationY = pressOffsetYAnimState.value * density
+            }
             .clip(CircleShape)
             .background(baseDomeGradient)
             .border(
@@ -267,6 +273,9 @@ fun LiquidButton(
                 .clip(CircleShape)
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
+                val fillFraction = fillFractionState.value
+                val waveScaleY = waveScaleYState.value
+                val swayXPercent = swayXPercentState.value
                 val w = size.width
                 val h = size.height
 
@@ -333,28 +342,40 @@ fun LiquidButton(
             if (psShape != null) {
                 PlayStationSymbol(
                     shape = psShape,
-                    color = effectiveColor.copy(alpha = (1f - labelInkAlpha).coerceIn(0f, 1f)),
-                    size = 38.dp
+                    color = effectiveColor,
+                    size = 38.dp,
+                    modifier = Modifier.graphicsLayer {
+                        alpha = (1f - labelInkAlphaState.value).coerceIn(0f, 1f)
+                    }
                 )
                 PlayStationSymbol(
                     shape = psShape,
-                    color = Color(0xFF0B0C0D).copy(alpha = labelInkAlpha.coerceIn(0f, 1f)),
-                    size = 38.dp
+                    color = Color(0xFF0B0C0D),
+                    size = 38.dp,
+                    modifier = Modifier.graphicsLayer {
+                        alpha = labelInkAlphaState.value.coerceIn(0f, 1f)
+                    }
                 )
             } else {
                 // Neon glyph (fades out as ink alpha rises)
                 Text(
                     text = activeLabel,
-                    color = effectiveColor.copy(alpha = (1f - labelInkAlpha).coerceIn(0f, 1f)),
+                    color = effectiveColor,
                     fontWeight = FontWeight.Medium,
-                    fontSize = 44.sp
+                    fontSize = 44.sp,
+                    modifier = Modifier.graphicsLayer {
+                        alpha = (1f - labelInkAlphaState.value).coerceIn(0f, 1f)
+                    }
                 )
                 // Dark ink glyph (.ab.pressed .g { color: #0b0c0d })
                 Text(
                     text = activeLabel,
-                    color = Color(0xFF0B0C0D).copy(alpha = labelInkAlpha.coerceIn(0f, 1f)),
+                    color = Color(0xFF0B0C0D),
                     fontWeight = FontWeight.Medium,
-                    fontSize = 44.sp
+                    fontSize = 44.sp,
+                    modifier = Modifier.graphicsLayer {
+                        alpha = labelInkAlphaState.value.coerceIn(0f, 1f)
+                    }
                 )
             }
         }

@@ -143,6 +143,23 @@ fun RealisticDPad(
         arrayListOf(Color.Transparent, Color.Transparent)
     }
 
+    val crossBorderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color(0xFF718096).copy(alpha = 0.65f),
+                Color(0xFF2D3748).copy(alpha = 0.40f),
+                Color(0xFF1A202C)
+            )
+        )
+    }
+    val crossBorderStroke = remember(density) { Stroke(width = 1.5f * density) }
+    val concaveRestStroke = remember(density) { Stroke(width = 1.2f * density) }
+    val crossPath = remember { Path() }
+    val upPath = remember { Path() }
+    val downPath = remember { Path() }
+    val leftPath = remember { Path() }
+    val rightPath = remember { Path() }
+
     Box(
         modifier = modifier
             .size(140.dp)
@@ -239,32 +256,32 @@ fun RealisticDPad(
                     center = center,
                     style = bevelStroke
                 )
+
+                // Single-pass hardware drop shadow for the D-Pad cross (zero CPU tessellation / zero stencil attachment)
+                val shadowColor = (if (isRgbEnabled) neonColor else Color.Black)
+                    .copy(alpha = if (hasActivePress) 0.35f else 0.55f)
+                val shadowOffset = if (hasActivePress) 2.dp.toPx() else 4.dp.toPx()
+                val armW = size.width / 3f
+                val armH = size.height / 3f
+                drawRoundRect(
+                    color = shadowColor,
+                    topLeft = Offset(armW, shadowOffset),
+                    size = Size(armW, size.height),
+                    cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+                )
+                drawRoundRect(
+                    color = shadowColor,
+                    topLeft = Offset(0f, armH + shadowOffset),
+                    size = Size(size.width, armH),
+                    cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+                )
             }
-            .shadow(
-                elevation = if (hasActivePress) 3.dp else 8.dp,
-                shape = crossShape,
-                ambientColor = if (isRgbEnabled) neonColor else Color.Black,
-                spotColor = if (isRgbEnabled) neonColor else Color.Black
-            )
             .graphicsLayer {
                 rotationX = tiltXAnimState.value
                 rotationY = tiltYAnimState.value
                 scaleX = scaleAnimState.value
                 scaleY = scaleAnimState.value
             }
-            .clip(crossShape)
-            .background(surfaceGradient)
-            .border(
-                width = 1.5.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF718096).copy(alpha = 0.65f),
-                        Color(0xFF2D3748).copy(alpha = 0.40f),
-                        Color(0xFF1A202C)
-                    )
-                ),
-                shape = crossShape
-            )
             .pointerInput(isConnected) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -324,6 +341,27 @@ fun RealisticDPad(
             val h = size.height
             val armW = w / 3f
             val armH = h / 3f
+            val twoThirdW = armW * 2f
+            val twoThirdH = armH * 2f
+
+            // 0. Authentic Cross Surface and Metallic Bevel Border (Zero-Stencil Hardware Direct Path)
+            crossPath.reset()
+            crossPath.moveTo(armW, 0f)
+            crossPath.lineTo(twoThirdW, 0f)
+            crossPath.lineTo(twoThirdW, armH)
+            crossPath.lineTo(w, armH)
+            crossPath.lineTo(w, twoThirdH)
+            crossPath.lineTo(twoThirdW, twoThirdH)
+            crossPath.lineTo(twoThirdW, h)
+            crossPath.lineTo(armW, h)
+            crossPath.lineTo(armW, twoThirdH)
+            crossPath.lineTo(0f, twoThirdH)
+            crossPath.lineTo(0f, armH)
+            crossPath.lineTo(armW, armH)
+            crossPath.close()
+
+            drawPath(path = crossPath, brush = surfaceGradient)
+            drawPath(path = crossPath, brush = crossBorderBrush, style = crossBorderStroke)
 
             // 1. Draw Active Arm LED Illumination
             if (pressedDirs.contains(K.UP)) {
@@ -387,48 +425,44 @@ fun RealisticDPad(
             val arrowSize = 6.5.dp.toPx()
 
             // UP Arrow
-            val upPath = Path().apply {
-                moveTo(w / 2f, armH * 0.45f - arrowSize)
-                lineTo(w / 2f + arrowSize, armH * 0.45f + arrowSize)
-                lineTo(w / 2f - arrowSize, armH * 0.45f + arrowSize)
-                close()
-            }
+            upPath.reset()
+            upPath.moveTo(w / 2f, armH * 0.45f - arrowSize)
+            upPath.lineTo(w / 2f + arrowSize, armH * 0.45f + arrowSize)
+            upPath.lineTo(w / 2f - arrowSize, armH * 0.45f + arrowSize)
+            upPath.close()
             drawPath(
                 path = upPath,
                 color = if (pressedDirs.contains(K.UP)) pressedArrowColor else normalArrowColor
             )
 
             // DOWN Arrow
-            val downPath = Path().apply {
-                moveTo(w / 2f, h - armH * 0.45f + arrowSize)
-                lineTo(w / 2f + arrowSize, h - armH * 0.45f - arrowSize)
-                lineTo(w / 2f - arrowSize, h - armH * 0.45f - arrowSize)
-                close()
-            }
+            downPath.reset()
+            downPath.moveTo(w / 2f, h - armH * 0.45f + arrowSize)
+            downPath.lineTo(w / 2f + arrowSize, h - armH * 0.45f - arrowSize)
+            downPath.lineTo(w / 2f - arrowSize, h - armH * 0.45f - arrowSize)
+            downPath.close()
             drawPath(
                 path = downPath,
                 color = if (pressedDirs.contains(K.DOWN)) pressedArrowColor else normalArrowColor
             )
 
             // LEFT Arrow
-            val leftPath = Path().apply {
-                moveTo(armW * 0.45f - arrowSize, h / 2f)
-                lineTo(armW * 0.45f + arrowSize, h / 2f - arrowSize)
-                lineTo(armW * 0.45f + arrowSize, h / 2f + arrowSize)
-                close()
-            }
+            leftPath.reset()
+            leftPath.moveTo(armW * 0.45f - arrowSize, h / 2f)
+            leftPath.lineTo(armW * 0.45f + arrowSize, h / 2f - arrowSize)
+            leftPath.lineTo(armW * 0.45f + arrowSize, h / 2f + arrowSize)
+            leftPath.close()
             drawPath(
                 path = leftPath,
                 color = if (pressedDirs.contains(K.LEFT)) pressedArrowColor else normalArrowColor
             )
 
             // RIGHT Arrow
-            val rightPath = Path().apply {
-                moveTo(w - armW * 0.45f + arrowSize, h / 2f)
-                lineTo(w - armW * 0.45f - arrowSize, h / 2f - arrowSize)
-                lineTo(w - armW * 0.45f - arrowSize, h / 2f + arrowSize)
-                close()
-            }
+            rightPath.reset()
+            rightPath.moveTo(w - armW * 0.45f + arrowSize, h / 2f)
+            rightPath.lineTo(w - armW * 0.45f - arrowSize, h / 2f - arrowSize)
+            rightPath.lineTo(w - armW * 0.45f - arrowSize, h / 2f + arrowSize)
+            rightPath.close()
             drawPath(
                 path = rightPath,
                 color = if (pressedDirs.contains(K.RIGHT)) pressedArrowColor else normalArrowColor
@@ -449,7 +483,7 @@ fun RealisticDPad(
                 color = Color.White.copy(alpha = 0.15f),
                 radius = centerRadius,
                 center = Offset(w / 2f, h / 2f),
-                style = Stroke(width = 1.2.dp.toPx())
+                style = concaveRestStroke
             )
         }
     }
@@ -534,17 +568,17 @@ fun RealisticDPadButton(
                     )
                 }
             }
-            .graphicsLayer {
-                scaleX = scaleAnimState.value
-                scaleY = scaleAnimState.value
-                translationY = pressOffsetYAnimState.value * density
-            }
             .shadow(
                 elevation = if (isPressed) 3.dp else 8.dp,
                 shape = shape,
                 ambientColor = if (isRgbEnabled) themeColor else Color.Black,
                 spotColor = if (isRgbEnabled) themeColor else Color.Black
             )
+            .graphicsLayer {
+                scaleX = scaleAnimState.value
+                scaleY = scaleAnimState.value
+                translationY = pressOffsetYAnimState.value * density
+            }
             .clip(shape)
             .background(
                 Brush.verticalGradient(
