@@ -60,26 +60,26 @@ fun OrbitHomeButton(
     var isPressed by remember { mutableStateOf(false) }
 
     // Plunging kinematics
-    val scaleAnim by animateFloatAsState(
+    val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "orbit_home_scale"
     )
-    val pressOffsetYAnim by animateFloatAsState(
+    val pressOffsetYAnimState = animateFloatAsState(
         targetValue = if (isPressed) 2f else 0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "orbit_home_offset"
     )
 
     // Dynamic 120° cyclic rotation matching cubic-bezier(.3, 1.5, .5, 1)
-    val orbitRotAnim by animateFloatAsState(
+    val orbitRotAnimState = animateFloatAsState(
         targetValue = if (isPressed) 120f else 0f,
         animationSpec = spring(dampingRatio = 0.52f, stiffness = 380f),
         label = "orbit_home_rot"
     )
 
     // Bloom pulse
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.70f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "orbit_home_bloom"
@@ -93,22 +93,8 @@ fun OrbitHomeButton(
     }
 
     val buttonSize = 74.dp
+
     val density = LocalDensity.current.density
-
-    val trackStroke = remember(density) {
-        Stroke(
-            width = 1f * density,
-            pathEffect = PathEffect.dashPathEffect(
-                floatArrayOf(4f * density, 8f * density), 0f
-            )
-        )
-    }
-    val stroke4dp = remember(density) { Stroke(width = 4f * density) }
-    val stroke2dp = remember(density) { Stroke(width = 2f * density) }
-    val stroke1_2dp = remember(density) { Stroke(width = 1.2f * density) }
-    val orbitHaloStroke = remember(density) { Stroke(width = 3.6f * density + 2.5f * density, cap = StrokeCap.Round) }
-    val orbitCoreStroke = remember(density) { Stroke(width = 3.6f * density, cap = StrokeCap.Round) }
-
     val borderBrush = remember {
         Brush.verticalGradient(
             colors = listOf(
@@ -117,32 +103,29 @@ fun OrbitHomeButton(
             )
         )
     }
-    val insetShadowColorsPressed = remember {
-        listOf(
-            Color.Transparent,
-            Color.Black.copy(alpha = 0.85f)
+    val stroke1dp = remember(density) { Stroke(width = 1f * density) }
+    val stroke1_2dp = remember(density) { Stroke(width = 1.2f * density) }
+    val stroke2dp = remember(density) { Stroke(width = 2f * density) }
+    val stroke4dp = remember(density) { Stroke(width = 4f * density) }
+    val strokeW = remember(density) { 3.6f * density }
+    val orbitHaloStroke = remember(strokeW, density) { Stroke(width = strokeW + 2.5f * density, cap = StrokeCap.Round) }
+    val orbitCoreStroke = remember(strokeW) { Stroke(width = strokeW, cap = StrokeCap.Round) }
+    val trackStroke = remember(density) {
+        Stroke(
+            width = 1f * density,
+            pathEffect = PathEffect.dashPathEffect(
+                floatArrayOf(4f * density, 8f * density), 0f
+            )
         )
     }
-    val insetShadowColorsNormal = remember {
-        listOf(
-            Color.Transparent,
-            Color.Black.copy(alpha = 0.70f)
-        )
-    }
-    val lensColorsPressed = remember {
-        listOf(
-            Color.White.copy(alpha = 0.08f),
-            Color.Transparent
-        )
-    }
-    val lensColorsNormal = remember {
-        listOf(
-            Color.White.copy(alpha = 0.16f),
-            Color.Transparent
-        )
-    }
-    val specularSheenColors = remember {
-        listOf(Color.White.copy(alpha = 0.07f), Color.Transparent)
+
+    val insetShadowColorsPressed = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)) }
+    val insetShadowColorsNormal = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)) }
+    val lensColorsPressed = remember { listOf(Color.White.copy(alpha = 0.08f), Color.Transparent) }
+    val lensColorsNormal = remember { listOf(Color.White.copy(alpha = 0.16f), Color.Transparent) }
+    val specularSheenColors = remember { listOf(Color.White.copy(alpha = 0.07f), Color.Transparent) }
+    val bloomColorsList = remember(glowColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
 
     // Multi-stop convex dome gradient: #232527 0%, #0c0d0e 75%, #000 100%
@@ -154,36 +137,18 @@ fun OrbitHomeButton(
         )
     }
 
-    val bloomColorsList = remember(glowColor) {
-        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
-    }
-
     Box(
         modifier = modifier
             .size(buttonSize)
             .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
-                translationY = pressOffsetYAnim * density
+                // Root RenderNode isolation
             }
             // Bespoke Planetary Orbital Resonance Aura
             .drawBehind {
-                val shadowOffsetY = if (isPressed) 1.5.dp.toPx() else 4.dp.toPx()
-                val shadowRadius = size.minDimension * 0.44f
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        0.0f to Color.Black.copy(alpha = if (isPressed) 0.35f else 0.55f),
-                        0.75f to Color.Black.copy(alpha = if (isPressed) 0.15f else 0.25f),
-                        1.0f to Color.Transparent,
-                        center = Offset(center.x, center.y + shadowOffsetY),
-                        radius = shadowRadius
-                    ),
-                    radius = shadowRadius,
-                    center = Offset(center.x, center.y + shadowOffsetY)
-                )
-
                 if (isRgbEnabled) {
                     val auraR = size.minDimension * 0.85f
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
+                    val orbitRotAnim = orbitRotAnimState.value
 
                     // 1. Broad celestial ambient corona
                     bloomColorsList[0] = glowColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.65f else 0.35f))
@@ -223,6 +188,17 @@ fun OrbitHomeButton(
                     }
                 }
             }
+            .shadow(
+                elevation = if (isPressed) 2.dp else 6.dp,
+                shape = CircleShape,
+                ambientColor = if (isRgbEnabled) glowColor else Color.Black,
+                spotColor = if (isRgbEnabled) glowColor else Color.Black
+            )
+            .graphicsLayer {
+                scaleX = scaleAnimState.value
+                scaleY = scaleAnimState.value
+                translationY = pressOffsetYAnimState.value * density
+            }
             .clip(CircleShape)
             .background(domeGradient)
             .border(
@@ -248,6 +224,8 @@ fun OrbitHomeButton(
             val w = size.width
             val h = size.height
             val r = size.minDimension / 2f
+            val orbitRotAnim = orbitRotAnimState.value
+            val rgbBloomAlpha = rgbBloomAlphaState.value
 
             // Layer 1: Recessed bottom undercut shadow (.lx-body::box-shadow)
             val botShadowH = h * 0.38f
@@ -371,7 +349,6 @@ internal fun StaticOrbitHomeButton(
     modifier: Modifier = Modifier,
     isRgbEnabled: Boolean = true
 ) {
-    val density = LocalDensity.current.density
     val glowColor = if (isRgbEnabled) Color(0xFF00E5FF) else Color(0xFFF0F3F8)
     val buttonSize = 74.dp
 
@@ -383,22 +360,6 @@ internal fun StaticOrbitHomeButton(
         )
     }
 
-    val previewBloomColors = remember(glowColor) {
-        listOf(
-            glowColor.copy(alpha = 0.35f),
-            glowColor.copy(alpha = 0.15f),
-            Color.Transparent
-        )
-    }
-    val previewTrackStroke = remember(density) {
-        Stroke(
-            width = 1f * density,
-            pathEffect = PathEffect.dashPathEffect(
-                floatArrayOf(4f * density, 8f * density), 0f
-            )
-        )
-    }
-
     Box(
         modifier = modifier
             .size(buttonSize)
@@ -406,7 +367,11 @@ internal fun StaticOrbitHomeButton(
                 val auraR = size.minDimension * 0.85f
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = previewBloomColors,
+                        colors = listOf(
+                            glowColor.copy(alpha = 0.35f),
+                            glowColor.copy(alpha = 0.15f),
+                            Color.Transparent
+                        ),
                         center = center,
                         radius = auraR
                     ),
@@ -418,7 +383,12 @@ internal fun StaticOrbitHomeButton(
                     color = glowColor.copy(alpha = 0.20f),
                     radius = trackR,
                     center = center,
-                    style = previewTrackStroke
+                    style = Stroke(
+                        width = 1.dp.toPx(),
+                        pathEffect = PathEffect.dashPathEffect(
+                            floatArrayOf(4.dp.toPx(), 8.dp.toPx()), 0f
+                        )
+                    )
                 )
                 for (i in 0 until 3) {
                     val angleRad = Math.toRadians(i * 120.0)

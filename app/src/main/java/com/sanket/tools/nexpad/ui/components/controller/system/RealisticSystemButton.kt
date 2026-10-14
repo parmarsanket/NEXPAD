@@ -172,12 +172,12 @@ fun RealisticSystemButton(
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
-    val scaleAnim by animateFloatAsState(
+    val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "sys_btn_scale"
     )
-    val pressOffsetYAnim by animateFloatAsState(
+    val pressOffsetYAnimState = animateFloatAsState(
         targetValue = if (isPressed) 2f else 0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "sys_btn_offset"
@@ -189,7 +189,7 @@ fun RealisticSystemButton(
     val ctrl = remember(key) { ControlKey.fromIdentifier(key) }
     val isGuide = ctrl == ControlKey.GUIDE
 
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.70f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "sys_btn_rgb_bloom"
@@ -208,6 +208,7 @@ fun RealisticSystemButton(
     val buttonSize = if (isGuide) 74.dp else 60.dp
     val iconSize = if (isGuide) 36.dp else 24.dp
 
+    // Optical Lens radial dome: #232527 0%, #0c0d0e 75%, #000 100%
     val domeGradient = remember {
         Brush.radialGradient(
             colors = listOf(Color(0xFF232527), Color(0xFF0C0D0E), Color(0xFF000000)),
@@ -217,6 +218,11 @@ fun RealisticSystemButton(
     }
 
     val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val stroke1dp = remember(density) { Stroke(width = 1f * density) }
+    val stroke1_2dp = remember(density) { Stroke(width = 1.2f * density) }
+    val stroke2dp = remember(density) { Stroke(width = 2f * density) }
+    val stroke4dp = remember(density) { Stroke(width = 4f * density) }
+
     val borderBrush = remember {
         Brush.verticalGradient(
             colors = listOf(
@@ -225,10 +231,6 @@ fun RealisticSystemButton(
             )
         )
     }
-    val stroke1dp = remember(density) { Stroke(width = 1f * density) }
-    val stroke1_2dp = remember(density) { Stroke(width = 1.2f * density) }
-    val stroke2dp = remember(density) { Stroke(width = 2f * density) }
-    val stroke4dp = remember(density) { Stroke(width = 4f * density) }
     val insetShadowColorsPressed = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)) }
     val insetShadowColorsNormal = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)) }
     val lensColorsPressed = remember { listOf(Color.White.copy(alpha = 0.08f), Color.Transparent) }
@@ -242,31 +244,16 @@ fun RealisticSystemButton(
         modifier = modifier
             .size(buttonSize)
             .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
-                translationY = pressOffsetYAnim * density
+                // Root RenderNode isolation
             }
             .drawBehind {
-                val shadowOffsetY = if (isPressed) 1.5.dp.toPx() else 4.dp.toPx()
-                val shadowRadius = size.minDimension * 0.44f
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        0.0f to Color.Black.copy(alpha = if (isPressed) 0.35f else 0.55f),
-                        0.75f to Color.Black.copy(alpha = if (isPressed) 0.15f else 0.25f),
-                        1.0f to Color.Transparent,
-                        center = Offset(center.x, center.y + shadowOffsetY),
-                        radius = shadowRadius
-                    ),
-                    radius = shadowRadius,
-                    center = Offset(center.x, center.y + shadowOffsetY)
-                )
-
                 if (isRgbEnabled) {
+                    val bloomAlpha = rgbBloomAlphaState.value
                     val baseR = size.minDimension * 0.5f
 
                     // 1. Precision tactical circular halo
-                    bloomColorsList[0] = auraColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.65f else 0.35f))
-                    bloomColorsList[1] = auraColor.copy(alpha = rgbBloomAlpha * 0.15f)
+                    bloomColorsList[0] = auraColor.copy(alpha = bloomAlpha * (if (isPressed) 0.65f else 0.35f))
+                    bloomColorsList[1] = auraColor.copy(alpha = bloomAlpha * 0.15f)
                     bloomColorsList[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
@@ -280,13 +267,13 @@ fun RealisticSystemButton(
 
                     // 2. Dual Precision Telemetry Guide Rings
                     drawCircle(
-                        color = auraColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.85f else 0.45f)),
+                        color = auraColor.copy(alpha = bloomAlpha * (if (isPressed) 0.85f else 0.45f)),
                         radius = baseR + 3.dp.toPx(),
                         center = center,
                         style = stroke1_2dp
                     )
                     drawCircle(
-                        color = auraColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.50f else 0.20f)),
+                        color = auraColor.copy(alpha = bloomAlpha * (if (isPressed) 0.50f else 0.20f)),
                         radius = baseR + 7.dp.toPx(),
                         center = center,
                         style = stroke1dp
@@ -296,13 +283,25 @@ fun RealisticSystemButton(
                     val pipLen = (if (isPressed) 6.dp else 3.5.dp).toPx()
                     val pipStart = baseR + 2.dp.toPx()
                     val pipEnd = pipStart + pipLen
-                    val pipAlpha = rgbBloomAlpha * (if (isPressed) 0.95f else 0.55f)
+                    val pipAlpha = bloomAlpha * (if (isPressed) 0.95f else 0.55f)
 
                     drawLine(auraColor.copy(alpha = pipAlpha), Offset(center.x, center.y - pipEnd), Offset(center.x, center.y - pipStart), strokeWidth = 2f)
                     drawLine(auraColor.copy(alpha = pipAlpha), Offset(center.x, center.y + pipStart), Offset(center.x, center.y + pipEnd), strokeWidth = 2f)
                     drawLine(auraColor.copy(alpha = pipAlpha), Offset(center.x - pipEnd, center.y), Offset(center.x - pipStart, center.y), strokeWidth = 2f)
                     drawLine(auraColor.copy(alpha = pipAlpha), Offset(center.x + pipStart, center.y), Offset(center.x + pipEnd, center.y), strokeWidth = 2f)
                 }
+            }
+            .shadow(
+                elevation = if (isPressed) 2.dp else 6.dp,
+                shape = CircleShape,
+                ambientColor = if (isRgbEnabled) auraColor else Color.Black,
+                spotColor = if (isRgbEnabled) auraColor else Color.Black
+            )
+            .graphicsLayer {
+                val s = scaleAnimState.value
+                scaleX = s
+                scaleY = s
+                translationY = pressOffsetYAnimState.value * density
             }
             .clip(CircleShape)
             .background(domeGradient)
@@ -350,7 +349,7 @@ fun RealisticSystemButton(
                 style = stroke4dp
             )
             drawCircle(
-                color = auraColor.copy(alpha = rgbBloomAlpha),
+                color = auraColor.copy(alpha = rgbBloomAlphaState.value),
                 radius = ringR,
                 style = stroke2dp
             )

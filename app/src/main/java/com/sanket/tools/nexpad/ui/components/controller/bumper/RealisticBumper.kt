@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -89,22 +90,22 @@ fun RealisticBumper(
     }
 
     // Kinematic Physics Engine — Damped Harmonic Spring (Engine 2)
-    val scaleAnim by animateFloatAsState(
+    val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "bumper_scale"
     )
-    val pressOffsetYAnim by animateFloatAsState(
+    val pressOffsetYAnimState = animateFloatAsState(
         targetValue = if (isPressed) 2.0f else 0f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "bumper_offset"
     )
-    val ringAlphaAnim by animateFloatAsState(
+    val ringAlphaAnimState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.70f,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
         label = "bumper_ring_alpha"
     )
-    val ringBloomAnim by animateFloatAsState(
+    val ringBloomAnimState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.40f,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
         label = "bumper_ring_bloom"
@@ -117,7 +118,7 @@ fun RealisticBumper(
         } else Color(0xFFD8DEE9)
     }
 
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 1.0f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "realistic_bumper_rgb_bloom"
@@ -139,37 +140,17 @@ fun RealisticBumper(
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
 
-    val density = androidx.compose.ui.platform.LocalDensity.current.density
-    val ringPath = remember(density, isLeft) {
-        val w = 154f * density
-        val h = 48f * density
-        val ringInset = 2.5f * density
-        Path().apply {
-            addRoundRect(
-                RoundRect(
-                    rect = Rect(ringInset, ringInset, w - ringInset, h - ringInset),
-                    topLeft = CornerRadius(if (isLeft) 7.5f * density else 23.5f * density),
-                    topRight = CornerRadius(if (isLeft) 23.5f * density else 7.5f * density),
-                    bottomRight = CornerRadius(if (isLeft) 23.5f * density else 7.5f * density),
-                    bottomLeft = CornerRadius(if (isLeft) 7.5f * density else 23.5f * density)
-                )
-            )
-        }
-    }
-
-    val topEdgeColors = remember { listOf(Color.White.copy(alpha = 0.07f), Color.Transparent) }
-    val undercutColors = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)) }
-    val pressedColors = remember { listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent) }
-    val lensEdgeColors = remember { listOf(Color.White.copy(alpha = 0.10f), Color.Transparent) }
-    val windowTopShadowColors = remember { listOf(Color.Black.copy(alpha = 0.90f), Color.Transparent) }
-    val windowBgColors = remember { listOf(Color(0xFF050506), Color(0xFF121314)) }
-
+    val density = LocalDensity.current.density
+    val stroke1dp = remember(density) { Stroke(width = 1f * density) }
+    val stroke2dp = remember(density) { Stroke(width = 2f * density) }
+    val stroke3dp = remember(density) { Stroke(width = 3f * density) }
+    val stroke5dp = remember(density) { Stroke(width = 5f * density) }
+    val flareLenPressed = remember(density) { 16f * density }
+    val flareLenNormal = remember(density) { 8f * density }
     val flareWidthPressed = remember(density) { 3.5f * density }
     val flareWidthNormal = remember(density) { 2f * density }
     val innerFlareRadiusPressed = remember(density) { 20f * density }
     val innerFlareRadiusNormal = remember(density) { 12f * density }
-    val flareLenPressed = remember(density) { 16f * density }
-    val flareLenNormal = remember(density) { 8f * density }
 
     val stadiumBloomColors = remember(neonColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
@@ -180,27 +161,26 @@ fun RealisticBumper(
     val innerFlareColors = remember(neonColor) {
         arrayListOf(Color.Transparent, Color.Transparent)
     }
+    val topEdgeColors = remember { listOf(Color.White.copy(alpha = 0.07f), Color.Transparent) }
+    val undercutColors = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)) }
+    val pressedColors = remember { listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent) }
+    val windowBgColors = remember { listOf(Color(0xFF050506), Color(0xFF121314)) }
+    val windowTopShadowColors = remember { listOf(Color.Black.copy(alpha = 0.90f), Color.Transparent) }
+    val lensEdgeColors = remember { listOf(Color.White.copy(alpha = 0.10f), Color.Transparent) }
+
+    val ringPath = remember { Path() }
 
     Box(
         modifier = modifier
             .size(154.dp, 48.dp)
             .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
+                // Root RenderNode isolation
             }
             .drawBehind {
-                val shadowOffsetY = if (isPressed) 1.5.dp.toPx() else 4.dp.toPx()
-                val shadowPad = if (isPressed) 2.dp.toPx() else 5.dp.toPx()
-                drawRoundRect(
-                    color = Color.Black.copy(alpha = if (isPressed) 0.35f else 0.55f),
-                    topLeft = Offset(-shadowPad * 0.5f, shadowOffsetY - shadowPad * 0.5f),
-                    size = Size(size.width + shadowPad, size.height + shadowPad),
-                    cornerRadius = CornerRadius(22.dp.toPx() + shadowPad, 22.dp.toPx() + shadowPad)
-                )
-
                 if (isRgbEnabled) {
                     val padX = 14.dp.toPx()
                     val padY = 8.dp.toPx()
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
 
                     // 1. Asymmetrical shoulder stadium aura
                     stadiumBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.55f else 0.35f))
@@ -255,6 +235,17 @@ fun RealisticBumper(
                     )
                 }
             }
+            .shadow(
+                elevation = if (isPressed) 1.dp else 4.dp,
+                shape = bumperShape,
+                ambientColor = if (isRgbEnabled) neonColor else Color.Black,
+                spotColor = if (isRgbEnabled) neonColor else Color.Black
+            )
+            .graphicsLayer {
+                scaleX = scaleAnimState.value
+                scaleY = scaleAnimState.value
+                translationY = pressOffsetYAnimState.value * density
+            }
             .border(
                 width = 1.dp,
                 color = Color.Black.copy(alpha = 0.50f),
@@ -279,9 +270,9 @@ fun RealisticBumper(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    scaleX = scaleAnim
-                    scaleY = scaleAnim
-                    translationY = pressOffsetYAnim.dp.toPx()
+                    scaleX = scaleAnimState.value
+                    scaleY = scaleAnimState.value
+                    translationY = pressOffsetYAnimState.value * density
                 }
                 .clip(bumperShape)
                 .background(baseDomeGradient),
@@ -399,23 +390,35 @@ fun RealisticBumper(
             val h = size.height
 
             // --- Layer 4: Neon Ring (.lx-ring) ---
+            val ringInset = 2.5.dp.toPx()
+            ringPath.reset()
+            ringPath.addRoundRect(
+                RoundRect(
+                    rect = Rect(ringInset, ringInset, w - ringInset, h - ringInset),
+                    topLeft = CornerRadius(if (isLeft) 7.5.dp.toPx() else 23.5.dp.toPx()),
+                    topRight = CornerRadius(if (isLeft) 23.5.dp.toPx() else 7.5.dp.toPx()),
+                    bottomRight = CornerRadius(if (isLeft) 23.5.dp.toPx() else 7.5.dp.toPx()),
+                    bottomLeft = CornerRadius(if (isLeft) 7.5.dp.toPx() else 23.5.dp.toPx())
+                )
+            )
+
             // Outer bloom pass
             drawPath(
                 path = ringPath,
-                color = neonColor.copy(alpha = (if (isPressed) 0.50f else 0.25f) * ringBloomAnim),
-                style = Stroke(width = 5.dp.toPx())
+                color = neonColor.copy(alpha = (if (isPressed) 0.50f else 0.25f) * ringBloomAnimState.value),
+                style = stroke5dp
             )
             // Inner bloom pass
             drawPath(
                 path = ringPath,
-                color = neonColor.copy(alpha = (if (isPressed) 0.40f else 0.18f) * ringBloomAnim),
-                style = Stroke(width = 3.dp.toPx())
+                color = neonColor.copy(alpha = (if (isPressed) 0.40f else 0.18f) * ringBloomAnimState.value),
+                style = stroke3dp
             )
             // Core crisp stroke: 2px solid var(--glow)
             drawPath(
                 path = ringPath,
-                color = neonColor.copy(alpha = ringAlphaAnim),
-                style = Stroke(width = 2.dp.toPx())
+                color = neonColor.copy(alpha = ringAlphaAnimState.value),
+                style = stroke2dp
             )
 
             // --- Layer 7: Glass Lens (.lx-lens) ---

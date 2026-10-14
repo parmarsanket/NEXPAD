@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -31,7 +32,6 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -252,7 +252,6 @@ fun RealisticButton(
             Color.Transparent
         )
     }
-
     val lensColorsNormal = remember {
         listOf(
             Color.White.copy(alpha = 0.14f),
@@ -264,7 +263,6 @@ fun RealisticButton(
     val insetShadowColorsPressed = remember {
         listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f))
     }
-
     val insetShadowColorsNormal = remember {
         listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f))
     }
@@ -275,21 +273,6 @@ fun RealisticButton(
     val stroke3dp = remember(density) { Stroke(width = 3f * density) }
     val stroke3_5dp = remember(density) { Stroke(width = 3.5f * density) }
     val stroke4dp = remember(density) { Stroke(width = 4f * density) }
-
-    val normalShadowBrush = remember {
-        Brush.radialGradient(
-            0.0f to Color.Black.copy(alpha = 0.55f),
-            0.70f to Color.Black.copy(alpha = 0.20f),
-            1.0f to Color.Transparent
-        )
-    }
-    val pressedShadowBrush = remember {
-        Brush.radialGradient(
-            0.0f to Color.Black.copy(alpha = 0.35f),
-            0.65f to Color.Black.copy(alpha = 0.10f),
-            1.0f to Color.Transparent
-        )
-    }
 
     class RealisticButtonAuraBrush {
         private var radius: Float = 0f
@@ -318,32 +301,32 @@ fun RealisticButton(
         modifier = modifier
             .size(80.dp)
             .graphicsLayer {
-                scaleX = scaleAnimState.value
-                scaleY = scaleAnimState.value
-                translationY = pressOffsetYAnimState.value * density
+                // Root RenderNode isolation
             }
-            // Hardware-accelerated soft drop shadow + Ambient RGB Bloom
+            // Ambient RGB Bloom behind button socket
             .drawBehind {
-                val r = size.minDimension / 2f
-                val shadowOffsetY = if (isPressed) 1.5.dp.toPx() else 4.dp.toPx()
-                val shadowPad = if (isPressed) 2.dp.toPx() else 5.dp.toPx()
-                val shadowRadius = r + shadowPad
-                drawCircle(
-                    brush = if (isPressed) pressedShadowBrush else normalShadowBrush,
-                    radius = shadowRadius,
-                    center = Offset(center.x, center.y + shadowOffsetY)
-                )
-
                 if (isRgbEnabled) {
-                    val auraRadius = size.minDimension * 1f
-                    val brush = auraBrushCache.getBrush(effectiveColor, center, auraRadius)
+                    val r = size.minDimension * 1f
+                    val brush = auraBrushCache.getBrush(effectiveColor, center, r)
                     drawCircle(
                         brush = brush,
-                        radius = auraRadius,
+                        radius = r,
                         center = center,
                         alpha = rgbBloomAlphaState.value
                     )
                 }
+            }
+            // Outer drop shadow: 0 4px 7px rgba(0, 0, 0, 0.55)
+            .shadow(
+                elevation = if (isPressed) 1.dp else 4.dp,
+                shape = CircleShape,
+                ambientColor = if (isRgbEnabled) effectiveColor else Color.Black,
+                spotColor = if (isRgbEnabled) effectiveColor else Color.Black
+            )
+            .graphicsLayer {
+                scaleX = scaleAnimState.value
+                scaleY = scaleAnimState.value
+                translationY = pressOffsetYAnimState.value * density
             }
             .clip(CircleShape)
             // .cap base dome: radial-gradient(circle at 50% 55%, #232527 0%, #0c0d0e 75%, #000 100%)

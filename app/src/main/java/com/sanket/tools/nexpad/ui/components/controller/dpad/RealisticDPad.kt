@@ -92,17 +92,17 @@ fun RealisticDPad(
     }
     val targetScale = if (pressedDirs.isNotEmpty()) 0.96f else 1.0f
 
-    val tiltXAnim by animateFloatAsState(
+    val tiltXAnimState = animateFloatAsState(
         targetValue = targetTiltX,
         animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
         label = "dpad_tilt_x"
     )
-    val tiltYAnim by animateFloatAsState(
+    val tiltYAnimState = animateFloatAsState(
         targetValue = targetTiltY,
         animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
         label = "dpad_tilt_y"
     )
-    val scaleAnim by animateFloatAsState(
+    val scaleAnimState = animateFloatAsState(
         targetValue = targetScale,
         animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
         label = "dpad_scale"
@@ -111,7 +111,7 @@ fun RealisticDPad(
     val neonColor = if (isRgbEnabled) Color(0xFF00E5FF) else Color(0xFF4ADE80)
     val hasActivePress = pressedDirs.isNotEmpty()
 
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (hasActivePress) 0.95f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "realistic_dpad_rgb_bloom"
@@ -146,10 +146,14 @@ fun RealisticDPad(
     Box(
         modifier = modifier
             .size(140.dp)
+            .graphicsLayer {
+                // Root RenderNode isolation
+            }
             // Outer recessed socket bezel in the controller shell
             .drawBehind {
                 val center = Offset(size.width / 2f, size.height / 2f)
                 val socketRadius = size.minDimension / 2f + 4.dp.toPx()
+                val rgbBloomAlpha = rgbBloomAlphaState.value
 
                 // Bespoke 4-way cardinal laser cross halo flaring along pressed directions
                 if (isRgbEnabled) {
@@ -226,21 +230,6 @@ fun RealisticDPad(
                     center = center
                 )
 
-                // Soft hardware drop shadow
-                val shadowOffsetY = if (hasActivePress) 2.dp.toPx() else 5.dp.toPx()
-                val shadowRadius = size.minDimension * 0.44f
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        0.0f to Color.Black.copy(alpha = if (hasActivePress) 0.35f else 0.55f),
-                        0.75f to Color.Black.copy(alpha = if (hasActivePress) 0.15f else 0.25f),
-                        1.0f to Color.Transparent,
-                        center = Offset(center.x, center.y + shadowOffsetY),
-                        radius = shadowRadius
-                    ),
-                    radius = shadowRadius,
-                    center = Offset(center.x, center.y + shadowOffsetY)
-                )
-
                 // Outer metallic bevel rim
                 drawCircle(
                     brush = Brush.verticalGradient(
@@ -251,11 +240,17 @@ fun RealisticDPad(
                     style = bevelStroke
                 )
             }
+            .shadow(
+                elevation = if (hasActivePress) 3.dp else 8.dp,
+                shape = crossShape,
+                ambientColor = if (isRgbEnabled) neonColor else Color.Black,
+                spotColor = if (isRgbEnabled) neonColor else Color.Black
+            )
             .graphicsLayer {
-                rotationX = tiltXAnim
-                rotationY = tiltYAnim
-                scaleX = scaleAnim
-                scaleY = scaleAnim
+                rotationX = tiltXAnimState.value
+                rotationY = tiltYAnimState.value
+                scaleX = scaleAnimState.value
+                scaleY = scaleAnimState.value
             }
             .clip(crossShape)
             .background(surfaceGradient)
@@ -475,13 +470,13 @@ fun RealisticDPadButton(
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
-    val scaleAnim by animateFloatAsState(
-        targetValue = if (isPressed) 0.90f else 1.0f,
+    val scaleAnimState = animateFloatAsState(
+        targetValue = if (isPressed) 0.93f else 1.0f,
         animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
         label = "dpad_btn_scale"
     )
-    val pressOffsetYAnim by animateFloatAsState(
-        targetValue = if (isPressed) 3.dp.value else 0f,
+    val pressOffsetYAnimState = animateFloatAsState(
+        targetValue = if (isPressed) 3f else 0f,
         animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
         label = "dpad_btn_offset"
     )
@@ -500,7 +495,7 @@ fun RealisticDPadButton(
     val themeColor = if (isRgbEnabled) Color(0xFF00F0FF) else Color(0xFF4ADE80)
     val shape = RoundedCornerShape(18.dp)
 
-    val rgbBloomAlpha by animateFloatAsState(
+    val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "dpad_btn_rgb_bloom"
@@ -508,6 +503,7 @@ fun RealisticDPadButton(
 
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
 
     val dpadBtnBloomColors = remember(themeColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
@@ -516,9 +512,13 @@ fun RealisticDPadButton(
     Box(
         modifier = modifier
             .size(72.dp)
+            .graphicsLayer {
+                // Root RenderNode isolation
+            }
             .drawBehind {
                 if (isRgbEnabled) {
                     val pad = 8.dp.toPx()
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
                     dpadBtnBloomColors[0] = themeColor.copy(alpha = rgbBloomAlpha * 0.50f)
                     dpadBtnBloomColors[1] = themeColor.copy(alpha = rgbBloomAlpha * 0.20f)
                     dpadBtnBloomColors[2] = Color.Transparent
@@ -535,10 +535,10 @@ fun RealisticDPadButton(
                 }
             }
             .graphicsLayer {
-                scaleX = scaleAnim
-                scaleY = scaleAnim
+                scaleX = scaleAnimState.value
+                scaleY = scaleAnimState.value
+                translationY = pressOffsetYAnimState.value * density
             }
-            .offset { IntOffset(0, pressOffsetYAnim.dp.roundToPx()) }
             .shadow(
                 elevation = if (isPressed) 3.dp else 8.dp,
                 shape = shape,
