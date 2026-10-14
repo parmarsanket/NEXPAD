@@ -9,7 +9,6 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -25,18 +24,25 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.atan2
 import kotlin.math.hypot
-import kotlin.math.roundToInt
+import kotlin.math.min
 
+/**
+ * Backward compatibility shape token.
+ */
 val crossShape = GenericShape { size, _ ->
     val thirdW = size.width / 3f
     val thirdH = size.height / 3f
@@ -59,9 +65,67 @@ val crossShape = GenericShape { size, _ ->
 }
 
 /**
- * High-performance, tactile 4-way / 8-way mechanical D-Pad cross.
- * Features 3D physical pivot tilt kinematics, recessed chassis socket,
- * central concave thumb rest cup, directional LED backlighting, and crisp haptics.
+ * Updates a pre-allocated [path] with an authentic console-grade contoured cross
+ * with rounded arm caps and filleted inner corners. Zero in-draw heap allocations.
+ */
+fun updateContouredCrossPath(path: Path, size: Size) {
+    path.reset()
+    val minDim = min(size.width, size.height)
+    val scale = minDim / 150f
+    val offsetX = (size.width - 150f * scale) / 2f
+    val offsetY = (size.height - 150f * scale) / 2f
+
+    val topY = 12f
+    val bottomY = 138f
+    val leftX = 12f
+    val rightX = 138f
+
+    val armTopLeftX = 54f
+    val armTopRightX = 96f
+    val armLeftTopY = 54f
+    val armRightBottomY = 96f
+
+    fun sx(x: Float): Float = offsetX + x * scale
+    fun sy(y: Float): Float = offsetY + y * scale
+
+    // Contoured cross with rounded arm caps and smooth filleted corners
+    path.moveTo(sx(64f), sy(topY))
+    path.lineTo(sx(86f), sy(topY))
+    path.quadraticTo(sx(armTopRightX), sy(topY), sx(armTopRightX), sy(22f))
+    path.lineTo(sx(armTopRightX), sy(46f))
+    path.quadraticTo(sx(armTopRightX), sy(armLeftTopY), sx(104f), sy(armLeftTopY))
+
+    path.lineTo(sx(128f), sy(armLeftTopY))
+    path.quadraticTo(sx(rightX), sy(armLeftTopY), sx(rightX), sy(64f))
+    path.lineTo(sx(rightX), sy(86f))
+    path.quadraticTo(sx(rightX), sy(armRightBottomY), sx(128f), sy(armRightBottomY))
+    path.lineTo(sx(104f), sy(armRightBottomY))
+    path.quadraticTo(sx(armTopRightX), sy(armRightBottomY), sx(armTopRightX), sy(104f))
+
+    path.lineTo(sx(armTopRightX), sy(128f))
+    path.quadraticTo(sx(armTopRightX), sy(bottomY), sx(86f), sy(bottomY))
+    path.lineTo(sx(64f), sy(bottomY))
+    path.quadraticTo(sx(armTopLeftX), sy(bottomY), sx(armTopLeftX), sy(128f))
+    path.lineTo(sx(armTopLeftX), sy(104f))
+    path.quadraticTo(sx(armTopLeftX), sy(armRightBottomY), sx(46f), sy(armRightBottomY))
+
+    path.lineTo(sx(22f), sy(armRightBottomY))
+    path.quadraticTo(sx(leftX), sy(armRightBottomY), sx(leftX), sy(86f))
+    path.lineTo(sx(leftX), sy(64f))
+    path.quadraticTo(sx(leftX), sy(armLeftTopY), sx(22f), sy(armLeftTopY))
+    path.lineTo(sx(46f), sy(armLeftTopY))
+    path.quadraticTo(sx(armTopLeftX), sy(armLeftTopY), sx(armTopLeftX), sy(46f))
+
+    path.lineTo(sx(armTopLeftX), sy(22f))
+    path.quadraticTo(sx(armTopLeftX), sy(topY), sx(64f), sy(topY))
+    path.close()
+}
+
+/**
+ * Premium, console-grade mechanical D-Pad cross.
+ * Features 3D physical fulcrum pivot kinematics, recessed chassis socket,
+ * contoured matte obsidian cross arms, laser-etched illuminated chevrons,
+ * central tactile thumb rest dish, directional RGB underglow aura, and crisp haptics.
  */
 @Composable
 fun RealisticDPad(
@@ -77,88 +141,158 @@ fun RealisticDPad(
 
     val K = com.sanket.tools.nexpad.model.NexpadKeys
 
-    // 3D Rocker Tilt Kinematics
+    val isUpPressed = pressedDirs.contains(K.UP)
+    val isDownPressed = pressedDirs.contains(K.DOWN)
+    val isLeftPressed = pressedDirs.contains(K.LEFT)
+    val isRightPressed = pressedDirs.contains(K.RIGHT)
+    val hasActivePress = pressedDirs.isNotEmpty()
+
+    // 3D Physical Fulcrum Rocker Kinematics
     val targetTiltX = remember(pressedDirs) {
         var tilt = 0f
-        if (pressedDirs.contains(K.UP)) tilt -= 6.5f
-        if (pressedDirs.contains(K.DOWN)) tilt += 6.5f
+        if (isUpPressed) tilt -= 7.5f
+        if (isDownPressed) tilt += 7.5f
         tilt
     }
     val targetTiltY = remember(pressedDirs) {
         var tilt = 0f
-        if (pressedDirs.contains(K.LEFT)) tilt -= 6.5f
-        if (pressedDirs.contains(K.RIGHT)) tilt += 6.5f
+        if (isLeftPressed) tilt -= 7.5f
+        if (isRightPressed) tilt += 7.5f
         tilt
     }
-    val targetScale = if (pressedDirs.isNotEmpty()) 0.96f else 1.0f
+    val targetPlungeY = remember(pressedDirs) {
+        var plunge = 0f
+        if (isUpPressed) plunge -= 2.5f
+        if (isDownPressed) plunge += 2.5f
+        plunge
+    }
+    val targetScale = if (hasActivePress) 0.96f else 1.0f
 
     val tiltXAnimState = animateFloatAsState(
         targetValue = targetTiltX,
-        animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
+        animationSpec = spring(dampingRatio = 0.65f, stiffness = 850f),
         label = "dpad_tilt_x"
     )
     val tiltYAnimState = animateFloatAsState(
         targetValue = targetTiltY,
-        animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
+        animationSpec = spring(dampingRatio = 0.65f, stiffness = 850f),
         label = "dpad_tilt_y"
+    )
+    val plungeYAnimState = animateFloatAsState(
+        targetValue = targetPlungeY,
+        animationSpec = spring(dampingRatio = 0.65f, stiffness = 850f),
+        label = "dpad_plunge_y"
     )
     val scaleAnimState = animateFloatAsState(
         targetValue = targetScale,
-        animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
+        animationSpec = spring(dampingRatio = 0.65f, stiffness = 850f),
         label = "dpad_scale"
     )
 
     val neonColor = if (isRgbEnabled) Color(0xFF00E5FF) else Color(0xFF4ADE80)
-    val hasActivePress = pressedDirs.isNotEmpty()
-
     val rgbBloomAlphaState = animateFloatAsState(
-        targetValue = if (hasActivePress) 0.95f else 0.45f,
-        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
-        label = "realistic_dpad_rgb_bloom"
+        targetValue = if (hasActivePress) 0.95f else 0.40f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 500f),
+        label = "dpad_rgb_bloom"
     )
 
-    val surfaceGradient = remember {
-        Brush.radialGradient(
-            colors = listOf(
-                Color(0xFF333E4D),
-                Color(0xFF1E252F),
-                Color(0xFF11151C)
-            ),
-            center = Offset(0.45f, 0.45f),
-            radius = 220f
-        )
-    }
+    val density = LocalDensity.current.density
 
-    val density = androidx.compose.ui.platform.LocalDensity.current.density
-    val bevelStroke = remember(density) { Stroke(width = 1.5f * density) }
-    val socketColors = remember { listOf(Color(0xFF0D1017), Color(0xFF06080B)) }
-    val bevelColors = remember { listOf(Color(0xFF4A5568).copy(alpha = 0.6f), Color(0xFF1A202C).copy(alpha = 0.8f)) }
-    val hubBloomColors = remember(neonColor) {
+    // Pre-allocated paths & strokes (Zero-allocation rendering loop)
+    val crossPath = remember { Path() }
+    val crossBorderStroke = remember(density) { Stroke(width = 1.5f * density) }
+    val socketBevelStroke = remember(density) { Stroke(width = 1.8f * density) }
+    val centerRestStroke = remember(density) { Stroke(width = 1.4f * density) }
+
+    val upArrowPath = remember { Path() }
+    val downArrowPath = remember { Path() }
+    val leftArrowPath = remember { Path() }
+    val rightArrowPath = remember { Path() }
+    val upShadowPath = remember { Path() }
+    val downShadowPath = remember { Path() }
+    val leftShadowPath = remember { Path() }
+    val rightShadowPath = remember { Path() }
+
+    // Reusable color arrays for dynamic radial underglow
+    val underglowColors = remember(neonColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
-    val beamGlowColors = remember(neonColor) {
-        arrayListOf(Color.Transparent, Color.Transparent)
-    }
-    val beamCoreColors = remember(neonColor) {
-        arrayListOf(Color.Transparent, Color.Transparent)
+    val ambientHubColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
     }
 
-    val crossBorderBrush = remember {
+    // Static Precomputed Brushes
+    val socketRadialBrush = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF080B0F),
+                Color(0xFF10141B),
+                Color(0xFF181D26)
+            ),
+            center = Offset(0.50f, 0.50f),
+            radius = 240f
+        )
+    }
+    val socketBevelBrush = remember {
         Brush.verticalGradient(
             colors = listOf(
-                Color(0xFF718096).copy(alpha = 0.65f),
-                Color(0xFF2D3748).copy(alpha = 0.40f),
-                Color(0xFF1A202C)
+                Color(0xFF5A677B).copy(alpha = 0.70f),
+                Color(0xFF2E3846).copy(alpha = 0.45f),
+                Color(0xFF13171F)
             )
         )
     }
-    val crossBorderStroke = remember(density) { Stroke(width = 1.5f * density) }
-    val concaveRestStroke = remember(density) { Stroke(width = 1.2f * density) }
-    val crossPath = remember { Path() }
-    val upPath = remember { Path() }
-    val downPath = remember { Path() }
-    val leftPath = remember { Path() }
-    val rightPath = remember { Path() }
+    val crossSurfaceGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF333A48),
+                Color(0xFF222731),
+                Color(0xFF15181F),
+                Color(0xFF0C0E12)
+            ),
+            center = Offset(0.48f, 0.46f),
+            radius = 220f
+        )
+    }
+    val crossSpecularSheen = remember {
+        Brush.linearGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.10f),
+                Color.White.copy(alpha = 0.02f),
+                Color.Transparent
+            ),
+            start = Offset(0f, 0f),
+            end = Offset(300f, 300f)
+        )
+    }
+    val crossBorderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color(0xFF8896AA).copy(alpha = 0.75f),
+                Color(0xFF3B4656).copy(alpha = 0.45f),
+                Color(0xFF161B22)
+            )
+        )
+    }
+    val centerCupGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF060709),
+                Color(0xFF11141B),
+                Color(0xFF1C222D)
+            ),
+            center = Offset(0.50f, 0.50f),
+            radius = 60f
+        )
+    }
+    val centerRimBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color(0xFF6B7A8E).copy(alpha = 0.60f),
+                Color(0xFF242C38).copy(alpha = 0.40f)
+            )
+        )
+    }
 
     Box(
         modifier = modifier
@@ -166,119 +300,105 @@ fun RealisticDPad(
             .graphicsLayer {
                 // Root RenderNode isolation
             }
-            // Outer recessed socket bezel in the controller shell
+            // 1. Recessed Chassis Socket & Dynamic Directional Underglow Aura
             .drawBehind {
                 val center = Offset(size.width / 2f, size.height / 2f)
                 val socketRadius = size.minDimension / 2f + 4.dp.toPx()
-                val rgbBloomAlpha = rgbBloomAlphaState.value
+                val bloomAlpha = rgbBloomAlphaState.value
 
-                // Bespoke 4-way cardinal laser cross halo flaring along pressed directions
+                // A. Ambient Hub Underglow
                 if (isRgbEnabled) {
-                    val w = size.width
-                    val h = size.height
-                    val halfArmW = 20.dp.toPx()
-                    val armLen = size.minDimension * 0.62f
-
-                    // 1. Central hub bloom
-                    hubBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * 0.50f)
-                    hubBloomColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.18f)
-                    hubBloomColors[2] = Color.Transparent
+                    val hubRadius = size.minDimension * 0.58f
+                    ambientHubColors[0] = neonColor.copy(alpha = bloomAlpha * 0.45f)
+                    ambientHubColors[1] = neonColor.copy(alpha = bloomAlpha * 0.15f)
+                    ambientHubColors[2] = Color.Transparent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = hubBloomColors,
+                            colors = ambientHubColors,
                             center = center,
-                            radius = size.minDimension * 0.55f
+                            radius = hubRadius
                         ),
-                        radius = size.minDimension * 0.55f,
+                        radius = hubRadius,
                         center = center
                     )
 
-                    // 2. Cardinal laser cross arms
-                    val isUp = pressedDirs.contains(K.UP)
-                    val isDown = pressedDirs.contains(K.DOWN)
-                    val isLeft = pressedDirs.contains(K.LEFT)
-                    val isRight = pressedDirs.contains(K.RIGHT)
-
-                    fun drawCardinalBeam(dx: Float, dy: Float, isActive: Boolean) {
-                        val beamAlpha = if (isActive) rgbBloomAlpha * 0.90f else (if (hasActivePress) 0.18f else 0.38f)
-                        val endPt = Offset(center.x + dx * armLen, center.y + dy * armLen)
-                        // Diffuse beam glow
-                        beamGlowColors[0] = neonColor.copy(alpha = beamAlpha * 0.7f)
-                        beamGlowColors[1] = Color.Transparent
-                        drawLine(
-                            brush = Brush.linearGradient(
-                                colors = beamGlowColors,
-                                start = center,
-                                end = endPt
+                    // B. Dynamic Directional RGB Underglow Pool flaring under pressed arms
+                    val armOffsetPx = size.minDimension * 0.32f
+                    fun drawDirectionalUnderglow(dx: Float, dy: Float, isActive: Boolean) {
+                        val underglowAlpha = if (isActive) bloomAlpha * 0.90f else (if (hasActivePress) 0.12f else 0.30f)
+                        val underglowRadius = size.minDimension * (if (isActive) 0.38f else 0.28f)
+                        val poolCenter = Offset(center.x + dx * armOffsetPx, center.y + dy * armOffsetPx)
+                        underglowColors[0] = neonColor.copy(alpha = underglowAlpha * 0.70f)
+                        underglowColors[1] = neonColor.copy(alpha = underglowAlpha * 0.22f)
+                        underglowColors[2] = Color.Transparent
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = underglowColors,
+                                center = poolCenter,
+                                radius = underglowRadius
                             ),
-                            start = center,
-                            end = endPt,
-                            strokeWidth = halfArmW * (if (isActive) 1.6f else 1.0f)
-                        )
-                        // Laser core
-                        beamCoreColors[0] = (if (isActive) Color.White else neonColor).copy(alpha = beamAlpha)
-                        beamCoreColors[1] = Color.Transparent
-                        drawLine(
-                            brush = Brush.linearGradient(
-                                colors = beamCoreColors,
-                                start = center,
-                                end = endPt
-                            ),
-                            start = center,
-                            end = endPt,
-                            strokeWidth = if (isActive) 3.5f else 1.5f
+                            radius = underglowRadius,
+                            center = poolCenter
                         )
                     }
 
-                    drawCardinalBeam(0f, -1f, isUp)
-                    drawCardinalBeam(0f, 1f, isDown)
-                    drawCardinalBeam(-1f, 0f, isLeft)
-                    drawCardinalBeam(1f, 0f, isRight)
+                    drawDirectionalUnderglow(0f, -1f, isUpPressed)
+                    drawDirectionalUnderglow(0f, 1f, isDownPressed)
+                    drawDirectionalUnderglow(-1f, 0f, isLeftPressed)
+                    drawDirectionalUnderglow(1f, 0f, isRightPressed)
                 }
 
-                // Recessed circular chassis socket
+                // C. Recessed circular chassis socket cavity
                 drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = socketColors,
-                        center = center,
-                        radius = socketRadius
-                    ),
+                    brush = socketRadialBrush,
                     radius = socketRadius,
                     center = center
                 )
 
-                // Outer metallic bevel rim
+                // D. Metallic Outer Bevel Bezel Rim
                 drawCircle(
-                    brush = Brush.verticalGradient(
-                        colors = bevelColors
-                    ),
+                    brush = socketBevelBrush,
                     radius = socketRadius,
                     center = center,
-                    style = bevelStroke
+                    style = socketBevelStroke
                 )
 
-                // Single-pass hardware drop shadow for the D-Pad cross (zero CPU tessellation / zero stencil attachment)
+                // E. Cardinal Laser Axis Tick Accents
+                val tickLen = 4.dp.toPx()
+                val tickColor = if (isRgbEnabled) neonColor.copy(alpha = if (hasActivePress) 0.65f else 0.35f) else Color.White.copy(alpha = 0.25f)
+                drawLine(tickColor, Offset(center.x, center.y - socketRadius), Offset(center.x, center.y - socketRadius + tickLen), strokeWidth = 2f)
+                drawLine(tickColor, Offset(center.x, center.y + socketRadius - tickLen), Offset(center.x, center.y + socketRadius), strokeWidth = 2f)
+                drawLine(tickColor, Offset(center.x - socketRadius, center.y), Offset(center.x - socketRadius + tickLen, center.y), strokeWidth = 2f)
+                drawLine(tickColor, Offset(center.x + socketRadius - tickLen, center.y), Offset(center.x + socketRadius, center.y), strokeWidth = 2f)
+
+                // F. Single-pass hardware drop shadow for the Cross Rocker (zero CPU tessellation / zero stencil)
                 val shadowColor = (if (isRgbEnabled) neonColor else Color.Black)
-                    .copy(alpha = if (hasActivePress) 0.35f else 0.55f)
-                val shadowOffset = if (hasActivePress) 2.dp.toPx() else 4.dp.toPx()
-                val armW = size.width / 3f
-                val armH = size.height / 3f
+                    .copy(alpha = if (hasActivePress) 0.35f else 0.60f)
+                val shadowOffset = if (hasActivePress) 2.dp.toPx() else 5.dp.toPx()
+                val armW = size.width * 0.32f
+                val armH = size.height * 0.32f
+                val armStartX = (size.width - armW) / 2f
+                val armStartY = (size.height - armH) / 2f
+                val armLen = size.minDimension * 0.88f
+                val armReachOffset = (size.minDimension - armLen) / 2f
+
                 drawRoundRect(
                     color = shadowColor,
-                    topLeft = Offset(armW, shadowOffset),
-                    size = Size(armW, size.height),
-                    cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+                    topLeft = Offset(armStartX, armReachOffset + shadowOffset),
+                    size = Size(armW, armLen),
+                    cornerRadius = CornerRadius(10.dp.toPx(), 10.dp.toPx())
                 )
                 drawRoundRect(
                     color = shadowColor,
-                    topLeft = Offset(0f, armH + shadowOffset),
-                    size = Size(size.width, armH),
-                    cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+                    topLeft = Offset(armReachOffset, armStartY + shadowOffset),
+                    size = Size(armLen, armH),
+                    cornerRadius = CornerRadius(10.dp.toPx(), 10.dp.toPx())
                 )
             }
             .graphicsLayer {
                 rotationX = tiltXAnimState.value
                 rotationY = tiltYAnimState.value
+                translationY = plungeYAnimState.value * density
                 scaleX = scaleAnimState.value
                 scaleY = scaleAnimState.value
             }
@@ -293,8 +413,8 @@ fun RealisticDPad(
                         val dx = pos.x - center.x
                         val dy = pos.y - center.y
                         val dist = hypot(dx, dy)
-                        val deadzone = size.width * 0.12f
-                        val maxRadius = size.width * 0.68f
+                        val deadzone = size.width * 0.10f
+                        val maxRadius = size.width * 0.70f
 
                         val newDirs = if (dist < deadzone || dist > maxRadius) {
                             emptySet()
@@ -339,151 +459,165 @@ fun RealisticDPad(
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
-            val armW = w / 3f
-            val armH = h / 3f
-            val twoThirdW = armW * 2f
-            val twoThirdH = armH * 2f
+            val cx = w / 2f
+            val cy = h / 2f
+            val minDim = size.minDimension
 
-            // 0. Authentic Cross Surface and Metallic Bevel Border (Zero-Stencil Hardware Direct Path)
-            crossPath.reset()
-            crossPath.moveTo(armW, 0f)
-            crossPath.lineTo(twoThirdW, 0f)
-            crossPath.lineTo(twoThirdW, armH)
-            crossPath.lineTo(w, armH)
-            crossPath.lineTo(w, twoThirdH)
-            crossPath.lineTo(twoThirdW, twoThirdH)
-            crossPath.lineTo(twoThirdW, h)
-            crossPath.lineTo(armW, h)
-            crossPath.lineTo(armW, twoThirdH)
-            crossPath.lineTo(0f, twoThirdH)
-            crossPath.lineTo(0f, armH)
-            crossPath.lineTo(armW, armH)
-            crossPath.close()
+            // 1. Update contoured cross path (zero heap allocations)
+            updateContouredCrossPath(crossPath, size)
 
-            drawPath(path = crossPath, brush = surfaceGradient)
+            // 2. Draw sculpted matte obsidian dome surface
+            drawPath(path = crossPath, brush = crossSurfaceGradient)
+
+            // 3. Draw specular horizon reflection sheen
+            drawPath(path = crossPath, brush = crossSpecularSheen)
+
+            // 4. Draw active arm electric illumination surges
+            val armW = minDim * 0.32f
+            val halfArmW = armW / 2f
+            val armReach = minDim * 0.44f
+            if (isUpPressed) {
+                drawRoundRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(neonColor.copy(alpha = 0.60f), Color.Transparent),
+                        startY = cy - armReach,
+                        endY = cy - armW * 0.3f
+                    ),
+                    topLeft = Offset(cx - halfArmW, cy - armReach),
+                    size = Size(armW, armReach - armW * 0.3f),
+                    cornerRadius = CornerRadius(10.dp.toPx(), 10.dp.toPx())
+                )
+            }
+            if (isDownPressed) {
+                drawRoundRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, neonColor.copy(alpha = 0.60f)),
+                        startY = cy + armW * 0.3f,
+                        endY = cy + armReach
+                    ),
+                    topLeft = Offset(cx - halfArmW, cy + armW * 0.3f),
+                    size = Size(armW, armReach - armW * 0.3f),
+                    cornerRadius = CornerRadius(10.dp.toPx(), 10.dp.toPx())
+                )
+            }
+            if (isLeftPressed) {
+                drawRoundRect(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(neonColor.copy(alpha = 0.60f), Color.Transparent),
+                        startX = cx - armReach,
+                        endX = cx - armW * 0.3f
+                    ),
+                    topLeft = Offset(cx - armReach, cy - halfArmW),
+                    size = Size(armReach - armW * 0.3f, armW),
+                    cornerRadius = CornerRadius(10.dp.toPx(), 10.dp.toPx())
+                )
+            }
+            if (isRightPressed) {
+                drawRoundRect(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(Color.Transparent, neonColor.copy(alpha = 0.60f)),
+                        startX = cx + armW * 0.3f,
+                        endX = cx + armReach
+                    ),
+                    topLeft = Offset(cx + armW * 0.3f, cy - halfArmW),
+                    size = Size(armReach - armW * 0.3f, armW),
+                    cornerRadius = CornerRadius(10.dp.toPx(), 10.dp.toPx())
+                )
+            }
+
+            // 5. Draw authentic metallic bevel border
             drawPath(path = crossPath, brush = crossBorderBrush, style = crossBorderStroke)
 
-            // 1. Draw Active Arm LED Illumination
-            if (pressedDirs.contains(K.UP)) {
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(neonColor.copy(alpha = 0.55f), Color.Transparent),
-                        startY = 0f,
-                        endY = armH * 1.2f
-                    ),
-                    topLeft = Offset(armW, 0f),
-                    size = Size(armW, armH)
-                )
+            // 6. Draw Directional Chevrons (▲, ▼, ◀, ▶) with embossed drop shadows & glowing cores
+            val chevronOffset = minDim * 0.28f
+            val chevronW = 7.dp.toPx()
+            val chevronH = 5.dp.toPx()
+            val chevronThickness = 2.dp.toPx()
+
+            fun drawSculptedChevron(
+                arrowPath: Path,
+                shadowPath: Path,
+                arrowCenter: Offset,
+                directionAngle: Float,
+                isActive: Boolean
+            ) {
+                val baseColor = if (isActive) Color.White else Color(0xFFDDE3EC)
+
+                arrowPath.reset()
+                arrowPath.moveTo(arrowCenter.x - chevronW, arrowCenter.y + chevronH)
+                arrowPath.lineTo(arrowCenter.x, arrowCenter.y - chevronH)
+                arrowPath.lineTo(arrowCenter.x + chevronW, arrowCenter.y + chevronH)
+
+                shadowPath.reset()
+                shadowPath.moveTo(arrowCenter.x - chevronW, arrowCenter.y + chevronH + 1.5f)
+                shadowPath.lineTo(arrowCenter.x, arrowCenter.y - chevronH + 1.5f)
+                shadowPath.lineTo(arrowCenter.x + chevronW, arrowCenter.y + chevronH + 1.5f)
+
+                withTransform({
+                    rotate(directionAngle, arrowCenter)
+                }) {
+                    // Embossed shadow
+                    drawPath(
+                        path = shadowPath,
+                        color = Color.Black.copy(alpha = 0.70f),
+                        style = Stroke(width = chevronThickness + 0.5f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+                    )
+                    // Neon outer glow when pressed
+                    if (isActive) {
+                        drawPath(
+                            path = arrowPath,
+                            color = neonColor.copy(alpha = 0.85f),
+                            style = Stroke(width = chevronThickness + 3.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+                        )
+                    }
+                    // Crisp arrow line
+                    drawPath(
+                        path = arrowPath,
+                        color = baseColor,
+                        style = Stroke(width = chevronThickness, cap = StrokeCap.Round, join = StrokeJoin.Round)
+                    )
+                }
             }
-            if (pressedDirs.contains(K.DOWN)) {
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, neonColor.copy(alpha = 0.55f)),
-                        startY = armH * 1.8f,
-                        endY = h
-                    ),
-                    topLeft = Offset(armW, armH * 2f),
-                    size = Size(armW, armH)
-                )
-            }
-            if (pressedDirs.contains(K.LEFT)) {
-                drawRect(
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(neonColor.copy(alpha = 0.55f), Color.Transparent),
-                        startX = 0f,
-                        endX = armW * 1.2f
-                    ),
-                    topLeft = Offset(0f, armH),
-                    size = Size(armW, armH)
-                )
-            }
-            if (pressedDirs.contains(K.RIGHT)) {
-                drawRect(
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(Color.Transparent, neonColor.copy(alpha = 0.55f)),
-                        startX = armW * 1.8f,
-                        endX = w
-                    ),
-                    topLeft = Offset(armW * 2f, armH),
-                    size = Size(armW, armH)
-                )
-            }
 
-            // 2. Beveled cross arm seam lines
-            val seamColor = Color.Black.copy(alpha = 0.55f)
-            val highlightColor = Color.White.copy(alpha = 0.12f)
+            drawSculptedChevron(upArrowPath, upShadowPath, Offset(cx, cy - chevronOffset), 0f, isUpPressed)
+            drawSculptedChevron(downArrowPath, downShadowPath, Offset(cx, cy + chevronOffset), 180f, isDownPressed)
+            drawSculptedChevron(leftArrowPath, leftShadowPath, Offset(cx - chevronOffset, cy), 270f, isLeftPressed)
+            drawSculptedChevron(rightArrowPath, rightShadowPath, Offset(cx + chevronOffset, cy), 90f, isRightPressed)
 
-            drawLine(color = seamColor, start = Offset(w / 2f, 2f), end = Offset(w / 2f, h - 2f), strokeWidth = 2.5f)
-            drawLine(color = highlightColor, start = Offset(w / 2f + 1f, 2f), end = Offset(w / 2f + 1f, h - 2f), strokeWidth = 1f)
-
-            drawLine(color = seamColor, start = Offset(2f, h / 2f), end = Offset(w - 2f, h / 2f), strokeWidth = 2.5f)
-            drawLine(color = highlightColor, start = Offset(2f, h / 2f + 1f), end = Offset(w - 2f, h / 2f + 1f), strokeWidth = 1f)
-
-            // 3. Directional Chevrons (▲, ▼, ◀, ▶)
-            val normalArrowColor = Color.White.copy(alpha = 0.65f)
-            val pressedArrowColor = Color.White
-            val arrowSize = 6.5.dp.toPx()
-
-            // UP Arrow
-            upPath.reset()
-            upPath.moveTo(w / 2f, armH * 0.45f - arrowSize)
-            upPath.lineTo(w / 2f + arrowSize, armH * 0.45f + arrowSize)
-            upPath.lineTo(w / 2f - arrowSize, armH * 0.45f + arrowSize)
-            upPath.close()
-            drawPath(
-                path = upPath,
-                color = if (pressedDirs.contains(K.UP)) pressedArrowColor else normalArrowColor
-            )
-
-            // DOWN Arrow
-            downPath.reset()
-            downPath.moveTo(w / 2f, h - armH * 0.45f + arrowSize)
-            downPath.lineTo(w / 2f + arrowSize, h - armH * 0.45f - arrowSize)
-            downPath.lineTo(w / 2f - arrowSize, h - armH * 0.45f - arrowSize)
-            downPath.close()
-            drawPath(
-                path = downPath,
-                color = if (pressedDirs.contains(K.DOWN)) pressedArrowColor else normalArrowColor
-            )
-
-            // LEFT Arrow
-            leftPath.reset()
-            leftPath.moveTo(armW * 0.45f - arrowSize, h / 2f)
-            leftPath.lineTo(armW * 0.45f + arrowSize, h / 2f - arrowSize)
-            leftPath.lineTo(armW * 0.45f + arrowSize, h / 2f + arrowSize)
-            leftPath.close()
-            drawPath(
-                path = leftPath,
-                color = if (pressedDirs.contains(K.LEFT)) pressedArrowColor else normalArrowColor
-            )
-
-            // RIGHT Arrow
-            rightPath.reset()
-            rightPath.moveTo(w - armW * 0.45f + arrowSize, h / 2f)
-            rightPath.lineTo(w - armW * 0.45f - arrowSize, h / 2f - arrowSize)
-            rightPath.lineTo(w - armW * 0.45f - arrowSize, h / 2f + arrowSize)
-            rightPath.close()
-            drawPath(
-                path = rightPath,
-                color = if (pressedDirs.contains(K.RIGHT)) pressedArrowColor else normalArrowColor
-            )
-
-            // 4. Center Concave Thumb Rest Cup (Spherical depression)
-            val centerRadius = armW * 0.36f
+            // 7. Tactile Center Concave Thumb Cup (Spherical Fulcrum Dish)
+            val dishRadius = minDim * 0.16f
             drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(Color(0xFF090B0E), Color(0xFF1E252F)),
-                    center = Offset(w / 2f, h / 2f),
-                    radius = centerRadius
-                ),
-                radius = centerRadius,
-                center = Offset(w / 2f, h / 2f)
+                brush = centerCupGradient,
+                radius = dishRadius,
+                center = Offset(cx, cy)
             )
             drawCircle(
-                color = Color.White.copy(alpha = 0.15f),
-                radius = centerRadius,
-                center = Offset(w / 2f, h / 2f),
-                style = concaveRestStroke
+                brush = centerRimBrush,
+                radius = dishRadius,
+                center = Offset(cx, cy),
+                style = centerRestStroke
+            )
+            // Upper specular crescent highlight in dish
+            drawArc(
+                color = Color.White.copy(alpha = 0.16f),
+                startAngle = 190f,
+                sweepAngle = 160f,
+                useCenter = false,
+                topLeft = Offset(cx - dishRadius + 1.5f, cy - dishRadius + 1.5f),
+                size = Size((dishRadius - 1.5f) * 2f, (dishRadius - 1.5f) * 2f),
+                style = Stroke(width = 1.2.dp.toPx(), cap = StrokeCap.Round)
+            )
+            // Central tactile pivot jewel / LED
+            val jewelColor = if (hasActivePress) neonColor else Color(0xFF4A5568)
+            drawCircle(
+                color = jewelColor.copy(alpha = if (hasActivePress) 0.85f else 0.45f),
+                radius = 3.5.dp.toPx(),
+                center = Offset(cx, cy)
+            )
+            drawCircle(
+                color = Color.White.copy(alpha = if (hasActivePress) 0.90f else 0.30f),
+                radius = 1.5.dp.toPx(),
+                center = Offset(cx, cy)
             )
         }
     }
@@ -506,12 +640,12 @@ fun RealisticDPadButton(
 
     val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.93f else 1.0f,
-        animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
+        animationSpec = spring(dampingRatio = 0.65f, stiffness = 850f),
         label = "dpad_btn_scale"
     )
     val pressOffsetYAnimState = animateFloatAsState(
         targetValue = if (isPressed) 3f else 0f,
-        animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
+        animationSpec = spring(dampingRatio = 0.65f, stiffness = 850f),
         label = "dpad_btn_offset"
     )
 
@@ -526,18 +660,18 @@ fun RealisticDPadButton(
         }
     }
 
-    val themeColor = if (isRgbEnabled) Color(0xFF00F0FF) else Color(0xFF4ADE80)
+    val themeColor = if (isRgbEnabled) Color(0xFF00E5FF) else Color(0xFF4ADE80)
     val shape = RoundedCornerShape(18.dp)
 
     val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 0.45f,
-        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 500f),
         label = "dpad_btn_rgb_bloom"
     )
 
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
-    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val density = LocalDensity.current.density
 
     val dpadBtnBloomColors = remember(themeColor) {
         arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
