@@ -315,17 +315,14 @@ fun RealisticButton(
                         alpha = rgbBloomAlphaState.value
                     )
                 }
-
-                // Single-pass hardware drop shadow: 0 4px 7px rgba(0, 0, 0, 0.55)
-                val shadowColor = (if (isRgbEnabled) effectiveColor else Color.Black)
-                    .copy(alpha = if (isPressed) 0.35f else 0.55f)
-                val shadowOffsetY = if (isPressed) 1.dp.toPx() else 4.dp.toPx()
-                drawCircle(
-                    color = shadowColor,
-                    radius = size.minDimension / 2f,
-                    center = Offset(center.x, center.y + shadowOffsetY)
-                )
             }
+            // Outer drop shadow: 0 4px 7px rgba(0, 0, 0, 0.55)
+            .shadow(
+                elevation = if (isPressed) 1.dp else 4.dp,
+                shape = CircleShape,
+                ambientColor = if (isRgbEnabled) effectiveColor else Color.Black,
+                spotColor = if (isRgbEnabled) effectiveColor else Color.Black
+            )
             .graphicsLayer {
                 scaleX = scaleAnimState.value
                 scaleY = scaleAnimState.value

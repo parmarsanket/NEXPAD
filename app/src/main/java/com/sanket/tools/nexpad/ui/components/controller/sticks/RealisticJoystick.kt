@@ -115,6 +115,9 @@ fun RealisticJoystick(
     Box(
         modifier = modifier
             .size(150.dp)
+            .graphicsLayer {
+                // Root RenderNode isolation
+            }
             .drawBehind {
                 if (isRgbEnabled) {
                     val capPos = Offset(center.x + effX, center.y + effY)
@@ -173,15 +176,8 @@ fun RealisticJoystick(
                         center = capPos
                     )
                 }
-
-                // Single-pass hardware drop shadow
-                val shadowColor = (if (isRgbEnabled) neonColor.copy(alpha = 0.5f) else Color.Black).copy(alpha = 0.55f)
-                drawCircle(
-                    color = shadowColor,
-                    radius = size.minDimension / 2f,
-                    center = Offset(center.x, center.y + 5.dp.toPx())
-                )
             }
+            .then(rgbShadow)
             .clip(CircleShape)
             .background(baseGradient)
             .border(
@@ -400,14 +396,12 @@ fun RealisticJoystick(
             modifier = Modifier
                 .offset { IntOffset(effX.roundToInt(), effY.roundToInt()) }
                 .size(90.dp)
-                .drawBehind {
-                    val shadowColor = (if (isRgbEnabled) neonColor.copy(alpha = 0.5f) else Color.Black).copy(alpha = 0.65f)
-                    drawCircle(
-                        color = shadowColor,
-                        radius = size.minDimension / 2f,
-                        center = Offset(center.x, center.y + 4.dp.toPx())
-                    )
-                }
+                .shadow(
+                    elevation = 12.dp,
+                    shape = CircleShape,
+                    ambientColor = if (isRgbEnabled) neonColor.copy(alpha = 0.5f) else Color.Black,
+                    spotColor = if (isRgbEnabled) neonColor else Color.Black
+                )
                 .clip(CircleShape)
                 .background(thumbGradient)
                 .border(
@@ -623,17 +617,8 @@ fun RealisticStickButton(
                         style = guideRingStroke
                     )
                 }
-
-                // Single-pass hardware drop shadow
-                val shadowColor = (if (isRgbEnabled) neonColor else Color.Black)
-                    .copy(alpha = if (isPressed) 0.35f else 0.55f)
-                val shadowOffsetY = if (isPressed) 2.dp.toPx() else 5.dp.toPx()
-                drawCircle(
-                    color = shadowColor,
-                    radius = size.minDimension / 2f,
-                    center = Offset(center.x, center.y + shadowOffsetY)
-                )
             }
+            .then(rgbShadow)
             .graphicsLayer {
                 scaleX = scaleAnimState.value
                 scaleY = scaleAnimState.value

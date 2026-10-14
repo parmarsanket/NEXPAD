@@ -169,7 +169,6 @@ fun RealisticBumper(
     val lensEdgeColors = remember { listOf(Color.White.copy(alpha = 0.10f), Color.Transparent) }
 
     val ringPath = remember { Path() }
-    val bumperPath = remember { Path() }
 
     Box(
         modifier = modifier
@@ -235,23 +234,23 @@ fun RealisticBumper(
                         radius = innerR
                     )
                 }
-
-                // 3. Single-pass hardware drop shadow for bumper (zero CPU polygon tessellation)
-                val shadowColor = (if (isRgbEnabled) neonColor else Color.Black)
-                    .copy(alpha = if (isPressed) 0.35f else 0.55f)
-                val shadowOffsetY = if (isPressed) 1.dp.toPx() else 4.dp.toPx()
-                drawRoundRect(
-                    color = shadowColor,
-                    topLeft = Offset(0f, shadowOffsetY),
-                    size = size,
-                    cornerRadius = CornerRadius(18.dp.toPx(), 18.dp.toPx())
-                )
             }
+            .shadow(
+                elevation = if (isPressed) 1.dp else 4.dp,
+                shape = bumperShape,
+                ambientColor = if (isRgbEnabled) neonColor else Color.Black,
+                spotColor = if (isRgbEnabled) neonColor else Color.Black
+            )
             .graphicsLayer {
                 scaleX = scaleAnimState.value
                 scaleY = scaleAnimState.value
                 translationY = pressOffsetYAnimState.value * density
             }
+            .border(
+                width = 1.dp,
+                color = Color.Black.copy(alpha = 0.50f),
+                shape = bumperShape
+            )
             .pointerInput(key) {
                 detectTapGestures(
                     onPress = {
@@ -268,27 +267,21 @@ fun RealisticBumper(
     ) {
         // Layer 2 & 3: Plunging Actuator Body (.lx-body)
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    scaleX = scaleAnimState.value
+                    scaleY = scaleAnimState.value
+                    translationY = pressOffsetYAnimState.value * density
+                }
+                .clip(bumperShape)
+                .background(baseDomeGradient),
             contentAlignment = Alignment.Center
         ) {
             // Body shadows and highlights
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val w = size.width
                 val h = size.height
-
-                // 0. Base Dome Surface & 1px Casing Rim (zero-stencil direct path)
-                bumperPath.reset()
-                bumperPath.addRoundRect(
-                    RoundRect(
-                        rect = Rect(0f, 0f, w, h),
-                        topLeft = CornerRadius(if (isLeft) 10.dp.toPx() else 26.dp.toPx()),
-                        topRight = CornerRadius(if (isLeft) 26.dp.toPx() else 10.dp.toPx()),
-                        bottomRight = CornerRadius(if (isLeft) 26.dp.toPx() else 10.dp.toPx()),
-                        bottomLeft = CornerRadius(if (isLeft) 10.dp.toPx() else 26.dp.toPx())
-                    )
-                )
-                drawPath(path = bumperPath, brush = baseDomeGradient)
-                drawPath(path = bumperPath, color = Color.Black.copy(alpha = 0.50f), style = stroke1dp)
 
                 // Top edge highlight: linear-gradient(180deg, rgba(255,255,255,0.07), transparent 42%)
                 drawRect(

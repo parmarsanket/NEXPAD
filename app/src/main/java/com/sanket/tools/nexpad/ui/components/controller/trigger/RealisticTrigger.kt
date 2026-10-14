@@ -152,9 +152,6 @@ fun RealisticTrigger(
 
     val liquidPath = remember { Path() }
     val ringPath = remember { Path() }
-    val triggerPath = remember { Path() }
-    val undercutPath = remember { Path() }
-    val chassisStroke = remember(density) { Stroke(width = 1f * density) }
 
     Box(
         modifier = modifier
@@ -207,22 +204,27 @@ fun RealisticTrigger(
                         )
                     }
                 }
-
-                // 3. Single-pass hardware drop shadow for trigger (zero CPU polygon tessellation)
-                val shadowColor = (if (isRgbEnabled) neonColor else Color.Black)
-                    .copy(alpha = if (isPressed) 0.35f else 0.55f)
-                val shadowOffsetY = if (isPressed) 2.dp.toPx() else 5.dp.toPx()
-                drawRoundRect(
-                    color = shadowColor,
-                    topLeft = Offset(0f, shadowOffsetY),
-                    size = size,
-                    cornerRadius = CornerRadius(20.dp.toPx(), 40.dp.toPx())
-                )
             }
+            // RGB-coordinated shadow
+            .shadow(
+                elevation = if (isPressed) 2.dp else 6.dp,
+                shape = triggerShape,
+                ambientColor = if (isRgbEnabled) neonColor else Color.Black,
+                spotColor = if (isRgbEnabled) neonColor else Color.Black
+            )
             .graphicsLayer {
                 scaleX = scaleAnimState.value
                 scaleY = scaleAnimState.value
             }
+            .clip(triggerShape)
+            // Convex dome surface
+            .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
+            // 1px chassis border outline
+            .border(
+                width = 1.dp,
+                brush = chassisBorderBrush,
+                shape = triggerShape
+            )
             .pointerInput(key) {
                 detectTapGestures(
                     onPress = {
@@ -244,43 +246,16 @@ fun RealisticTrigger(
             val w = size.width
             val h = size.height
 
-            // 0. Authentic Trigger convex dome surface & 1px chassis border outline (zero-stencil direct path)
-            triggerPath.reset()
-            triggerPath.addRoundRect(
-                androidx.compose.ui.geometry.RoundRect(
-                    left = 0f,
-                    top = 0f,
-                    right = w,
-                    bottom = h,
-                    topLeftCornerRadius = CornerRadius(16.dp.toPx(), 16.dp.toPx()),
-                    topRightCornerRadius = CornerRadius(16.dp.toPx(), 16.dp.toPx()),
-                    bottomLeftCornerRadius = CornerRadius(46.dp.toPx(), 46.dp.toPx()),
-                    bottomRightCornerRadius = CornerRadius(46.dp.toPx(), 46.dp.toPx())
-                )
-            )
-            drawPath(path = triggerPath, brush = if (isPressed) pressedDomeGradient else baseDomeGradient)
-            drawPath(path = triggerPath, brush = chassisBorderBrush, style = chassisStroke)
-
             // 1. Inset Bottom Undercut Shadow along bottom hull
             val insetH = h * 0.32f
-            undercutPath.reset()
-            undercutPath.addRoundRect(
-                androidx.compose.ui.geometry.RoundRect(
-                    left = 0f,
-                    top = h - insetH,
-                    right = w,
-                    bottom = h,
-                    bottomLeftCornerRadius = CornerRadius(46.dp.toPx(), 46.dp.toPx()),
-                    bottomRightCornerRadius = CornerRadius(46.dp.toPx(), 46.dp.toPx())
-                )
-            )
-            drawPath(
-                path = undercutPath,
+            drawRect(
                 brush = Brush.verticalGradient(
                     colors = if (isPressed) insetShadowColorsPressed else insetShadowColorsNormal,
                     startY = h - insetH,
                     endY = h
-                )
+                ),
+                topLeft = Offset(0f, h - insetH),
+                size = Size(w, insetH)
             )
 
             // 2. Analog Meter (.lx-meter): inset 7dp, top radii 11dp, bottom radii 38dp
@@ -404,14 +379,12 @@ fun RealisticTrigger(
             modifier = Modifier
                 .offset(y = 12.dp)
                 .size(68.dp, 30.dp)
-                .drawBehind {
-                    drawRoundRect(
-                        color = Color.Black.copy(alpha = 0.65f),
-                        topLeft = Offset(0f, 2.dp.toPx()),
-                        size = size,
-                        cornerRadius = CornerRadius(15.dp.toPx(), 15.dp.toPx())
-                    )
-                }
+                .shadow(
+                    elevation = 3.dp,
+                    shape = windowShape,
+                    spotColor = Color.Black,
+                    ambientColor = Color.Black
+                )
                 .clip(windowShape)
                 .background(windowGradient)
                 .border(
