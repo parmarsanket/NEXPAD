@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -154,47 +155,15 @@ fun SplashScreen(
         val isNarrowPhone = spec.isShortScreen || maxWidth < 360.dp
 
         // Adaptive scaling metrics driven directly by AdaptivePosture & AdaptiveLayoutSpec
-        val lionSize: Dp
-        val lionBoxWidth: Dp
-        val lionBoxHeight: Dp
-        val titleFontSize: TextUnit
-        val haloBloomSize: Dp
-
-        when (spec.posture) {
-            AdaptivePosture.TabletLandscape -> {
-                lionSize = 340.dp
-                lionBoxWidth = 340.dp
-                lionBoxHeight = 170.dp
-                titleFontSize = 42.sp
-                haloBloomSize = 460.dp
-            }
-            AdaptivePosture.PhoneLandscape -> {
-                lionSize = 220.dp
-                lionBoxWidth = 220.dp
-                lionBoxHeight = 110.dp
-                titleFontSize = 30.sp
-                haloBloomSize = 280.dp
-            }
-            AdaptivePosture.TabletPortrait -> {
-                lionSize = 320.dp
-                lionBoxWidth = 320.dp
-                lionBoxHeight = 160.dp
-                titleFontSize = 38.sp
-                haloBloomSize = 420.dp
-            }
+        val metrics = when (spec.posture) {
+            AdaptivePosture.TabletLandscape -> SplashLayoutMetrics(340.dp, 42.sp, 460.dp)
+            AdaptivePosture.PhoneLandscape -> SplashLayoutMetrics(220.dp, 30.sp, 280.dp)
+            AdaptivePosture.TabletPortrait -> SplashLayoutMetrics(320.dp, 38.sp, 420.dp)
             AdaptivePosture.PhonePortrait -> {
                 if (isNarrowPhone) {
-                    lionSize = 230.dp
-                    lionBoxWidth = 230.dp
-                    lionBoxHeight = 115.dp
-                    titleFontSize = 28.sp
-                    haloBloomSize = 280.dp
+                    SplashLayoutMetrics(230.dp, 28.sp, 280.dp)
                 } else {
-                    lionSize = 280.dp
-                    lionBoxWidth = 280.dp
-                    lionBoxHeight = 140.dp
-                    titleFontSize = 34.sp
-                    haloBloomSize = 340.dp
+                    SplashLayoutMetrics(280.dp, 34.sp, 340.dp)
                 }
             }
         }
@@ -207,7 +176,7 @@ fun SplashScreen(
         // Radial Background Gradient Bloom (Saffron / Cyan / Purple)
         Box(
             modifier = Modifier
-                .size(haloBloomSize)
+                .size(metrics.haloBloomSize)
                 .scale(pulseScale)
                 .alpha(pulseAlpha)
                 .blur(56.dp)
@@ -248,12 +217,12 @@ fun SplashScreen(
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .size(lionBoxWidth, lionBoxHeight)
+                            .size(metrics.lionBoxWidth, metrics.lionBoxHeight)
                             .scale(lionScale.value)
                             .alpha(lionAlpha.value)
                     ) {
                         MakeInIndiaWalkingLion(
-                            size = lionSize,
+                            size = metrics.lionSize,
                             primaryColor = Color(0xFFFFFFFF),
                             accentColor = Color(0xFFFF9933),
                             secondaryAccent = Color(0xFF00E5FF)
@@ -270,7 +239,7 @@ fun SplashScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    NexpadTitle(fontSize = titleFontSize, textAlpha = textAlpha.value)
+                    NexpadTitle(fontSize = metrics.titleFontSize, textAlpha = textAlpha.value)
 
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -293,7 +262,7 @@ fun SplashScreen(
                 verticalArrangement = Arrangement.Center,
                 modifier = Modifier.padding(horizontal = 24.dp)
             ) {
-                NexpadTitle(fontSize = titleFontSize, textAlpha = textAlpha.value)
+                NexpadTitle(fontSize = metrics.titleFontSize, textAlpha = textAlpha.value)
 
                 Spacer(modifier = Modifier.height(6.dp))
 
@@ -304,12 +273,12 @@ fun SplashScreen(
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .size(lionBoxWidth, lionBoxHeight)
+                        .size(metrics.lionBoxWidth, metrics.lionBoxHeight)
                         .scale(lionScale.value)
                         .alpha(lionAlpha.value)
                 ) {
                     MakeInIndiaWalkingLion(
-                        size = lionSize,
+                        size = metrics.lionSize,
                         primaryColor = Color(0xFFFFFFFF),
                         accentColor = Color(0xFFFF9933),
                         secondaryAccent = Color(0xFF00E5FF)
@@ -529,3 +498,14 @@ private fun DeveloperCredit(
         )
     }
 }
+
+@Immutable
+private data class SplashLayoutMetrics(
+    val lionSize: Dp,
+    val titleFontSize: TextUnit,
+    val haloBloomSize: Dp
+) {
+    val lionBoxWidth: Dp get() = lionSize
+    val lionBoxHeight: Dp get() = lionSize * 0.5f
+}
+
