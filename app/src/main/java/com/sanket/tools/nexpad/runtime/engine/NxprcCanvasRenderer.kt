@@ -2224,6 +2224,7 @@ internal data class ScaledPathKey(
     val height: Float
 )
 
+@Immutable
 internal data class BaseSvgPathEntry(
     val path: android.graphics.Path,
     val bounds: android.graphics.RectF,
@@ -2259,6 +2260,7 @@ internal data class InsetPathKey(
     val holeKey: BoxPathKey
 )
 
+@Immutable
 internal data class BrushKey(
     val fill: FillBrush,
     val width: Float,

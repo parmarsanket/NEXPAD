@@ -79,9 +79,12 @@ const val DEV_YOUTUBE_URL = "https://www.youtube.com/channel/UCwZYa5I4rn7I5LmCZm
 fun SettingsScreen(
     navController: AppNavigator,
     layoutManager: LayoutManager,
-    viewModel: GamepadViewModel,
-    sharedPref: SharedPreferences
+    viewModel: GamepadViewModel
 ) {
+    val context = LocalContext.current
+    val sharedPref = remember(context) {
+        context.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
+    }
     val isConnected by viewModel.isConnected.collectAsState()
     val profiles by layoutManager.profilesFlow.collectAsState()
     val activeProfileName by layoutManager.activeProfileNameFlow.collectAsState()
@@ -109,7 +112,6 @@ fun SettingsScreen(
         mutableStateOf(sharedPref.getBoolean(PREF_DOUBLE_TAP_BACK_EXIT, true))
     }
 
-    val context = LocalContext.current
     val hapticHelper = remember(context) { HapticFeedbackHelper(context) }
 
     SettingsScreenContent(

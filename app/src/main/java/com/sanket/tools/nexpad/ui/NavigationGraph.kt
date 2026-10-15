@@ -28,7 +28,6 @@ import kotlinx.serialization.modules.polymorphic
 fun NavigationGraph(
     viewModel: GamepadViewModel,
     layoutManager: LayoutManager,
-    context: Context,
     onVibrate: () -> Unit
 ) {
     val backStack = rememberNavBackStack(
@@ -49,7 +48,6 @@ fun NavigationGraph(
         Route.Splash
     )
     val navigator = remember(backStack) { Nav3AppNavigator(backStack) }
-    val sharedPref = remember(context) { context.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE) }
 
     // Graph-scoped ViewModel: shared by all entries for cross-screen editing context.
     // This replaces LayoutManager.pendingSelectedKey.
@@ -94,7 +92,7 @@ fun NavigationGraph(
                     )
                 }
                 is Route.Settings -> {
-                    SettingsScreen(navController = navigator, layoutManager = layoutManager, viewModel = viewModel, sharedPref = sharedPref)
+                    SettingsScreen(navController = navigator, layoutManager = layoutManager, viewModel = viewModel)
                 }
                 is Route.Connections -> {
                     ConnectionScreen(navController = navigator, viewModel = viewModel)
@@ -122,8 +120,7 @@ fun NavigationGraph(
                         layoutManager = layoutManager,
                         navigationViewModel = navigationViewModel,
                         overrideProfileName = key.layoutProfileName,
-                        onBack = { navigator.popBackStack() },
-                        sharedPref = sharedPref
+                        onBack = { navigator.popBackStack() }
                     )
                 }
                 is Route.ButtonStudio -> {

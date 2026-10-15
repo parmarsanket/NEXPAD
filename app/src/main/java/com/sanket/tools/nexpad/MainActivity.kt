@@ -143,7 +143,6 @@ class MainActivity : ComponentActivity() {
                     NavigationGraph(
                         viewModel = viewModel,
                         layoutManager = layoutManager,
-                        context = this@MainActivity,
                         onVibrate = {
                             hapticFeedbackHelper.performButtonClick()
                         }

@@ -1,5 +1,6 @@
 package com.sanket.tools.nexpad.ui
 
+import android.annotation.SuppressLint
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -47,12 +48,13 @@ import com.sanket.tools.nexpad.ui.components.effects.CyberGrid
 import com.sanket.tools.nexpad.ui.components.splash.MakeInIndiaWalkingLion
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun SplashScreen(
+    modifier: Modifier = Modifier,
     onSplashFinished: () -> Unit,
     onVibrate: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
 ) {
     var hasFinished by remember { mutableStateOf(false) }
 
@@ -110,7 +112,7 @@ fun SplashScreen(
 
         // 2. Fade in Brand & Developer Name
         launch {
-            delay(120)
+            delay(120.milliseconds)
             textAlpha.animateTo(
                 targetValue = 1.0f,
                 animationSpec = tween(400)
@@ -119,7 +121,7 @@ fun SplashScreen(
 
         // 3. Animate the glowing underline expanding beneath "Sanket Dev"
         launch {
-            delay(250)
+            delay(250.milliseconds)
             underlineWidthFraction.animateTo(
                 targetValue = 1.0f,
                 animationSpec = tween(650, easing = FastOutSlowInEasing)
@@ -127,7 +129,7 @@ fun SplashScreen(
         }
 
         // 4. Exactly 2 seconds total splash screen duration while shine sweeps left-to-right
-        delay(2000L)
+        delay(1500L.milliseconds)
         finishSplash()
     }
 

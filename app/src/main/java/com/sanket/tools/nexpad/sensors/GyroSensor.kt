@@ -6,8 +6,10 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.view.Surface
+import androidx.compose.runtime.Stable
 import kotlin.math.abs
 
+@Stable
 data class MotionPacket(
     var timestamp: Long = 0L,
 

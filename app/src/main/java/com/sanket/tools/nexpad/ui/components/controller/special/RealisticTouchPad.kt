@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -77,6 +78,7 @@ import kotlin.time.Duration.Companion.milliseconds
  * on Android capacitive touchscreens where touch events arrive at inconsistent
  * intervals (4ms, 8ms, 16ms, 20ms).
  */
+@Stable
 internal class VelocityRingBuffer(private val capacity: Int = 8) {
     private val distances = FloatArray(capacity)
     private val durations = FloatArray(capacity)

@@ -68,6 +68,7 @@ data class MotorProfile(
     val name: String      // For logging
 )
 
+@Stable
 class BoundsRegistry {
     private val bounds = java.util.concurrent.ConcurrentHashMap<String, Rect>()
 
@@ -110,12 +111,11 @@ fun GamepadScreen(
     layoutManager: LayoutManager,
     navigationViewModel: NavigationViewModel? = null,
     overrideProfileName: String? = null,
-    onBack: () -> Unit,
-    sharedPref: SharedPreferences? = null
+    onBack: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val prefs = remember(sharedPref, context) {
-        sharedPref ?: context.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
+    val prefs = remember(context) {
+        context.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
     }
     val doubleTapExitEnabled = remember(prefs) {
         prefs.getBoolean(PREF_DOUBLE_TAP_BACK_EXIT, true)
