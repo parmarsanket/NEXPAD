@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -47,8 +48,8 @@ fun MakeInIndiaWalkingLion(
     modifier: Modifier = Modifier,
     size: Dp = 230.dp,
     primaryColor: Color = Color.White,
-    accentColor: Color = Color(0xFFFF9933), // Saffron
-    secondaryAccent: Color = Color(0xFF00E5FF) // Cyber Cyan
+    accentColor: Color = NeonPalette.TricolorSaffron, // Saffron
+    secondaryAccent: Color = NeonPalette.Cyan // Cyber Cyan
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "LionMotion")
 
@@ -129,8 +130,8 @@ fun MakeInIndiaWalkingLion(
                     path = lionSilhouettePath,
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFF131D31),
-                            Color(0xFF090E1A)
+                            NeonPalette.LionBodyTop,
+                            NeonPalette.LionBodyBottom
                         ),
                         startY = 14f,
                         endY = 145f

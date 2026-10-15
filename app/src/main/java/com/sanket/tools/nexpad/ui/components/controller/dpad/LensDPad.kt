@@ -27,6 +27,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.sanket.tools.nexpad.model.NexpadKeys as K
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.abs
 import kotlin.math.hypot
@@ -203,7 +204,7 @@ fun LensDPad(
 
     // Nord Frost Chrome (#D8DEE9) or Neon Cyan under RGB
     val glowColor = remember(isRgbEnabled) {
-        if (isRgbEnabled) Color(0xFF00E5FF) else Color(0xFFD8DEE9)
+        if (isRgbEnabled) NeonPalette.Cyan else NeonPalette.MetalLight
     }
 
     val hasActivePress = pressedDirs.isNotEmpty()
@@ -217,9 +218,9 @@ fun LensDPad(
     val socketGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF232527),
-                Color(0xFF0C0D0E),
-                Color(0xFF000000)
+                NeonPalette.MetalBase,
+                NeonPalette.MetalShadow,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.55f),
             radius = 320f
@@ -230,9 +231,9 @@ fun LensDPad(
     val crossBodyGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF26282B),
-                Color(0xFF0C0D0E),
-                Color(0xFF000000)
+                NeonPalette.MetalBase,
+                NeonPalette.MetalShadow,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.53f),
             radius = 180f
@@ -254,8 +255,8 @@ fun LensDPad(
     val hubGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF030304),
-                Color(0xFF151617)
+                NeonPalette.MetalDarkest,
+                NeonPalette.MetalGrit
             ),
             center = Offset(0.50f, 0.60f),
             radius = 40f
@@ -390,13 +391,13 @@ fun LensDPad(
                     // 2. Chromatic aberration edge fringe (magenta/cyan prismatic split)
                     val fringeRadius = size.minDimension * 0.54f
                     drawCircle(
-                        color = Color(0xFFFF2A85).copy(alpha = if (hasActivePress) 0.45f else 0.18f),
+                        color = NeonPalette.NeonPink.copy(alpha = if (hasActivePress) 0.45f else 0.18f),
                         radius = fringeRadius + 3f,
                         center = Offset(causticCenter.x - 2f, causticCenter.y),
                         style = strokeFringe
                     )
                     drawCircle(
-                        color = Color(0xFF00E5FF).copy(alpha = if (hasActivePress) 0.55f else 0.22f),
+                        color = NeonPalette.Cyan.copy(alpha = if (hasActivePress) 0.55f else 0.22f),
                         radius = fringeRadius - 1f,
                         center = Offset(causticCenter.x + 2f, causticCenter.y),
                         style = strokeFringe

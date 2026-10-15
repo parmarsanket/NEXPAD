@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.model.NexpadKeys
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.roundToInt
 
@@ -117,15 +118,15 @@ fun LiquidOrbTrigger(
     )
 
     // LT = Turquoise / Teal (#3FD2C4), RT = Coral Pink (#FF5376) harmonic neon contrast pair
-    val neonColor = if (isLeft) Color(0xFF3FD2C4) else Color(0xFFFF5376)
+    val neonColor = if (isLeft) NeonPalette.AquaMint else NeonPalette.HotCoral
 
     // Acrylic convex dome background (#232527 -> #0c0d0e -> #000)
     val baseDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF232527),
-                Color(0xFF0C0D0E),
-                Color(0xFF000000)
+                NeonPalette.MetalBase,
+                NeonPalette.MetalShadow,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.45f),
             radius = 210f
@@ -134,9 +135,9 @@ fun LiquidOrbTrigger(
     val pressedDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF1B1D1E),
-                Color(0xFF070808),
-                Color(0xFF000000)
+                NeonPalette.MetalMid,
+                NeonPalette.MetalAbyss,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.48f),
             radius = 210f
@@ -147,8 +148,8 @@ fun LiquidOrbTrigger(
     val windowGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF050506),
-                Color(0xFF121314)
+                NeonPalette.MetalDeep,
+                NeonPalette.MetalDark
             ),
             center = Offset(0.50f, 0.60f),
             radius = 100f
@@ -171,7 +172,7 @@ fun LiquidOrbTrigger(
         listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f))
     }
     val chamberCavityColors = remember {
-        listOf(Color(0xFF0D0E12), Color(0xFF040405))
+        listOf(NeonPalette.CarbonDark, NeonPalette.MetalDeep)
     }
     val fluidLayer1Colors = remember(neonColor) {
         listOf(

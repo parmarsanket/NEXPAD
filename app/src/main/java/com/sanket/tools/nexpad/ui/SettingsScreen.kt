@@ -369,7 +369,7 @@ fun SettingsScreenContent(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFF070B14).copy(alpha = 0.8f))
+                            .background(NeonPalette.PanelBgBottom.copy(alpha = 0.8f))
                             .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
                             .padding(14.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -382,7 +382,7 @@ fun SettingsScreenContent(
                                 .background(
                                     Brush.linearGradient(
                                         listOf(
-                                            Color(0xFFFF9933).copy(alpha = 0.35f),
+                                            NeonPalette.TricolorSaffron.copy(alpha = 0.35f),
                                             NeonPalette.Cyan.copy(alpha = 0.35f)
                                         )
                                     )
@@ -390,7 +390,7 @@ fun SettingsScreenContent(
                                 .border(
                                     1.dp,
                                     Brush.linearGradient(
-                                        listOf(Color(0xFFFF9933), NeonPalette.Cyan)
+                                        listOf(NeonPalette.TricolorSaffron, NeonPalette.Cyan)
                                     ),
                                     RoundedCornerShape(12.dp)
                                 ),
@@ -417,7 +417,7 @@ fun SettingsScreenContent(
                             Text(
                                 text = "Independent Developer & Creator of NEXPAD",
                                 style = MaterialTheme.typography.bodySmall.copy(
-                                    color = Color(0xFF94A3B8),
+                                    color = NeonPalette.SlateText,
                                     fontSize = 11.5.sp
                                 )
                             )
@@ -479,7 +479,7 @@ private fun SettingsSectionCard(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
-        color = Color(0xFF0F1523).copy(alpha = 0.85f),
+        color = NeonPalette.CardSurface.copy(alpha = 0.85f),
         border = BorderStroke(
             1.dp,
             Brush.horizontalGradient(
@@ -579,7 +579,7 @@ private fun SettingsToggleRow(
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodySmall.copy(
-                    color = if (enabled) Color(0xFF94A3B8) else Color(0xFF556070),
+                    color = if (enabled) NeonPalette.SlateText else NeonPalette.SlateDark,
                     fontSize = 11.5.sp,
                     lineHeight = 16.sp
                 )
@@ -593,9 +593,9 @@ private fun SettingsToggleRow(
                 checkedThumbColor = accentColor,
                 checkedTrackColor = accentColor.copy(alpha = 0.25f),
                 checkedBorderColor = accentColor.copy(alpha = 0.6f),
-                uncheckedThumbColor = Color(0xFF64748B),
-                uncheckedTrackColor = Color(0xFF1E293B),
-                uncheckedBorderColor = Color(0xFF334155),
+                uncheckedThumbColor = NeonPalette.SlateMuted,
+                uncheckedTrackColor = NeonPalette.SlateCard,
+                uncheckedBorderColor = NeonPalette.SlateBorder,
                 disabledCheckedThumbColor = accentColor.copy(alpha = 0.5f),
                 disabledCheckedTrackColor = accentColor.copy(alpha = 0.12f)
             )
@@ -654,7 +654,7 @@ private fun SettingsSliderRow(
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodySmall.copy(
-                    color = if (enabled) Color(0xFF94A3B8) else Color(0xFF556070),
+                    color = if (enabled) NeonPalette.SlateText else NeonPalette.SlateDark,
                     fontSize = 11.5.sp,
                     lineHeight = 16.sp
                 )
@@ -670,10 +670,10 @@ private fun SettingsSliderRow(
             colors = SliderDefaults.colors(
                 thumbColor = accentColor,
                 activeTrackColor = accentColor,
-                inactiveTrackColor = Color(0xFF1E293B),
+                inactiveTrackColor = NeonPalette.SlateCard,
                 disabledThumbColor = accentColor.copy(alpha = 0.4f),
                 disabledActiveTrackColor = accentColor.copy(alpha = 0.2f),
-                disabledInactiveTrackColor = Color(0xFF1E293B).copy(alpha = 0.5f)
+                disabledInactiveTrackColor = NeonPalette.SlateCard.copy(alpha = 0.5f)
             )
         )
     }
@@ -705,7 +705,7 @@ private fun <T> SettingsSegmentedSelector(
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodySmall.copy(
-                    color = if (enabled) Color(0xFF94A3B8) else Color(0xFF556070),
+                    color = if (enabled) NeonPalette.SlateText else NeonPalette.SlateDark,
                     fontSize = 11.5.sp
                 )
             )
@@ -722,9 +722,9 @@ private fun <T> SettingsSegmentedSelector(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
                     color = when {
-                        !enabled -> Color(0xFF0C1019)
+                        !enabled -> NeonPalette.DisabledBg
                         isSelected -> accentColor.copy(alpha = 0.18f)
-                        else -> Color(0xFF0F172A).copy(alpha = 0.6f)
+                        else -> NeonPalette.SlateBg.copy(alpha = 0.6f)
                     },
                     border = BorderStroke(
                         width = if (isSelected) 1.5.dp else 1.dp,
@@ -757,7 +757,7 @@ private fun <T> SettingsSegmentedSelector(
                             Text(
                                 text = sub,
                                 style = MaterialTheme.typography.bodySmall.copy(
-                                    color = if (isSelected) accentColor.copy(alpha = 0.8f) else Color(0xFF64748B),
+                                    color = if (isSelected) accentColor.copy(alpha = 0.8f) else NeonPalette.SlateMuted,
                                     fontSize = 9.5.sp,
                                     textAlign = TextAlign.Center
                                 )
@@ -781,7 +781,7 @@ private fun SettingsInfoRow(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFF070B12).copy(alpha = 0.6f))
+            .background(NeonPalette.CardRecessed.copy(alpha = 0.6f))
             .padding(horizontal = 12.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -789,7 +789,7 @@ private fun SettingsInfoRow(
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall.copy(
-                color = Color(0xFF94A3B8),
+                color = NeonPalette.SlateText,
                 fontSize = 11.5.sp
             ),
             modifier = Modifier.weight(1f, fill = false)
@@ -823,7 +823,7 @@ private fun SettingsLinkRow(
     Surface(
         onClick = { onOpenUrl(url) },
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFF070B14).copy(alpha = 0.65f),
+        color = NeonPalette.PanelBgBottom.copy(alpha = 0.65f),
         border = BorderStroke(1.dp, accentColor.copy(alpha = 0.22f)),
         modifier = modifier.fillMaxWidth()
     ) {
@@ -888,7 +888,7 @@ private fun SettingsLinkRow(
                     Text(
                         text = description,
                         style = MaterialTheme.typography.bodySmall.copy(
-                            color = Color(0xFF94A3B8),
+                            color = NeonPalette.SlateText,
                             fontSize = 10.5.sp,
                             lineHeight = 14.sp
                         )
@@ -899,7 +899,7 @@ private fun SettingsLinkRow(
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
                 contentDescription = "Open Link",
-                tint = if (url.isNullOrBlank()) Color(0xFF475569) else accentColor,
+                tint = if (url.isNullOrBlank()) NeonPalette.SlateDisabled else accentColor,
                 modifier = Modifier.size(18.dp)
             )
         }

@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.model.NexpadKeys
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.cos
 import kotlin.math.sin
@@ -67,7 +68,7 @@ fun BloomTrigger(
     var isPressed by remember { mutableStateOf(false) }
     val isLeft = key.uppercase() == NexpadKeys.LT
     // HTML source palette: Electric Periwinkle (#7C9CFF) for LT, Neon Rose (#FF6584) for RT
-    val glowColor = if (isLeft) Color(0xFF7C9CFF) else Color(0xFFFF6584)
+    val glowColor = if (isLeft) NeonPalette.Periwinkle else NeonPalette.NeonRose
 
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
@@ -94,9 +95,9 @@ fun BloomTrigger(
     val baseDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF232527),
-                Color(0xFF0C0D0E),
-                Color(0xFF000000)
+                NeonPalette.MetalBase,
+                NeonPalette.MetalShadow,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.45f),
             radius = 200f
@@ -105,9 +106,9 @@ fun BloomTrigger(
     val pressedDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF1B1D1E),
-                Color(0xFF070808),
-                Color(0xFF000000)
+                NeonPalette.MetalMid,
+                NeonPalette.MetalAbyss,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.48f),
             radius = 200f
@@ -126,8 +127,8 @@ fun BloomTrigger(
     val windowBackgroundBrush = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF050506),
-                Color(0xFF121314)
+                NeonPalette.MetalDeep,
+                NeonPalette.MetalDark
             ),
             center = Offset(0.50f, 0.60f),
             radius = 45f

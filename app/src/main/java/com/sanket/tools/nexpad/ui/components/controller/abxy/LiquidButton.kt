@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.roundToInt
 
@@ -126,9 +127,9 @@ fun LiquidButton(
     val baseDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF232527),
-                Color(0xFF0C0D0E),
-                Color(0xFF000000)
+                NeonPalette.MetalBase,
+                NeonPalette.MetalShadow,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.55f),
             radius = 240f
@@ -407,7 +408,7 @@ fun LiquidButton(
                     )
                     PlayStationSymbol(
                         shape = psShape,
-                        color = Color(0xFF0B0C0D),
+                        color = NeonPalette.MetalCharcoal,
                         size = 42.dp,
                         modifier = Modifier.graphicsLayer {
                             alpha = labelInkAlphaState.value.coerceIn(0f, 1f)
@@ -427,7 +428,7 @@ fun LiquidButton(
                     // Dark ink glyph (.ab.pressed .g { color: #0b0c0d })
                     Text(
                         text = activeLabel,
-                        color = Color(0xFF0B0C0D),
+                        color = NeonPalette.MetalCharcoal,
                         fontWeight = FontWeight.Medium,
                         fontSize = 44.sp,
                         modifier = Modifier.graphicsLayer {

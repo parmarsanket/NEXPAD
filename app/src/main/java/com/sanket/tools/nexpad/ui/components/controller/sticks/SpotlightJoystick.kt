@@ -2,6 +2,7 @@ package com.sanket.tools.nexpad.ui.components.controller.sticks
 
 import com.sanket.tools.nexpad.ui.components.controller.special.VelocityRingBuffer
 import com.sanket.tools.nexpad.ui.components.controller.special.calculateGamingStickMagnitude
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 import android.content.Context
 import androidx.compose.animation.core.Animatable
@@ -103,7 +104,7 @@ fun SpotlightJoystick(
 
     // Default Spotlight glow: Warm Gold #FFD23F (Left) or Hot Pink #FF3F85 (Right)
     val glowColor = remember(isRgbEnabled, isLeft) {
-        if (isLeft) Color(0xFFFFD23F) else Color(0xFFFF3F85)
+        if (isLeft) NeonPalette.ElectricAmber else NeonPalette.DeepMagenta
     }
 
     // Micro-compression: scale down to 0.97 on press (--cs: 0.97)
@@ -131,9 +132,9 @@ fun SpotlightJoystick(
     val socketGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF030304),
-                Color(0xFF0A0B0C),
-                Color(0xFF1A1C1E)
+                NeonPalette.MetalDarkest,
+                NeonPalette.MetalCharcoal,
+                NeonPalette.MetalMid
             ),
             center = Offset(0.5f, 0.5f),
             radius = 280f
@@ -144,9 +145,9 @@ fun SpotlightJoystick(
     val puckDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF34373B),
-                Color(0xFF17181B),
-                Color(0xFF050506)
+                NeonPalette.MetalHighlight,
+                NeonPalette.MetalMid,
+                NeonPalette.MetalDeep
             ),
             center = Offset(0.50f, 0.38f),
             radius = 160f
@@ -839,15 +840,15 @@ fun SpotlightStickButton(
     val currentViewModel by rememberUpdatedState(viewModel)
 
     val glowColor = remember(isRgbEnabled, isLeft) {
-        if (isLeft) Color(0xFFFFD23F) else Color(0xFFFF3F85)
+        if (isLeft) NeonPalette.ElectricAmber else NeonPalette.DeepMagenta
     }
 
     val puckDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF34373B),
-                Color(0xFF17181B),
-                Color(0xFF050506)
+                NeonPalette.MetalHighlight,
+                NeonPalette.MetalMid,
+                NeonPalette.MetalDeep
             ),
             center = Offset(0.50f, 0.38f),
             radius = 140f
@@ -868,7 +869,7 @@ fun SpotlightStickButton(
     val stroke1_8dp = remember(density) { Stroke(width = 1.8f * density) }
     val centerPuckGradient = remember {
         Brush.radialGradient(
-            colors = listOf(Color(0xFF030304), Color(0xFF121314)),
+            colors = listOf(NeonPalette.MetalDarkest, NeonPalette.MetalDark),
             center = Offset(0.50f, 0.60f),
             radius = 60f
         )

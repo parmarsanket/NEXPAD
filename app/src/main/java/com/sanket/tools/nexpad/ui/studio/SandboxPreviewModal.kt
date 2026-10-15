@@ -96,7 +96,7 @@ fun SandboxPreviewModal(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xEE050B14))
+                .background(NeonPalette.DialogBg)
                 .padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -108,7 +108,7 @@ fun SandboxPreviewModal(
                     .border(1.5.dp, NeonPalette.Cyan.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
                     .background(
                         Brush.verticalGradient(
-                            listOf(Color(0xFF0F1A2E), Color(0xFF070D18))
+                            listOf(NeonPalette.SurfaceNavy, NeonPalette.SurfaceDark)
                         )
                     )
                     .padding(20.dp)
@@ -186,7 +186,7 @@ fun SandboxPreviewModal(
                         .height(arenaHeight)
                         .clip(RoundedCornerShape(16.dp))
                         .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
-                        .background(Color(0xFF040810)),
+                        .background(NeonPalette.FieldBg),
                     contentAlignment = Alignment.Center
                 ) {
                     val isNative = NativeComponentRegistry.isNativeBuiltin(componentDef.manifest.id)
@@ -287,7 +287,7 @@ fun SandboxPreviewModal(
                 // Telemetry Card
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF081220)),
+                    colors = CardDefaults.cardColors(containerColor = NeonPalette.ModalBg),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -373,7 +373,7 @@ fun SandboxPreviewModal(
                         if (!isContextualPick) {
                             Button(
                                 onClick = onAddToHud,
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A2639)),
+                                colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.ButtonBgDark),
                                 border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
                                 shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier
@@ -448,8 +448,8 @@ fun SandboxPreviewModal(
                             OutlinedButton(
                                 onClick = onDelete,
                                 shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFF5252)),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF5252).copy(alpha = 0.35f)),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.ErrorRed),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.ErrorRed.copy(alpha = 0.35f)),
                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
                                 modifier = Modifier.height(34.dp)
                             ) {

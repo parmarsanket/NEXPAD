@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.roundToInt
 
@@ -72,31 +73,31 @@ fun RealisticMacroButton(
     )
 
     val auraColor = remember(key) {
-        if (key.contains("3") || key.contains("4")) Color(0xFF00E5FF) else Color(0xFFFFD600)
+        if (key.contains("3") || key.contains("4")) NeonPalette.Cyan else NeonPalette.CyberYellow
     }
 
     val baseGradientPressed = remember {
         Brush.verticalGradient(
-            colors = listOf(Color(0xFF1E2633), Color(0xFF0F141C))
+            colors = listOf(NeonPalette.CarbonMidnight, NeonPalette.CarbonChassis)
         )
     }
     val baseGradientNormal = remember {
         Brush.verticalGradient(
-            colors = listOf(Color(0xFF333E4D), Color(0xFF1F2631), Color(0xFF12161E))
+            colors = listOf(NeonPalette.CarbonHighlight, NeonPalette.CarbonPlate, NeonPalette.CarbonNavy)
         )
     }
 
     val borderTopColor = remember(isRgbEnabled, auraColor) {
-        if (isRgbEnabled) auraColor else Color(0xFF718096)
+        if (isRgbEnabled) auraColor else NeonPalette.CarbonMuted
     }
     val borderBrushPressed = remember(borderTopColor) {
         Brush.verticalGradient(
-            colors = listOf(borderTopColor.copy(alpha = 0.40f), Color(0xFF1A202C))
+            colors = listOf(borderTopColor.copy(alpha = 0.40f), NeonPalette.CarbonRim)
         )
     }
     val borderBrushNormal = remember(borderTopColor) {
         Brush.verticalGradient(
-            colors = listOf(borderTopColor.copy(alpha = 0.70f), Color(0xFF1A202C))
+            colors = listOf(borderTopColor.copy(alpha = 0.70f), NeonPalette.CarbonRim)
         )
     }
 

@@ -1,5 +1,6 @@
 package com.sanket.tools.nexpad.ui.components.controller.special
 
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import android.content.Context
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -388,7 +389,7 @@ fun RealisticTouchPad(
     isInteractive: Boolean = true
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val auraColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
+    val auraColor = if (isLeft) NeonPalette.Cyan else NeonPalette.Magenta
 
     // Touch tracking state
     var isDragging by remember { mutableStateOf(false) }
@@ -426,7 +427,7 @@ fun RealisticTouchPad(
 
     val surfaceGradient = remember {
         Brush.radialGradient(
-            colors = listOf(Color(0xFF23252B), Color(0xFF131418), Color(0xFF0B0C0E)),
+            colors = listOf(NeonPalette.MetalBase, NeonPalette.MetalDark, NeonPalette.MetalShadow),
             center = Offset(0.4f, 0.4f),
             radius = 280f
         )
@@ -487,7 +488,7 @@ fun RealisticTouchPad(
             .border(
                 BorderStroke(
                     2.dp,
-                    if (isRgbEnabled) auraColor.copy(alpha = if (isDragging) 0.90f else 0.65f) else Color(0xFF353C4A)
+                    if (isRgbEnabled) auraColor.copy(alpha = if (isDragging) 0.90f else 0.65f) else NeonPalette.CarbonHighlight
                 ),
                 shape
             )

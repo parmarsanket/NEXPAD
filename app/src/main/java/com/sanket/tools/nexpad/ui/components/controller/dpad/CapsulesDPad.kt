@@ -37,6 +37,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.sanket.tools.nexpad.model.NexpadKeys as K
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.abs
 import kotlin.math.hypot
@@ -141,9 +142,9 @@ fun CapsuleKey(
     val baseDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF232527),
-                Color(0xFF0C0D0E),
-                Color(0xFF000000)
+                NeonPalette.MetalBase,
+                NeonPalette.MetalShadow,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.55f),
             radius = 140f
@@ -153,9 +154,9 @@ fun CapsuleKey(
     val pressedDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF1B1D1E),
-                Color(0xFF070808),
-                Color(0xFF000000)
+                NeonPalette.MetalMid,
+                NeonPalette.MetalAbyss,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.58f),
             radius = 140f
@@ -415,7 +416,7 @@ fun CapsulesDPad(
 
     // Neon Glow Color: #B58CFF (Electric Violet / Lavender)
     val neonColor = remember(isRgbEnabled) {
-        if (isRgbEnabled) Color(0xFFB58CFF) else Color(0xFFB58CFF)
+        if (isRgbEnabled) NeonPalette.Lavender else NeonPalette.Lavender
     }
 
     val rgbBloomAlphaState = animateFloatAsState(
@@ -430,8 +431,8 @@ fun CapsulesDPad(
     val hubGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF030304),
-                Color(0xFF151617)
+                NeonPalette.MetalDarkest,
+                NeonPalette.MetalGrit
             ),
             center = Offset(0.50f, 0.60f),
             radius = 60f

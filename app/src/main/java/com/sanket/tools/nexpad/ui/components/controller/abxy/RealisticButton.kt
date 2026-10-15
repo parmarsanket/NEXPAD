@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.roundToInt
 
@@ -210,9 +211,9 @@ fun RealisticButton(
     val baseDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF232527),
-                Color(0xFF0C0D0E),
-                Color(0xFF000000)
+                NeonPalette.MetalBase,
+                NeonPalette.MetalShadow,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.55f),
             radius = 200f
@@ -222,9 +223,9 @@ fun RealisticButton(
     val pressedDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF1B1D1E),
-                Color(0xFF070808),
-                Color(0xFF000000)
+                NeonPalette.MetalMid,
+                NeonPalette.MetalAbyss,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.58f),
             radius = 200f
@@ -235,7 +236,7 @@ fun RealisticButton(
         listOf(
             Color.White.copy(alpha = 0.07f),
             Color.White.copy(alpha = 0.018f),
-            Color(0xFF080A0B).copy(alpha = 0.18f),
+            NeonPalette.MetalVoid.copy(alpha = 0.18f),
             Color.Black.copy(alpha = 0.52f),
             Color.Black.copy(alpha = 0.86f)
         )

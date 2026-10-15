@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.model.NexpadKeys
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -78,7 +79,7 @@ fun TestTubeTrigger(
     var isPressed by remember { mutableStateOf(false) }
     val isLeft = key.uppercase() == NexpadKeys.LT
     // HTML source palette: Amber Orange (#FF9F43) for LT, Violet Purple (#BD5CFF) for RT
-    val glowColor = if (isLeft) Color(0xFFFF9F43) else Color(0xFFBD5CFF)
+    val glowColor = if (isLeft) NeonPalette.BrightOrange else NeonPalette.VioletNeon
 
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
@@ -130,9 +131,9 @@ fun TestTubeTrigger(
     val baseDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF232527),
-                Color(0xFF0C0D0E),
-                Color(0xFF000000)
+                NeonPalette.MetalBase,
+                NeonPalette.MetalShadow,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.45f),
             radius = 200f
@@ -141,9 +142,9 @@ fun TestTubeTrigger(
     val pressedDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF1B1D1E),
-                Color(0xFF070808),
-                Color(0xFF000000)
+                NeonPalette.MetalMid,
+                NeonPalette.MetalAbyss,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.48f),
             radius = 200f
@@ -162,8 +163,8 @@ fun TestTubeTrigger(
     val windowBackgroundBrush = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF050506),
-                Color(0xFF121314)
+                NeonPalette.MetalDeep,
+                NeonPalette.MetalDark
             ),
             center = Offset(0.50f, 0.60f),
             radius = 40f
@@ -331,7 +332,7 @@ fun TestTubeTrigger(
                 .fillMaxSize()
                 .padding(5.dp)
                 .clip(chamberShape)
-                .background(Color(0xFF07080A))
+                .background(NeonPalette.CarbonAbyss)
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val currentFill = fillProgress.value

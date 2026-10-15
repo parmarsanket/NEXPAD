@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.model.NexpadKeys
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.roundToInt
 
@@ -100,9 +101,9 @@ fun TubeBumper(
     // CSS: --glow: #4fa8ff (Electric Sky Blue) for LB, Hot Coral for RB
     val neonColor = remember(isRgbEnabled, isLeft) {
         if (isRgbEnabled) {
-            if (isLeft) Color(0xFF4FA8FF) else Color(0xFFFF4F81)
+            if (isLeft) NeonPalette.IceBlue else NeonPalette.CoralPink
         } else {
-            Color(0xFFD8DEE9)
+            NeonPalette.MetalLight
         }
     }
 
@@ -113,9 +114,9 @@ fun TubeBumper(
     val baseDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF232527),
-                Color(0xFF0C0D0E),
-                Color(0xFF000000)
+                NeonPalette.MetalBase,
+                NeonPalette.MetalShadow,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.55f),
             radius = 260f
@@ -125,9 +126,9 @@ fun TubeBumper(
     val pressedDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF1B1D1E),
-                Color(0xFF070808),
-                Color(0xFF000000)
+                NeonPalette.MetalMid,
+                NeonPalette.MetalAbyss,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.58f),
             radius = 260f
@@ -138,8 +139,8 @@ fun TubeBumper(
     val windowGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF050506),
-                Color(0xFF121314)
+                NeonPalette.MetalDeep,
+                NeonPalette.MetalDark
             ),
             center = Offset(0.50f, 0.60f),
             radius = 120f

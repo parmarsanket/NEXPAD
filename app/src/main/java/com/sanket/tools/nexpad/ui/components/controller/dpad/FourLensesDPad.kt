@@ -35,6 +35,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.sanket.tools.nexpad.model.NexpadKeys as K
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.hypot
 import kotlin.math.roundToInt
@@ -145,9 +146,9 @@ fun FourLensesKey(
     val baseDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF232527),
-                Color(0xFF0C0D0E),
-                Color(0xFF000000)
+                NeonPalette.MetalBase,
+                NeonPalette.MetalShadow,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.55f),
             radius = 120f
@@ -157,9 +158,9 @@ fun FourLensesKey(
     val pressedDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF1B1D1E),
-                Color(0xFF070808),
-                Color(0xFF000000)
+                NeonPalette.MetalMid,
+                NeonPalette.MetalAbyss,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.58f),
             radius = 120f
@@ -169,8 +170,8 @@ fun FourLensesKey(
     val dishGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF050506),
-                Color(0xFF121314)
+                NeonPalette.MetalDeep,
+                NeonPalette.MetalDark
             ),
             center = Offset(0.50f, 0.60f),
             radius = 80f
@@ -463,7 +464,7 @@ fun FourLensesDPad(
 
     // Nord Frost Chrome (#D8DEE9) or Neon Cyan under RGB
     val glowColor = remember(isRgbEnabled) {
-        if (isRgbEnabled) Color(0xFF00E5FF) else Color(0xFFD8DEE9)
+        if (isRgbEnabled) NeonPalette.Cyan else NeonPalette.MetalLight
     }
 
     val hasActivePress = pressedDirs.isNotEmpty()
@@ -476,8 +477,8 @@ fun FourLensesDPad(
     val hubGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF030304),
-                Color(0xFF151617)
+                NeonPalette.MetalDarkest,
+                NeonPalette.MetalGrit
             ),
             center = Offset(0.50f, 0.60f),
             radius = 60f

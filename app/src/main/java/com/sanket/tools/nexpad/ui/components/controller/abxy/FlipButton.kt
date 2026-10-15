@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.abs
 
@@ -90,7 +91,7 @@ fun FlipButton(
     }
     val frontFaceBrush = remember {
         Brush.radialGradient(
-            colors = listOf(Color(0xFF232527), Color(0xFF0C0D0E), Color.Black),
+            colors = listOf(NeonPalette.MetalBase, NeonPalette.MetalShadow, Color.Black),
             center = Offset(0.50f, 0.55f),
             radius = 240f
         )
@@ -247,7 +248,7 @@ fun FlipButton(
                     ambientColor = Color.Black
                 )
                 .clip(CircleShape)
-                .background(Color(0xFF0C0D0E))
+                .background(NeonPalette.MetalShadow)
                 .border(
                     width = 1.dp,
                     brush = borderBrush,
@@ -302,13 +303,13 @@ fun FlipButton(
                     if (psShape != null) {
                         PlayStationSymbol(
                             shape = psShape,
-                            color = Color(0xFF0A0B0C),
+                            color = NeonPalette.MetalCharcoal,
                             size = 40.dp
                         )
                     } else {
                         Text(
                             text = activeLabel,
-                            color = Color(0xFF0A0B0C),
+                            color = NeonPalette.MetalCharcoal,
                             fontWeight = FontWeight.Medium,
                             fontSize = 44.sp
                         )

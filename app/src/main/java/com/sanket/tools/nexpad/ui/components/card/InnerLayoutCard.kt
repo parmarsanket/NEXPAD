@@ -70,12 +70,12 @@ fun InnerLayoutCard(
         label = "textColor"
     )
     val bgStart by animateColorAsState(
-        targetValue = if (isSelected) Color(0xFF005577) else NeonPalette.CardIdleBg,
+        targetValue = if (isSelected) NeonPalette.SelectedGradStart else NeonPalette.CardIdleBg,
         animationSpec = cardAnimSpecColor,
         label = "bgStart"
     )
     val bgEnd by animateColorAsState(
-        targetValue = if (isSelected) Color(0xFF660088) else NeonPalette.CardIdleBg,
+        targetValue = if (isSelected) NeonPalette.SelectedGradEnd else NeonPalette.CardIdleBg,
         animationSpec = cardAnimSpecColor,
         label = "bgEnd"
     )

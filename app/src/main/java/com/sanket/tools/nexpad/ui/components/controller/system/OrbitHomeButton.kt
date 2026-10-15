@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.cos
 import kotlin.math.roundToInt
@@ -90,7 +91,7 @@ fun OrbitHomeButton(
     val currentViewModel by rememberUpdatedState(viewModel)
 
     val glowColor = remember(isRgbEnabled) {
-        if (isRgbEnabled) Color(0xFF00E5FF) else Color(0xFFF0F3F8)
+        if (isRgbEnabled) NeonPalette.Cyan else NeonPalette.CarbonBright
     }
 
     val buttonSize = 74.dp
@@ -135,7 +136,7 @@ fun OrbitHomeButton(
     // Multi-stop convex dome gradient: #232527 0%, #0c0d0e 75%, #000 100%
     val domeGradient = remember {
         Brush.radialGradient(
-            colors = listOf(Color(0xFF232527), Color(0xFF0C0D0E), Color(0xFF000000)),
+            colors = listOf(NeonPalette.MetalBase, NeonPalette.MetalShadow, NeonPalette.PureBlack),
             center = Offset(0.50f, 0.55f),
             radius = 180f
         )

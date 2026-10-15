@@ -48,10 +48,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.ui.components.common.NexpadTitle
 import com.sanket.tools.nexpad.ui.components.effects.CyberGrid
 import com.sanket.tools.nexpad.ui.components.splash.MakeInIndiaWalkingLion
 import com.sanket.tools.nexpad.ui.layout.AdaptivePosture
 import com.sanket.tools.nexpad.ui.layout.adaptiveLayoutSpec
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
@@ -142,7 +144,7 @@ fun SplashScreen(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF070B14))
+            .background(NeonPalette.PanelBgBottom)
             .pointerInput(Unit) {
                 detectTapGestures {
                     finishSplash()
@@ -183,9 +185,9 @@ fun SplashScreen(
                 .background(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            Color(0xFFFF9933).copy(alpha = 0.35f), // Saffron
-                            Color(0xFF00E5FF).copy(alpha = 0.25f), // Cyber Cyan
-                            Color(0xFFB400FF).copy(alpha = 0.15f), // Purple
+                            NeonPalette.TricolorSaffron.copy(alpha = 0.35f),
+                            NeonPalette.Cyan.copy(alpha = 0.25f),
+                            NeonPalette.Purple.copy(alpha = 0.15f),
                             Color.Transparent
                         )
                     ),
@@ -223,9 +225,9 @@ fun SplashScreen(
                     ) {
                         MakeInIndiaWalkingLion(
                             size = metrics.lionSize,
-                            primaryColor = Color(0xFFFFFFFF),
-                            accentColor = Color(0xFFFF9933),
-                            secondaryAccent = Color(0xFF00E5FF)
+                            primaryColor = NeonPalette.PureWhite,
+                            accentColor = NeonPalette.TricolorSaffron,
+                            secondaryAccent = NeonPalette.Cyan
                         )
                     }
 
@@ -239,7 +241,11 @@ fun SplashScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    NexpadTitle(fontSize = metrics.titleFontSize, textAlpha = textAlpha.value)
+                    NexpadTitle(
+                        fontSize = metrics.titleFontSize,
+                        letterSpacing = 5.sp,
+                        textAlpha = textAlpha.value
+                    )
 
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -262,7 +268,11 @@ fun SplashScreen(
                 verticalArrangement = Arrangement.Center,
                 modifier = Modifier.padding(horizontal = 24.dp)
             ) {
-                NexpadTitle(fontSize = metrics.titleFontSize, textAlpha = textAlpha.value)
+                NexpadTitle(
+                    fontSize = metrics.titleFontSize,
+                    letterSpacing = 5.sp,
+                    textAlpha = textAlpha.value
+                )
 
                 Spacer(modifier = Modifier.height(6.dp))
 
@@ -279,9 +289,9 @@ fun SplashScreen(
                 ) {
                     MakeInIndiaWalkingLion(
                         size = metrics.lionSize,
-                        primaryColor = Color(0xFFFFFFFF),
-                        accentColor = Color(0xFFFF9933),
-                        secondaryAccent = Color(0xFF00E5FF)
+                        primaryColor = NeonPalette.PureWhite,
+                        accentColor = NeonPalette.TricolorSaffron,
+                        secondaryAccent = NeonPalette.Cyan
                     )
                 }
 
@@ -307,38 +317,13 @@ fun SplashScreen(
         ) {
             Text(
                 text = "TAP ANYWHERE TO SKIP",
-                color = Color(0xFF859398),
+                color = NeonPalette.MutedText,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 1.5.sp
             )
         }
     }
-}
-
-@Composable
-private fun NexpadTitle(
-    fontSize: TextUnit,
-    textAlpha: Float,
-    modifier: Modifier = Modifier
-) {
-    Text(
-        text = "NEXPAD",
-        style = MaterialTheme.typography.displayLarge.copy(
-            fontSize = fontSize,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 5.sp,
-            brush = Brush.linearGradient(
-                colors = listOf(
-                    Color(0xFFFFFFFF),
-                    Color(0xFF00E5FF),
-                    Color(0xFF00B4FF),
-                    Color(0xFFB400FF)
-                )
-            )
-        ),
-        modifier = modifier.alpha(textAlpha)
-    )
 }
 
 @Composable
@@ -350,15 +335,15 @@ private fun SubtitleBadge(
         modifier = modifier
             .alpha(textAlpha)
             .background(
-                color = Color(0xFF0E1524),
+                color = NeonPalette.PanelBgTop,
                 shape = RoundedCornerShape(16.dp)
             )
             .border(
                 width = 1.dp,
                 brush = Brush.horizontalGradient(
                     listOf(
-                        Color(0xFF00E5FF).copy(alpha = 0.5f),
-                        Color(0xFFB400FF).copy(alpha = 0.5f)
+                        NeonPalette.Cyan.copy(alpha = 0.5f),
+                        NeonPalette.Purple.copy(alpha = 0.5f)
                     )
                 ),
                 shape = RoundedCornerShape(16.dp)
@@ -367,7 +352,7 @@ private fun SubtitleBadge(
     ) {
         Text(
             text = "NEXT-GEN VIRTUAL GAMEPAD",
-            color = Color(0xFF859398),
+            color = NeonPalette.MutedText,
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.2.sp
@@ -389,28 +374,28 @@ private fun MakeInIndiaBadge(
         Box(
             modifier = Modifier
                 .size(6.dp)
-                .background(Color(0xFFFF9933), CircleShape)
+                .background(NeonPalette.TricolorSaffron, CircleShape)
         )
         Spacer(modifier = Modifier.width(6.dp))
         // White Dot
         Box(
             modifier = Modifier
                 .size(6.dp)
-                .background(Color(0xFFFFFFFF), CircleShape)
+                .background(NeonPalette.PureWhite, CircleShape)
         )
         Spacer(modifier = Modifier.width(6.dp))
         // Green Dot
         Box(
             modifier = Modifier
                 .size(6.dp)
-                .background(Color(0xFF138808), CircleShape)
+                .background(NeonPalette.TricolorGreen, CircleShape)
         )
 
         Spacer(modifier = Modifier.width(12.dp))
 
         Text(
             text = "MAKE IN INDIA",
-            color = Color(0xFFFFFFFF),
+            color = NeonPalette.PureWhite,
             fontSize = 12.sp,
             fontWeight = FontWeight.ExtraBold,
             letterSpacing = 3.5.sp
@@ -422,21 +407,21 @@ private fun MakeInIndiaBadge(
         Box(
             modifier = Modifier
                 .size(6.dp)
-                .background(Color(0xFF138808), CircleShape)
+                .background(NeonPalette.TricolorGreen, CircleShape)
         )
         Spacer(modifier = Modifier.width(6.dp))
         // White Dot
         Box(
             modifier = Modifier
                 .size(6.dp)
-                .background(Color(0xFFFFFFFF), CircleShape)
+                .background(NeonPalette.PureWhite, CircleShape)
         )
         Spacer(modifier = Modifier.width(6.dp))
         // Saffron Dot
         Box(
             modifier = Modifier
                 .size(6.dp)
-                .background(Color(0xFFFF9933), CircleShape)
+                .background(NeonPalette.TricolorSaffron, CircleShape)
         )
     }
 }
@@ -453,7 +438,7 @@ private fun DeveloperCredit(
     ) {
         Text(
             text = "DEVELOPED BY",
-            color = Color(0xFF859398),
+            color = NeonPalette.MutedText,
             fontSize = 9.sp,
             fontWeight = FontWeight.SemiBold,
             letterSpacing = 2.sp
@@ -469,9 +454,9 @@ private fun DeveloperCredit(
                 letterSpacing = 1.5.sp,
                 brush = Brush.linearGradient(
                     colors = listOf(
-                        Color(0xFFFFFFFF),
-                        Color(0xFF00E5FF),
-                        Color(0xFFFF9933)
+                        NeonPalette.PureWhite,
+                        NeonPalette.Cyan,
+                        NeonPalette.TricolorSaffron
                     )
                 )
             )
@@ -487,9 +472,9 @@ private fun DeveloperCredit(
                     brush = Brush.horizontalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            Color(0xFF00E5FF),
-                            Color(0xFFFF9933),
-                            Color(0xFFB400FF),
+                            NeonPalette.Cyan,
+                            NeonPalette.TricolorSaffron,
+                            NeonPalette.Purple,
                             Color.Transparent
                         )
                     ),

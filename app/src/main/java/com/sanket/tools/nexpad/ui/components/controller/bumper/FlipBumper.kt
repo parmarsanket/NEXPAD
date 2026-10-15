@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.model.NexpadKeys
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.abs
 import kotlin.math.cos
@@ -98,9 +99,9 @@ fun FlipBumper(
     // CSS: --glow: #ffd23f (Cyber Gold / Amber Neon) for LB, Coral for RB
     val neonColor = remember(isRgbEnabled, isLeft) {
         if (isRgbEnabled) {
-            if (isLeft) Color(0xFFFFD23F) else Color(0xFFFF6B6B)
+            if (isLeft) NeonPalette.ElectricAmber else NeonPalette.CrimsonGlow
         } else {
-            Color(0xFFD8DEE9)
+            NeonPalette.MetalLight
         }
     }
 
@@ -111,9 +112,9 @@ fun FlipBumper(
     val baseDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF232527),
-                Color(0xFF0C0D0E),
-                Color(0xFF000000)
+                NeonPalette.MetalBase,
+                NeonPalette.MetalShadow,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.55f),
             radius = 260f
@@ -124,8 +125,8 @@ fun FlipBumper(
     val windowGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF050506),
-                Color(0xFF121314)
+                NeonPalette.MetalDeep,
+                NeonPalette.MetalDark
             ),
             center = Offset(0.50f, 0.60f),
             radius = 120f
@@ -426,7 +427,7 @@ fun FlipBumper(
                     // Tactical Embossed Dark Typography (.ff.b .lx-g: color #0A0B0C)
                     Text(
                         text = labelText,
-                        color = Color(0xFF0A0B0C),
+                        color = NeonPalette.MetalCharcoal,
                         fontWeight = FontWeight.Black,
                         fontSize = 26.sp,
                         letterSpacing = 2.sp,

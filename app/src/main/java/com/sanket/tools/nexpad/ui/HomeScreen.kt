@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.ui.AppNavigator
 import com.sanket.tools.nexpad.ui.components.badge.HeaderStatusPill
 import com.sanket.tools.nexpad.ui.components.button.CommandButton
+import com.sanket.tools.nexpad.ui.components.common.NexpadTitle
 import com.sanket.tools.nexpad.ui.components.effects.CyberGrid
 import com.sanket.tools.nexpad.ui.components.effects.ScanLine
 import com.sanket.tools.nexpad.ui.components.home.DeviceHeroCard
@@ -171,23 +172,9 @@ fun HomeScreenContent(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        "NEXPAD",
-                        style = MaterialTheme.typography.displayLarge.copy(
-                            fontSize = 36.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 0.8.sp,
-                            brush = Brush.linearGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.onBackground,
-                                    MaterialTheme.colorScheme.primary,
-                                    MaterialTheme.colorScheme.primaryContainer,
-                                    MaterialTheme.colorScheme.secondaryContainer,
-                                    MaterialTheme.colorScheme.tertiaryContainer,
-                                    MaterialTheme.colorScheme.tertiary
-                                )
-                            )
-                        )
+                    NexpadTitle(
+                        fontSize = 36.sp,
+                        letterSpacing = 0.8.sp
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -429,7 +416,7 @@ fun HeaderRow(
                     Text(
                         text = connectionStatus,
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFFFF5252)
+                        color = NeonPalette.ErrorRed
                     )
                 }
             }

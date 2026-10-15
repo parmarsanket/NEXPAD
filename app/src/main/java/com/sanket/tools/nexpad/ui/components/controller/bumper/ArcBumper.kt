@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.model.NexpadKeys
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -94,8 +95,8 @@ fun ArcBumper(
     // CSS: --glow: #a97cf0 (LB Purple / RB Cyan)
     val neonColor = remember(isRgbEnabled, isLeft) {
         if (isRgbEnabled) {
-            if (isLeft) Color(0xFFA97CF0) else Color(0xFF00E5FF)
-        } else Color(0xFFD8DEE9)
+            if (isLeft) NeonPalette.SoftPurple else NeonPalette.Cyan
+        } else NeonPalette.MetalLight
     }
 
     val currentOnVibrate by rememberUpdatedState(onVibrate)
@@ -132,7 +133,7 @@ fun ArcBumper(
         val topY = oy + 6f * s
         val botY = oy + 80f * s
         Brush.verticalGradient(
-            colors = listOf(Color(0xFF282A2E), Color(0xFF08090A)),
+            colors = listOf(NeonPalette.MetalGraphite, NeonPalette.MetalVoid),
             startY = topY,
             endY = botY
         )

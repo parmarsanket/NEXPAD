@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.model.NexpadKeys
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.roundToInt
 
@@ -102,8 +103,8 @@ fun LedBumper(
     // CSS: --glow: #a97cf0 (LB Purple / RB Cyan)
     val neonColor = remember(isRgbEnabled, isLeft) {
         if (isRgbEnabled) {
-            if (isLeft) Color(0xFFA97CF0) else Color(0xFF00E5FF)
-        } else Color(0xFFD8DEE9)
+            if (isLeft) NeonPalette.SoftPurple else NeonPalette.Cyan
+        } else NeonPalette.MetalLight
     }
 
     val rgbBloomAlphaState = animateFloatAsState(
@@ -152,9 +153,9 @@ fun LedBumper(
     val baseDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF232527),
-                Color(0xFF0C0D0E),
-                Color(0xFF000000)
+                NeonPalette.MetalBase,
+                NeonPalette.MetalShadow,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.55f),
             radius = 260f
@@ -164,9 +165,9 @@ fun LedBumper(
     val pressedDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF1B1D1E),
-                Color(0xFF070808),
-                Color(0xFF000000)
+                NeonPalette.MetalMid,
+                NeonPalette.MetalAbyss,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.58f),
             radius = 260f
@@ -177,8 +178,8 @@ fun LedBumper(
     val windowGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF050506),
-                Color(0xFF121314)
+                NeonPalette.MetalDeep,
+                NeonPalette.MetalDark
             ),
             center = Offset(0.50f, 0.60f),
             radius = 70f

@@ -126,7 +126,7 @@ fun HudTopBar(
                             fontSize = 10.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            color = if (hasUnsavedChanges) Color(0xFFFFB703) else MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (hasUnsavedChanges) NeonPalette.WarningAmber else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

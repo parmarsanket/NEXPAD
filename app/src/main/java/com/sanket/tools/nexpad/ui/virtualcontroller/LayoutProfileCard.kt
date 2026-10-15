@@ -144,8 +144,8 @@ fun LayoutProfileCard(
                     } else {
                         Surface(
                             shape = CircleShape,
-                            color = Color(0xFFFFB703).copy(alpha = 0.15f),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFFB703).copy(alpha = 0.5f))
+                            color = NeonPalette.WarningAmber.copy(alpha = 0.15f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.WarningAmber.copy(alpha = 0.5f))
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
@@ -155,14 +155,14 @@ fun LayoutProfileCard(
                                 Icon(
                                     Icons.Rounded.Star,
                                     contentDescription = "Custom layout",
-                                    tint = Color(0xFFFFB703),
+                                    tint = NeonPalette.WarningAmber,
                                     modifier = Modifier.size(10.dp)
                                 )
                                 Text(
                                     "CUSTOM",
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFFFFB703),
+                                    color = NeonPalette.WarningAmber,
                                     maxLines = 1,
                                     softWrap = false
                                 )
@@ -179,14 +179,14 @@ fun LayoutProfileCard(
                     if (isActive) {
                         Surface(
                             shape = CircleShape,
-                            color = Color(0xFF00FF66).copy(alpha = 0.18f),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF00FF66))
+                            color = NeonPalette.NeonGreen.copy(alpha = 0.18f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.NeonGreen)
                         ) {
                             Text(
                                 "ACTIVE",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Black,
-                                color = Color(0xFF00FF66),
+                                color = NeonPalette.NeonGreen,
                                 maxLines = 1,
                                 softWrap = false,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)

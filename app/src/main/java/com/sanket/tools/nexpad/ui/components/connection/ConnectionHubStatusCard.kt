@@ -51,7 +51,7 @@ fun ConnectionHubStatusCard(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
-        color = Color(0xFF0F1523).copy(alpha = 0.85f),
+        color = NeonPalette.CardSurface.copy(alpha = 0.85f),
         border = BorderStroke(
             1.dp,
             Brush.horizontalGradient(
@@ -208,7 +208,7 @@ private fun StatusIndicatorRow(label: String, status: String, isGood: Boolean) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFF070B12).copy(alpha = 0.6f))
+            .background(NeonPalette.CardRecessed.copy(alpha = 0.6f))
             .padding(horizontal = 12.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -221,13 +221,13 @@ private fun StatusIndicatorRow(label: String, status: String, isGood: Boolean) {
                 modifier = Modifier
                     .size(8.dp)
                     .clip(CircleShape)
-                    .background(if (isGood) NeonPalette.Green else Color(0xFF64748B))
+                    .background(if (isGood) NeonPalette.Green else NeonPalette.SlateMuted)
             )
             Text(
                 label,
                 style = MaterialTheme.typography.bodySmall.copy(
                     fontSize = 12.sp,
-                    color = Color(0xFFCBD5E1)
+                    color = NeonPalette.SlateLight
                 )
             )
         }
@@ -236,7 +236,7 @@ private fun StatusIndicatorRow(label: String, status: String, isGood: Boolean) {
             style = MaterialTheme.typography.labelSmall.copy(
                 fontWeight = FontWeight.Bold,
                 fontSize = 11.5.sp,
-                color = if (isGood) NeonPalette.Green else Color(0xFF94A3B8)
+                color = if (isGood) NeonPalette.Green else NeonPalette.SlateText
             )
         )
     }

@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.roundToInt
 
@@ -206,10 +207,10 @@ fun RealisticSystemButton(
     )
 
     // Palette: HTML specifies #d8dee9 for Back/Start and #f0f3f8 for Home
-    val defaultGlow = if (isGuide) Color(0xFFF0F3F8) else Color(0xFFD8DEE9)
+    val defaultGlow = if (isGuide) NeonPalette.CarbonBright else NeonPalette.MetalLight
     val auraColor = remember(isGuide, isRgbEnabled) {
         if (isRgbEnabled) {
-            if (isGuide) Color(0xFF00E5FF) else Color(0xFFD8DEE9)
+            if (isGuide) NeonPalette.Cyan else NeonPalette.MetalLight
         } else {
             defaultGlow
         }
@@ -221,7 +222,7 @@ fun RealisticSystemButton(
     // Optical Lens radial dome: #232527 0%, #0c0d0e 75%, #000 100%
     val domeGradient = remember {
         Brush.radialGradient(
-            colors = listOf(Color(0xFF232527), Color(0xFF0C0D0E), Color(0xFF000000)),
+            colors = listOf(NeonPalette.MetalBase, NeonPalette.MetalShadow, NeonPalette.PureBlack),
             center = Offset(0.50f, 0.55f),
             radius = 160f
         )

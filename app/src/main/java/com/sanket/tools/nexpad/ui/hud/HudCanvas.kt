@@ -186,7 +186,7 @@ fun HudCanvas(
                     if (isMissingSkin) {
                         Surface(
                             shape = CircleShape,
-                            color = Color(0xFFE65100),
+                            color = NeonPalette.DeepOrange,
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(2.dp)

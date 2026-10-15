@@ -30,6 +30,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.cos
 import kotlin.math.hypot
@@ -146,7 +147,7 @@ fun RealisticDPad(
     val isRightPressed = pressedDirs.contains(K.RIGHT)
     val hasActivePress = pressedDirs.isNotEmpty()
 
-    val neonColor = if (isRgbEnabled) Color(0xFF00E5FF) else Color(0xFF4ADE80)
+    val neonColor = if (isRgbEnabled) NeonPalette.Cyan else NeonPalette.Emerald
 
     // Snappy Harmonic Spring Kinematics for each Satellite Node
     val upScale = animateFloatAsState(
@@ -277,9 +278,9 @@ fun RealisticDPad(
     val baseDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF282D36),
-                Color(0xFF13161C),
-                Color(0xFF07080A)
+                NeonPalette.CarbonSteel,
+                NeonPalette.CarbonSlate,
+                NeonPalette.CarbonAbyss
             ),
             center = Offset(0.50f, 0.45f),
             radius = 180f
@@ -288,9 +289,9 @@ fun RealisticDPad(
     val pressedDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF1D222A),
-                Color(0xFF0C0E12),
-                Color(0xFF020304)
+                NeonPalette.CarbonBevel,
+                NeonPalette.CarbonDark,
+                NeonPalette.CarbonBlack
             ),
             center = Offset(0.50f, 0.55f),
             radius = 180f
@@ -299,9 +300,9 @@ fun RealisticDPad(
     val coreBevelGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF333D4C),
-                Color(0xFF181D26),
-                Color(0xFF0B0E13)
+                NeonPalette.CarbonHighlight,
+                NeonPalette.CarbonGroove,
+                NeonPalette.CarbonDeep
             ),
             center = Offset(0.50f, 0.45f),
             radius = 90f
@@ -310,8 +311,8 @@ fun RealisticDPad(
     val stageTrackBrush = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF181F2B).copy(alpha = 0.55f),
-                Color(0xFF0D121A).copy(alpha = 0.30f),
+                NeonPalette.CarbonRim.copy(alpha = 0.55f),
+                NeonPalette.CarbonShadow.copy(alpha = 0.30f),
                 Color.Transparent
             )
         )
@@ -461,13 +462,13 @@ fun RealisticDPad(
             )
             // Outer telemetry ring with subtle compass tick marks
             drawCircle(
-                color = Color(0xFF283242).copy(alpha = 0.38f),
+                color = NeonPalette.CarbonSurface.copy(alpha = 0.38f),
                 radius = rimRadius,
                 center = Offset(cx, cy),
                 style = stroke1dp
             )
             drawCircle(
-                color = Color(0xFF1E2532).copy(alpha = 0.25f),
+                color = NeonPalette.CarbonPlate.copy(alpha = 0.25f),
                 radius = orbitRadius,
                 center = Offset(cx, cy),
                 style = stroke1dp
@@ -493,10 +494,10 @@ fun RealisticDPad(
 
             // 3. Segmented Energy Conduits (Light Tracks from Center Core to Satellites)
             // Dark base rails
-            drawLine(Color(0xFF141922), Offset(cx, cy), upCenter, strokeWidth = stroke5dp.width, cap = StrokeCap.Round)
-            drawLine(Color(0xFF141922), Offset(cx, cy), downCenter, strokeWidth = stroke5dp.width, cap = StrokeCap.Round)
-            drawLine(Color(0xFF141922), Offset(cx, cy), leftCenter, strokeWidth = stroke5dp.width, cap = StrokeCap.Round)
-            drawLine(Color(0xFF141922), Offset(cx, cy), rightCenter, strokeWidth = stroke5dp.width, cap = StrokeCap.Round)
+            drawLine(NeonPalette.CarbonChassis, Offset(cx, cy), upCenter, strokeWidth = stroke5dp.width, cap = StrokeCap.Round)
+            drawLine(NeonPalette.CarbonChassis, Offset(cx, cy), downCenter, strokeWidth = stroke5dp.width, cap = StrokeCap.Round)
+            drawLine(NeonPalette.CarbonChassis, Offset(cx, cy), leftCenter, strokeWidth = stroke5dp.width, cap = StrokeCap.Round)
+            drawLine(NeonPalette.CarbonChassis, Offset(cx, cy), rightCenter, strokeWidth = stroke5dp.width, cap = StrokeCap.Round)
 
             // Dynamic Illuminated Energy Surges & Pulse Nodes along active conduits
             fun drawActiveConduit(target: Offset, alpha: Float) {
@@ -595,7 +596,7 @@ fun RealisticDPad(
                 } else {
                     // Subtle inactive diagonal guide pip
                     drawCircle(
-                        color = Color(0xFF3B485A).copy(alpha = 0.45f),
+                        color = NeonPalette.CarbonEdge.copy(alpha = 0.45f),
                         radius = 1.9f * density,
                         center = Offset(tickX, tickY)
                     )
@@ -615,7 +616,7 @@ fun RealisticDPad(
             )
             // Outer core border
             drawCircle(
-                color = Color(0xFF4A5568).copy(alpha = 0.55f),
+                color = NeonPalette.CarbonBorder.copy(alpha = 0.55f),
                 radius = coreRadius,
                 center = Offset(cx, cy),
                 style = stroke1_5dp
@@ -905,7 +906,7 @@ fun RealisticDPadButton(
         label = "dpad_btn_rgb_bloom"
     )
 
-    val themeColor = if (isRgbEnabled) Color(0xFF00E5FF) else Color(0xFF4ADE80)
+    val themeColor = if (isRgbEnabled) NeonPalette.Cyan else NeonPalette.Emerald
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
     val density = LocalDensity.current.density
@@ -921,9 +922,9 @@ fun RealisticDPadButton(
     val baseDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF282D36),
-                Color(0xFF13161C),
-                Color(0xFF07080A)
+                NeonPalette.CarbonSteel,
+                NeonPalette.CarbonSlate,
+                NeonPalette.CarbonAbyss
             ),
             center = Offset(0.50f, 0.45f),
             radius = 180f
@@ -932,9 +933,9 @@ fun RealisticDPadButton(
     val pressedDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF1D222A),
-                Color(0xFF0C0E12),
-                Color(0xFF020304)
+                NeonPalette.CarbonBevel,
+                NeonPalette.CarbonDark,
+                NeonPalette.CarbonBlack
             ),
             center = Offset(0.50f, 0.55f),
             radius = 180f

@@ -2,6 +2,7 @@ package com.sanket.tools.nexpad.ui.components.controller.sticks
 
 import com.sanket.tools.nexpad.ui.components.controller.special.VelocityRingBuffer
 import com.sanket.tools.nexpad.ui.components.controller.special.calculateGamingStickMagnitude
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 import android.content.Context
 import androidx.compose.animation.core.Animatable
@@ -105,9 +106,9 @@ fun FluxJoystick(
     // Default Flux glow: #2FD4B6 (Teal) or custom RGB neon
     val glowColor = remember(isRgbEnabled, isLeft) {
         if (isRgbEnabled) {
-            if (isLeft) Color(0xFF2FD4B6) else Color(0xFFFF3185)
+            if (isLeft) NeonPalette.Turquoise else NeonPalette.DeepMagenta
         } else {
-            Color(0xFF2FD4B6)
+            NeonPalette.Turquoise
         }
     }
 
@@ -136,9 +137,9 @@ fun FluxJoystick(
     val socketGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF030304),
-                Color(0xFF090A0B),
-                Color(0xFF191B1E)
+                NeonPalette.MetalDarkest,
+                NeonPalette.MetalCharcoal,
+                NeonPalette.MetalMid
             ),
             center = Offset(0.5f, 0.5f),
             radius = 280f
@@ -149,10 +150,10 @@ fun FluxJoystick(
     val capDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF3D4145),
-                Color(0xFF202327),
-                Color(0xFF111316),
-                Color(0xFF050506)
+                NeonPalette.MetalPlate,
+                NeonPalette.MetalSubtle,
+                NeonPalette.MetalDark,
+                NeonPalette.MetalDeep
             ),
             center = Offset(0.50f, 0.36f),
             radius = 220f
@@ -163,9 +164,9 @@ fun FluxJoystick(
     val dishGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF020203),
-                Color(0xFF0B0C0D),
-                Color(0xFF161719)
+                NeonPalette.MetalObsidian,
+                NeonPalette.MetalShadow,
+                NeonPalette.MetalGrit
             ),
             center = Offset(0.50f, 0.58f),
             radius = 100f
@@ -886,19 +887,19 @@ fun FluxStickButton(
 
     val glowColor = remember(isRgbEnabled, isLeft) {
         if (isRgbEnabled) {
-            if (isLeft) Color(0xFF2FD4B6) else Color(0xFFFF3185)
+            if (isLeft) NeonPalette.Turquoise else NeonPalette.DeepMagenta
         } else {
-            Color(0xFF2FD4B6)
+            NeonPalette.Turquoise
         }
     }
 
     val capDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF3D4145),
-                Color(0xFF202327),
-                Color(0xFF111316),
-                Color(0xFF050506)
+                NeonPalette.MetalPlate,
+                NeonPalette.MetalSubtle,
+                NeonPalette.MetalDark,
+                NeonPalette.MetalDeep
             ),
             center = Offset(0.50f, 0.36f),
             radius = 180f
@@ -908,9 +909,9 @@ fun FluxStickButton(
     val dishGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF020203),
-                Color(0xFF0B0C0D),
-                Color(0xFF161719)
+                NeonPalette.MetalObsidian,
+                NeonPalette.MetalShadow,
+                NeonPalette.MetalGrit
             ),
             center = Offset(0.50f, 0.58f),
             radius = 80f

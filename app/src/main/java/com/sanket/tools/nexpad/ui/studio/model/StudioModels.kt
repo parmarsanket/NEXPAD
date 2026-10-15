@@ -3,6 +3,7 @@ package com.sanket.tools.nexpad.ui.studio.model
 import androidx.compose.ui.graphics.Color
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
 import com.sanket.tools.nexpad.runtime.registry.NativeComponentRegistry
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 /**
  * Operating mode for Button Studio:
@@ -27,9 +28,9 @@ enum class ButtonStudioMode(val label: String) {
  * - REMOTE_COMPOSE: Remote Compose components (.nxprc)
  */
 enum class ButtonStudioType(val label: String, val badgeColor: Color, val badgeBg: Color) {
-    DEFAULT("DEFAULT", Color(0xFF00E5FF), Color(0x2200E5FF)),
-    PLUGIN("PLUGIN / NXP", Color(0xFFB400FF), Color(0x22B400FF)),
-    REMOTE_COMPOSE("REMOTE / RC", Color(0xFFFF9100), Color(0x22FF9100))
+    DEFAULT("DEFAULT", NeonPalette.Cyan, NeonPalette.Cyan.copy(alpha = 0.133f)),
+    PLUGIN("PLUGIN / NXP", NeonPalette.Purple, NeonPalette.Purple.copy(alpha = 0.133f)),
+    REMOTE_COMPOSE("REMOTE / RC", NeonPalette.OrangeAccent, NeonPalette.OrangeAccent.copy(alpha = 0.133f))
 }
 
 /**

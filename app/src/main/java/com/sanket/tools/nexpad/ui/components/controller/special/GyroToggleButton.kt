@@ -1,5 +1,6 @@
 package com.sanket.tools.nexpad.ui.components.controller.special
 
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -90,13 +91,13 @@ fun GyroToggleButton(
     )
 
     val activeAccentColor by animateColorAsState(
-        targetValue = if (isGyroEnabled) Color(0xFF00F0FF) else Color(0xFF64748B),
+        targetValue = if (isGyroEnabled) NeonPalette.ElectricCyan else NeonPalette.SlateMuted,
         animationSpec = tween(durationMillis = 200),
         label = "gyro_accent_color"
     )
 
     val statusDotColor by animateColorAsState(
-        targetValue = if (isGyroEnabled) Color(0xFF3FD25A) else Color(0xFFEF4444),
+        targetValue = if (isGyroEnabled) NeonPalette.XboxGreen else NeonPalette.AlertRed,
         animationSpec = tween(durationMillis = 200),
         label = "gyro_dot_color"
     )
@@ -107,9 +108,9 @@ fun GyroToggleButton(
     val domeBrush = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF23272D),
-                Color(0xFF131518),
-                Color(0xFF08090A)
+                NeonPalette.MetalBase,
+                NeonPalette.MetalDark,
+                NeonPalette.MetalVoid
             ),
             center = Offset(0.50f, 0.42f),
             radius = 180f
@@ -273,7 +274,7 @@ fun GyroToggleButton(
             ) {
                 Text(
                     text = displayLabel ?: "GYRO",
-                    color = if (isGyroEnabled) activeAccentColor else Color(0xFF94A3B8),
+                    color = if (isGyroEnabled) activeAccentColor else NeonPalette.SlateText,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
                     letterSpacing = 1.sp
@@ -291,7 +292,7 @@ fun GyroToggleButton(
                     Spacer(modifier = Modifier.width(3.dp))
                     Text(
                         text = if (isGyroEnabled) "ON" else "OFF",
-                        color = if (isGyroEnabled) Color(0xFFE2E8F0) else Color(0xFF64748B),
+                        color = if (isGyroEnabled) NeonPalette.CarbonLight else NeonPalette.SlateMuted,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 9.sp
                     )

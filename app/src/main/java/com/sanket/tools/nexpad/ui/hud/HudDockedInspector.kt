@@ -86,7 +86,7 @@ fun HudDockedInspector(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp),
         shape = RoundedCornerShape(14.dp),
-        color = Color(0xFF0F172A).copy(alpha = if (isDragging) 0.98f else 0.95f),
+        color = NeonPalette.SlateBg.copy(alpha = if (isDragging) 0.98f else 0.95f),
         border = androidx.compose.foundation.BorderStroke(borderWidth, borderColor),
         shadowElevation = shadowElevation
     ) {
@@ -195,7 +195,7 @@ fun HudDockedInspector(
                         val mode = transform.joystickMode
                         val (modeBadgeText, modeBadgeColor) = when (mode) {
                             "FULL" -> "Mode: Full Screen" to NeonPalette.Purple
-                            "BOX" -> "Mode: Box (${(transform.hitboxScale * 100).roundToInt()}%)" to Color(0xFFFFB13F)
+                            "BOX" -> "Mode: Box (${(transform.hitboxScale * 100).roundToInt()}%)" to NeonPalette.AmberHighlight
                             else -> "Mode: Locked" to NeonPalette.Cyan
                         }
                         Surface(
@@ -216,13 +216,13 @@ fun HudDockedInspector(
                     if (isMissingAsset) {
                         Surface(
                             shape = RoundedCornerShape(4.dp),
-                            color = Color(0xFFE65100).copy(alpha = 0.2f),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE65100))
+                            color = NeonPalette.DeepOrange.copy(alpha = 0.2f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.DeepOrange)
                         ) {
                             Text(
                                 text = "⚠ Missing asset — using fallback",
                                 fontSize = 10.sp,
-                                color = Color(0xFFFFB703),
+                                color = NeonPalette.WarningAmber,
                                 fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
@@ -426,7 +426,7 @@ fun HudDockedInspector(
                         Text(
                             text = "Height: ${(transform.heightScale * 100).roundToInt()}%",
                             fontSize = 11.sp,
-                            color = Color(0xFFFFB13F),
+                            color = NeonPalette.AmberHighlight,
                             fontWeight = FontWeight.Bold
                         )
                         IconButton(
@@ -443,7 +443,7 @@ fun HudDockedInspector(
                             onValueChange = { onHeightScaleChange(it) },
                             valueRange = 0.6f..2.2f,
                             modifier = Modifier.width(90.dp),
-                            colors = SliderDefaults.colors(thumbColor = Color(0xFFFFB13F), activeTrackColor = Color(0xFFFFB13F))
+                            colors = SliderDefaults.colors(thumbColor = NeonPalette.AmberHighlight, activeTrackColor = NeonPalette.AmberHighlight)
                         )
                         IconButton(
                             onClick = {
@@ -460,11 +460,11 @@ fun HudDockedInspector(
                                 onClick = onToggleFlip,
                                 shape = RoundedCornerShape(6.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (transform.isFlipped) Color(0xFFFFB13F).copy(alpha = 0.25f) else Color.White.copy(alpha = 0.08f)
+                                    containerColor = if (transform.isFlipped) NeonPalette.AmberHighlight.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.08f)
                                 ),
                                 border = androidx.compose.foundation.BorderStroke(
                                     1.dp,
-                                    if (transform.isFlipped) Color(0xFFFFB13F) else Color.White.copy(alpha = 0.2f)
+                                    if (transform.isFlipped) NeonPalette.AmberHighlight else Color.White.copy(alpha = 0.2f)
                                 ),
                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                                 modifier = Modifier.height(28.dp)
@@ -473,7 +473,7 @@ fun HudDockedInspector(
                                     text = if (transform.isFlipped) "⇅ Bottom→Top" else "⇅ Top→Down",
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (transform.isFlipped) Color(0xFFFFB13F) else Color.White
+                                    color = if (transform.isFlipped) NeonPalette.AmberHighlight else Color.White
                                 )
                             }
                         }
@@ -487,7 +487,7 @@ fun HudDockedInspector(
                     val currentMode = transform.joystickMode
                     val activeColor = when (currentMode) {
                         "FULL" -> NeonPalette.Purple
-                        "BOX" -> Color(0xFFFFB13F)
+                        "BOX" -> NeonPalette.AmberHighlight
                         else -> NeonPalette.Cyan
                     }
 
@@ -516,7 +516,7 @@ fun HudDockedInspector(
                                 val isSelected = currentMode == modeKey
                                 val buttonColor = when (modeKey) {
                                     "FULL" -> NeonPalette.Purple
-                                    "BOX" -> Color(0xFFFFB13F)
+                                    "BOX" -> NeonPalette.AmberHighlight
                                     else -> NeonPalette.Cyan
                                 }
 
@@ -559,7 +559,7 @@ fun HudDockedInspector(
                             Text(
                                 text = "Hitbox: ${(transform.hitboxScale * 100).roundToInt()}%",
                                 fontSize = 11.sp,
-                                color = Color(0xFFFFB13F),
+                                color = NeonPalette.AmberHighlight,
                                 fontWeight = FontWeight.Bold
                             )
                             IconButton(
@@ -576,7 +576,7 @@ fun HudDockedInspector(
                                 onValueChange = { onHitboxScaleChange(it) },
                                 valueRange = 1.2f..3.0f,
                                 modifier = Modifier.width(80.dp),
-                                colors = SliderDefaults.colors(thumbColor = Color(0xFFFFB13F), activeTrackColor = Color(0xFFFFB13F))
+                                colors = SliderDefaults.colors(thumbColor = NeonPalette.AmberHighlight, activeTrackColor = NeonPalette.AmberHighlight)
                             )
                             IconButton(
                                 onClick = {
@@ -606,11 +606,11 @@ fun HudDockedInspector(
                         onClick = onCycleSkin,
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = if (isMissingAsset) Color(0xFFFFB703) else Color.White
+                            contentColor = if (isMissingAsset) NeonPalette.WarningAmber else Color.White
                         ),
                         border = androidx.compose.foundation.BorderStroke(
                             1.dp,
-                            if (isMissingAsset) Color(0xFFFFB703) else NeonPalette.Purple.copy(alpha = 0.6f)
+                            if (isMissingAsset) NeonPalette.WarningAmber else NeonPalette.Purple.copy(alpha = 0.6f)
                         ),
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                         modifier = Modifier.height(30.dp)
@@ -618,7 +618,7 @@ fun HudDockedInspector(
                         Icon(
                             if (isMissingAsset) Icons.Rounded.Warning else Icons.Rounded.AutoAwesome,
                             contentDescription = null,
-                            tint = if (isMissingAsset) Color(0xFFFFB703) else NeonPalette.Purple,
+                            tint = if (isMissingAsset) NeonPalette.WarningAmber else NeonPalette.Purple,
                             modifier = Modifier.size(12.dp)
                         )
                         Spacer(Modifier.width(4.dp))
@@ -629,11 +629,11 @@ fun HudDockedInspector(
                         onClick = onOpenStudio,
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = if (isMissingAsset) Color(0xFFFFB703) else Color.White
+                            contentColor = if (isMissingAsset) NeonPalette.WarningAmber else Color.White
                         ),
                         border = androidx.compose.foundation.BorderStroke(
                             1.dp,
-                            if (isMissingAsset) Color(0xFFFFB703) else NeonPalette.Purple.copy(alpha = 0.6f)
+                            if (isMissingAsset) NeonPalette.WarningAmber else NeonPalette.Purple.copy(alpha = 0.6f)
                         ),
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                         modifier = Modifier.height(30.dp)

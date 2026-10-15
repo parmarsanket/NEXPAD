@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.model.NexpadKeys
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -76,7 +77,7 @@ fun SliderTrigger(
 ) {
     val isLeft = key.uppercase() == NexpadKeys.LT
     // HTML source palette: Amber Gold (#FFB13F) for LT, Hot Coral (#FF5A7A) for RT
-    val glowColor = if (isLeft) Color(0xFFFFB13F) else Color(0xFFFF5A7A)
+    val glowColor = if (isLeft) NeonPalette.AmberHighlight else NeonPalette.HotCoral
 
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
@@ -117,9 +118,9 @@ fun SliderTrigger(
     val baseDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF232527),
-                Color(0xFF0C0D0E),
-                Color(0xFF000000)
+                NeonPalette.MetalBase,
+                NeonPalette.MetalShadow,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.55f),
             radius = 200f
@@ -138,9 +139,9 @@ fun SliderTrigger(
     val puckDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF34373B),
-                Color(0xFF17181B),
-                Color(0xFF050506)
+                NeonPalette.MetalHighlight,
+                NeonPalette.MetalGrit,
+                NeonPalette.MetalDeep
             ),
             center = Offset(0.50f, 0.38f),
             radius = 50f
@@ -150,8 +151,8 @@ fun SliderTrigger(
     val windowBackgroundBrush = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF050506),
-                Color(0xFF121314)
+                NeonPalette.MetalDeep,
+                NeonPalette.MetalDark
             ),
             center = Offset(0.50f, 0.60f),
             radius = 50f

@@ -51,7 +51,7 @@ fun ActiveSessionCard(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
-        color = Color(0xFF0F1523).copy(alpha = 0.85f),
+        color = NeonPalette.CardSurface.copy(alpha = 0.85f),
         border = BorderStroke(
             1.dp,
             Brush.horizontalGradient(
@@ -160,7 +160,7 @@ fun ActiveSessionCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF070B12).copy(alpha = 0.7f))
+                    .background(NeonPalette.CardRecessed.copy(alpha = 0.7f))
                     .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
                     .padding(12.dp),
                 horizontalArrangement = Arrangement.SpaceAround

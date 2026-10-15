@@ -404,8 +404,8 @@ fun ConnectedContent(name: String, stats: ConnectionStats, onDisconnectClick: ()
                 val lossPct = (stats.packetLossPercent * 100).toInt()
                 val chipColor = when {
                     lossPct < 5 -> NeonPalette.Green
-                    lossPct < 15 -> Color(0xFFF59E0B) // Amber
-                    else -> Color(0xFFEF4444) // Red
+                    lossPct < 15 -> NeonPalette.AlertAmber
+                    else -> NeonPalette.AlertRed
                 }
                 Box(
                     modifier = Modifier

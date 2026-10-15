@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.sanket.tools.nexpad.model.NexpadKeys as K
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.abs
 import kotlin.math.hypot
@@ -225,7 +226,7 @@ fun RailsDPad(
 
     // Neon Glow Color: #FFB13F (Warm Amber / Golden Orange)
     val neonColor = remember(isRgbEnabled) {
-        if (isRgbEnabled) Color(0xFFFFB13F) else Color(0xFFFFB13F)
+        if (isRgbEnabled) NeonPalette.AmberHighlight else NeonPalette.AmberHighlight
     }
 
     val rgbBloomAlphaState = animateFloatAsState(
@@ -240,9 +241,9 @@ fun RailsDPad(
     val domeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF232527),
-                Color(0xFF0C0D0E),
-                Color(0xFF000000)
+                NeonPalette.MetalBase,
+                NeonPalette.MetalShadow,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.55f),
             radius = 320f
@@ -252,9 +253,9 @@ fun RailsDPad(
     val pressedDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF1B1D1E),
-                Color(0xFF070808),
-                Color(0xFF000000)
+                NeonPalette.MetalMid,
+                NeonPalette.MetalAbyss,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.58f),
             radius = 320f
@@ -265,9 +266,9 @@ fun RailsDPad(
     val puckGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF34373B),
-                Color(0xFF16181A),
-                Color(0xFF0C0D0E)
+                NeonPalette.MetalHighlight,
+                NeonPalette.MetalGrit,
+                NeonPalette.MetalShadow
             ),
             center = Offset(0.50f, 0.38f),
             radius = 80f
@@ -277,12 +278,12 @@ fun RailsDPad(
     // Rail channels gradient
     val railHGradient = remember {
         Brush.verticalGradient(
-            colors = listOf(Color(0xFF000000), Color(0xFF0B0C0D))
+            colors = listOf(NeonPalette.PureBlack, NeonPalette.MetalCharcoal)
         )
     }
     val railVGradient = remember {
         Brush.horizontalGradient(
-            colors = listOf(Color(0xFF000000), Color(0xFF0B0C0D))
+            colors = listOf(NeonPalette.PureBlack, NeonPalette.MetalCharcoal)
         )
     }
 

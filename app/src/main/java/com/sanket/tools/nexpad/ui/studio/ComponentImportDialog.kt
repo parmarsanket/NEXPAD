@@ -86,7 +86,7 @@ fun ComponentImportDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xEE050B14))
+                .background(NeonPalette.DialogBg)
                 .padding(20.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -99,7 +99,7 @@ fun ComponentImportDialog(
                     .border(1.5.dp, NeonPalette.Cyan.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
                     .background(
                         Brush.verticalGradient(
-                            listOf(Color(0xFF0F1A2E), Color(0xFF070D18))
+                            listOf(NeonPalette.SurfaceNavy, NeonPalette.SurfaceDark)
                         )
                     )
                     .padding(20.dp)
@@ -165,8 +165,8 @@ fun ComponentImportDialog(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = NeonPalette.Cyan,
                         unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
-                        focusedContainerColor = Color(0xFF040810),
-                        unfocusedContainerColor = Color(0xFF040810)
+                        focusedContainerColor = NeonPalette.FieldBg,
+                        unfocusedContainerColor = NeonPalette.FieldBg
                     )
                 )
 

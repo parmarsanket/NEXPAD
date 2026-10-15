@@ -1,5 +1,6 @@
 package com.sanket.tools.nexpad.ui.components.controller.special
 
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import android.content.Context
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
@@ -103,9 +104,9 @@ fun GyroJoystick(
     // Default Gyro glow: Electric Cyan #3FD2FF (Left) or Hot Pink #FF3F85 (Right)
     val glowColor = remember(isRgbEnabled, isLeft) {
         if (isRgbEnabled) {
-            if (isLeft) Color(0xFF3FD2FF) else Color(0xFFFF3F85)
+            if (isLeft) NeonPalette.SkyBlue else NeonPalette.DeepMagenta
         } else {
-            if (isLeft) Color(0xFF3FD2FF) else Color(0xFFFF3F85)
+            if (isLeft) NeonPalette.SkyBlue else NeonPalette.DeepMagenta
         }
     }
 
@@ -134,9 +135,9 @@ fun GyroJoystick(
     val socketGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF030304),
-                Color(0xFF0A0B0C),
-                Color(0xFF1A1C1E)
+                NeonPalette.MetalDarkest,
+                NeonPalette.MetalCharcoal,
+                NeonPalette.MetalMid
             ),
             center = Offset(0.5f, 0.5f),
             radius = 280f
@@ -147,9 +148,9 @@ fun GyroJoystick(
     val puckDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF34373B),
-                Color(0xFF17181B),
-                Color(0xFF050506)
+                NeonPalette.MetalHighlight,
+                NeonPalette.MetalMid,
+                NeonPalette.MetalDeep
             ),
             center = Offset(0.50f, 0.38f),
             radius = 120f
@@ -832,18 +833,18 @@ fun GyroStickButton(
 
     val glowColor = remember(isRgbEnabled, isLeft) {
         if (isRgbEnabled) {
-            if (isLeft) Color(0xFF3FD2FF) else Color(0xFFFF3F85)
+            if (isLeft) NeonPalette.SkyBlue else NeonPalette.DeepMagenta
         } else {
-            if (isLeft) Color(0xFF3FD2FF) else Color(0xFFFF3F85)
+            if (isLeft) NeonPalette.SkyBlue else NeonPalette.DeepMagenta
         }
     }
 
     val puckDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF34373B),
-                Color(0xFF17181B),
-                Color(0xFF050506)
+                NeonPalette.MetalHighlight,
+                NeonPalette.MetalMid,
+                NeonPalette.MetalDeep
             ),
             center = Offset(0.50f, 0.38f),
             radius = 140f
@@ -869,7 +870,7 @@ fun GyroStickButton(
     val stroke3dp = remember(density) { androidx.compose.ui.graphics.drawscope.Stroke(width = 3f * density) }
     val centerPuckGradient = remember {
         Brush.radialGradient(
-            colors = listOf(Color(0xFF030304), Color(0xFF121314)),
+            colors = listOf(NeonPalette.MetalDarkest, NeonPalette.MetalDark),
             center = Offset(0.50f, 0.60f),
             radius = 60f
         )

@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
 /**
@@ -134,7 +135,7 @@ fun FacetButton(
 
     val gemBackgroundBrush = remember {
         Brush.radialGradient(
-            colors = listOf(Color(0xFF232527), Color(0xFF0C0D0E), Color.Black),
+            colors = listOf(NeonPalette.MetalBase, NeonPalette.MetalShadow, Color.Black),
             center = Offset(0.5f, 0.55f),
             radius = 180f
         )

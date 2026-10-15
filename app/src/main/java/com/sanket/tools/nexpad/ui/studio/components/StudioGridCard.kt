@@ -70,7 +70,7 @@ fun StudioGridCard(
         label = "gridCardBorderWidth"
     )
     val animatedContainerColor by animateColorAsState(
-        targetValue = if (isHighlight) Color(0xFF0F2644) else Color(0xFF0C1322),
+        targetValue = if (isHighlight) NeonPalette.CardHighlight else NeonPalette.InputSurface,
         label = "gridCardBgColor"
     )
 
@@ -86,7 +86,7 @@ fun StudioGridCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
-                .background(Color(0xFF040810)),
+                .background(NeonPalette.FieldBg),
             contentAlignment = Alignment.Center
         ) {
             // In Editor or Button Editor mode, show an applied badge with Selected text for the active button

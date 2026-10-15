@@ -419,7 +419,7 @@ fun HudEditorScreen(
                                 navController.popBackStack()
                             }
                         ) {
-                            Text("Discard", color = Color(0xFFFF5252))
+                            Text("Discard", color = NeonPalette.ErrorRed)
                         }
                         TextButton(onClick = { showUnsavedDialog = false }) {
                             Text("Cancel", color = Color.White)

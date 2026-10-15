@@ -2,6 +2,7 @@ package com.sanket.tools.nexpad.ui.components.controller.sticks
 
 import com.sanket.tools.nexpad.ui.components.controller.special.VelocityRingBuffer
 import com.sanket.tools.nexpad.ui.components.controller.special.calculateGamingStickMagnitude
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 import android.content.Context
 import androidx.compose.animation.core.Animatable
@@ -106,9 +107,9 @@ fun CompassJoystick(
     // Default Compass glow: Ice Blue #5AA8FF (Left) or Coral Pink #FF5A88 (Right)
     val glowColor = remember(isRgbEnabled, isLeft) {
         if (isRgbEnabled) {
-            if (isLeft) Color(0xFF5AA8FF) else Color(0xFFFF5A88)
+            if (isLeft) NeonPalette.SoftBlue else NeonPalette.HotCoral
         } else {
-            if (isLeft) Color(0xFF5AA8FF) else Color(0xFFFF5A88)
+            if (isLeft) NeonPalette.SoftBlue else NeonPalette.HotCoral
         }
     }
 
@@ -137,9 +138,9 @@ fun CompassJoystick(
     val socketGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF030304),
-                Color(0xFF0A0B0C),
-                Color(0xFF1A1C1E)
+                NeonPalette.MetalDarkest,
+                NeonPalette.MetalCharcoal,
+                NeonPalette.MetalMid
             ),
             center = Offset(0.5f, 0.5f),
             radius = 280f
@@ -150,9 +151,9 @@ fun CompassJoystick(
     val capDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF34373B),
-                Color(0xFF17181B),
-                Color(0xFF050506)
+                NeonPalette.MetalHighlight,
+                NeonPalette.MetalMid,
+                NeonPalette.MetalDeep
             ),
             center = Offset(0.50f, 0.38f),
             radius = 200f
@@ -163,8 +164,8 @@ fun CompassJoystick(
     val dishGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF030304),
-                Color(0xFF121314)
+                NeonPalette.MetalDarkest,
+                NeonPalette.MetalDark
             ),
             center = Offset(0.50f, 0.60f),
             radius = 70f
@@ -932,18 +933,18 @@ fun CompassStickButton(
 
     val glowColor = remember(isRgbEnabled, isLeft) {
         if (isRgbEnabled) {
-            if (isLeft) Color(0xFF5AA8FF) else Color(0xFFFF5A88)
+            if (isLeft) NeonPalette.SoftBlue else NeonPalette.HotCoral
         } else {
-            if (isLeft) Color(0xFF5AA8FF) else Color(0xFFFF5A88)
+            if (isLeft) NeonPalette.SoftBlue else NeonPalette.HotCoral
         }
     }
 
     val capDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF34373B),
-                Color(0xFF17181B),
-                Color(0xFF050506)
+                NeonPalette.MetalHighlight,
+                NeonPalette.MetalMid,
+                NeonPalette.MetalDeep
             ),
             center = Offset(0.50f, 0.38f),
             radius = 160f
@@ -953,8 +954,8 @@ fun CompassStickButton(
     val dishGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF030304),
-                Color(0xFF121314)
+                NeonPalette.MetalDarkest,
+                NeonPalette.MetalDark
             ),
             center = Offset(0.50f, 0.60f),
             radius = 60f

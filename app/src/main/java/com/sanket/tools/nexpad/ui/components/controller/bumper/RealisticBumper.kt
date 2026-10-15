@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.model.NexpadKeys
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
 /**
@@ -115,8 +116,8 @@ fun RealisticBumper(
     // CSS: --glow: #a97cf0 (LB Purple / RB Cyan)
     val neonColor = remember(isRgbEnabled, isLeft) {
         if (isRgbEnabled) {
-            if (isLeft) Color(0xFFA97CF0) else Color(0xFF00E5FF)
-        } else Color(0xFFD8DEE9)
+            if (isLeft) NeonPalette.SoftPurple else NeonPalette.Cyan
+        } else NeonPalette.MetalLight
     }
 
     val rgbBloomAlphaState = animateFloatAsState(
@@ -129,9 +130,9 @@ fun RealisticBumper(
     val baseDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF232527),
-                Color(0xFF0C0D0E),
-                Color(0xFF000000)
+                NeonPalette.MetalBase,
+                NeonPalette.MetalShadow,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.55f),
             radius = 280f
@@ -165,7 +166,7 @@ fun RealisticBumper(
     val topEdgeColors = remember { listOf(Color.White.copy(alpha = 0.07f), Color.Transparent) }
     val undercutColors = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)) }
     val pressedColors = remember { listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent) }
-    val windowBgColors = remember { listOf(Color(0xFF050506), Color(0xFF121314)) }
+    val windowBgColors = remember { listOf(NeonPalette.MetalDeep, NeonPalette.MetalDark) }
     val windowTopShadowColors = remember { listOf(Color.Black.copy(alpha = 0.90f), Color.Transparent) }
     val lensEdgeColors = remember { listOf(Color.White.copy(alpha = 0.10f), Color.Transparent) }
 

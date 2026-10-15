@@ -38,7 +38,7 @@ fun StudioVerticalRail(
 ) {
     Surface(
         modifier = modifier,
-        color = Color(0xFF070D18),
+        color = NeonPalette.SurfaceDark,
         shadowElevation = 4.dp
     ) {
         Column(

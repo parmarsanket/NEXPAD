@@ -2,6 +2,7 @@ package com.sanket.tools.nexpad.ui.components.controller.sticks
 
 import com.sanket.tools.nexpad.ui.components.controller.special.VelocityRingBuffer
 import com.sanket.tools.nexpad.ui.components.controller.special.calculateGamingStickMagnitude
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 import android.content.Context
 import androidx.compose.animation.core.Animatable
@@ -112,9 +113,9 @@ fun OrbJoystick(
     // Default Orb glow: Teal #2FD4B6 (Left) or Hot Pink #FF3185 (Right)
     val glowColor = remember(isRgbEnabled, isLeft) {
         if (isRgbEnabled) {
-            if (isLeft) Color(0xFF2FD4B6) else Color(0xFFFF3185)
+            if (isLeft) NeonPalette.Turquoise else NeonPalette.DeepMagenta
         } else {
-            if (isLeft) Color(0xFF2FD4B6) else Color(0xFFFF3185)
+            if (isLeft) NeonPalette.Turquoise else NeonPalette.DeepMagenta
         }
     }
 
@@ -143,9 +144,9 @@ fun OrbJoystick(
     val socketGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF030304),
-                Color(0xFF0A0B0C),
-                Color(0xFF1A1C1E)
+                NeonPalette.MetalDarkest,
+                NeonPalette.MetalCharcoal,
+                NeonPalette.MetalMid
             ),
             center = Offset(0.5f, 0.5f),
             radius = 280f
@@ -156,8 +157,8 @@ fun OrbJoystick(
     val orbCavityGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF15171A),
-                Color(0xFF060607)
+                NeonPalette.MetalGrit,
+                NeonPalette.MetalAbyss
             ),
             center = Offset(0.50f, 0.50f),
             radius = 220f
@@ -853,17 +854,17 @@ fun OrbStickButton(
 
     val glowColor = remember(isRgbEnabled, isLeft) {
         if (isRgbEnabled) {
-            if (isLeft) Color(0xFF2FD4B6) else Color(0xFFFF3185)
+            if (isLeft) NeonPalette.Turquoise else NeonPalette.DeepMagenta
         } else {
-            if (isLeft) Color(0xFF2FD4B6) else Color(0xFFFF3185)
+            if (isLeft) NeonPalette.Turquoise else NeonPalette.DeepMagenta
         }
     }
 
     val orbCavityGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF15171A),
-                Color(0xFF060607)
+                NeonPalette.MetalGrit,
+                NeonPalette.MetalAbyss
             ),
             center = Offset(0.50f, 0.50f),
             radius = 180f

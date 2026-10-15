@@ -34,8 +34,8 @@ fun LayoutHubBanner(
             .background(
                 Brush.linearGradient(
                     colors = listOf(
-                        Color(0xFF0F172A),
-                        Color(0xFF1E293B)
+                        NeonPalette.SlateBg,
+                        NeonPalette.SlateCard
                     )
                 )
             )

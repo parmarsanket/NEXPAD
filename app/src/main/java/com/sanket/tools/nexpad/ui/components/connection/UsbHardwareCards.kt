@@ -48,7 +48,7 @@ fun UsbAoaCard(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = Color(0xFF0F1523).copy(alpha = 0.85f),
+        color = NeonPalette.CardSurface.copy(alpha = 0.85f),
         border = BorderStroke(
             1.dp,
             Brush.horizontalGradient(
@@ -169,7 +169,7 @@ fun UsbAdbCard(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = Color(0xFF0F1523).copy(alpha = 0.85f),
+        color = NeonPalette.CardSurface.copy(alpha = 0.85f),
         border = BorderStroke(
             1.dp,
             Brush.horizontalGradient(
@@ -311,7 +311,7 @@ fun UsbTetheringCard(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = Color(0xFF0F1523).copy(alpha = 0.85f),
+        color = NeonPalette.CardSurface.copy(alpha = 0.85f),
         border = BorderStroke(
             1.dp,
             Brush.horizontalGradient(

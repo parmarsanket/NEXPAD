@@ -448,7 +448,7 @@ fun ButtonStudioScreen(
                                 Icon(
                                     Icons.Rounded.FileUpload,
                                     contentDescription = "Import",
-                                    tint = Color(0xFFFF9100),
+                                    tint = NeonPalette.OrangeAccent,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -456,7 +456,7 @@ fun ButtonStudioScreen(
                             DropdownMenu(
                                 expanded = showImportMenu,
                                 onDismissRequest = { showImportMenu = false },
-                                modifier = Modifier.background(Color(0xFF0F172A))
+                                modifier = Modifier.background(NeonPalette.SlateBg)
                             ) {
                                 DropdownMenuItem(
                                     text = { Text("⚡ Import .nxprc (Remote)", color = Color.White, fontSize = 12.sp) },
@@ -465,7 +465,7 @@ fun ButtonStudioScreen(
                                         filePickerLauncher.launch(arrayOf("*/*"))
                                     },
                                     leadingIcon = {
-                                        Icon(Icons.Rounded.FlashOn, contentDescription = null, tint = Color(0xFFFF9100), modifier = Modifier.size(16.dp))
+                                        Icon(Icons.Rounded.FlashOn, contentDescription = null, tint = NeonPalette.OrangeAccent, modifier = Modifier.size(16.dp))
                                     }
                                 )
                                 DropdownMenuItem(

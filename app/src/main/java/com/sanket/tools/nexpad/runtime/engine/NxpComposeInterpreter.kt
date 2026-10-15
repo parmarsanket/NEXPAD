@@ -43,6 +43,7 @@ import com.sanket.tools.nexpad.runtime.model.NexPadInputTarget
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
 import com.sanket.tools.nexpad.runtime.model.NxpGeometry
 import com.sanket.tools.nexpad.ui.components.controller.special.calculateGamingStickMagnitude
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.ui.components.controller.special.VelocityRingBuffer
 import kotlin.math.PI
 import kotlin.math.atan2
@@ -125,12 +126,12 @@ private fun RenderNxpButton(
 
     val fillColor = parseHexColor(
         if (isPressed && pressedState?.fillColor != null) pressedState.fillColor else def.visual.fillColor,
-        fallback = Color(0xFF0A192F)
+        fallback = NeonPalette.CyberNavy
     ).copy(alpha = def.visual.opacity)
 
     val borderColor = parseHexColor(
         if (isPressed && pressedState?.borderColor != null) pressedState.borderColor else def.visual.borderColor,
-        fallback = Color(0xFF00F0FF)
+        fallback = NeonPalette.ElectricCyan
     )
 
     val buttonControl = (control as? NexPadControl.Button)
@@ -178,7 +179,7 @@ private fun RenderNxpButton(
         if (label != null) {
             val labelColor = parseHexColor(
                 if (isPressed) label.pressedColor else label.color,
-                fallback = Color(0xFF00F0FF)
+                fallback = NeonPalette.ElectricCyan
             )
             val labelText = if (buttonControl.key.isNotBlank()) {
                 val upper = buttonControl.key.uppercase()
@@ -219,9 +220,9 @@ private fun RenderNxpDPad(
     var pressedDirections by remember { mutableStateOf<Set<String>>(emptySet()) }
     val currentInputTarget by rememberUpdatedState(inputTarget)
 
-    val baseBorderColor = parseHexColor(def.visual.borderColor, fallback = Color(0xFF2DD4BF))
-    val baseFillColor = parseHexColor(def.visual.fillColor, fallback = Color(0xFF0B1A24)).copy(alpha = def.visual.opacity)
-    val activeColor = parseHexColor(def.pressed?.fillColor ?: "#2DD4BF", fallback = Color(0xFF2DD4BF))
+    val baseBorderColor = parseHexColor(def.visual.borderColor, fallback = NeonPalette.Teal)
+    val baseFillColor = parseHexColor(def.visual.fillColor, fallback = NeonPalette.CyberDark).copy(alpha = def.visual.opacity)
+    val activeColor = parseHexColor(def.pressed?.fillColor ?: "#2DD4BF", fallback = NeonPalette.Teal)
 
     val sizeDp = def.size.widthDp.coerceAtLeast(140).dp
 
@@ -455,9 +456,9 @@ private fun RenderNxpJoystick(
     val stickControl = (control as? NexPadControl.Stick)
         ?: NexPadControl.Stick(isLeft = def.manifest.defaultControl.contains("L", ignoreCase = true))
 
-    val baseColor = parseHexColor(def.visual.fillColor, Color(0xFF0A192F)).copy(alpha = 0.85f)
-    val ringColor = parseHexColor(def.visual.borderColor, Color(0xFF00F0FF))
-    val thumbColor = parseHexColor(def.pressed?.fillColor ?: def.visual.borderColor, Color(0xFF00F0FF))
+    val baseColor = parseHexColor(def.visual.fillColor, NeonPalette.CyberNavy).copy(alpha = 0.85f)
+    val ringColor = parseHexColor(def.visual.borderColor, NeonPalette.ElectricCyan)
+    val thumbColor = parseHexColor(def.pressed?.fillColor ?: def.visual.borderColor, NeonPalette.ElectricCyan)
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val (isCameraMode, cameraSensitivity) = remember(context, stickControl.isLeft, def.manifest) {
@@ -736,7 +737,7 @@ private fun DrawScope.drawNxpGeometry(
  * Safe hex color parser supporting #RGB, #ARGB, #RRGGBB, #AARRGGBB.
  * Never throws exceptions on malformed input.
  */
-fun parseHexColor(hex: String?, fallback: Color = Color(0xFF00F0FF)): Color {
+fun parseHexColor(hex: String?, fallback: Color = NeonPalette.ElectricCyan): Color {
     if (hex.isNullOrBlank()) return fallback
     return try {
         val clean = hex.trim().removePrefix("#")

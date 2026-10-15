@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.model.NexpadKeys
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.cos
 import kotlin.math.sin
@@ -88,15 +89,15 @@ fun DialTrigger(
     )
 
     // LT = Cyan (#00E5FF), RT = Hot Pink / Magenta (#E055B8) matching HTML spec
-    val neonColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFE055B8)
+    val neonColor = if (isLeft) NeonPalette.Cyan else NeonPalette.PlayStationPink
 
     // Acrylic convex dome background (#232527 -> #0c0d0e -> #000)
     val baseDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF232527),
-                Color(0xFF0C0D0E),
-                Color(0xFF000000)
+                NeonPalette.MetalBase,
+                NeonPalette.MetalShadow,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.45f),
             radius = 210f
@@ -105,9 +106,9 @@ fun DialTrigger(
     val pressedDomeGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF1B1D1E),
-                Color(0xFF070808),
-                Color(0xFF000000)
+                NeonPalette.MetalMid,
+                NeonPalette.MetalAbyss,
+                NeonPalette.PureBlack
             ),
             center = Offset(0.50f, 0.48f),
             radius = 210f
@@ -118,8 +119,8 @@ fun DialTrigger(
     val windowGradient = remember {
         Brush.radialGradient(
             colors = listOf(
-                Color(0xFF050506),
-                Color(0xFF121314)
+                NeonPalette.MetalDeep,
+                NeonPalette.MetalDark
             ),
             center = Offset(0.50f, 0.60f),
             radius = 100f

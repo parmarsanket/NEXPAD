@@ -2,6 +2,7 @@ package com.sanket.tools.nexpad.ui.components.controller.sticks
 
 import com.sanket.tools.nexpad.ui.components.controller.special.VelocityRingBuffer
 import com.sanket.tools.nexpad.ui.components.controller.special.calculateGamingStickMagnitude
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 import android.content.Context
 import android.util.Log
@@ -83,18 +84,18 @@ fun RealisticJoystick(
 
     val density = LocalDensity.current.density
     val baseGradient = Brush.radialGradient(
-        colors = listOf(Color(0xFF1F1F1F), Color(0xFF080808)),
+        colors = listOf(NeonPalette.MetalSubtle, NeonPalette.MetalAbyss),
         center = Offset(0.5f, 0.5f),
         radius = 250f
     )
 
     val thumbGradient = Brush.radialGradient(
-        colors = listOf(Color(0xFF3D3D3D), Color(0xFF1A1A1A)),
+        colors = listOf(NeonPalette.MetalSteel, NeonPalette.MetalMid),
         center = Offset(0.3f, 0.3f),
         radius = 150f
     )
 
-    val neonColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
+    val neonColor = if (isLeft) NeonPalette.Cyan else NeonPalette.Magenta
     val stickX = if (viewModel != null) (if (isLeft) viewModel.leftStickX else viewModel.rightStickX) else 0f
     val stickY = if (viewModel != null) (if (isLeft) viewModel.leftStickY else viewModel.rightStickY) else 0f
     val effX = if (isLocked) thumbOffsetX else stickX * maxRadius
@@ -185,8 +186,8 @@ fun RealisticJoystick(
                 width = 2.dp,
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xFF4A5568).copy(alpha = 0.6f),
-                        Color(0xFF1A202C).copy(alpha = 0.9f)
+                        NeonPalette.CarbonBorder.copy(alpha = 0.6f),
+                        NeonPalette.CarbonRim.copy(alpha = 0.9f)
                     )
                 ),
                 shape = CircleShape
@@ -412,7 +413,7 @@ fun RealisticJoystick(
                 .border(
                     width = 1.5.dp,
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color(0xFF718096).copy(alpha = 0.50f), Color(0xFF1A202C))
+                        colors = listOf(NeonPalette.CarbonMuted.copy(alpha = 0.50f), NeonPalette.CarbonRim)
                     ),
                     shape = CircleShape
                 )
@@ -460,7 +461,7 @@ fun RealisticJoystick(
                 if (isCameraMode) {
                     // Subtle central look reticle dot in camera mode
                     drawCircle(
-                        color = Color(0xFFFF007F).copy(alpha = 0.65f),
+                        color = NeonPalette.Magenta.copy(alpha = 0.65f),
                         radius = 4f,
                         center = center
                     )
@@ -505,14 +506,14 @@ fun RealisticStickButton(
 
     val baseGradientPressed = remember {
         Brush.radialGradient(
-            colors = listOf(Color(0xFF222834), Color(0xFF0D1017)),
+            colors = listOf(NeonPalette.CarbonPlate, NeonPalette.CarbonShadow),
             center = Offset(0.35f, 0.35f),
             radius = 160f
         )
     }
     val baseGradientNormal = remember {
         Brush.radialGradient(
-            colors = listOf(Color(0xFF333E4D), Color(0xFF141923)),
+            colors = listOf(NeonPalette.CarbonHighlight, NeonPalette.CarbonChassis),
             center = Offset(0.35f, 0.35f),
             radius = 160f
         )
@@ -520,14 +521,14 @@ fun RealisticStickButton(
 
     val dishGradientPressed = remember {
         Brush.radialGradient(
-            colors = listOf(Color(0xFF10141C), Color(0xFF000000)),
+            colors = listOf(NeonPalette.CarbonNavy, NeonPalette.PureBlack),
             center = Offset(0.5f, 0.5f),
             radius = 90f
         )
     }
     val dishGradientNormal = remember {
         Brush.radialGradient(
-            colors = listOf(Color(0xFF212836), Color(0xFF0F131A)),
+            colors = listOf(NeonPalette.CarbonPlate, NeonPalette.CarbonShadow),
             center = Offset(0.5f, 0.5f),
             radius = 90f
         )
@@ -536,21 +537,21 @@ fun RealisticStickButton(
     val borderBrushPressed = remember {
         Brush.verticalGradient(
             colors = listOf(
-                Color(0xFF718096).copy(alpha = 0.35f),
-                Color(0xFF1A202C)
+                NeonPalette.CarbonMuted.copy(alpha = 0.35f),
+                NeonPalette.CarbonRim
             )
         )
     }
     val borderBrushNormal = remember {
         Brush.verticalGradient(
             colors = listOf(
-                Color(0xFF718096).copy(alpha = 0.70f),
-                Color(0xFF1A202C)
+                NeonPalette.CarbonMuted.copy(alpha = 0.70f),
+                NeonPalette.CarbonRim
             )
         )
     }
 
-    val neonColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
+    val neonColor = if (isLeft) NeonPalette.Cyan else NeonPalette.Magenta
     val rgbBloomAlphaState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),

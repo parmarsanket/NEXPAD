@@ -87,7 +87,7 @@ fun ConnectionTransportsContent(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    color = Color(0xFF0F1523).copy(alpha = 0.85f),
+                    color = NeonPalette.CardSurface.copy(alpha = 0.85f),
                     border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
                 ) {
                     Column(
@@ -204,7 +204,7 @@ fun ConnectionTransportsContent(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    color = Color(0xFF0F1523).copy(alpha = 0.85f),
+                    color = NeonPalette.CardSurface.copy(alpha = 0.85f),
                     border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
                 ) {
                     Column(

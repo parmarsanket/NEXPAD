@@ -25,7 +25,7 @@ fun SelectionModeBottomBar(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = Color(0xFF070D18).copy(alpha = 0.96f),
+        color = NeonPalette.SurfaceDark.copy(alpha = 0.96f),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
         shadowElevation = 16.dp
     ) {

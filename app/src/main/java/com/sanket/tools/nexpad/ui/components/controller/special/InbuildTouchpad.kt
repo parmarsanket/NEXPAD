@@ -1,5 +1,6 @@
 package com.sanket.tools.nexpad.ui.components.controller.special
 
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import android.content.Context
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -325,7 +326,7 @@ fun InbuildTouchpadHalf(
     boundsProvider: (() -> List<Rect>)? = null
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val auraColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
+    val auraColor = if (isLeft) NeonPalette.Cyan else NeonPalette.Magenta
 
     var isTouching by remember { mutableStateOf(false) }
     var touchX by remember { mutableFloatStateOf(-1f) }
@@ -551,14 +552,14 @@ fun InbuildTouchpad(
     modifier: Modifier = Modifier,
     isInteractive: Boolean = true
 ) {
-    val auraColor = if (isLeft) Color(0xFF00E5FF) else Color(0xFFFF007F)
+    val auraColor = if (isLeft) NeonPalette.Cyan else NeonPalette.Magenta
     val shape = RoundedCornerShape(16.dp)
 
     Box(
         modifier = modifier
             .size(180.dp)
             .clip(shape)
-            .background(Color(0xFF06080C))
+            .background(NeonPalette.CarbonBlack)
             .border(
                 width = 1.dp,
                 color = if (isRgbEnabled) auraColor.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.08f),

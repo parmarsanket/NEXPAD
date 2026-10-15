@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 /**
  * Authentic Classic PlayStation controller button colors (DualShock / PlayStation iconic 4-color palette).
@@ -28,16 +29,16 @@ import com.sanket.tools.nexpad.category.ControllerLabelStyle
  */
 object PlayStationColors {
     /** Classic PlayStation Cross (Blue #3F8FE0, bottom position / A) */
-    val Cross: Color = Color(0xFF3F8FE0)
+    val Cross: Color = NeonPalette.XboxBlue
 
     /** Classic PlayStation Circle (Red #E6474E, right position / B) */
-    val Circle: Color = Color(0xFFE6474E)
+    val Circle: Color = NeonPalette.XboxRed
 
     /** Classic PlayStation Square (Pink #E055B8, left position / X) */
-    val Square: Color = Color(0xFFE055B8)
+    val Square: Color = NeonPalette.PlayStationPink
 
     /** Classic PlayStation Triangle (Green #3FD25A, top position / Y) */
-    val Triangle: Color = Color(0xFF3FD25A)
+    val Triangle: Color = NeonPalette.XboxGreen
 }
 
 /**
@@ -49,16 +50,16 @@ object PlayStationColors {
  */
 object XboxColors {
     /** Xbox A button (Green #3FD25A, bottom position) */
-    val A: Color = Color(0xFF3FD25A)
+    val A: Color = NeonPalette.XboxGreen
 
     /** Xbox B button (Red #E6474E, right position) */
-    val B: Color = Color(0xFFE6474E)
+    val B: Color = NeonPalette.XboxRed
 
     /** Xbox X button (Blue #3F8FE0, left position) */
-    val X: Color = Color(0xFF3F8FE0)
+    val X: Color = NeonPalette.XboxBlue
 
     /** Xbox Y button (Yellow #E0A03F, top position) */
-    val Y: Color = Color(0xFFE0A03F)
+    val Y: Color = NeonPalette.XboxYellow
 }
 
 /**
@@ -105,7 +106,7 @@ fun resolveButtonColor(
     controlKey: String,
     labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
     displayLabel: String? = null,
-    fallbackColor: Color = Color(0xFF3FD25A)
+    fallbackColor: Color = NeonPalette.XboxGreen
 ): Color {
     // 1. If explicit displayLabel or controlKey represents a PlayStation shape, use its authentic color
     val psShape = getPlayStationShape(displayLabel) ?: getPlayStationShape(controlKey)

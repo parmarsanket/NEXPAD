@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlin.math.roundToInt
 
@@ -114,7 +115,7 @@ fun EclipseButton(
 
     val moonDiscBrush = remember {
         Brush.radialGradient(
-            colors = listOf(Color(0xFF202224), Color(0xFF08090A)),
+            colors = listOf(NeonPalette.MetalSubtle, NeonPalette.MetalVoid),
             center = Offset(0.50f, 0.40f),
             radius = 240f
         )
@@ -239,7 +240,7 @@ fun EclipseButton(
             }
             .clip(CircleShape)
             // .lx-body background #040405
-            .background(Color(0xFF040405))
+            .background(NeonPalette.MetalDeep)
             .border(
                 width = 1.dp,
                 brush = borderBrush,

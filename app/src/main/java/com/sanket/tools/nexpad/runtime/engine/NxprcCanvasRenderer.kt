@@ -46,6 +46,7 @@ import com.sanket.tools.nexpad.runtime.model.NexPadControl
 import com.sanket.tools.nexpad.runtime.model.NexPadInputTarget
 import com.sanket.tools.nexpad.nxprc.*
 import com.sanket.tools.nexpad.ui.components.controller.abxy.PlayStationSymbol
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.ui.components.controller.abxy.getPlayStationShape
 import com.sanket.tools.nexpad.ui.components.controller.abxy.getPlayStationColor
 import com.sanket.tools.nexpad.ui.components.controller.special.calculateGamingStickMagnitude
@@ -355,7 +356,7 @@ internal fun resolveAuraColor(
     }
 
     // 5. Default Emerald Fallback
-    return adaptColorForConsole(Color(0xFF4ADE80L), controlKey, labelStyle)
+    return adaptColorForConsole(NeonPalette.Emerald, controlKey, labelStyle)
 }
 
 private fun createNxprcColorFilter(filter: FilterDef): ColorFilter? {
