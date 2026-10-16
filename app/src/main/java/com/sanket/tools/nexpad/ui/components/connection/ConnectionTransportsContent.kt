@@ -35,12 +35,14 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.text.style.TextOverflow
 import com.sanket.tools.nexpad.network.DiscoveredServer
+import com.sanket.tools.nexpad.ui.components.common.ConnectionSubTitle
 import com.sanket.tools.nexpad.ui.components.common.NxOutlinedButton
 import com.sanket.tools.nexpad.ui.layout.AdaptiveLayoutSpec
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 /**
  * Modular container for connection transports: Network Discovery (Wi-Fi / Tethering),
+ *
  * USB Hardware Links (AOA, ADB, Tethering), and Bluetooth Classic.
  */
 @Composable
@@ -110,12 +112,10 @@ fun ConnectionTransportsContent(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text(
-                            text = "No computers discovered on LAN yet",
-                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = emptyBodySize),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+//
+                        ConnectionSubTitle(
+                            subtitle = "No computers discovered on LAN yet",
+                            subtitleFontSize = emptyBodySize
                         )
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -150,8 +150,8 @@ fun ConnectionTransportsContent(
                                     borderColors =  Color.White.copy(alpha = 0.25f),
                                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                                     modifier = Modifier.weight(1f).height(emptyBtnHeight),
-                                    imageVector = Icons.Rounded.Refresh,
-                                    iconModifier = Modifier.size(15.dp),
+                                    imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+                                    iconModifier = Modifier.size(13.dp),
                                     space = 6.dp,
                                     text = "Get PC Server",
                                     style = MaterialTheme.typography.labelMedium.copy(
@@ -159,54 +159,6 @@ fun ConnectionTransportsContent(
                                         fontSize = emptyBtnFontSize
                                     ),
                                 )
-//                            OutlinedButton(
-//                                onClick = onRescanNetwork,
-//                                modifier = Modifier.weight(1f).height(emptyBtnHeight),
-//                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-//                                colors = ButtonDefaults.outlinedButtonColors(
-//                                    contentColor = NeonPalette.Cyan,
-//                                    containerColor = NeonPalette.Cyan.copy(alpha = 0.06f)
-//                                ),
-//                                border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f)),
-//                                shape = RoundedCornerShape(10.dp)
-//                            ) {
-//                                Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(15.dp))
-//                                Spacer(Modifier.width(5.dp))
-//                                Text(
-//                                    text = "Rescan",
-//                                    style = MaterialTheme.typography.labelMedium.copy(
-//                                        fontWeight = FontWeight.Bold,
-//                                        fontSize = emptyBtnFontSize
-//                                    ),
-//                                    maxLines = 1,
-//                                    softWrap = false
-//                                )
-//                            }
-//
-//                            OutlinedButton(
-//                                onClick = onDownloadDesktop,
-//                                modifier = Modifier.weight(1f).height(emptyBtnHeight),
-//                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-//                                colors = ButtonDefaults.outlinedButtonColors(
-//                                    contentColor = Color.White,
-//                                    containerColor = Color.White.copy(alpha = 0.04f)
-//                                ),
-//                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
-//                                shape = RoundedCornerShape(10.dp)
-//                            ) {
-//                                Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null, modifier = Modifier.size(13.dp))
-//                                Spacer(Modifier.width(5.dp))
-//                                Text(
-//                                    text = "Get PC Server",
-//                                    style = MaterialTheme.typography.labelMedium.copy(
-//                                        fontWeight = FontWeight.Bold,
-//                                        fontSize = emptyBtnFontSize
-//                                    ),
-//                                    maxLines = 1,
-//                                    softWrap = false,
-//                                    overflow = TextOverflow.Ellipsis
-//                                )
-//                            }
                         }
                     }
                 }
@@ -339,10 +291,10 @@ fun ConnectionTransportsContent(
                                 borderColors =  Color.White.copy(alpha = 0.25f),
                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                                 modifier = Modifier.weight(1f).height(emptyBtnHeight),
-                                imageVector = Icons.Rounded.Refresh,
-                                iconModifier =Modifier.size(15.dp),
+                                imageVector = Icons.Rounded.Bluetooth,
+                                iconModifier = Modifier.size(15.dp),
                                 space = 6.dp,
-                                text = "BT Pair",
+                                text = "Pair in Settings",
                                 tint = NeonPalette.Purple,
                                 style = MaterialTheme.typography.labelMedium.copy(
                                     fontWeight = FontWeight.Bold,

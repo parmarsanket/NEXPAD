@@ -38,7 +38,7 @@ fun NxOutlinedButton(
 ) {
     OutlinedButton(
         onClick = onClick,
-        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+        contentPadding = contentPadding,
         colors = colors,
         border = BorderStroke(1.dp, borderColors),
         shape = RoundedCornerShape(12.dp),

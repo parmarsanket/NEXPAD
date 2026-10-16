@@ -27,9 +27,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.ui.components.common.NxDivider
+import com.sanket.tools.nexpad.ui.components.common.NxOutlinedButton
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.ConnectionStats
 import com.sanket.tools.nexpad.viewmodel.ConnectionType
@@ -122,37 +125,24 @@ fun ActiveSessionCard(
                     }
                 }
 
-                OutlinedButton(
+                NxOutlinedButton(
                     onClick = onDisconnect,
                     colors = ButtonDefaults.outlinedButtonColors(
                         containerColor = NeonPalette.Red.copy(alpha = 0.08f),
                         contentColor = NeonPalette.Red
                     ),
-                    border = BorderStroke(1.2.dp, NeonPalette.Red.copy(alpha = 0.7f)),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text(
-                        text = "Disconnect",
+                    borderColors = NeonPalette.Red.copy(alpha = 0.7f),
+                    text = "Disconnect",
+                    style = TextStyle(
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp
                     )
-                }
+                )
             }
 
             // Divider
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(
-                                NeonPalette.Green.copy(alpha = 0.4f),
-                                NeonPalette.Green.copy(alpha = 0.1f),
-                                Color.Transparent
-                            )
-                        )
-                    )
+            NxDivider(
+                color = NeonPalette.Green
             )
 
             // Real-time Metrics 4-grid

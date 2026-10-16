@@ -31,12 +31,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.ui.components.badge.StatusBadgePill
+import com.sanket.tools.nexpad.ui.components.common.ConnectionSubTitle
+import com.sanket.tools.nexpad.ui.components.common.ConnectionTitle
+import com.sanket.tools.nexpad.ui.components.common.NxIconBox
 import com.sanket.tools.nexpad.ui.components.common.NxOutlinedButton
+import com.sanket.tools.nexpad.ui.components.common.TitleColumn
 import com.sanket.tools.nexpad.ui.layout.AdaptiveLayoutSpec
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
@@ -90,42 +95,19 @@ fun UsbAoaCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(iconBoxSize)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(NeonPalette.Cyan.copy(alpha = 0.12f))
-                            .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.4f), RoundedCornerShape(12.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Cable,
-                            contentDescription = null,
-                            tint = NeonPalette.Cyan,
-                            modifier = Modifier.size(iconSize)
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f, fill = false)) {
-                        Text(
-                            text = "USB KERNEL DIRECT (AOA 2.0)",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = titleFontSize
-                            ),
-                            color = Color.White,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = "Sub-millisecond driverless hardware pipe",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontSize = subtitleFontSize,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            ),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+                    NxIconBox(
+                        imageVector = Icons.Rounded.Cable,
+                        iconBoxSize =iconBoxSize,
+                        iconSize = iconSize,
+                        color = NeonPalette.Cyan,
+                    )
+                    TitleColumn(
+                        modifier = Modifier.weight(1f),
+                        title = "USB KERNEL DIRECT (AOA 2.0)",
+                        titleFontSize = titleFontSize,
+                        subtitle ="Sub-millisecond driverless hardware pipe",
+                        subtitleFontSize = subtitleFontSize
+                    )
                 }
                 StatusBadgePill(
                     text = when {
@@ -138,30 +120,27 @@ fun UsbAoaCard(
             }
 
             if (isAoaReady) {
-                OutlinedButton(
+                NxOutlinedButton(
                     onClick = onConnectAoa,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(buttonHeight),
-                    shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
                         containerColor = NeonPalette.Cyan.copy(alpha = 0.08f),
                         contentColor = NeonPalette.Cyan
                     ),
-                    border = BorderStroke(1.5.dp, NeonPalette.Cyan.copy(alpha = 0.7f))
-                ) {
-                    Text(
-                        text = "CONNECT (USB AOA)",
+                    borderColors = NeonPalette.Cyan,
+                    text =  "CONNECT (USB AOA)",
+                    style = TextStyle(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.8.sp,
                         fontSize = buttonFontSize
                     )
-                }
+                )
             } else {
-                Text(
-                    text = if (!isUsbCableConnected) "Connect phone to PC via USB cable." else "Plug phone into PC via USB. When NEXPAD Desktop sends the AOA handshake, this option lights up.",
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = subtitleFontSize),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                ConnectionSubTitle(
+                    subtitle = if (!isUsbCableConnected) "Connect phone to PC via USB cable." else "Plug phone into PC via USB. When NEXPAD Desktop sends the AOA handshake, this option lights up.",
+                    subtitleFontSize = subtitleFontSize
                 )
             }
         }
@@ -220,42 +199,20 @@ fun UsbAdbCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(iconBoxSize)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(NeonPalette.Green.copy(alpha = 0.12f))
-                            .border(1.dp, NeonPalette.Green.copy(alpha = 0.4f), RoundedCornerShape(12.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Usb,
-                            contentDescription = null,
-                            tint = NeonPalette.Green,
-                            modifier = Modifier.size(iconSize)
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f, fill = false)) {
-                        Text(
-                            text = "USB ADB PORT BRIDGE",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = titleFontSize
-                            ),
-                            color = Color.White,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = if (isAdbAvailable) "${adbServerName ?: "Desktop PC"} • Port 9999" else "Port forwarding (127.0.0.1:9999)",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontSize = subtitleFontSize,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            ),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+                    NxIconBox(
+                        imageVector = Icons.Rounded.Usb,
+                        iconBoxSize =iconBoxSize,
+                        iconSize = iconSize,
+                        color = NeonPalette.Green,
+                    )
+                    TitleColumn(
+                        modifier = Modifier.weight(1f),
+                        title = "USB ADB PORT BRIDGE",
+                        titleFontSize = titleFontSize,
+                        subtitle = if (isAdbAvailable) "${adbServerName ?: "Desktop PC"} • Port 9999" else "Port forwarding (127.0.0.1:9999)",
+                        subtitleFontSize = subtitleFontSize
+                    )
+//
                 }
                 StatusBadgePill(
                     text = when {
@@ -270,58 +227,49 @@ fun UsbAdbCard(
 
             when {
                 !isUsbCableConnected -> {
-                    Text(
-                        text = "Connect phone to PC via USB cable to enable ADB port forwarding.",
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = subtitleFontSize),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+//
+                    ConnectionSubTitle(
+                        subtitle = "Connect phone to PC via USB cable to enable ADB port forwarding.",
+                        subtitleFontSize = subtitleFontSize
                     )
                 }
                 !isAdbOn -> {
-                    OutlinedButton(
+                    NxOutlinedButton(
                         onClick = onOpenDeveloperSettings,
                         modifier = Modifier.fillMaxWidth().height(buttonHeight),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = NeonPalette.Amber,
                             containerColor = NeonPalette.Amber.copy(alpha = 0.08f)
                         ),
-                        border = BorderStroke(1.dp, NeonPalette.Amber.copy(alpha = 0.5f)),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Text(
-                            text = "Enable USB Debugging in Settings",
-                            style = MaterialTheme.typography.labelMedium.copy(
+                        borderColors = NeonPalette.Amber,
+                        text = "Enable USB Debugging in Settings",
+                        style = MaterialTheme.typography.labelMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = buttonFontSize
-                            )
-                        )
-                    }
+                            ),
+                    )
                 }
                 isAdbAvailable -> {
-                    OutlinedButton(
+                    NxOutlinedButton(
                         onClick = onConnectAdb,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(buttonHeight),
-                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().height(buttonHeight),
                         colors = ButtonDefaults.outlinedButtonColors(
                             containerColor = NeonPalette.Green.copy(alpha = 0.08f),
                             contentColor = NeonPalette.Green
                         ),
-                        border = BorderStroke(1.5.dp, NeonPalette.Green.copy(alpha = 0.7f))
-                    ) {
-                        Text(
-                            text = "CONNECT (USB ADB)",
+                        borderColors = NeonPalette.Green.copy(alpha = 0.7f),
+                        text = "CONNECT (USB ADB)",
+                        style = MaterialTheme.typography.labelMedium.copy(
                             fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.8.sp,
-                            fontSize = buttonFontSize
-                        )
-                    }
+                            fontSize = buttonFontSize,
+                            letterSpacing = 0.8.sp
+                        ),
+                    )
                 }
                 else -> {
-                    Text(
-                        text = "USB cable connected & debugging active. Waiting for NEXPAD Desktop to start ADB bridge...",
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = subtitleFontSize),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    ConnectionSubTitle(
+                        subtitle = "USB cable connected & debugging active. Waiting for NEXPAD Desktop to start ADB bridge...",
+                        subtitleFontSize = subtitleFontSize
                     )
                 }
             }
@@ -370,42 +318,19 @@ fun UsbTetheringCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.weight(1f, fill = false)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(iconBoxSize)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(NeonPalette.Purple.copy(alpha = 0.12f))
-                        .border(1.dp, NeonPalette.Purple.copy(alpha = 0.4f), RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Link,
-                        contentDescription = null,
-                        tint = NeonPalette.Purple,
-                        modifier = Modifier.size(iconSize)
-                    )
-                }
-                Column(modifier = Modifier.weight(1f, fill = false)) {
-                    Text(
-                        text = "USB TETHERING ADAPTER",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = titleFontSize
-                        ),
-                        color = Color.White,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = "Private low-jitter 100Mbps virtual LAN",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontSize = subtitleFontSize,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        ),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                NxIconBox(
+                    imageVector = Icons.Rounded.Link,
+                    iconBoxSize =iconBoxSize,
+                    iconSize = iconSize,
+                    color = NeonPalette.Purple,
+                )
+                TitleColumn(
+                    modifier = Modifier.weight(1f),
+                    title = "USB TETHERING ADAPTER",
+                    titleFontSize = titleFontSize,
+                    subtitle = "Private low-jitter 100Mbps virtual LAN",
+                    subtitleFontSize = subtitleFontSize
+                )
             }
             Spacer(Modifier.width(8.dp))
 

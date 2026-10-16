@@ -39,7 +39,11 @@ import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.ui.text.style.TextOverflow
+import com.sanket.tools.nexpad.ui.components.common.ConnectionSubTitle
+import com.sanket.tools.nexpad.ui.components.common.NxDivider
+import com.sanket.tools.nexpad.ui.components.common.NxIconBox
 import com.sanket.tools.nexpad.ui.components.common.NxOutlinedButton
+import com.sanket.tools.nexpad.ui.components.common.TitleColumn
 import com.sanket.tools.nexpad.ui.layout.AdaptiveLayoutSpec
 
 /**
@@ -96,43 +100,19 @@ fun ConnectionHubStatusCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(iconBoxSize)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(NeonPalette.Cyan.copy(alpha = 0.12f))
-                            .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.35f), RoundedCornerShape(10.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Hub,
-                            contentDescription = null,
-                            tint = NeonPalette.Cyan,
-                            modifier = Modifier.size(iconSize)
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f, fill = false)) {
-                        Text(
-                            text = "LINK HARDWARE STATUS",
-                            style = MaterialTheme.typography.labelLarge.copy(
-                                color = Color.White,
-                                fontWeight = FontWeight.Black,
-                                fontSize = titleFontSize,
-                                letterSpacing = 0.5.sp
-                            ),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = "Real-time transport detection",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = subtitleFontSize
-                            ),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+                    NxIconBox(
+                        imageVector = Icons.Rounded.Hub,
+                        iconBoxSize =iconBoxSize,
+                        iconSize = iconSize,
+                        color = NeonPalette.Cyan,
+                    )
+                    TitleColumn(
+                        title = "LINK HARDWARE STATUS",
+                        subtitle = "Real-time transport detection",
+                        titleFontSize = titleFontSize,
+                        subtitleFontSize = subtitleFontSize
+                    )
+
                 }
 
                 Spacer(Modifier.width(8.dp))
@@ -160,20 +140,7 @@ fun ConnectionHubStatusCard(
             }
 
             // Divider
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(
-                                NeonPalette.Cyan.copy(alpha = 0.35f),
-                                NeonPalette.Cyan.copy(alpha = 0.08f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-            )
+            NxDivider(color = NeonPalette.Cyan)
 
             // Status indicator items
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -228,7 +195,7 @@ fun ConnectionHubStatusCard(
                     borderColors =  Color.White.copy(alpha = 0.25f),
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                     modifier = Modifier.weight(1f).height(buttonHeight),
-                    imageVector = Icons.Rounded.Refresh,
+                    imageVector = Icons.Rounded.Bluetooth,
                     iconModifier = Modifier.size(iconSize),
                     space = 6.dp,
                     text = "BT Pair",

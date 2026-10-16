@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Hub
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -24,6 +26,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.ui.components.common.ConnectionTitle
+import com.sanket.tools.nexpad.ui.components.common.NxDivider
+import com.sanket.tools.nexpad.ui.components.common.NxIconBox
+import com.sanket.tools.nexpad.ui.components.common.TitleColumn
 import com.sanket.tools.nexpad.ui.layout.AdaptiveLayoutSpec
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
@@ -51,59 +57,22 @@ fun ConnectionSection(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(iconBoxSize)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(accentColor.copy(alpha = 0.12f))
-                    .border(1.dp, accentColor.copy(alpha = 0.35f), RoundedCornerShape(10.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = accentColor,
-                    modifier = Modifier.size(iconSize)
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title.uppercase(),
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        fontWeight = FontWeight.Black,
-                        fontSize = titleFontSize,
-                        letterSpacing = 0.5.sp
-                    ),
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontSize = subtitleFontSize
-                    ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                )
-            }
+            NxIconBox(
+                imageVector = icon,
+                iconBoxSize =iconBoxSize,
+                iconSize = iconSize,
+                color = accentColor,
+            )
+            TitleColumn(
+                modifier = Modifier.weight(1f),
+                title = title,
+                titleFontSize = titleFontSize,
+                subtitle = subtitle,
+                subtitleFontSize = subtitleFontSize
+            )
         }
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            accentColor.copy(alpha = 0.35f),
-                            accentColor.copy(alpha = 0.08f),
-                            Color.Transparent
-                        )
-                    )
-                )
-        )
+        NxDivider(color = accentColor)
 
         Column(
             modifier = Modifier.fillMaxWidth(),
