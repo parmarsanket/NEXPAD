@@ -1,27 +1,45 @@
 package com.sanket.tools.nexpad.ui.components.connection
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.Lan
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.ui.components.common.NxOutlinedButton
+import com.sanket.tools.nexpad.ui.layout.AdaptiveLayoutSpec
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 @Composable
@@ -31,25 +49,80 @@ fun ManualIpCard(
     onIpChange: (String) -> Unit,
     onPortChange: (String) -> Unit,
     onConnect: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    layout: AdaptiveLayoutSpec? = null
 ) {
-    Card(
+    val cardPadding = layout?.cardPadding ?: 16.dp
+    val spacing = layout?.cardSpacing ?: 14.dp
+    val iconBoxSize = layout?.iconBoxSize ?: 42.dp
+    val iconSize = layout?.iconSize ?: 22.dp
+    val titleFontSize = layout?.cardTitleFontSize ?: 15.sp
+    val bodyFontSize = layout?.bodyFontSize ?: 11.5.sp
+    val buttonHeight = layout?.buttonHeight ?: 46.dp
+    val buttonFontSize = layout?.buttonFontSize ?: 12.sp
+
+    Surface(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = NeonPalette.DarkCard),
-        shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.3f))
+        shape = RoundedCornerShape(16.dp),
+        color = NeonPalette.CardSurface.copy(alpha = 0.85f),
+        border = BorderStroke(
+            1.dp,
+            Brush.horizontalGradient(
+                listOf(
+                    NeonPalette.Cyan.copy(alpha = 0.40f),
+                    NeonPalette.Purple.copy(alpha = 0.20f),
+                    Color.White.copy(alpha = 0.05f)
+                )
+            )
+        )
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(cardPadding),
+            verticalArrangement = Arrangement.spacedBy(spacing)
         ) {
-            Text(
-                text = "Direct IP Fallback",
-                style = MaterialTheme.typography.titleSmall,
-                color = Color.White
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(iconBoxSize)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(NeonPalette.Cyan.copy(alpha = 0.12f))
+                        .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.35f), RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Lan,
+                        contentDescription = null,
+                        tint = NeonPalette.Cyan,
+                        modifier = Modifier.size(iconSize)
+                    )
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Direct IP / Port Connection",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = titleFontSize,
+                            letterSpacing = 0.5.sp
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Freely change PC IP & port when network broadcast discovery is blocked",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = NeonPalette.SlateText,
+                            fontSize = bodyFontSize
+                        )
+                    )
+                }
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -57,49 +130,72 @@ fun ManualIpCard(
                 OutlinedTextField(
                     value = manualIp,
                     onValueChange = onIpChange,
-                    label = { Text("PC IP Address") },
-                    placeholder = { Text("192.168.1.10") },
-                    modifier = Modifier.weight(2f),
+                    label = { Text("PC IP Address", color = NeonPalette.SlateText) },
+                    placeholder = { Text("192.168.1.10", color = NeonPalette.SlateMuted) },
+                    modifier = Modifier.weight(2.2f),
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Ascii,
+                        imeAction = ImeAction.Next
+                    ),
+                    shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = NeonPalette.Cyan,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                        unfocusedBorderColor = NeonPalette.SlateBorder,
                         focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
+                        unfocusedTextColor = Color.White,
+                        focusedContainerColor = NeonPalette.FieldBg,
+                        unfocusedContainerColor = NeonPalette.FieldBg
                     )
                 )
+
                 OutlinedTextField(
                     value = manualPort,
                     onValueChange = onPortChange,
-                    label = { Text("Port") },
-                    placeholder = { Text("9999") },
+                    label = { Text("Port", color = NeonPalette.SlateText) },
+                    placeholder = { Text("9999", color = NeonPalette.SlateMuted) },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Done
+                    ),
+                    shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = NeonPalette.Cyan,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                        unfocusedBorderColor = NeonPalette.SlateBorder,
                         focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
+                        unfocusedTextColor = Color.White,
+                        focusedContainerColor = NeonPalette.FieldBg,
+                        unfocusedContainerColor = NeonPalette.FieldBg
                     )
                 )
             }
-            OutlinedButton(
+
+            val isIpValid = manualIp.isNotBlank()
+            NxOutlinedButton(
                 onClick = onConnect,
-                modifier = Modifier.fillMaxWidth().height(44.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = NeonPalette.Cyan.copy(alpha = 0.08f),
-                    contentColor = NeonPalette.Cyan
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(buttonHeight),
+                colors =ButtonDefaults.outlinedButtonColors(
+                    containerColor = if (isIpValid) NeonPalette.Cyan.copy(alpha = 0.12f) else NeonPalette.DisabledBg,
+                    contentColor = if (isIpValid) NeonPalette.Cyan else NeonPalette.SlateDisabled,
+                    disabledContainerColor = NeonPalette.DisabledBg,
+                    disabledContentColor = NeonPalette.SlateDisabled
                 ),
-                border = BorderStroke(1.5.dp, NeonPalette.Cyan.copy(alpha = 0.7f))
-            ) {
-                Text(
-                    text = "CONNECT VIA DIRECT IP",
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.8.sp,
-                    fontSize = 12.sp
-                )
-            }
+                borderColors = if (isIpValid) NeonPalette.Cyan.copy(alpha = 0.7f) else NeonPalette.SlateBorder.copy(alpha = 0.5f),
+                imageVector = Icons.Rounded.Bolt,
+                iconModifier = Modifier.size(iconSize),
+                space = 6.dp,
+                enabled = isIpValid,
+                text = "CONNECT VIA DIRECT IP",
+                style = TextStyle(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.8.sp,
+                        fontSize = buttonFontSize
+                    ),
+            )
         }
     }
 }

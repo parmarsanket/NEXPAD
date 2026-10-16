@@ -155,17 +155,32 @@ object LayoutMetrics {
      *   larger finger contact areas while keeping proportional spacing.
      */
     fun calculateResponsiveScale(widthDp: Float, heightDp: Float): Float {
-        val scaleH = when {
-            heightDp < 375f -> (heightDp / 375f).coerceIn(0.78f, 1.0f)
-            heightDp > 430f -> (1.0f + (heightDp - 430f) * 0.00035f).coerceIn(1.0f, 1.12f)
-            else -> 1.0f
+        // Landscape virtual controller metrics (games and HUD run in landscape)
+        val shortDim = minOf(widthDp, heightDp)
+        val longDim = maxOf(widthDp, heightDp)
+
+        return when {
+            // Tablet (large screen: smallest dimension >= 600dp)
+            shortDim >= 600f -> {
+                (shortDim / 450f).coerceIn(1.15f, 1.32f)
+            }
+            // Foldable / Phablet unfolded (short dimension >= 460dp)
+            shortDim >= 460f -> {
+                (1.0f + (shortDim - 400f) * 0.0012f).coerceIn(1.05f, 1.18f)
+            }
+            // Standard / Mid Phone (short dimension 375..459dp)
+            shortDim >= 375f -> {
+                if (longDim < 780f) {
+                    (longDim / 780f).coerceIn(0.92f, 1.0f)
+                } else {
+                    1.0f
+                }
+            }
+            // Small Phone / Narrow Phone (short dimension < 375dp)
+            else -> {
+                (shortDim / 375f).coerceIn(0.80f, 0.95f)
+            }
         }
-        val scaleW = if (widthDp < 800f) {
-            (widthDp / 800f).coerceIn(0.78f, 1.0f)
-        } else {
-            1.0f
-        }
-        return if (heightDp > 430f) scaleH else minOf(scaleH, scaleW)
     }
 
     /** Overload for callers providing only heightDp (delegates to reference width). */

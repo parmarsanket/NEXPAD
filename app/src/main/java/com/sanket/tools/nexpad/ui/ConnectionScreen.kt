@@ -3,6 +3,7 @@ package com.sanket.tools.nexpad.ui
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -19,8 +20,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.DesktopWindows
+import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -34,8 +38,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -45,11 +53,16 @@ import com.sanket.tools.nexpad.ui.components.common.NexpadTopAppBar
 import com.sanket.tools.nexpad.ui.components.connection.ActiveSessionCard
 import com.sanket.tools.nexpad.ui.components.connection.ConnectionHubStatusCard
 import com.sanket.tools.nexpad.ui.components.connection.ConnectionTransportsContent
+import com.sanket.tools.nexpad.ui.components.connection.ManualIpCard
 import com.sanket.tools.nexpad.ui.components.effects.CyberGrid
 import com.sanket.tools.nexpad.ui.components.effects.ScanLine
+import com.sanket.tools.nexpad.ui.layout.AdaptiveLayoutSpec
 import com.sanket.tools.nexpad.ui.layout.adaptiveLayoutSpec
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
+import androidx.core.content.edit
+import com.sanket.tools.nexpad.ui.components.common.NxOutlinedButton
+import org.w3c.dom.Text
 
 const val NEXPAD_DESKTOP_DOWNLOAD_URL = "https://github.com/parmarsanket/NEXPAD-Desktop"
 
@@ -116,6 +129,10 @@ fun ConnectionScreen(
         }
     }
 
+    val prefs = remember { context.getSharedPreferences("nexpad_connection_prefs", android.content.Context.MODE_PRIVATE) }
+    var manualIp by remember { mutableStateOf(prefs.getString("last_manual_ip", "") ?: "") }
+    var manualPort by remember { mutableStateOf(prefs.getString("last_manual_port", "9999") ?: "9999") }
+
     ConnectionScreenContent(
         isConnected = isConnected,
         connectionStats = connectionStats,
@@ -127,6 +144,22 @@ fun ConnectionScreen(
         adbServerName = adbServerName,
         isUsbDebuggingEnabled = viewModel.isUsbDebuggingEnabled(),
         snackbarHostState = snackbarHostState,
+        manualIp = manualIp,
+        manualPort = manualPort,
+        onManualIpChange = { newIp ->
+            manualIp = newIp
+            prefs.edit { putString("last_manual_ip", newIp) }
+        },
+        onManualPortChange = { newPort ->
+            manualPort = newPort
+            prefs.edit { putString("last_manual_port", newPort) }
+        },
+        onConnectManualIp = {
+            if (manualIp.isNotBlank()) {
+                val port = manualPort.toIntOrNull() ?: 9999
+                viewModel.connect(manualIp.trim(), port, "Direct IP")
+            }
+        },
         onConnectServer = { ip, port, name ->
             viewModel.connect(ip, port, name)
         },
@@ -214,14 +247,19 @@ fun ConnectionScreenContent(
     onDownloadDesktop: () -> Unit = {},
     onBack: () -> Unit = {},
     modifier: Modifier = Modifier,
-    // Optional compatibility parameters
     manualIp: String = "",
     manualPort: String = "9999",
-    showManualIpCard: Boolean = false,
+    showManualIpCard: Boolean = true,
     onManualIpChange: (String) -> Unit = {},
     onManualPortChange: (String) -> Unit = {},
-    onToggleManualIpCard: () -> Unit = {}
+    onToggleManualIpCard: () -> Unit = {},
+    onConnectManualIp: () -> Unit = {}
 ) {
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val windowLayout = remember(configuration.screenWidthDp, configuration.screenHeightDp) {
+        adaptiveLayoutSpec(configuration.screenWidthDp.dp, configuration.screenHeightDp.dp)
+    }
+
     Scaffold(
         modifier = modifier,
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -230,11 +268,14 @@ fun ConnectionScreenContent(
                 title = "CONNECTION HUB",
                 subtitle = "Hardware Transports & Link Engine",
                 onBack = onBack,
+                titleFontSize = windowLayout.titleFontSize,
+                subtitleFontSize = windowLayout.subtitleFontSize,
                 actions = {
                     HeaderStatusPill(
                         isConnected = isConnected,
                         disconnectedText = "Standby",
-                        modifier = Modifier.padding(end = 16.dp)
+                        fontSize = windowLayout.badgeFontSize,
+                        modifier = Modifier.padding(end = 8.dp)
                     )
                 }
             )
@@ -270,7 +311,8 @@ fun ConnectionScreenContent(
                     onOpenTetheringSettings = onOpenTetheringSettings,
                     onReloadBluetoothDevices = onReloadBluetoothDevices,
                     onOpenBluetoothSettings = onOpenBluetoothSettings,
-                    onDownloadDesktop = onDownloadDesktop
+                    onDownloadDesktop = onDownloadDesktop,
+                    layout = layout
                 )
             }
 
@@ -278,7 +320,10 @@ fun ConnectionScreenContent(
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = layout.horizontalPadding, vertical = layout.verticalPadding),
+                        .padding(
+                            horizontal = layout.horizontalPadding,
+                            vertical = layout.verticalPadding
+                        ),
                     horizontalArrangement = Arrangement.spacedBy(layout.paneSpacing)
                 ) {
                     // Left Sticky Pane
@@ -300,7 +345,8 @@ fun ConnectionScreenContent(
                                 isAoaAttached = isAoaAttached,
                                 isAdbAvailable = isAdbAvailable,
                                 onRescan = onRescanNetwork,
-                                onOpenBluetoothSettings = onOpenBluetoothSettings
+                                onOpenBluetoothSettings = onOpenBluetoothSettings,
+                                layout = layout
                             )
                         }
                     }
@@ -314,7 +360,18 @@ fun ConnectionScreenContent(
                         verticalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
                         transportsComposable()
-                        ConnectionDesktopDownloadCard(onDownload = onDownloadDesktop)
+                        ManualIpCard(
+                            manualIp = manualIp,
+                            manualPort = manualPort,
+                            onIpChange = onManualIpChange,
+                            onPortChange = onManualPortChange,
+                            onConnect = onConnectManualIp,
+                            layout = layout
+                        )
+                        ConnectionDesktopDownloadCard(
+                            onDownload = onDownloadDesktop,
+                            layout = layout
+                        )
                         Spacer(Modifier.height(16.dp))
                     }
                 }
@@ -325,7 +382,10 @@ fun ConnectionScreenContent(
                         .widthIn(max = layout.formMaxWidth)
                         .fillMaxWidth()
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = layout.horizontalPadding, vertical = layout.verticalPadding),
+                        .padding(
+                            horizontal = layout.horizontalPadding,
+                            vertical = layout.verticalPadding
+                        ),
                     verticalArrangement = Arrangement.spacedBy(layout.contentSpacing)
                 ) {
                     if (isConnected) {
@@ -339,11 +399,23 @@ fun ConnectionScreenContent(
                             isAoaAttached = isAoaAttached,
                             isAdbAvailable = isAdbAvailable,
                             onRescan = onRescanNetwork,
-                            onOpenBluetoothSettings = onOpenBluetoothSettings
+                            onOpenBluetoothSettings = onOpenBluetoothSettings,
+                            layout = layout
                         )
                     }
                     transportsComposable()
-                    ConnectionDesktopDownloadCard(onDownload = onDownloadDesktop)
+                    ManualIpCard(
+                        manualIp = manualIp,
+                        manualPort = manualPort,
+                        onIpChange = onManualIpChange,
+                        onPortChange = onManualPortChange,
+                        onConnect = onConnectManualIp,
+                        layout = layout
+                    )
+                    ConnectionDesktopDownloadCard(
+                        onDownload = onDownloadDesktop,
+                        layout = layout
+                    )
                     Spacer(Modifier.height(16.dp))
                 }
             }
@@ -354,8 +426,17 @@ fun ConnectionScreenContent(
 @Composable
 fun ConnectionDesktopDownloadCard(
     onDownload: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    layout: AdaptiveLayoutSpec? = null
 ) {
+    val cardPadding = layout?.cardPadding ?: 16.dp
+    val iconBoxSize = layout?.iconBoxSize ?: 42.dp
+    val iconSize = layout?.iconSize ?: 22.dp
+    val titleFontSize = layout?.cardTitleFontSize ?: 15.sp
+    val bodyFontSize = layout?.bodyFontSize ?: 11.5.sp
+    val buttonHeight = layout?.buttonHeight ?: 36.dp
+    val buttonFontSize = layout?.buttonFontSize ?: 12.sp
+
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -374,13 +455,13 @@ fun ConnectionDesktopDownloadCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(cardPadding),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(42.dp)
+                    .size(iconBoxSize)
                     .clip(RoundedCornerShape(12.dp))
                     .background(NeonPalette.Cyan.copy(alpha = 0.12f))
                     .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.35f), RoundedCornerShape(12.dp)),
@@ -390,7 +471,7 @@ fun ConnectionDesktopDownloadCard(
                     imageVector = Icons.Rounded.DesktopWindows,
                     contentDescription = null,
                     tint = NeonPalette.Cyan,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(iconSize)
                 )
             }
 
@@ -400,39 +481,39 @@ fun ConnectionDesktopDownloadCard(
                     style = MaterialTheme.typography.labelLarge.copy(
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
+                        fontSize = titleFontSize,
                         letterSpacing = 0.5.sp
-                    )
+                    ),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = "Download NEXPAD Desktop companion for Windows PC",
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = NeonPalette.SlateText,
-                        fontSize = 11.5.sp
-                    )
+                        fontSize = bodyFontSize
+                    ),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
             }
-
-            OutlinedButton(
+            NxOutlinedButton(
                 onClick = onDownload,
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = NeonPalette.Cyan,
                     containerColor = NeonPalette.Cyan.copy(alpha = 0.08f)
                 ),
-                border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.6f)),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
-                    contentDescription = null,
-                    modifier = Modifier.size(14.dp)
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    text = "Download",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
-                )
-            }
+                borderColors = NeonPalette.Cyan.copy(alpha = 0.6f),
+                modifier = Modifier.height(buttonHeight),
+                imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+                iconModifier = Modifier.size(iconSize.coerceAtMost(16.dp)),
+                text = "Download",
+                style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = buttonFontSize
+                    )
+            )
         }
     }
 }

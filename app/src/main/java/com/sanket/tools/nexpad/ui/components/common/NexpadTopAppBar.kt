@@ -26,6 +26,8 @@ fun NexpadTopAppBar(
     onBack: (() -> Unit)? = null,
     isNavigationEnabled: Boolean = true,
     titleColor: Color = NeonPalette.Cyan,
+    titleFontSize: androidx.compose.ui.unit.TextUnit = 19.sp,
+    subtitleFontSize: androidx.compose.ui.unit.TextUnit = 11.5.sp,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     TopAppBar(
@@ -35,6 +37,8 @@ fun NexpadTopAppBar(
                     text = title,
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Black,
+                        fontSize = titleFontSize,
+                        letterSpacing = 0.5.sp,
                         color = titleColor
                     ),
                     maxLines = 1,
@@ -44,7 +48,8 @@ fun NexpadTopAppBar(
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall.copy(
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = subtitleFontSize
                         ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis

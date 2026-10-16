@@ -6,11 +6,14 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Cable
@@ -33,6 +36,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.ui.components.badge.StatusBadgePill
+import com.sanket.tools.nexpad.ui.components.common.NxOutlinedButton
+import com.sanket.tools.nexpad.ui.layout.AdaptiveLayoutSpec
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 @Composable
@@ -40,10 +45,19 @@ fun UsbAoaCard(
     isAoaAttached: Boolean,
     isUsbCableConnected: Boolean,
     onConnectAoa: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    layout: AdaptiveLayoutSpec? = null
 ) {
     val isAoaReady = isAoaAttached && isUsbCableConnected
     val accentColor = if (isAoaReady) NeonPalette.Cyan else Color.White
+    val cardPadding = layout?.cardPadding ?: 16.dp
+    val spacing = layout?.cardSpacing ?: 12.dp
+    val iconBoxSize = layout?.iconBoxSize ?: 42.dp
+    val iconSize = layout?.iconSize ?: 22.dp
+    val titleFontSize = layout?.cardTitleFontSize ?: 14.sp
+    val subtitleFontSize = layout?.subtitleFontSize ?: 11.5.sp
+    val buttonHeight = layout?.buttonHeight ?: 44.dp
+    val buttonFontSize = layout?.buttonFontSize ?: 12.sp
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -63,8 +77,8 @@ fun UsbAoaCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(cardPadding),
+            verticalArrangement = Arrangement.spacedBy(spacing)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -78,7 +92,7 @@ fun UsbAoaCard(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(42.dp)
+                            .size(iconBoxSize)
                             .clip(RoundedCornerShape(12.dp))
                             .background(NeonPalette.Cyan.copy(alpha = 0.12f))
                             .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.4f), RoundedCornerShape(12.dp)),
@@ -88,7 +102,7 @@ fun UsbAoaCard(
                             imageVector = Icons.Rounded.Cable,
                             contentDescription = null,
                             tint = NeonPalette.Cyan,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(iconSize)
                         )
                     }
                     Column(modifier = Modifier.weight(1f, fill = false)) {
@@ -96,7 +110,7 @@ fun UsbAoaCard(
                             text = "USB KERNEL DIRECT (AOA 2.0)",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
+                                fontSize = titleFontSize
                             ),
                             color = Color.White,
                             maxLines = 1,
@@ -105,7 +119,7 @@ fun UsbAoaCard(
                         Text(
                             text = "Sub-millisecond driverless hardware pipe",
                             style = MaterialTheme.typography.bodySmall.copy(
-                                fontSize = 11.5.sp,
+                                fontSize = subtitleFontSize,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             ),
                             maxLines = 1,
@@ -128,7 +142,7 @@ fun UsbAoaCard(
                     onClick = onConnectAoa,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(44.dp),
+                        .height(buttonHeight),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
                         containerColor = NeonPalette.Cyan.copy(alpha = 0.08f),
@@ -140,13 +154,13 @@ fun UsbAoaCard(
                         text = "CONNECT (USB AOA)",
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.8.sp,
-                        fontSize = 12.sp
+                        fontSize = buttonFontSize
                     )
                 }
             } else {
                 Text(
                     text = if (!isUsbCableConnected) "Connect phone to PC via USB cable." else "Plug phone into PC via USB. When NEXPAD Desktop sends the AOA handshake, this option lights up.",
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = subtitleFontSize),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -162,9 +176,18 @@ fun UsbAdbCard(
     adbServerName: String?,
     onConnectAdb: () -> Unit,
     onOpenDeveloperSettings: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    layout: AdaptiveLayoutSpec? = null
 ) {
     val accentColor = if (isAdbAvailable) NeonPalette.Green else Color.White
+    val cardPadding = layout?.cardPadding ?: 16.dp
+    val spacing = layout?.cardSpacing ?: 12.dp
+    val iconBoxSize = layout?.iconBoxSize ?: 42.dp
+    val iconSize = layout?.iconSize ?: 22.dp
+    val titleFontSize = layout?.cardTitleFontSize ?: 14.sp
+    val subtitleFontSize = layout?.subtitleFontSize ?: 11.5.sp
+    val buttonHeight = layout?.buttonHeight ?: 44.dp
+    val buttonFontSize = layout?.buttonFontSize ?: 12.sp
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -184,8 +207,8 @@ fun UsbAdbCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(cardPadding),
+            verticalArrangement = Arrangement.spacedBy(spacing)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -199,7 +222,7 @@ fun UsbAdbCard(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(42.dp)
+                            .size(iconBoxSize)
                             .clip(RoundedCornerShape(12.dp))
                             .background(NeonPalette.Green.copy(alpha = 0.12f))
                             .border(1.dp, NeonPalette.Green.copy(alpha = 0.4f), RoundedCornerShape(12.dp)),
@@ -209,7 +232,7 @@ fun UsbAdbCard(
                             imageVector = Icons.Rounded.Usb,
                             contentDescription = null,
                             tint = NeonPalette.Green,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(iconSize)
                         )
                     }
                     Column(modifier = Modifier.weight(1f, fill = false)) {
@@ -217,7 +240,7 @@ fun UsbAdbCard(
                             text = "USB ADB PORT BRIDGE",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
+                                fontSize = titleFontSize
                             ),
                             color = Color.White,
                             maxLines = 1,
@@ -226,7 +249,7 @@ fun UsbAdbCard(
                         Text(
                             text = if (isAdbAvailable) "${adbServerName ?: "Desktop PC"} • Port 9999" else "Port forwarding (127.0.0.1:9999)",
                             style = MaterialTheme.typography.bodySmall.copy(
-                                fontSize = 11.5.sp,
+                                fontSize = subtitleFontSize,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             ),
                             maxLines = 1,
@@ -249,14 +272,14 @@ fun UsbAdbCard(
                 !isUsbCableConnected -> {
                     Text(
                         text = "Connect phone to PC via USB cable to enable ADB port forwarding.",
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = subtitleFontSize),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 !isAdbOn -> {
                     OutlinedButton(
                         onClick = onOpenDeveloperSettings,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().height(buttonHeight),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = NeonPalette.Amber,
                             containerColor = NeonPalette.Amber.copy(alpha = 0.08f)
@@ -266,7 +289,10 @@ fun UsbAdbCard(
                     ) {
                         Text(
                             text = "Enable USB Debugging in Settings",
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = buttonFontSize
+                            )
                         )
                     }
                 }
@@ -275,7 +301,7 @@ fun UsbAdbCard(
                         onClick = onConnectAdb,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(44.dp),
+                            .height(buttonHeight),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             containerColor = NeonPalette.Green.copy(alpha = 0.08f),
@@ -287,14 +313,14 @@ fun UsbAdbCard(
                             text = "CONNECT (USB ADB)",
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 0.8.sp,
-                            fontSize = 12.sp
+                            fontSize = buttonFontSize
                         )
                     }
                 }
                 else -> {
                     Text(
                         text = "USB cable connected & debugging active. Waiting for NEXPAD Desktop to start ADB bridge...",
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = subtitleFontSize),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -306,8 +332,17 @@ fun UsbAdbCard(
 @Composable
 fun UsbTetheringCard(
     onOpenTetheringSettings: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    layout: AdaptiveLayoutSpec? = null
 ) {
+    val cardPadding = layout?.cardPadding ?: 16.dp
+    val iconBoxSize = layout?.iconBoxSize ?: 42.dp
+    val iconSize = layout?.iconSize ?: 22.dp
+    val titleFontSize = layout?.cardTitleFontSize ?: 14.sp
+    val subtitleFontSize = layout?.subtitleFontSize ?: 11.5.sp
+    val buttonHeight = layout?.buttonHeight ?: 36.dp
+    val buttonFontSize = layout?.buttonFontSize ?: 12.sp
+
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -326,18 +361,18 @@ fun UsbTetheringCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(cardPadding),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f, fill = false)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(42.dp)
+                        .size(iconBoxSize)
                         .clip(RoundedCornerShape(12.dp))
                         .background(NeonPalette.Purple.copy(alpha = 0.12f))
                         .border(1.dp, NeonPalette.Purple.copy(alpha = 0.4f), RoundedCornerShape(12.dp)),
@@ -347,7 +382,7 @@ fun UsbTetheringCard(
                         imageVector = Icons.Rounded.Link,
                         contentDescription = null,
                         tint = NeonPalette.Purple,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(iconSize)
                     )
                 }
                 Column(modifier = Modifier.weight(1f, fill = false)) {
@@ -355,7 +390,7 @@ fun UsbTetheringCard(
                         text = "USB TETHERING ADAPTER",
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
+                            fontSize = titleFontSize
                         ),
                         color = Color.White,
                         maxLines = 1,
@@ -364,7 +399,7 @@ fun UsbTetheringCard(
                     Text(
                         text = "Private low-jitter 100Mbps virtual LAN",
                         style = MaterialTheme.typography.bodySmall.copy(
-                            fontSize = 11.5.sp,
+                            fontSize = subtitleFontSize,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         ),
                         maxLines = 1,
@@ -372,22 +407,23 @@ fun UsbTetheringCard(
                     )
                 }
             }
-            OutlinedButton(
+            Spacer(Modifier.width(8.dp))
+
+            NxOutlinedButton(
                 onClick = onOpenTetheringSettings,
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = Color.White,
                     containerColor = Color.White.copy(alpha = 0.04f)
                 ),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Text(
-                    text = "Settings",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                    maxLines = 1,
-                    softWrap = false
-                )
-            }
+                borderColors = Color.White.copy(alpha = 0.25f),
+                modifier = Modifier.height(buttonHeight),
+                text = "Settings",
+                style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = buttonFontSize
+                    ),
+            )
         }
     }
 }

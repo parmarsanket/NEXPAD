@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.ui.layout.AdaptiveLayoutSpec
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 @Composable
@@ -33,19 +34,26 @@ fun ConnectionSection(
     subtitle: String,
     modifier: Modifier = Modifier,
     accentColor: Color = NeonPalette.Cyan,
+    layout: AdaptiveLayoutSpec? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val iconBoxSize = layout?.iconBoxSize ?: 34.dp
+    val iconSize = layout?.iconSize ?: 18.dp
+    val titleFontSize = layout?.sectionTitleFontSize ?: 13.5.sp
+    val subtitleFontSize = layout?.subtitleFontSize ?: 11.sp
+    val spacing = layout?.cardSpacing ?: 12.dp
+
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(spacing)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(iconBoxSize)
                     .clip(RoundedCornerShape(10.dp))
                     .background(accentColor.copy(alpha = 0.12f))
                     .border(1.dp, accentColor.copy(alpha = 0.35f), RoundedCornerShape(10.dp)),
@@ -55,24 +63,29 @@ fun ConnectionSection(
                     imageVector = icon,
                     contentDescription = null,
                     tint = accentColor,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(iconSize)
                 )
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title.uppercase(),
-                    style = MaterialTheme.typography.titleMedium.copy(
+                    style = MaterialTheme.typography.titleSmall.copy(
                         fontWeight = FontWeight.Black,
-                        letterSpacing = 1.1.sp
+                        fontSize = titleFontSize,
+                        letterSpacing = 0.5.sp
                     ),
-                    color = Color.White
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall.copy(
-                        fontSize = 11.5.sp
+                        fontSize = subtitleFontSize
                     ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
             }
         }

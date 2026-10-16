@@ -36,6 +36,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.ui.text.style.TextOverflow
+import com.sanket.tools.nexpad.ui.components.common.NxOutlinedButton
+import com.sanket.tools.nexpad.ui.layout.AdaptiveLayoutSpec
+
 /**
  * Status overview card displaying the real-time state of physical hardware links (USB cable, AOA accessory, ADB server).
  */
@@ -46,8 +52,20 @@ fun ConnectionHubStatusCard(
     isAdbAvailable: Boolean,
     onRescan: () -> Unit,
     onOpenBluetoothSettings: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    layout: AdaptiveLayoutSpec? = null
 ) {
+    val isShort = layout?.isShortScreen == true
+    val cardPadding = layout?.cardPadding ?: if (isShort) 12.dp else 16.dp
+    val spacing = layout?.cardSpacing ?: if (isShort) 10.dp else 14.dp
+    val iconBoxSize = layout?.iconBoxSize ?: 36.dp
+    val iconSize = layout?.iconSize ?: 18.dp
+    val titleFontSize = layout?.cardTitleFontSize ?: 13.5.sp
+    val subtitleFontSize = layout?.subtitleFontSize ?: 11.sp
+    val badgeFontSize = layout?.badgeFontSize ?: 10.5.sp
+    val buttonHeight = layout?.buttonHeight ?: 40.dp
+    val buttonFontSize = layout?.buttonFontSize ?: 12.sp
+
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
@@ -64,8 +82,8 @@ fun ConnectionHubStatusCard(
         )
     ) {
         Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            modifier = Modifier.padding(cardPadding),
+            verticalArrangement = Arrangement.spacedBy(spacing)
         ) {
             // Header
             Row(
@@ -74,12 +92,13 @@ fun ConnectionHubStatusCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
+                    modifier = Modifier.weight(1f, fill = false),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(38.dp)
+                            .size(iconBoxSize)
                             .clip(RoundedCornerShape(10.dp))
                             .background(NeonPalette.Cyan.copy(alpha = 0.12f))
                             .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.35f), RoundedCornerShape(10.dp)),
@@ -89,39 +108,53 @@ fun ConnectionHubStatusCard(
                             imageVector = Icons.Rounded.Hub,
                             contentDescription = null,
                             tint = NeonPalette.Cyan,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(iconSize)
                         )
                     }
-                    Column {
+                    Column(modifier = Modifier.weight(1f, fill = false)) {
                         Text(
                             text = "LINK HARDWARE STATUS",
                             style = MaterialTheme.typography.labelLarge.copy(
                                 color = Color.White,
                                 fontWeight = FontWeight.Black,
-                                letterSpacing = 1.2.sp
-                            )
+                                fontSize = titleFontSize,
+                                letterSpacing = 0.5.sp
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = "Real-time transport detection",
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 11.5.sp
-                            )
+                                fontSize = subtitleFontSize
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
 
+                Spacer(Modifier.width(8.dp))
+
+                val isAnyActive = isUsbCableConnected || isAoaAttached || isAdbAvailable
+                val statusText = if (isAnyActive) "ACTIVE" else "STANDBY"
+                val statusColor = if (isAnyActive) NeonPalette.Green else NeonPalette.Amber
+
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = NeonPalette.Amber.copy(alpha = 0.12f),
-                    border = BorderStroke(1.dp, NeonPalette.Amber.copy(alpha = 0.4f))
+                    color = statusColor.copy(alpha = 0.12f),
+                    border = BorderStroke(1.dp, statusColor.copy(alpha = 0.45f))
                 ) {
                     Text(
-                        text = "STANDBY",
-                        color = NeonPalette.Amber,
+                        text = statusText,
+                        color = statusColor,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 10.5.sp,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        fontSize = badgeFontSize,
+                        letterSpacing = 0.5.sp,
+                        maxLines = 1,
+                        softWrap = false,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.5.dp)
                     )
                 }
             }
@@ -168,35 +201,45 @@ fun ConnectionHubStatusCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                OutlinedButton(
+                NxOutlinedButton(
                     onClick = onRescan,
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = NeonPalette.Cyan,
                         containerColor = NeonPalette.Cyan.copy(alpha = 0.06f)
                     ),
-                    border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f)),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Rescan", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
-                }
-
-                OutlinedButton(
+                    borderColors = NeonPalette.Cyan.copy(alpha = 0.5f),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                    modifier = Modifier.weight(1f).height(buttonHeight),
+                    imageVector = Icons.Rounded.Refresh,
+                    iconModifier = Modifier.size(iconSize),
+                    space = 6.dp,
+                    text = "Rescan",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = buttonFontSize,
+                        ),
+                )
+                NxOutlinedButton(
                     onClick = onOpenBluetoothSettings,
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = Color.White,
                         containerColor = Color.White.copy(alpha = 0.04f)
                     ),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(Icons.Rounded.Bluetooth, contentDescription = null, tint = NeonPalette.Purple, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("BT Pair", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
-                }
+                    borderColors =  Color.White.copy(alpha = 0.25f),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                    modifier = Modifier.weight(1f).height(buttonHeight),
+                    imageVector = Icons.Rounded.Refresh,
+                    iconModifier = Modifier.size(iconSize),
+                    space = 6.dp,
+                    text = "BT Pair",
+                    tint = NeonPalette.Purple,
+                    style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = buttonFontSize
+                        ),
+                )
+
+
             }
         }
     }

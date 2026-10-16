@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.network.DiscoveredServer
 import com.sanket.tools.nexpad.ui.components.badge.StatusBadgePill
+import com.sanket.tools.nexpad.ui.layout.AdaptiveLayoutSpec
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 @Composable
@@ -40,9 +41,18 @@ fun ServerEntryCard(
     server: DiscoveredServer,
     isTethering: Boolean,
     onConnect: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    layout: AdaptiveLayoutSpec? = null
 ) {
     val accentColor = if (isTethering) NeonPalette.Green else NeonPalette.Cyan
+    val cardPadding = layout?.cardPadding ?: 16.dp
+    val spacing = layout?.cardSpacing ?: 14.dp
+    val iconBoxSize = layout?.iconBoxSize ?: 42.dp
+    val iconSize = layout?.iconSize ?: 22.dp
+    val titleFontSize = layout?.cardTitleFontSize ?: 16.sp
+    val subtitleFontSize = layout?.subtitleFontSize ?: 11.5.sp
+    val buttonHeight = layout?.buttonHeight ?: 44.dp
+    val buttonFontSize = layout?.buttonFontSize ?: 12.sp
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -62,8 +72,8 @@ fun ServerEntryCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .padding(cardPadding),
+            verticalArrangement = Arrangement.spacedBy(spacing)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -77,7 +87,7 @@ fun ServerEntryCard(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(42.dp)
+                            .size(iconBoxSize)
                             .clip(RoundedCornerShape(12.dp))
                             .background(accentColor.copy(alpha = 0.12f))
                             .border(1.dp, accentColor.copy(alpha = 0.4f), RoundedCornerShape(12.dp)),
@@ -87,13 +97,16 @@ fun ServerEntryCard(
                             imageVector = if (isTethering) Icons.Rounded.Link else Icons.Rounded.Computer,
                             contentDescription = null,
                             tint = accentColor,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(iconSize)
                         )
                     }
-                    Column {
+                    Column(modifier = Modifier.weight(1f, fill = false)) {
                         Text(
                             text = server.name,
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = titleFontSize
+                            ),
                             color = Color.White,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -101,9 +114,11 @@ fun ServerEntryCard(
                         Text(
                             text = "${server.ipAddress}:${server.port}",
                             style = MaterialTheme.typography.bodySmall.copy(
-                                fontSize = 11.5.sp,
+                                fontSize = subtitleFontSize,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -117,7 +132,7 @@ fun ServerEntryCard(
                 onClick = onConnect,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(44.dp),
+                    .height(buttonHeight),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = accentColor.copy(alpha = 0.08f),
@@ -129,7 +144,7 @@ fun ServerEntryCard(
                     text = if (isTethering) "CONNECT (USB TETHERING)" else "CONNECT (WI-FI)",
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.8.sp,
-                    fontSize = 12.sp
+                    fontSize = buttonFontSize
                 )
             }
         }

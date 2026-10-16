@@ -166,6 +166,17 @@ fun HomeScreenContent(
 ) {
     val scrollState = rememberScrollState()
 
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val windowLayout = remember(configuration.screenWidthDp, configuration.screenHeightDp) {
+        adaptiveLayoutSpec(configuration.screenWidthDp.dp, configuration.screenHeightDp.dp)
+    }
+    val topTitleSize = when (windowLayout.deviceType) {
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.Tablet -> 44.sp
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.Foldable -> 38.sp
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.MidPhone -> 34.sp
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.SmallPhone -> 28.sp
+    }
+
     Scaffold(
         modifier = modifier,
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -173,7 +184,7 @@ fun HomeScreenContent(
             TopAppBar(
                 title = {
                     NexpadTitle(
-                        fontSize = 36.sp,
+                        fontSize = topTitleSize,
                         letterSpacing = 0.8.sp
                     )
                 },
@@ -218,9 +229,14 @@ fun HomeScreenContent(
                             .fillMaxHeight(),
                         verticalArrangement = Arrangement.spacedBy(layout.contentSpacing)
                     ) {
-                        HeaderRow(isConnected = isConnected, connectionStatus = connectionStatus)
+                        HeaderRow(
+                            isConnected = isConnected,
+                            connectionStatus = connectionStatus,
+                            layout = layout
+                        )
 
                         VShapedPanel(
+                            layout = layout,
                             profiles = profiles,
                             activeProfileName = activeProfileName,
                             onProfileSelected = onProfileSelected,
@@ -243,7 +259,9 @@ fun HomeScreenContent(
                         item(key = "title_online_device") {
                             Text(
                                 text = "Online Device",
-                                style = MaterialTheme.typography.titleLarge,
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontSize = layout.sectionTitleFontSize
+                                ),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         }
@@ -260,14 +278,17 @@ fun HomeScreenContent(
                                 onConnectAoa = onConnectAoa,
                                 onConnectAdb = onConnectAdb,
                                 onDisconnectClick = onDisconnectClick,
-                                onOpenConnectionHub = onOpenConnectionHub
+                                onOpenConnectionHub = onOpenConnectionHub,
+                                layout = layout
                             )
                         }
 
                         item(key = "title_command_center") {
                             Text(
                                 text = "Command Center",
-                                style = MaterialTheme.typography.titleLarge,
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontSize = layout.sectionTitleFontSize
+                                ),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         }
@@ -277,7 +298,8 @@ fun HomeScreenContent(
                                 onNavigateVirtualController = onNavigateVirtualController,
                                 onNavigateConnections = onNavigateConnections,
                                 onNavigateButtonStudio = onNavigateButtonStudio,
-                                onNavigateSettings = onNavigateSettings
+                                onNavigateSettings = onNavigateSettings,
+                                layout = layout
                             )
                         }
                     }
@@ -293,9 +315,14 @@ fun HomeScreenContent(
                         .padding(horizontal = layout.horizontalPadding, vertical = layout.verticalPadding),
                     verticalArrangement = Arrangement.spacedBy(layout.contentSpacing)
                 ) {
-                    HeaderRow(isConnected = isConnected, connectionStatus = connectionStatus)
+                    HeaderRow(
+                        isConnected = isConnected,
+                        connectionStatus = connectionStatus,
+                        layout = layout
+                    )
 
                     VShapedPanel(
+                        layout = layout,
                         profiles = profiles,
                         activeProfileName = activeProfileName,
                         onProfileSelected = onProfileSelected,
@@ -304,7 +331,9 @@ fun HomeScreenContent(
 
                     Text(
                         text = "Online Device",
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontSize = layout.sectionTitleFontSize
+                        ),
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
@@ -319,12 +348,15 @@ fun HomeScreenContent(
                         onConnectAoa = onConnectAoa,
                         onConnectAdb = onConnectAdb,
                         onDisconnectClick = onDisconnectClick,
-                        onOpenConnectionHub = onOpenConnectionHub
+                        onOpenConnectionHub = onOpenConnectionHub,
+                        layout = layout
                     )
 
                     Text(
                         text = "Command Center",
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontSize = layout.sectionTitleFontSize
+                        ),
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
@@ -332,7 +364,8 @@ fun HomeScreenContent(
                         onNavigateVirtualController = onNavigateVirtualController,
                         onNavigateConnections = onNavigateConnections,
                         onNavigateButtonStudio = onNavigateButtonStudio,
-                        onNavigateSettings = onNavigateSettings
+                        onNavigateSettings = onNavigateSettings,
+                        layout = layout
                     )
                 }
             }
@@ -346,14 +379,38 @@ fun CommandCenterButtons(
     onNavigateConnections: () -> Unit = {},
     onNavigateButtonStudio: () -> Unit = {},
     onNavigateSettings: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    layout: com.sanket.tools.nexpad.ui.layout.AdaptiveLayoutSpec? = null
 ) {
+    val btnHeight = when (layout?.deviceType) {
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.Tablet -> 144.dp
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.Foldable -> 126.dp
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.MidPhone -> 112.dp
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.SmallPhone -> 98.dp
+        null -> 112.dp
+    }
+    val btnIconSize = when (layout?.deviceType) {
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.Tablet -> 40.dp
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.Foldable -> 35.dp
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.MidPhone -> 32.dp
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.SmallPhone -> 28.dp
+        null -> 32.dp
+    }
+    val btnFontSize = when (layout?.deviceType) {
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.Tablet -> 15.5.sp
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.Foldable -> 14.sp
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.MidPhone -> 13.sp
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.SmallPhone -> 11.5.sp
+        null -> 12.5.sp
+    }
+    val spacing = layout?.cardSpacing ?: 16.dp
+
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(spacing)
     ) {
         Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(spacing),
             modifier = Modifier.fillMaxWidth()
         ) {
             CommandButton(
@@ -361,18 +418,24 @@ fun CommandCenterButtons(
                 icon = Icons.Rounded.SportsEsports,
                 iconColor = MaterialTheme.colorScheme.primary,
                 onClick = onNavigateVirtualController,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                height = btnHeight,
+                iconSize = btnIconSize,
+                labelFontSize = btnFontSize
             )
             CommandButton(
                 label = "Connections",
                 icon = Icons.Rounded.Hub,
                 iconColor = NeonPalette.Cyan,
                 onClick = onNavigateConnections,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                height = btnHeight,
+                iconSize = btnIconSize,
+                labelFontSize = btnFontSize
             )
         }
         Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(spacing),
             modifier = Modifier.fillMaxWidth()
         ) {
             CommandButton(
@@ -380,14 +443,20 @@ fun CommandCenterButtons(
                 icon = Icons.Rounded.Palette,
                 iconColor = NeonPalette.Purple,
                 onClick = onNavigateButtonStudio,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                height = btnHeight,
+                iconSize = btnIconSize,
+                labelFontSize = btnFontSize
             )
             CommandButton(
                 label = "Settings",
                 icon = Icons.Rounded.Settings,
                 iconColor = MaterialTheme.colorScheme.primaryContainer,
                 onClick = onNavigateSettings,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                height = btnHeight,
+                iconSize = btnIconSize,
+                labelFontSize = btnFontSize
             )
         }
     }
@@ -397,8 +466,13 @@ fun CommandCenterButtons(
 fun HeaderRow(
     isConnected: Boolean,
     connectionStatus: String? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    layout: com.sanket.tools.nexpad.ui.layout.AdaptiveLayoutSpec? = null
 ) {
+    val titleFontSize = layout?.titleFontSize ?: 24.sp
+    val subtitleFontSize = layout?.subtitleFontSize ?: 11.5.sp
+    val badgeFontSize = layout?.badgeFontSize ?: 11.sp
+
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -407,7 +481,9 @@ fun HeaderRow(
         Column {
             Text(
                 text = "Ready to Play",
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontSize = titleFontSize
+                ),
                 color = MaterialTheme.colorScheme.onBackground
             )
             if (!isConnected && connectionStatus != null) {
@@ -415,7 +491,9 @@ fun HeaderRow(
                 if (lower.contains("failed") || lower.contains("timeout") || lower.contains("error")) {
                     Text(
                         text = connectionStatus,
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = subtitleFontSize
+                        ),
                         color = NeonPalette.ErrorRed
                     )
                 }
@@ -423,7 +501,8 @@ fun HeaderRow(
         }
 
         HeaderStatusPill(
-            isConnected = isConnected
+            isConnected = isConnected,
+            fontSize = badgeFontSize
         )
     }
 }
