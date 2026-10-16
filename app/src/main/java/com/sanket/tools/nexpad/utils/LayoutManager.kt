@@ -12,13 +12,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import androidx.core.content.edit
 
 class LayoutManager(context: Context) {
     private val appContext = context.applicationContext
     private val prefs = appContext.getSharedPreferences("NEXPAD_LAYOUTS_V3", Context.MODE_PRIVATE)
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true; allowSpecialFloatingPointValues = true }
 
-    private val LAYOUT_MIGRATION_VERSION = 3
+    private val LAYOUT_MIGRATION_VERSION = 0
 
     private val _profilesFlow = MutableStateFlow<List<LayoutProfile>>(emptyList())
     val profilesFlow: StateFlow<List<LayoutProfile>> = _profilesFlow.asStateFlow()
@@ -31,8 +32,9 @@ class LayoutManager(context: Context) {
     val activeProfileNameFlow: StateFlow<String> = _activeProfileNameFlow.asStateFlow()
 
     init {
-        // Migration & Cache Cleanup:
-        // Purge cached default layouts if they contain obsolete paddles (M1-M4) or missing GYRO
+        // Schema Migration & Cache Cleanup:
+        // Version 0 represents initial release baseline. When layout schema changes in future updates,
+        // increment LAYOUT_MIGRATION_VERSION (1, 2, ...) to trigger update migrations.
         val defaults = getDefaultLayoutProfiles()
         val defaultNames = defaults.map { it.name.trim().lowercase() }.toSet()
         val editor = prefs.edit()
@@ -40,19 +42,7 @@ class LayoutManager(context: Context) {
 
         val savedVersion = prefs.getInt("layout_migration_version", 0)
         if (savedVersion < LAYOUT_MIGRATION_VERSION) {
-            // 1. Purge obsolete default profiles saved in prefs
-            defaults.forEach { defaultProfile ->
-                val savedJson = prefs.getString("profile_${defaultProfile.name}", null)
-                if (savedJson != null) {
-                    if ((defaultProfile.name == "Standard Elite" && !savedJson.contains("\"GYRO\"")) ||
-                        savedJson.contains("\"M1\"") || savedJson.contains("\"M2\"") ||
-                        savedJson.contains("\"M3\"") || savedJson.contains("\"M4\"")
-                    ) {
-                        editor.remove("profile_${defaultProfile.name}")
-                        needsCommit = true
-                    }
-                }
-            }
+            // Reserved for future release schema migrations (v1.1+)
             editor.putInt("layout_migration_version", LAYOUT_MIGRATION_VERSION)
             needsCommit = true
         }
@@ -423,7 +413,7 @@ class LayoutManager(context: Context) {
     /** Set the active layout profile. */
     fun setActiveProfile(name: String) {
         val effectiveName = if (name.trim().equals("Standard", ignoreCase = true)) "Standard Elite" else name.trim()
-        prefs.edit().putString("active_profile", effectiveName).apply()
+        prefs.edit { putString("active_profile", effectiveName) }
         _activeProfileNameFlow.value = effectiveName
         refreshProfilesFlow()
     }
@@ -444,9 +434,9 @@ class LayoutManager(context: Context) {
     fun updateTouchpadSensitivity(key: String, sens: Float) {
         val sp = appContext.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
         val upperKey = key.uppercase()
-        sp.edit()
-            .putFloat("TOUCHPAD_SENSITIVITY_$upperKey", sens)
-            .putFloat("TOUCHPAD_SENSITIVITY", sens)
-            .apply()
+        sp.edit {
+            putFloat("TOUCHPAD_SENSITIVITY_$upperKey", sens)
+                .putFloat("TOUCHPAD_SENSITIVITY", sens)
+        }
     }
 }
