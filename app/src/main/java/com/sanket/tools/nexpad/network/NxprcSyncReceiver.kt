@@ -170,7 +170,7 @@ object NxprcSyncReceiver {
 
             // 10. Broadcast component reload to any active Activities/Screens
             try {
-                val reloadIntent = android.content.Intent("com.sanket.tools.nexpad.RELOAD_COMPONENTS").apply {
+                val reloadIntent = android.content.Intent(com.sanket.tools.nexpad.runtime.registry.ComponentReloadReceiver.ACTION_RELOAD_COMPONENTS).apply {
                     setPackage(context.packageName)
                 }
                 context.sendBroadcast(reloadIntent)

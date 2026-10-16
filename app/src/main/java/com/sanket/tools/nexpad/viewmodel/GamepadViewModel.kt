@@ -54,6 +54,7 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
         inputState = inputState
     )
     val requestedSensorMode: Byte get() = sensorController.requestedSensorMode
+    val requestedSensorModeFlow: StateFlow<Byte> get() = sensorController.requestedSensorModeFlow
 
     private val sharedPreferences = application.getSharedPreferences("nexpad_prefs", android.content.Context.MODE_PRIVATE)
     private val _emulationMode = MutableStateFlow(sharedPreferences.getString("emulation_mode", "generic") ?: "generic")
@@ -337,9 +338,7 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     fun onGamepadScreenActive(active: Boolean) {
         _isGamepadScreenActive.value = active
         if (!active) {
-            update6AxisGyro(0f, 0f, 0f)
-            updateAccel(0f, 0f, 0f)
-            updateGravity(0f, 0f, 0f)
+            sensorController.resetAllSensors()
         }
     }
 
@@ -347,10 +346,11 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
         val newState = !_isGyroEnabled.value
         _isGyroEnabled.value = newState
         if (!newState) {
-            update6AxisGyro(0f, 0f, 0f)
-            inputState.rawGyroX = 0f
-            inputState.rawGyroY = 0f
-            inputState.rawGyroZ = 0f
+            sensorController.isMotionMuted = true
+            sensorController.resetAllSensors()
+            networkManager.sendImmediate()
+        } else {
+            sensorController.isMotionMuted = false
         }
         return newState
     }
@@ -358,10 +358,11 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     fun setGyroEnabled(enabled: Boolean) {
         _isGyroEnabled.value = enabled
         if (!enabled) {
-            update6AxisGyro(0f, 0f, 0f)
-            inputState.rawGyroX = 0f
-            inputState.rawGyroY = 0f
-            inputState.rawGyroZ = 0f
+            sensorController.isMotionMuted = true
+            sensorController.resetAllSensors()
+            networkManager.sendImmediate()
+        } else {
+            sensorController.isMotionMuted = false
         }
     }
     

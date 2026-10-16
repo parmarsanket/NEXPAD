@@ -77,6 +77,10 @@ class MotionSensorManager(
     // Single synchronized packet
     private val motion = MotionPacket()
 
+    private val registeredSensors = mutableSetOf<Sensor>()
+    private var isRunning = false
+    private var currentMode: Byte = com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_IMU_6AXIS
+
     @Volatile
     var isGyroMuted: Boolean = false
         set(value) {
@@ -88,6 +92,27 @@ class MotionSensorManager(
                 motion.rawGyroX = 0f
                 motion.rawGyroY = 0f
                 motion.rawGyroZ = 0f
+                motion.accelX = 0f
+                motion.accelY = 0f
+                motion.accelZ = 0f
+                motion.gravityX = 0f
+                motion.gravityY = 0f
+                motion.gravityZ = 0f
+                motion.linearAccelX = 0f
+                motion.linearAccelY = 0f
+                motion.linearAccelZ = 0f
+                motion.qX = 0f
+                motion.qY = 0f
+                motion.qZ = 0f
+                motion.qW = 1f
+                motion.biasX = 0f
+                motion.biasY = 0f
+                motion.biasZ = 0f
+            }
+            synchronized(this) {
+                if (isRunning) {
+                    updateActiveSensors()
+                }
             }
         }
     
@@ -114,44 +139,93 @@ class MotionSensorManager(
 
     private var lastSentTimestamp = 0L
 
-    fun start() {
-        if (sensorThread == null) {
-            sensorThread = android.os.HandlerThread("NexpadSensorThread", android.os.Process.THREAD_PRIORITY_URGENT_DISPLAY)
-            sensorThread?.start()
-            sensorHandler = android.os.Handler(sensorThread!!.looper)
-        }
-        
-        listOf(
-            gravitySensor,
-            accelSensor,
-            gyroSensor,
-            uncalibratedGyroSensor,
-            linearAccelSensor,
-            gameRotationSensor
-        ).forEach { sensor ->
-            sensor?.let { 
-                sensorManager.registerListener(this, it, SENSOR_DELAY_MICROS, sensorHandler) 
-                
-                // Hardware Ceiling Diagnostic
-                if (it.type == android.hardware.Sensor.TYPE_GYROSCOPE || it.type == android.hardware.Sensor.TYPE_GYROSCOPE_UNCALIBRATED) {
-                    val maxHz = if (it.minDelay > 0) 1_000_000 / it.minDelay else "Unknown"
-                    android.util.Log.d("NEXPAD", "📡 HARDWARE CEILING: ${it.name} supports Max $maxHz Hz (minDelay: ${it.minDelay}µs)")
+    fun setMode(mode: Byte) {
+        synchronized(this) {
+            if (currentMode != mode) {
+                currentMode = mode
+                if (isRunning) {
+                    updateActiveSensors()
                 }
             }
         }
     }
 
+    fun start() {
+        synchronized(this) {
+            isRunning = true
+            if (sensorThread == null) {
+                sensorThread = android.os.HandlerThread("NexpadSensorThread", android.os.Process.THREAD_PRIORITY_URGENT_DISPLAY)
+                sensorThread?.start()
+                sensorHandler = android.os.Handler(sensorThread!!.looper)
+            }
+            updateActiveSensors()
+        }
+    }
+
     fun stop() {
-        sensorManager.unregisterListener(this)
-        sensorThread?.quitSafely()
-        sensorThread = null
-        sensorHandler = null
+        synchronized(this) {
+            isRunning = false
+            sensorManager.unregisterListener(this)
+            registeredSensors.clear()
+            sensorThread?.quitSafely()
+            sensorThread = null
+            sensorHandler = null
+        }
+    }
+
+    @Synchronized
+    private fun updateActiveSensors() {
+        if (!isRunning || isGyroMuted) {
+            if (registeredSensors.isNotEmpty()) {
+                sensorManager.unregisterListener(this)
+                registeredSensors.clear()
+            }
+            return
+        }
+
+        val handler = sensorHandler ?: return
+
+        val targetSensors = when (currentMode) {
+            com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_GRAVITY -> {
+                listOfNotNull(gravitySensor ?: accelSensor)
+            }
+            com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_GAME_ROTATION -> {
+                if (gameRotationSensor != null) listOf(gameRotationSensor)
+                else listOfNotNull(gyroSensor, accelSensor)
+            }
+            com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_LINEAR_GESTURE -> {
+                listOfNotNull(linearAccelSensor, gravitySensor ?: accelSensor)
+            }
+            com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_RAW_UNCALIBRATED -> {
+                listOfNotNull(uncalibratedGyroSensor ?: gyroSensor)
+            }
+            else -> { // SENSOR_MODE_IMU_6AXIS (0x00)
+                listOfNotNull(gyroSensor, accelSensor)
+            }
+        }.toSet()
+
+        if (registeredSensors == targetSensors) return
+
+        // Unregister sensors that are no longer needed
+        val toRemove = registeredSensors - targetSensors
+        for (s in toRemove) {
+            sensorManager.unregisterListener(this, s)
+        }
+
+        // Register newly needed sensors
+        val toAdd = targetSensors - registeredSensors
+        for (s in toAdd) {
+            sensorManager.registerListener(this, s, SENSOR_DELAY_MICROS, handler)
+        }
+
+        registeredSensors.clear()
+        registeredSensors.addAll(targetSensors)
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
         event ?: return
 
-        if ((event.sensor.type == Sensor.TYPE_GYROSCOPE || event.sensor.type == Sensor.TYPE_GYROSCOPE_UNCALIBRATED) && isGyroMuted) {
+        if (isGyroMuted) {
             return
         }
 
