@@ -1,6 +1,7 @@
 package com.sanket.tools.nexpad.ui
 
 import androidx.navigation3.runtime.NavKey
+import com.sanket.tools.nexpad.ui.studio.model.ButtonStudioMode
 import kotlinx.serialization.Serializable
 
 /**
@@ -57,7 +58,7 @@ sealed interface Route : NavKey {
     /**
      * Button Studio destination.
      *
-     * @param mode           "manage" (asset library) or "select" (contextual picker).
+     * @param mode           Operating mode (VIEWER, EDITOR, or BUTTON_EDITOR).
      * @param profileName    Layout currently being edited. Empty string = none.
      * @param controlKey     Optional: the specific CategoryManager control key that needs
      *                       a new appearance (e.g. "RT"). Null = manage mode.
@@ -66,7 +67,7 @@ sealed interface Route : NavKey {
      */
     @Serializable
     data class ButtonStudio(
-        val mode: String = "viewer",
+        val mode: ButtonStudioMode = ButtonStudioMode.VIEWER,
         val profileName: String = "",
         val controlKey: String? = null,
         val currentAssetId: String? = null

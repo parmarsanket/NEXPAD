@@ -1,5 +1,7 @@
 package com.sanket.tools.nexpad.ui
 
+import com.sanket.tools.nexpad.ui.studio.model.ButtonStudioMode
+
 import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -132,7 +134,7 @@ fun HomeScreen(
         onOpenConnectionHub = { navController.navigate(Route.Connections) },
         onNavigateVirtualController = { navController.navigate(Route.VirtualController) },
         onNavigateConnections = { navController.navigate(Route.Connections) },
-        onNavigateButtonStudio = { navController.navigate(Route.ButtonStudio(mode = "viewer")) },
+        onNavigateButtonStudio = { navController.navigate(Route.ButtonStudio(mode = ButtonStudioMode.VIEWER)) },
         onNavigateSettings = { navController.navigate(Route.Settings) }
     )
 }

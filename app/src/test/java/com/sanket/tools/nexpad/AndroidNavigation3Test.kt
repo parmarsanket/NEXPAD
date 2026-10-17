@@ -6,6 +6,7 @@ import com.sanket.tools.nexpad.ui.Nav3AppNavigator
 import com.sanket.tools.nexpad.ui.NavigationViewModel
 import com.sanket.tools.nexpad.ui.Route
 import com.sanket.tools.nexpad.ui.ScreenKey
+import com.sanket.tools.nexpad.ui.studio.model.ButtonStudioMode
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -29,10 +30,10 @@ class AndroidNavigation3Test {
         assertEquals(2, navigator.backStack.size)
         assertEquals(Route.Settings, navigator.backStack.last())
 
-        navigator.navigate(Route.ButtonStudio("manage", "Default"))
+        navigator.navigate(Route.ButtonStudio(mode = ButtonStudioMode.VIEWER, profileName = "Default"))
         assertEquals(3, navigator.backStack.size)
         val studioKey = navigator.backStack.last() as Route.ButtonStudio
-        assertEquals("manage", studioKey.mode)
+        assertEquals(ButtonStudioMode.VIEWER, studioKey.mode)
         assertEquals("Default", studioKey.profileName)
     }
 
@@ -74,9 +75,9 @@ class AndroidNavigation3Test {
         val backStack = mutableStateListOf<NavKey>(Route.Home)
         val navigator = Nav3AppNavigator(backStack)
 
-        navigator.navigate(Route.ButtonStudio(mode = "select", profileName = "Arcade_Fighter"))
+        navigator.navigate(Route.ButtonStudio(mode = ButtonStudioMode.EDITOR, profileName = "Arcade_Fighter"))
         val studioKey = navigator.backStack.last() as Route.ButtonStudio
-        assertEquals("select", studioKey.mode)
+        assertEquals(ButtonStudioMode.EDITOR, studioKey.mode)
         assertEquals("Arcade_Fighter", studioKey.profileName)
     }
 
@@ -106,7 +107,7 @@ class AndroidNavigation3Test {
 
         navigator.navigate(
             Route.ButtonStudio(
-                mode = "button_editor",
+                mode = ButtonStudioMode.BUTTON_EDITOR,
                 profileName = "Default",
                 controlKey = "B",
                 currentAssetId = "builtin.liq_b"
@@ -114,18 +115,9 @@ class AndroidNavigation3Test {
         )
         assertEquals(2, navigator.backStack.size)
         val studioKey = navigator.backStack.last() as Route.ButtonStudio
-        assertEquals("button_editor", studioKey.mode)
+        assertEquals(ButtonStudioMode.BUTTON_EDITOR, studioKey.mode)
         assertEquals("B", studioKey.controlKey)
         assertEquals("builtin.liq_b", studioKey.currentAssetId)
-
-        // Verify routing logic resolves to BUTTON_EDITOR
-        val resolvedMode = when {
-            studioKey.mode.equals("button_editor", ignoreCase = true) -> com.sanket.tools.nexpad.ui.studio.model.ButtonStudioMode.BUTTON_EDITOR
-            studioKey.mode.equals("editor", ignoreCase = true) || studioKey.mode.equals("select", ignoreCase = true) -> com.sanket.tools.nexpad.ui.studio.model.ButtonStudioMode.EDITOR
-            studioKey.profileName.isNotBlank() -> com.sanket.tools.nexpad.ui.studio.model.ButtonStudioMode.EDITOR
-            else -> com.sanket.tools.nexpad.ui.studio.model.ButtonStudioMode.VIEWER
-        }
-        assertEquals(com.sanket.tools.nexpad.ui.studio.model.ButtonStudioMode.BUTTON_EDITOR, resolvedMode)
     }
 
     @Test

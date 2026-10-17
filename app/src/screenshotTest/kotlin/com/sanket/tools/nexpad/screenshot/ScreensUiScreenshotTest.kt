@@ -16,6 +16,7 @@ import com.sanket.tools.nexpad.model.getDefaultLayoutProfiles
 import com.sanket.tools.nexpad.ui.components.home.DeviceCardState
 import com.sanket.tools.nexpad.ui.components.home.DeviceHeroCard
 import com.sanket.tools.nexpad.ui.components.home.VShapedPanel
+import com.sanket.tools.nexpad.ui.layout.adaptiveLayoutSpec
 import com.sanket.tools.nexpad.ui.hud.HudTopBar
 import com.sanket.tools.nexpad.ui.virtualcontroller.LayoutProfileCard
 import com.sanket.tools.nexpad.viewmodel.ConnectionStats
@@ -128,6 +129,7 @@ class ScreensUiScreenshotTest {
     @Preview(showBackground = true, backgroundColor = 0xFF08090C, widthDp = 500, heightDp = 380)
     @Composable
     fun vShapedPanelPreview() {
+        val layout = adaptiveLayoutSpec(500.dp, 380.dp)
         Box(
             modifier = Modifier
                 .background(Color(0xFF08090C))
@@ -135,10 +137,11 @@ class ScreensUiScreenshotTest {
             contentAlignment = Alignment.Center
         ) {
             VShapedPanel(
+                layout = layout,
                 profiles = getDefaultLayoutProfiles(),
                 activeProfileName = "Standard Elite",
                 onProfileSelected = {},
-                onPlayClick = {}
+                onPlayClick = {},
             )
         }
     }

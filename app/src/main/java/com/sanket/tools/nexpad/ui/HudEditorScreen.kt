@@ -26,6 +26,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.sanket.tools.nexpad.ui.components.common.NexpadConfirmDialog
 import com.sanket.tools.nexpad.ui.hud.*
+import com.sanket.tools.nexpad.ui.studio.model.ButtonStudioMode
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -289,7 +290,7 @@ fun HudEditorScreen(
                     )
                     navController.navigate(
                         Route.ButtonStudio(
-                            mode = "button_editor",
+                            mode = ButtonStudioMode.BUTTON_EDITOR,
                             profileName = profile.name,
                             controlKey = selectedControl!!,
                             currentAssetId = element.skinId
@@ -365,7 +366,7 @@ fun HudEditorScreen(
                 onOpenStudio = {
                     showAddDialog = false
                     // Palette dialog → Viewer Mode (no context — user is browsing assets)
-                    navController.navigate(Route.ButtonStudio(mode = "viewer"))
+                    navController.navigate(Route.ButtonStudio(mode = ButtonStudioMode.VIEWER))
                 },
                 onDismiss = { showAddDialog = false }
             )

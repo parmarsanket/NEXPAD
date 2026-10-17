@@ -22,6 +22,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.Modifier
 import com.sanket.tools.nexpad.share.ShareManager
+import com.sanket.tools.nexpad.ui.studio.model.ButtonStudioMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
@@ -89,7 +90,7 @@ fun VirtualControllerScreen(
         profiles = profiles,
         activeProfileName = activeProfileName,
         onBack = { navController.popBackStack() },
-        onOpenButtonStudio = { navController.navigate(Route.ButtonStudio(mode = "viewer")) },
+        onOpenButtonStudio = { navController.navigate(Route.ButtonStudio(mode = ButtonStudioMode.VIEWER)) },
         onAddCustom = { showAddDialog = true },
         onImportLayout = { importLayoutLauncher.launch(arrayOf("*/*")) },
         onSetActive = { profile ->
@@ -109,7 +110,7 @@ fun VirtualControllerScreen(
             }
         },
         onOpenStudio = { profile ->
-            navController.navigate(Route.ButtonStudio(mode = "editor", profileName = profile.name))
+            navController.navigate(Route.ButtonStudio(mode = ButtonStudioMode.EDITOR, profileName = profile.name))
         },
         onDuplicate = { profile ->
             duplicateProfileName = profile.name
@@ -155,12 +156,12 @@ fun VirtualControllerScreen(
                 layoutManager.setActiveProfile(newProfile.name)
                 Toast.makeText(context, "Created layout '$name'", Toast.LENGTH_SHORT).show()
                 if (openStudioImmediately) {
-                    navController.navigate(Route.ButtonStudio(mode = "select", profileName = name))
+                    navController.navigate(Route.ButtonStudio(mode = ButtonStudioMode.EDITOR, profileName = name))
                 }
             },
             onDesignInStudio = { name ->
                 showAddDialog = false
-                navController.navigate(Route.ButtonStudio(mode = "select", profileName = name))
+                navController.navigate(Route.ButtonStudio(mode = ButtonStudioMode.EDITOR, profileName = name))
             }
         )
     }

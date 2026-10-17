@@ -36,11 +36,12 @@ import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.model.LayoutProfile
 import com.sanket.tools.nexpad.model.getDefaultLayoutProfiles
 import com.sanket.tools.nexpad.ui.layout.AdaptiveLayoutSpec
+import com.sanket.tools.nexpad.ui.layout.adaptiveLayoutSpec
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VShapedPanel(
-    layout: AdaptiveLayoutSpec,
+    layout: AdaptiveLayoutSpec = adaptiveLayoutSpec(500.dp, 380.dp),
     profiles: List<LayoutProfile> = emptyList(),
     activeProfileName: String = "",
     onProfileSelected: (LayoutProfile) -> Unit = {},

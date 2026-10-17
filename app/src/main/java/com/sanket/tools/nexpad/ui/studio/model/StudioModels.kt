@@ -4,12 +4,15 @@ import androidx.compose.ui.graphics.Color
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
 import com.sanket.tools.nexpad.runtime.registry.NativeComponentRegistry
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
+import kotlinx.serialization.Serializable
 
 /**
  * Operating mode for Button Studio:
  * - VIEWER: Universal Button Showcase & Library. Browse, test in sandbox, import new buttons. Not tied to any layout.
  * - EDITOR: Layout Customizer. Opened from Virtual Controller list or HUD Editor for a particular layout.
+ * - BUTTON_EDITOR: Single button contextual picker.
  */
+@Serializable
 enum class ButtonStudioMode(val label: String) {
     VIEWER("Viewer"),
     EDITOR("Editor"),
@@ -18,6 +21,16 @@ enum class ButtonStudioMode(val label: String) {
     companion object {
         val MANAGE get() = VIEWER
         val SELECTION get() = EDITOR
+        val SELECT get() = EDITOR
+
+        fun fromString(mode: String?): ButtonStudioMode {
+            return when (mode?.trim()?.lowercase()) {
+                "button_editor" -> BUTTON_EDITOR
+                "editor", "select", "selection" -> EDITOR
+                "viewer", "manage" -> VIEWER
+                else -> VIEWER
+            }
+        }
     }
 }
 
