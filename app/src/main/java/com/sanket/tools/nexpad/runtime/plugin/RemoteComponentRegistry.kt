@@ -84,8 +84,22 @@ class RemoteComponentRegistry private constructor(private val context: Context) 
      */
     fun importFromUri(context: Context, uri: Uri): Result<NxprcDocument> {
         return try {
-            val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                ?: return Result.failure(IllegalStateException("Could not read data from URI: $uri"))
+            val bytes = context.contentResolver.openInputStream(uri)?.use { stream ->
+                val buffer = java.io.ByteArrayOutputStream()
+                val chunk = ByteArray(8192)
+                var total = 0
+                val maxBytes = 10 * 1024 * 1024
+                while (true) {
+                    val read = stream.read(chunk)
+                    if (read == -1) break
+                    total += read
+                    if (total > maxBytes) {
+                        return Result.failure(IllegalStateException("File exceeds maximum allowed size (10 MB)"))
+                    }
+                    buffer.write(chunk, 0, read)
+                }
+                buffer.toByteArray()
+            } ?: return Result.failure(IllegalStateException("Could not read data from URI: $uri"))
 
             val decodeResult = NxprcDocument.decodeFromBytes(bytes)
             val doc = decodeResult.getOrThrow()

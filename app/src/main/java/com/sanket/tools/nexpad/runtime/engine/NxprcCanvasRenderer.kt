@@ -519,8 +519,11 @@ fun NxprcCanvasRenderer(
         }
     }
 
-    val isTrigger = assignedControl is NexPadControl.Trigger
-    val trigger = assignedControl as? NexPadControl.Trigger
+    val isTrigger = assignedControl is NexPadControl.Trigger ||
+            document.manifest.category.equals("TRIGGER", ignoreCase = true) ||
+            document.manifest.defaultControl.uppercase() in listOf(NexpadKeys.LT, NexpadKeys.RT)
+    val trigger = (assignedControl as? NexPadControl.Trigger)
+        ?: if (isTrigger) NexPadControl.Trigger(document.manifest.defaultControl.ifBlank { NexpadKeys.LT }.uppercase()) else null
     val pullProgress = remember { androidx.compose.animation.core.Animatable(0f) }
 
     val isButtonActive by remember(isInteractive, isStick, isTrigger) {
@@ -939,19 +942,22 @@ fun NxprcCanvasRenderer(
         isTrigger && trigger != null -> {
             Modifier.pointerInput(document.manifest.id, assignedControl) {
                 awaitEachGesture {
-                    awaitFirstDown(requireUnconsumed = false)
-                    isPressed = true
-                    coroutineScope.launch {
-                        pullProgress.animateTo(1f, spring(stiffness = 900f, dampingRatio = 0.7f))
-                    }
-                    currentInputTarget.onTriggerMove(trigger, 1f)
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val isInside = down.position.x in 0f..size.width.toFloat() && down.position.y in 0f..size.height.toFloat()
+                    if (isInside) {
+                        isPressed = true
+                        coroutineScope.launch {
+                            pullProgress.animateTo(1f, spring(stiffness = 900f, dampingRatio = 0.7f))
+                        }
+                        currentInputTarget.onTriggerMove(trigger, 1f)
 
-                    val upOrCancel = waitForUpOrCancellation()
-                    isPressed = false
-                    coroutineScope.launch {
-                        pullProgress.animateTo(0f, spring(stiffness = 700f, dampingRatio = 0.7f))
+                        val upOrCancel = waitForUpOrCancellation()
+                        isPressed = false
+                        coroutineScope.launch {
+                            pullProgress.animateTo(0f, spring(stiffness = 700f, dampingRatio = 0.7f))
+                        }
+                        currentInputTarget.onTriggerMove(trigger, 0f)
                     }
-                    currentInputTarget.onTriggerMove(trigger, 0f)
                 }
             }
         }
@@ -1269,8 +1275,8 @@ fun NxprcCanvasRenderer(
                     scaleY = if (isTwoStageStick) 1f else finalScale
                     rotationZ = currentTrackRot
                     alpha = currentTrackOpacity.coerceIn(0f, 1f)
-                    translationX = (if (isTwoStageStick || isTouchpad) 0f else thumbOffsetX) + rumbleShakeX + (currentTrackTransX * density)
-                    translationY = (if (isTwoStageStick || isTouchpad) 0f else thumbOffsetY) + (currentPressY * density) + (pullProgress.value * document.animations.triggerMaxPullDepth * density) + rumbleShakeY + (currentTrackTransY * density)
+                    translationX = (if (isStick && !isTwoStageStick && !isTouchpad) thumbOffsetX else 0f) + rumbleShakeX + (currentTrackTransX * density)
+                    translationY = (if (isStick && !isTwoStageStick && !isTouchpad) thumbOffsetY else 0f) + (currentPressY * density) + rumbleShakeY + (currentTrackTransY * density)
 
                     val activeHueAngle = if (hasDynamicTracks) {
                         hueTrack?.let { evaluateAnimationTrack(it, progress) } ?: 0f

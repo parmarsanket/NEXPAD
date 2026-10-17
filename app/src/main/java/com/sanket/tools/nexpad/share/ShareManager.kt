@@ -171,19 +171,37 @@ object ShareManager {
         }
     }
 
+    const val MAX_IMPORT_SIZE_BYTES = 10 * 1024 * 1024 // 10 MB
+
     /**
      * Imports a `.nxlayout` file from a Content Uri, saves it as a new profile in LayoutManager,
      * and sets it as the active layout.
      */
     fun importLayoutFromUri(context: Context, uri: Uri, layoutManager: LayoutManager): Result<LayoutProfile> {
         return try {
-            val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                ?: return Result.failure(IllegalStateException("Unable to read data from URI: $uri"))
+            val bytes = context.contentResolver.openInputStream(uri)?.use { stream ->
+                val buffer = java.io.ByteArrayOutputStream()
+                val chunk = ByteArray(8192)
+                var total = 0
+                while (true) {
+                    val read = stream.read(chunk)
+                    if (read == -1) break
+                    total += read
+                    if (total > MAX_IMPORT_SIZE_BYTES) {
+                        return Result.failure(IllegalStateException("File exceeds maximum allowed size (10 MB)"))
+                    }
+                    buffer.write(chunk, 0, read)
+                }
+                buffer.toByteArray()
+            } ?: return Result.failure(IllegalStateException("Unable to read data from URI: $uri"))
 
             val decoded = decodeLayout(bytes).getOrThrow()
 
-            // Resolve name collision against existing profiles adhering strictly to LayoutManager validation
-            var baseName = decoded.name.trim().ifBlank { DEFAULT_IMPORTED_LAYOUT_NAME }
+            val fileBaseName = getFileNameFromUri(context, uri)
+                ?.removeSuffix(EXTENSION_NXLAYOUT)
+                ?.removeSuffix(EXTENSION_NXLAYOUT.uppercase())
+                ?.trim()
+            var baseName = decoded.name.trim().ifBlank { fileBaseName?.ifBlank { null } ?: DEFAULT_IMPORTED_LAYOUT_NAME }
             if (baseName.length > LayoutManager.MAX_PROFILE_NAME_LENGTH - 6) {
                 baseName = baseName.take(LayoutManager.MAX_PROFILE_NAME_LENGTH - 6).trim()
             }
@@ -372,6 +390,34 @@ object ShareManager {
                     }
                     return@withContext
                 }
+            }
+
+            // Fallback: Check if file is a JSON-formatted layout without NXLY magic header
+            val layoutResult = importLayoutFromUri(context, uri, layoutManager)
+            if (layoutResult.isSuccess) {
+                val profile = layoutResult.getOrThrow()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(
+                        context,
+                        "🎮 Layout '${profile.name}' imported & activated!",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+                return@withContext
+            }
+
+            // Fallback: Check if file is an uncompressed/JSON Remote Compose button
+            val buttonResult = RemoteComponentRegistry.getInstance(context).importFromUri(context, uri)
+            if (buttonResult.isSuccess) {
+                val doc = buttonResult.getOrThrow()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(
+                        context,
+                        "⚡ Button '${doc.manifest.name}' (.nxprc) imported!",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+                return@withContext
             }
         } catch (_: Exception) {}
 

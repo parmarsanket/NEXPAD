@@ -1,5 +1,8 @@
 package com.sanket.tools.nexpad
 
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -130,7 +133,7 @@ class MainActivity : ComponentActivity() {
         viewModel.startScreenOffDisconnectTimer()
     }
 
-    override fun onNewIntent(intent: android.content.Intent) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         if (intent.action == android.hardware.usb.UsbManager.ACTION_USB_ACCESSORY_ATTACHED) {
@@ -139,17 +142,32 @@ class MainActivity : ComponentActivity() {
         handleIncomingFileIntent(intent)
     }
 
-    private fun handleIncomingFileIntent(intent: android.content.Intent?) {
+    private fun handleIncomingFileIntent(intent: Intent?) {
         if (intent == null) return
-        if (intent.action == android.content.Intent.ACTION_VIEW && intent.data != null) {
-            val uri = intent.data ?: return
-            lifecycleScope.launch(Dispatchers.IO) {
-                ShareManager.handleIncomingFileUri(
-                    context = this@MainActivity,
-                    uri = uri,
-                    layoutManager = layoutManager
-                )
+        val uri: Uri? = try {
+            when (intent.action) {
+                Intent.ACTION_VIEW -> intent.data
+                Intent.ACTION_SEND -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        intent.getParcelableExtra(Intent.EXTRA_STREAM)
+                    }
+                }
+                else -> null
             }
+        } catch (_: Exception) {
+            null
+        }
+        if (uri == null) return
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            ShareManager.handleIncomingFileUri(
+                context = this@MainActivity,
+                uri = uri,
+                layoutManager = layoutManager
+            )
         }
     }
 
