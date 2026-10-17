@@ -90,4 +90,35 @@ class ShareManagerTest {
         assertEquals("NXRC", String(nxprcMagic, Charsets.UTF_8))
         assertFalse("Layout and Nxprc magic headers must be distinctly different", layoutMagic.contentEquals(nxprcMagic))
     }
+
+    @Test
+    fun testDecodeLayoutSanitizesCorruptedCoordinates() {
+        val corruptedJson = """
+            {
+                "version": 1,
+                "name": "Corrupted Floats",
+                "labelStyle": "XBOX",
+                "isRgbEnabled": true,
+                "positions": {
+                    "A": {
+                        "xRatio": 999.0,
+                        "yRatio": -50.0,
+                        "scale": -10.0,
+                        "opacity": 5.0
+                    }
+                }
+            }
+        """.trimIndent().toByteArray(Charsets.UTF_8)
+
+        val result = ShareManager.decodeLayout(corruptedJson)
+        assertTrue(result.isSuccess)
+        val decoded = result.getOrThrow()
+        val posA = decoded.positions["A"]
+        assertNotNull(posA)
+        // Sanitization clamps xRatio to [0, 1], yRatio to [0, 1], scale to [0.2, 3.0], opacity to [0.05, 1.0]
+        assertEquals(1.0f, posA!!.xRatio, 0.001f)
+        assertEquals(0.0f, posA.yRatio, 0.001f)
+        assertEquals(0.2f, posA.scale, 0.001f)
+        assertEquals(1.0f, posA.opacity, 0.001f)
+    }
 }

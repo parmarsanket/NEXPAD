@@ -377,7 +377,7 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
      */
     fun updateTrigger(key: String, value: Float) {
         val ctrl = resolveControlKey(key)
-        val clamped = value.coerceIn(0f, 1f)
+        val clamped = (if (value.isFinite()) value else 0f).coerceIn(0f, 1f)
         when (ctrl) {
             ControlKey.LT -> inputState.triggerL2 = clamped
             ControlKey.RT -> inputState.triggerR2 = clamped
@@ -387,7 +387,7 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun applyButtonState(buttonName: String, isPressed: Boolean) {
-        if (buttonName.equals("GYRO", ignoreCase = true)) {
+        if (buttonName.equals(KEY_GYRO_CONTROL, ignoreCase = true)) {
             if (isPressed) {
                 toggleGyro()
             }
@@ -444,14 +444,16 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
         get() = Pair(rightStickX, rightStickY)
 
     fun updateLeftStick(x: Float, y: Float) {
-        val dx = kotlin.math.abs(x - inputState.leftStickX)
-        val dy = kotlin.math.abs(y - inputState.leftStickY)
-        val changed = dx > 0.002f || dy > 0.002f || (x == 0f && inputState.leftStickX != 0f) || (y == 0f && inputState.leftStickY != 0f)
+        val safeX = (if (x.isFinite()) x else 0f).coerceIn(-1f, 1f)
+        val safeY = (if (y.isFinite()) y else 0f).coerceIn(-1f, 1f)
+        val dx = kotlin.math.abs(safeX - inputState.leftStickX)
+        val dy = kotlin.math.abs(safeY - inputState.leftStickY)
+        val changed = dx > 0.002f || dy > 0.002f || (safeX == 0f && inputState.leftStickX != 0f) || (safeY == 0f && inputState.leftStickY != 0f)
 
-        inputState.leftStickX = x
-        inputState.leftStickY = y
-        leftStickX = x
-        leftStickY = y
+        inputState.leftStickX = safeX
+        inputState.leftStickY = safeY
+        leftStickX = safeX
+        leftStickY = safeY
 
         if (changed) {
             networkManager.sendImmediate()
@@ -459,14 +461,16 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun updateRightStick(x: Float, y: Float) {
-        val dx = kotlin.math.abs(x - inputState.rightStickX)
-        val dy = kotlin.math.abs(y - inputState.rightStickY)
-        val changed = dx > 0.002f || dy > 0.002f || (x == 0f && inputState.rightStickX != 0f) || (y == 0f && inputState.rightStickY != 0f)
+        val safeX = (if (x.isFinite()) x else 0f).coerceIn(-1f, 1f)
+        val safeY = (if (y.isFinite()) y else 0f).coerceIn(-1f, 1f)
+        val dx = kotlin.math.abs(safeX - inputState.rightStickX)
+        val dy = kotlin.math.abs(safeY - inputState.rightStickY)
+        val changed = dx > 0.002f || dy > 0.002f || (safeX == 0f && inputState.rightStickX != 0f) || (safeY == 0f && inputState.rightStickY != 0f)
 
-        inputState.rightStickX = x
-        inputState.rightStickY = y
-        rightStickX = x
-        rightStickY = y
+        inputState.rightStickX = safeX
+        inputState.rightStickY = safeY
+        rightStickX = safeX
+        rightStickY = safeY
 
         if (changed) {
             networkManager.sendImmediate()
@@ -474,6 +478,7 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     }
 
     companion object {
+        const val KEY_GYRO_CONTROL = "GYRO"
         private val controlKeyCache = ConcurrentHashMap<String, ControlKey?>()
         fun resolveControlKey(identifier: String): ControlKey? {
             return controlKeyCache.computeIfAbsent(identifier) { ControlKey.fromIdentifier(it) }

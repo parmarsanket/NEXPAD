@@ -1,20 +1,26 @@
 package com.sanket.tools.nexpad.runtime.registry
 
 import android.content.Context
+import android.util.Log
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
 import com.sanket.tools.nexpad.runtime.model.NxpManifest
 import com.sanket.tools.nexpad.runtime.model.NxpSize
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.util.Locale
 
 class ComponentRegistry private constructor(private val context: Context) {
+
+    private val lock = Any()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -23,7 +29,7 @@ class ComponentRegistry private constructor(private val context: Context) {
         encodeDefaults = true
     }
 
-    private val componentsDir = File(context.filesDir, "nxp_components").apply {
+    private val componentsDir = File(context.filesDir, DIR_COMPONENTS).apply {
         if (!exists()) mkdirs()
     }
 
@@ -32,55 +38,61 @@ class ComponentRegistry private constructor(private val context: Context) {
 
     init {
         reloadAll()
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launch {
-            RemoteComponentRegistry.getInstance(context).loadedComponents.collect {
-                reloadAll()
+        scope.launch {
+            try {
+                RemoteComponentRegistry.getInstance(context).loadedComponents.collect {
+                    reloadAll()
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Remote component collector terminated", e)
             }
         }
     }
 
     fun reloadAll() {
-        val list = mutableListOf<NxpComponentDef>()
-        // 1. Always include built-in presets
-        list.addAll(DefaultComponents.ALL_PRESETS)
+        synchronized(lock) {
+            val list = mutableListOf<NxpComponentDef>()
+            // 1. Always include built-in presets
+            list.addAll(DefaultComponents.ALL_PRESETS)
 
-        // 2. Load user-imported components from disk
-        componentsDir.listFiles { file -> file.extension.lowercase() in listOf("json", "nxpcomponent") }?.forEach { file ->
+            // 2. Load user-imported components from disk
+            componentsDir.listFiles { file -> file.extension.lowercase(Locale.ROOT) in listOf("json", "nxpcomponent") }?.forEach { file ->
+                try {
+                    val content = file.readText()
+                    val def = json.decodeFromString<NxpComponentDef>(content)
+                    list.add(def)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Skipping corrupt component file: ${file.name}", e)
+                }
+            }
+
+            // 3. Bridge remote .nxprc components
             try {
-                val content = file.readText()
-                val def = json.decodeFromString<NxpComponentDef>(content)
-                list.add(def)
-            } catch (_: Exception) {
-                // Ignore corrupt or invalid files safely
-            }
-        }
-
-        // 3. Bridge remote .nxprc components
-        try {
-            val remoteRegistry = RemoteComponentRegistry.getInstance(context)
-            remoteRegistry.loadedComponents.value.forEach { doc ->
-                val bridgedDef = NxpComponentDef(
-                    manifest = NxpManifest(
-                        id = doc.manifest.id,
-                        name = doc.manifest.name,
-                        author = doc.manifest.author,
-                        version = doc.manifest.version,
-                        category = doc.manifest.category,
-                        defaultControl = doc.manifest.defaultControl,
-                        description = doc.manifest.description
-                    ),
-                    size = NxpSize(
-                        widthDp = doc.manifest.widthDp,
-                        heightDp = doc.manifest.heightDp
+                val remoteRegistry = RemoteComponentRegistry.getInstance(context)
+                remoteRegistry.loadedComponents.value.forEach { doc ->
+                    val bridgedDef = NxpComponentDef(
+                        manifest = NxpManifest(
+                            id = doc.manifest.id,
+                            name = doc.manifest.name,
+                            author = doc.manifest.author,
+                            version = doc.manifest.version,
+                            category = doc.manifest.category,
+                            defaultControl = doc.manifest.defaultControl,
+                            description = doc.manifest.description
+                        ),
+                        size = NxpSize(
+                            widthDp = doc.manifest.widthDp,
+                            heightDp = doc.manifest.heightDp
+                        )
                     )
-                )
-                list.add(bridgedDef)
+                    list.add(bridgedDef)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to bridge remote components", e)
             }
-        } catch (_: Exception) {
-            // Safe fallback
-        }
 
-        _installedComponents.value = list
+            _installedComponents.value = list
+        }
     }
 
     fun getComponent(id: String): NxpComponentDef? {
@@ -103,7 +115,7 @@ class ComponentRegistry private constructor(private val context: Context) {
             }
 
             // Sanitize filename
-            val safeFileName = def.manifest.id.replace(Regex("[^a-zA-Z0-9_.-]"), "_") + ".json"
+            val safeFileName = def.manifest.id.replace(Regex("[^a-zA-Z0-9_.-]"), "_") + EXT_JSON
             val targetFile = File(componentsDir, safeFileName)
             targetFile.writeText(json.encodeToString(NxpComponentDef.serializer(), def))
 
@@ -115,12 +127,12 @@ class ComponentRegistry private constructor(private val context: Context) {
     }
 
     fun deleteComponent(id: String): Boolean {
-        if (id.startsWith("builtin.")) return false // Cannot delete system presets
-        if (id.startsWith("rc.")) {
+        if (id.startsWith(PREFIX_BUILTIN)) return false // Cannot delete system presets
+        if (id.startsWith(PREFIX_REMOTE)) {
             return RemoteComponentRegistry.getInstance(context).deleteComponent(id)
         }
 
-        val safeFileName = id.replace(Regex("[^a-zA-Z0-9_.-]"), "_") + ".json"
+        val safeFileName = id.replace(Regex("[^a-zA-Z0-9_.-]"), "_") + EXT_JSON
         val targetFile = File(componentsDir, safeFileName)
         val deleted = if (targetFile.exists()) targetFile.delete() else false
         if (deleted) {
@@ -133,12 +145,19 @@ class ComponentRegistry private constructor(private val context: Context) {
         val comp = getComponent(id) ?: return null
         return try {
             json.encodeToString(NxpComponentDef.serializer(), comp)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to export component '$id' to JSON", e)
             null
         }
     }
 
     companion object {
+        private const val TAG = "NexpadComponentRegistry"
+        const val PREFIX_BUILTIN = "builtin."
+        const val PREFIX_REMOTE = "rc."
+        const val DIR_COMPONENTS = "nxp_components"
+        const val EXT_JSON = ".json"
+
         @android.annotation.SuppressLint("StaticFieldLeak")
         @Volatile
         private var instance: ComponentRegistry? = null

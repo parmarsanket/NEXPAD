@@ -20,16 +20,20 @@ import android.os.VibratorManager
  * - HAPTICS_CLICK_STRENGTH (Float, default: 0.3f, range: 0.1f..1.0f)
  * - HAPTICS_STYLE (String: "crisp", "heavy", "soft", default: "crisp")
  */
-class HapticFeedbackHelper(context: Context) {
+class HapticFeedbackHelper(
+    context: Context,
+    prefsOverride: com.sanket.tools.nexpad.storage.NexpadPreferences? = null,
+    vibratorOverride: Vibrator? = null
+) {
 
-    private val appContext = context.applicationContext
+    private val appContext = context.applicationContext ?: context
 
     private val nexpadPrefs by lazy {
-        com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(appContext)
+        prefsOverride ?: com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(appContext)
     }
 
     private val vibrator: Vibrator? by lazy {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        vibratorOverride ?: if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibratorManager = appContext.getSystemService(VibratorManager::class.java)
             vibratorManager?.defaultVibrator ?: appContext.getSystemService(Vibrator::class.java)
         } else {
@@ -124,5 +128,9 @@ class HapticFeedbackHelper(context: Context) {
                 // Motor unavailable or hardware busy
             }
         }
+    }
+
+    companion object {
+        private const val TAG = "NexpadHaptics"
     }
 }

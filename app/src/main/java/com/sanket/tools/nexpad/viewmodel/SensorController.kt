@@ -63,10 +63,13 @@ class SensorController(
     fun updateAccel(x: Float, y: Float, z: Float) {
         if (isMotionMuted) return
         if (requestedSensorMode == NexpadProtocol.SENSOR_MODE_IMU_6AXIS) {
+            val sx = safeFloat(x)
+            val sy = safeFloat(y)
+            val sz = safeFloat(z)
             synchronized(inputState) {
-                inputState.accelX = x
-                inputState.accelY = y
-                inputState.accelZ = z
+                inputState.accelX = sx
+                inputState.accelY = sy
+                inputState.accelZ = sz
                 inputState.sensorFlags = NexpadProtocol.SENSOR_MODE_IMU_6AXIS
             }
         }
@@ -75,10 +78,13 @@ class SensorController(
     fun update6AxisGyro(x: Float, y: Float, z: Float) {
         if (isMotionMuted) return
         if (requestedSensorMode == NexpadProtocol.SENSOR_MODE_IMU_6AXIS) {
+            val sx = safeFloat(x)
+            val sy = safeFloat(y)
+            val sz = safeFloat(z)
             synchronized(inputState) {
-                inputState.gyroX = x
-                inputState.gyroY = y
-                inputState.gyroZ = z
+                inputState.gyroX = sx
+                inputState.gyroY = sy
+                inputState.gyroZ = sz
                 inputState.sensorFlags = NexpadProtocol.SENSOR_MODE_IMU_6AXIS
             }
         }
@@ -87,10 +93,13 @@ class SensorController(
     fun updateGravity(x: Float, y: Float, z: Float) {
         if (isMotionMuted) return
         if (requestedSensorMode == NexpadProtocol.SENSOR_MODE_GRAVITY) {
+            val sx = safeFloat(x)
+            val sy = safeFloat(y)
+            val sz = safeFloat(z)
             synchronized(inputState) {
-                inputState.gravityX = x
-                inputState.gravityY = y
-                inputState.gravityZ = z
+                inputState.gravityX = sx
+                inputState.gravityY = sy
+                inputState.gravityZ = sz
                 inputState.sensorFlags = NexpadProtocol.SENSOR_MODE_GRAVITY
             }
         }
@@ -99,32 +108,60 @@ class SensorController(
     fun updateGameRotation(qx: Float, qy: Float, qz: Float, qw: Float) {
         if (isMotionMuted) return
         if (requestedSensorMode == NexpadProtocol.SENSOR_MODE_GAME_ROTATION) {
+            val sqx = safeFloat(qx)
+            val sqy = safeFloat(qy)
+            val sqz = safeFloat(qz)
+            val sqw = safeFloat(qw, fallback = 1f)
+            val lenSq = sqx * sqx + sqy * sqy + sqz * sqz + sqw * sqw
+            val isNormalized = lenSq > 1e-4f && lenSq < 4f
+
             synchronized(inputState) {
-                inputState.quatX = qx
-                inputState.quatY = qy
-                inputState.quatZ = qz
-                inputState.quatW = qw
+                if (isNormalized) {
+                    inputState.quatX = sqx
+                    inputState.quatY = sqy
+                    inputState.quatZ = sqz
+                    inputState.quatW = sqw
+                } else {
+                    inputState.quatX = 0f
+                    inputState.quatY = 0f
+                    inputState.quatZ = 0f
+                    inputState.quatW = 1f
+                }
                 inputState.sensorFlags = NexpadProtocol.SENSOR_MODE_GAME_ROTATION
             }
         }
     }
 
-    fun updateLinearGesture(lx: Float, ly: Float, lz: Float, gx: Float, gy: Float, gz: Float, rx: Float = 0f, ry: Float = 0f, rz: Float = 0f) {
+    fun updateLinearGesture(
+        lx: Float, ly: Float, lz: Float,
+        gx: Float, gy: Float, gz: Float,
+        rx: Float = 0f, ry: Float = 0f, rz: Float = 0f
+    ) {
         if (isMotionMuted) return
         if (requestedSensorMode == NexpadProtocol.SENSOR_MODE_LINEAR_GESTURE) {
+            val slx = safeFloat(lx)
+            val sly = safeFloat(ly)
+            val slz = safeFloat(lz)
+            val sgx = safeFloat(gx)
+            val sgy = safeFloat(gy)
+            val sgz = safeFloat(gz)
+            val srx = safeFloat(rx)
+            val sry = safeFloat(ry)
+            val srz = safeFloat(rz)
+
             synchronized(inputState) {
-                inputState.linearAccelX = lx
-                inputState.linearAccelY = ly
-                inputState.linearAccelZ = lz
-                inputState.gravityX = gx
-                inputState.gravityY = gy
-                inputState.gravityZ = gz
-                inputState.accelX = gx + lx
-                inputState.accelY = gy + ly
-                inputState.accelZ = gz + lz
-                inputState.gyroX = rx
-                inputState.gyroY = ry
-                inputState.gyroZ = rz
+                inputState.linearAccelX = slx
+                inputState.linearAccelY = sly
+                inputState.linearAccelZ = slz
+                inputState.gravityX = sgx
+                inputState.gravityY = sgy
+                inputState.gravityZ = sgz
+                inputState.accelX = sgx + slx
+                inputState.accelY = sgy + sly
+                inputState.accelZ = sgz + slz
+                inputState.gyroX = srx
+                inputState.gyroY = sry
+                inputState.gyroZ = srz
                 inputState.sensorFlags = NexpadProtocol.SENSOR_MODE_LINEAR_GESTURE
             }
         }
@@ -133,15 +170,30 @@ class SensorController(
     fun updateRawUncalibrated(rx: Float, ry: Float, rz: Float, bx: Float, by: Float, bz: Float) {
         if (isMotionMuted) return
         if (requestedSensorMode == NexpadProtocol.SENSOR_MODE_RAW_UNCALIBRATED) {
+            val srx = safeFloat(rx)
+            val sry = safeFloat(ry)
+            val srz = safeFloat(rz)
+            val sbx = safeFloat(bx)
+            val sby = safeFloat(by)
+            val sbz = safeFloat(bz)
+
             synchronized(inputState) {
-                inputState.rawGyroX = rx
-                inputState.rawGyroY = ry
-                inputState.rawGyroZ = rz
-                inputState.gyroBiasX = bx
-                inputState.gyroBiasY = by
-                inputState.gyroBiasZ = bz
+                inputState.rawGyroX = srx
+                inputState.rawGyroY = sry
+                inputState.rawGyroZ = srz
+                inputState.gyroBiasX = sbx
+                inputState.gyroBiasY = sby
+                inputState.gyroBiasZ = sbz
                 inputState.sensorFlags = NexpadProtocol.SENSOR_MODE_RAW_UNCALIBRATED
             }
+        }
+    }
+
+    companion object {
+        private const val TAG = "NexpadSensorController"
+
+        private fun safeFloat(v: Float, fallback: Float = 0f): Float {
+            return if (v.isFinite()) v else fallback
         }
     }
 }

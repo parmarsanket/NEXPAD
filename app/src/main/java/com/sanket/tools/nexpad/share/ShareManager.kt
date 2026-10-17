@@ -10,6 +10,7 @@ import com.sanket.tools.nexpad.model.Position
 import com.sanket.tools.nexpad.runtime.plugin.NxprcDocument
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import com.sanket.tools.nexpad.utils.LayoutManager
+import com.sanket.tools.nexpad.utils.ProfileNameValidation
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -41,7 +42,7 @@ data class NxLayoutDocument(
         description = description,
         labelStyle = labelStyle,
         // Canonicalize and ensure all buttons use default native renderers on the receiving phone
-        positions = positions.mapValues { (_, pos) -> pos.copy(customComponentId = null) }
+        positions = positions.mapValues { (_, pos) -> pos.sanitized().copy(customComponentId = null) }
     )
 
     companion object {
@@ -53,7 +54,7 @@ data class NxLayoutDocument(
             description = profile.description,
             // Clean positions: retain geometry/settings but clear customComponentId for portable sharing
             positions = profile.canonicalPositions().mapValues { (_, pos) ->
-                pos.copy(customComponentId = null)
+                pos.sanitized().copy(customComponentId = null)
             }
         )
     }
@@ -65,6 +66,15 @@ data class NxLayoutDocument(
  * 2. Exporting & sharing custom Remote Compose buttons (.nxprc).
  */
 object ShareManager {
+
+    const val TAG = "NexpadShareManager"
+    const val EXTENSION_NXLAYOUT = ".nxlayout"
+    const val EXTENSION_NXPRC = ".nxprc"
+    const val MIME_OCTET_STREAM = "application/octet-stream"
+    const val DIR_SHARED_LAYOUTS = "shared_layouts"
+    const val DIR_SHARED_COMPONENTS = "shared_components"
+    const val DIR_NXP_REMOTE = "nxp_remote"
+    const val DEFAULT_IMPORTED_LAYOUT_NAME = "Imported Layout"
 
     /** Magic bytes for .nxlayout files: "NXLY" (0x4E, 0x58, 0x4C, 0x59) */
     val MAGIC_NXLAYOUT = byteArrayOf(0x4E, 0x58, 0x4C, 0x59)
@@ -128,8 +138,8 @@ object ShareManager {
     fun shareLayout(context: Context, profile: LayoutProfile) {
         try {
             val cleanName = profile.name.trim().ifBlank { "NEXPAD_Layout" }
-            val safeFileName = cleanName.replace(Regex("[^a-zA-Z0-9_.-]"), "_") + ".nxlayout"
-            val shareDir = File(context.cacheDir, "shared_layouts").apply { mkdirs() }
+            val safeFileName = cleanName.replace(Regex("[^a-zA-Z0-9_.-]"), "_") + EXTENSION_NXLAYOUT
+            val shareDir = File(context.cacheDir, DIR_SHARED_LAYOUTS).apply { mkdirs() }
             val targetFile = File(shareDir, safeFileName)
 
             val bytes = encodeLayout(profile)
@@ -139,7 +149,7 @@ object ShareManager {
             val contentUri: Uri = FileProvider.getUriForFile(context, authority, targetFile)
 
             val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                type = "application/octet-stream"
+                type = MIME_OCTET_STREAM
                 putExtra(Intent.EXTRA_STREAM, contentUri)
                 putExtra(Intent.EXTRA_TITLE, "NEXPAD Layout: $cleanName")
                 putExtra(
@@ -149,7 +159,7 @@ object ShareManager {
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
 
-            val chooser = Intent.createChooser(sendIntent, "Share '$cleanName' (.nxlayout)")
+            val chooser = Intent.createChooser(sendIntent, "Share '$cleanName' ($EXTENSION_NXLAYOUT)")
             chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(chooser)
         } catch (e: Exception) {
@@ -172,24 +182,28 @@ object ShareManager {
 
             val decoded = decodeLayout(bytes).getOrThrow()
 
-            // Resolve name collision against existing profiles
-            val existingProfiles = layoutManager.getAllProfiles()
-            val existingNames = existingProfiles.map { it.name.trim().lowercase() }.toSet()
-
-            var candidateName = decoded.name.trim().ifBlank { "Imported Layout" }
-            if (existingNames.contains(candidateName.lowercase())) {
-                var counter = 1
-                while (existingNames.contains("${candidateName} ($counter)".lowercase())) {
-                    counter++
-                }
-                candidateName = "$candidateName ($counter)"
+            // Resolve name collision against existing profiles adhering strictly to LayoutManager validation
+            var baseName = decoded.name.trim().ifBlank { DEFAULT_IMPORTED_LAYOUT_NAME }
+            if (baseName.length > LayoutManager.MAX_PROFILE_NAME_LENGTH - 6) {
+                baseName = baseName.take(LayoutManager.MAX_PROFILE_NAME_LENGTH - 6).trim()
+            }
+            var candidateName = baseName
+            var validation = layoutManager.validateProfileName(candidateName)
+            var counter = 1
+            while (validation is ProfileNameValidation.Error && counter < 100) {
+                val suffix = " ($counter)"
+                val availableLength = LayoutManager.MAX_PROFILE_NAME_LENGTH - suffix.length
+                val truncatedBase = if (baseName.length > availableLength) baseName.take(availableLength).trim() else baseName
+                candidateName = "$truncatedBase$suffix"
+                validation = layoutManager.validateProfileName(candidateName)
+                counter++
             }
 
             val profileToSave = decoded.copy(
                 name = candidateName,
                 isDefault = false,
                 positions = decoded.canonicalPositions().mapValues { (_, pos) ->
-                    pos.copy(customComponentId = null)
+                    pos.sanitized().copy(customComponentId = null)
                 }
             )
 
@@ -210,13 +224,13 @@ object ShareManager {
         document: NxprcDocument? = null
     ) {
         try {
-            val safeName = componentId.replace(Regex("[^a-zA-Z0-9_.-]"), "_") + ".nxprc"
-            val shareDir = File(context.cacheDir, "shared_components").apply { mkdirs() }
+            val safeName = componentId.replace(Regex("[^a-zA-Z0-9_.-]"), "_") + EXTENSION_NXPRC
+            val shareDir = File(context.cacheDir, DIR_SHARED_COMPONENTS).apply { mkdirs() }
             val targetFile = File(shareDir, safeName)
 
             // 1. Try finding existing file on disk in internal or external nxp_remote directories
-            val internalFile = File(File(context.filesDir, "nxp_remote"), safeName)
-            val externalFile = context.getExternalFilesDir("nxp_remote")?.let { File(it, safeName) }
+            val internalFile = File(File(context.filesDir, DIR_NXP_REMOTE), safeName)
+            val externalFile = context.getExternalFilesDir(DIR_NXP_REMOTE)?.let { File(it, safeName) }
 
             if (internalFile.exists()) {
                 internalFile.copyTo(targetFile, overwrite = true)
@@ -238,17 +252,17 @@ object ShareManager {
 
             val displayName = componentName.ifBlank { componentId }
             val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                type = "application/octet-stream"
+                type = MIME_OCTET_STREAM
                 putExtra(Intent.EXTRA_STREAM, contentUri)
                 putExtra(Intent.EXTRA_TITLE, "NEXPAD Button: $displayName")
                 putExtra(
                     Intent.EXTRA_TEXT,
-                    "🎮 NEXPAD Custom Button: $displayName (.nxprc)\nDesigned with NEXPAD Remote Compose."
+                    "🎮 NEXPAD Custom Button: $displayName ($EXTENSION_NXPRC)\nDesigned with NEXPAD Remote Compose."
                 )
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
 
-            val chooser = Intent.createChooser(sendIntent, "Share '$displayName' (.nxprc)")
+            val chooser = Intent.createChooser(sendIntent, "Share '$displayName' ($EXTENSION_NXPRC)")
             chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(chooser)
         } catch (e: Exception) {
@@ -270,10 +284,10 @@ object ShareManager {
         uri: Uri,
         layoutManager: LayoutManager
     ) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-        val fileName = getFileNameFromUri(context, uri)?.lowercase()
+        val fileName = getFileNameFromUri(context, uri)?.lowercase(java.util.Locale.ROOT)
 
-        val isExplicitLayout = fileName?.endsWith(".nxlayout") == true
-        val isExplicitNxprc = fileName?.endsWith(".nxprc") == true
+        val isExplicitLayout = fileName?.endsWith(EXTENSION_NXLAYOUT) == true
+        val isExplicitNxprc = fileName?.endsWith(EXTENSION_NXPRC) == true
 
         if (isExplicitLayout) {
             val result = importLayoutFromUri(context, uri, layoutManager)

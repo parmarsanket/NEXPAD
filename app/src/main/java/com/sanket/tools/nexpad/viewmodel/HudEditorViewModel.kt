@@ -1,5 +1,6 @@
 package com.sanket.tools.nexpad.viewmodel
 
+import android.util.Log
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -28,7 +29,19 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
+import java.util.Locale
+
+/**
+ * Observable lifecycle state for HUD layout saving operations.
+ */
+sealed class HudSaveState {
+    object Idle : HudSaveState()
+    object Saving : HudSaveState()
+    object Success : HudSaveState()
+    data class Error(val message: String) : HudSaveState()
+}
 
 /**
  * Single source of truth for HUD Layout Editing sessions.
@@ -42,6 +55,11 @@ class HudEditorViewModel(
     private val componentRegistry: ComponentRegistry,
     private val remoteComponentRegistry: RemoteComponentRegistry? = null
 ) : ViewModel() {
+
+    private val saveMutex = Mutex()
+
+    private val _saveState = MutableStateFlow<HudSaveState>(HudSaveState.Idle)
+    val saveState: StateFlow<HudSaveState> = _saveState.asStateFlow()
 
     private val _currentProfile = MutableStateFlow(layoutManager.getActiveProfile())
     val currentProfile: StateFlow<LayoutProfile> = _currentProfile.asStateFlow()
@@ -136,7 +154,7 @@ class HudEditorViewModel(
         allComponents.forEach { def ->
             val id = def.manifest.id
             // Builtin defaults (e.g. builtin.default_lb) are unified under LayoutSkin.NativeDefault (index 0)
-            if (id.startsWith("builtin.default_")) return@forEach
+            if (id.startsWith(PREFIX_BUILTIN_DEFAULT)) return@forEach
             if (seenIds.contains(id)) return@forEach
 
             if (isSkinCompatible(def.manifest.defaultControl, def.manifest.category, id, targetSpec)) {
@@ -230,14 +248,19 @@ class HudEditorViewModel(
         scale: Float? = null,
         opacity: Float? = null
     ) {
+        val safeX = (if (xRatio.isFinite()) xRatio else 0.5f).coerceIn(0.0f, 1.0f)
+        val safeY = (if (yRatio.isFinite()) yRatio else 0.5f).coerceIn(0.0f, 1.0f)
+        val safeScale = scale?.let { (if (it.isFinite()) it else 1.0f).coerceIn(0.4f, 3.5f) }
+        val safeOpacity = opacity?.let { (if (it.isFinite()) it else 1.0f).coerceIn(0.1f, 1.0f) }
+
         val targetKey = resolveElementKey(controlKey)
         val current = elements[targetKey] ?: return
         val updated = current.copy(
             transform = current.transform.copy(
-                xRatio = xRatio.coerceIn(0.0f, 1.0f),
-                yRatio = yRatio.coerceIn(0.0f, 1.0f),
-                scale = scale?.coerceIn(0.4f, 3.5f) ?: current.transform.scale,
-                opacity = opacity?.coerceIn(0.1f, 1.0f) ?: current.transform.opacity
+                xRatio = safeX,
+                yRatio = safeY,
+                scale = safeScale ?: current.transform.scale,
+                opacity = safeOpacity ?: current.transform.opacity
             )
         )
         elements[targetKey] = updated
@@ -248,18 +271,20 @@ class HudEditorViewModel(
         if (!dxRatio.isFinite() || !dyRatio.isFinite()) return
         val targetKey = resolveElementKey(controlKey)
         val current = elements[targetKey] ?: return
-        val newX = (current.transform.xRatio + dxRatio).coerceIn(0.0f, 1.0f)
-        val newY = (current.transform.yRatio + dyRatio).coerceIn(0.0f, 1.0f)
+        val newX = current.transform.xRatio + dxRatio
+        val newY = current.transform.yRatio + dyRatio
         updateTransform(targetKey, newX, newY)
     }
 
     fun setScale(controlKey: String, newScale: Float) {
+        if (!newScale.isFinite()) return
         val targetKey = resolveElementKey(controlKey)
         val current = elements[targetKey] ?: return
         updateTransform(targetKey, current.transform.xRatio, current.transform.yRatio, scale = newScale)
     }
 
     fun setOpacity(controlKey: String, newOpacity: Float) {
+        if (!newOpacity.isFinite()) return
         val targetKey = resolveElementKey(controlKey)
         val current = elements[targetKey] ?: return
         updateTransform(targetKey, current.transform.xRatio, current.transform.yRatio, opacity = newOpacity)
@@ -268,7 +293,7 @@ class HudEditorViewModel(
     fun setSensitivity(controlKey: String, newSensitivity: Float) {
         val targetKey = resolveElementKey(controlKey)
         val current = elements[targetKey] ?: return
-        val clamped = newSensitivity.coerceIn(0.5f, 4.0f)
+        val clamped = (if (newSensitivity.isFinite()) newSensitivity else 1.0f).coerceIn(0.5f, 4.0f)
         val updated = current.copy(
             transform = current.transform.copy(sensitivity = clamped)
         )
@@ -279,7 +304,7 @@ class HudEditorViewModel(
     fun setHeightScale(controlKey: String, newHeightScale: Float) {
         val targetKey = resolveElementKey(controlKey)
         val current = elements[targetKey] ?: return
-        val clamped = newHeightScale.coerceIn(0.5f, 2.5f)
+        val clamped = (if (newHeightScale.isFinite()) newHeightScale else 1.0f).coerceIn(0.5f, 2.5f)
         val updated = current.copy(
             transform = current.transform.copy(heightScale = clamped)
         )
@@ -346,7 +371,7 @@ class HudEditorViewModel(
     fun setHitboxScale(controlKey: String, scale: Float) {
         val targetKey = resolveElementKey(controlKey)
         val current = elements[targetKey] ?: return
-        val clamped = scale.coerceIn(1.2f, 3.0f)
+        val clamped = (if (scale.isFinite()) scale else 1.2f).coerceIn(1.2f, 3.0f)
         val updated = current.copy(
             transform = current.transform.copy(hitboxScale = clamped)
         )
@@ -368,7 +393,7 @@ class HudEditorViewModel(
         if (available.isEmpty()) return
 
         val currentSkinId = elements[targetKey]?.skinId?.takeIf { it.isNotBlank() }
-        val isCurrentDefault = currentSkinId == null || currentSkinId.startsWith("builtin.default_")
+        val isCurrentDefault = currentSkinId == null || currentSkinId.startsWith(PREFIX_BUILTIN_DEFAULT)
 
         val currentIndex = if (isCurrentDefault) {
             0
@@ -570,6 +595,8 @@ class HudEditorViewModel(
 
     /**
      * Persists layout changes asynchronously to SharedPreferences on Dispatchers.IO.
+     * Protected by [saveMutex] against concurrent save races.
+     * Emits observable updates through [saveState].
      */
     fun saveProfile(
         onFailure: (Throwable) -> Unit = {},
@@ -579,7 +606,7 @@ class HudEditorViewModel(
         val elementsSnapshot = elements.values.toList()
         val positionMap = mutableMapOf<String, Position>()
         elementsSnapshot.forEach { element ->
-            val canonical = ControlKey.fromIdentifier(element.controlKey)?.key ?: element.controlKey.uppercase()
+            val canonical = ControlKey.fromIdentifier(element.controlKey)?.key ?: element.controlKey.uppercase(Locale.ROOT)
             if (!positionMap.containsKey(canonical)) {
                 positionMap[canonical] = element.toPosition()
             }
@@ -587,28 +614,42 @@ class HudEditorViewModel(
         val updatedProfile = profile.copy(positions = positionMap)
 
         viewModelScope.launch(Dispatchers.IO) {
+            if (!saveMutex.tryLock()) {
+                Log.w(TAG, "Layout save already in progress, skipping concurrent request.")
+                return@launch
+            }
             try {
+                _saveState.value = HudSaveState.Saving
                 val wasActive = layoutManager.getActiveProfile().name.equals(updatedProfile.name, ignoreCase = true)
                 layoutManager.saveProfile(updatedProfile, activate = wasActive)
                 // Persist any updated touchpad sensitivities
                 elementsSnapshot.forEach { element ->
                     val key = element.controlKey
-                    if (key.equals("LTP", ignoreCase = true) || key.equals("RTP", ignoreCase = true)) {
+                    if (key.equals(ControlKey.LTP.key, ignoreCase = true) || key.equals(ControlKey.RTP.key, ignoreCase = true)) {
                         layoutManager.updateTouchpadSensitivity(key, element.transform.sensitivity)
                     }
                 }
                 withContext(Dispatchers.Main) {
                     _currentProfile.value = updatedProfile
                     _hasUnsavedChanges.value = false
+                    _saveState.value = HudSaveState.Success
                     onSaved()
                 }
             } catch (e: Exception) {
-                android.util.Log.e("HudEditorViewModel", "Failed to save profile: ${e.message}", e)
+                Log.e(TAG, "Failed to save profile: ${e.message}", e)
                 withContext(Dispatchers.Main) {
+                    _saveState.value = HudSaveState.Error(e.message ?: "Failed to save layout profile")
                     onFailure(e)
                 }
+            } finally {
+                saveMutex.unlock()
             }
         }
+    }
+
+    companion object {
+        private const val TAG = "NexpadHudEditorVM"
+        const val PREFIX_BUILTIN_DEFAULT = "builtin.default_"
     }
 }
 
