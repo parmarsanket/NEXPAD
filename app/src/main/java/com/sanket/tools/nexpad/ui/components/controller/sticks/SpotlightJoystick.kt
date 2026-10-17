@@ -94,10 +94,10 @@ fun SpotlightJoystick(
         if (isLeft) {
             Pair(false, 1.0f)
         } else {
-            val sp = context.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
+            val prefs = com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context)
             Pair(
-                sp.getBoolean("RIGHT_STICK_CAMERA_MODE", false),
-                sp.getFloat("CAMERA_SENSITIVITY", 1.0f)
+                prefs.isRightStickCameraMode,
+                prefs.cameraSensitivity
             )
         }
     }

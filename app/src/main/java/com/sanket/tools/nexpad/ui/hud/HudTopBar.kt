@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
+import com.sanket.tools.nexpad.model.shortDisplayName
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 /**
@@ -193,7 +194,7 @@ fun HudTopBar(
                         ) {
                             val isXbox = labelStyle == ControllerLabelStyle.XBOX
                             Text(
-                                if (isXbox) "Xbox" else "PS",
+                                labelStyle.shortDisplayName,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = if (isXbox) NeonPalette.Green else NeonPalette.Cyan,

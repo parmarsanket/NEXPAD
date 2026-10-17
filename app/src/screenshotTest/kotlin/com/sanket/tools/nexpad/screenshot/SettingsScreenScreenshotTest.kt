@@ -3,9 +3,10 @@ package com.sanket.tools.nexpad.screenshot
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.tools.screenshot.PreviewTest
+import com.sanket.tools.nexpad.model.HapticStyle
+import com.sanket.tools.nexpad.model.RumbleMode
 import com.sanket.tools.nexpad.ui.SettingsScreenContent
 import com.sanket.tools.nexpad.ui.theme.NEXPADTheme
-import com.sanket.tools.nexpad.utils.HapticFeedbackHelper
 
 /**
  * Compose Preview Screenshot Tests for [SettingsScreenContent] and its configuration controls:
@@ -27,8 +28,8 @@ class SettingsScreenScreenshotTest {
                 buttonHapticsEnabled = true,
                 vibrateOfflineEnabled = false,
                 hapticClickStrength = 0.3f,
-                hapticStyle = HapticFeedbackHelper.STYLE_CRISP,
-                rumbleMode = "min"
+                hapticStyle = HapticStyle.CRISP,
+                rumbleMode = RumbleMode.MIN
             )
         }
     }
@@ -45,8 +46,8 @@ class SettingsScreenScreenshotTest {
                 buttonHapticsEnabled = true,
                 vibrateOfflineEnabled = true,
                 hapticClickStrength = 0.8f,
-                hapticStyle = HapticFeedbackHelper.STYLE_HEAVY,
-                rumbleMode = "smart"
+                hapticStyle = HapticStyle.HEAVY,
+                rumbleMode = RumbleMode.SMART
             )
         }
     }
@@ -63,8 +64,8 @@ class SettingsScreenScreenshotTest {
                 buttonHapticsEnabled = true,
                 vibrateOfflineEnabled = true,
                 hapticClickStrength = 0.6f,
-                hapticStyle = HapticFeedbackHelper.STYLE_SOFT,
-                rumbleMode = "max"
+                hapticStyle = HapticStyle.SOFT,
+                rumbleMode = RumbleMode.MAX
             )
         }
     }

@@ -148,7 +148,7 @@ fun HomeScreenContent(
     isAdbAvailable: Boolean = false,
     adbServerName: String? = null,
     profiles: List<com.sanket.tools.nexpad.model.LayoutProfile> = com.sanket.tools.nexpad.model.getDefaultLayoutProfiles(),
-    activeProfileName: String = "Standard Elite",
+    activeProfileName: String = com.sanket.tools.nexpad.model.DefaultProfileType.DEFAULT.profileName,
     onProfileSelected: (com.sanket.tools.nexpad.model.LayoutProfile) -> Unit = {},
     onPlayClick: (com.sanket.tools.nexpad.model.LayoutProfile) -> Unit = {},
     onConnectServer: (com.sanket.tools.nexpad.network.DiscoveredServer) -> Unit = {},

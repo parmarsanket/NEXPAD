@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.model.LayoutProfile
+import com.sanket.tools.nexpad.model.shortDisplayName
 import com.sanket.tools.nexpad.ui.components.controller.abxy.PlayStationSymbol
 import com.sanket.tools.nexpad.ui.components.controller.abxy.getPlayStationShape
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
@@ -338,7 +339,7 @@ fun LayoutProfileCard(
                     ) {
                         val isXbox = profile.controllerLabelStyle == ControllerLabelStyle.XBOX
                         Text(
-                            if (isXbox) "Xbox" else "PS",
+                            profile.controllerLabelStyle.shortDisplayName,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = if (isXbox) NeonPalette.Green else NeonPalette.Cyan,

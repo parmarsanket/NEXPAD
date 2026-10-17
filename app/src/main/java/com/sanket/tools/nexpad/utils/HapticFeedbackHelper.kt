@@ -1,7 +1,6 @@
 package com.sanket.tools.nexpad.utils
 
 import android.content.Context
-import android.content.SharedPreferences
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -25,8 +24,8 @@ class HapticFeedbackHelper(context: Context) {
 
     private val appContext = context.applicationContext
 
-    private val sharedPref: SharedPreferences by lazy {
-        appContext.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+    private val nexpadPrefs by lazy {
+        com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(appContext)
     }
 
     private val vibrator: Vibrator? by lazy {
@@ -39,16 +38,16 @@ class HapticFeedbackHelper(context: Context) {
     }
 
     val isButtonHapticsEnabled: Boolean
-        get() = sharedPref.getBoolean(PREF_BUTTON_HAPTICS_ENABLED, true)
+        get() = nexpadPrefs.isButtonHapticsEnabled
 
     val isOfflineHapticsEnabled: Boolean
-        get() = sharedPref.getBoolean(PREF_HAPTICS_OFFLINE_ENABLED, false)
+        get() = nexpadPrefs.isHapticsOfflineEnabled
 
     val clickStrength: Float
-        get() = sharedPref.getFloat(PREF_HAPTICS_CLICK_STRENGTH, 0.3f).coerceIn(0.1f, 1.0f)
+        get() = nexpadPrefs.hapticClickStrength.coerceIn(0.1f, 1.0f)
 
-    val hapticStyle: String
-        get() = sharedPref.getString(PREF_HAPTICS_STYLE, STYLE_CRISP) ?: STYLE_CRISP
+    val hapticStyle: com.sanket.tools.nexpad.model.HapticStyle
+        get() = nexpadPrefs.hapticStyle
 
     /**
      * Checks whether button vibration should fire given the current connection and rumble state.
@@ -73,11 +72,15 @@ class HapticFeedbackHelper(context: Context) {
     /**
      * Fires an immediate test click for settings UI preview feedback.
      */
-    fun performPreviewClick(style: String = hapticStyle, strength: Float = clickStrength) {
+    fun performPreviewClick(style: com.sanket.tools.nexpad.model.HapticStyle = hapticStyle, strength: Float = clickStrength) {
         triggerImpulse(style, strength)
     }
 
-    private fun triggerImpulse(style: String, rawStrength: Float) {
+    fun performPreviewClick(styleId: String, strength: Float = clickStrength) {
+        performPreviewClick(com.sanket.tools.nexpad.model.HapticStyle.fromId(styleId), strength)
+    }
+
+    private fun triggerImpulse(style: com.sanket.tools.nexpad.model.HapticStyle, rawStrength: Float) {
         if (vibrator?.hasVibrator() != true) return
         val strength = rawStrength.coerceIn(0.1f, 1.0f)
 
@@ -85,9 +88,9 @@ class HapticFeedbackHelper(context: Context) {
             // Modern Android 11+ (API 30+) Rich Haptic Composition
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 val primitive = when (style) {
-                    STYLE_HEAVY -> VibrationEffect.Composition.PRIMITIVE_THUD
-                    STYLE_SOFT -> VibrationEffect.Composition.PRIMITIVE_TICK
-                    else -> VibrationEffect.Composition.PRIMITIVE_CLICK
+                    com.sanket.tools.nexpad.model.HapticStyle.HEAVY -> VibrationEffect.Composition.PRIMITIVE_THUD
+                    com.sanket.tools.nexpad.model.HapticStyle.SOFT -> VibrationEffect.Composition.PRIMITIVE_TICK
+                    com.sanket.tools.nexpad.model.HapticStyle.CRISP -> VibrationEffect.Composition.PRIMITIVE_CLICK
                 }
 
                 val isSupported = try {
@@ -107,9 +110,9 @@ class HapticFeedbackHelper(context: Context) {
 
             // Android 10+ (API 29+) Predefined Click Fallback
             val predefinedEffect = when (style) {
-                STYLE_HEAVY -> VibrationEffect.EFFECT_HEAVY_CLICK
-                STYLE_SOFT -> VibrationEffect.EFFECT_TICK
-                else -> VibrationEffect.EFFECT_CLICK
+                com.sanket.tools.nexpad.model.HapticStyle.HEAVY -> VibrationEffect.EFFECT_HEAVY_CLICK
+                com.sanket.tools.nexpad.model.HapticStyle.SOFT -> VibrationEffect.EFFECT_TICK
+                com.sanket.tools.nexpad.model.HapticStyle.CRISP -> VibrationEffect.EFFECT_CLICK
             }
             vibrator?.vibrate(VibrationEffect.createPredefined(predefinedEffect))
         } catch (_: Exception) {
@@ -121,17 +124,5 @@ class HapticFeedbackHelper(context: Context) {
                 // Motor unavailable or hardware busy
             }
         }
-    }
-
-    companion object {
-        const val PREF_FILE = "nexpad_prefs"
-        const val PREF_BUTTON_HAPTICS_ENABLED = "BUTTON_HAPTICS_ENABLED"
-        const val PREF_HAPTICS_OFFLINE_ENABLED = "HAPTICS_OFFLINE_ENABLED"
-        const val PREF_HAPTICS_CLICK_STRENGTH = "HAPTICS_CLICK_STRENGTH"
-        const val PREF_HAPTICS_STYLE = "HAPTICS_STYLE"
-
-        const val STYLE_CRISP = "crisp"
-        const val STYLE_HEAVY = "heavy"
-        const val STYLE_SOFT = "soft"
     }
 }

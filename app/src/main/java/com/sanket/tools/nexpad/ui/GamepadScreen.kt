@@ -1,7 +1,6 @@
 package com.sanket.tools.nexpad.ui
 
 import android.content.Context
-import android.content.SharedPreferences
 import android.content.pm.ActivityInfo
 import android.os.SystemClock
 import android.widget.Toast
@@ -54,6 +53,7 @@ import com.sanket.tools.nexpad.ui.components.controller.trigger.RealisticTrigger
 import com.sanket.tools.nexpad.ui.components.controller.special.InbuildTouchpadHalf
 import com.sanket.tools.nexpad.utils.ImmersiveSystemBars
 import com.sanket.tools.nexpad.utils.LockScreenOrientation
+import com.sanket.tools.nexpad.model.JoystickMode
 import kotlin.math.pow
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
@@ -114,11 +114,11 @@ fun GamepadScreen(
     onBack: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val prefs = remember(context) {
-        context.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
+    val nexpadPrefs = remember(context) {
+        com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context)
     }
-    val doubleTapExitEnabled = remember(prefs) {
-        prefs.getBoolean(PREF_DOUBLE_TAP_BACK_EXIT, true)
+    val doubleTapExitEnabled = remember(nexpadPrefs) {
+        nexpadPrefs.isDoubleTapExitEnabled
     }
     var lastBackPressTime by remember { mutableLongStateOf(0L) }
     var backToast by remember { mutableStateOf<Toast?>(null) }
@@ -231,7 +231,7 @@ fun GamepadScreen(
     }
 
     LaunchedEffect(Unit) {
-        val sharedPref = context.getSharedPreferences("nexpad_prefs", android.content.Context.MODE_PRIVATE)
+        val nexpadPrefs = com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context)
         
         val bandSize = motorProfile.bandSize
         val minGapMs = motorProfile.minGapMs
@@ -262,21 +262,20 @@ fun GamepadScreen(
                 .collect { feedback ->
                     val now = SystemClock.elapsedRealtime()
                     lastPacketTimeMs.set(now)
-                    val rumbleMode = sharedPref.getString("RUMBLE_MODE", "min") ?: "min"
+                    val rumbleMode = nexpadPrefs.rumbleMode
                     
                     // ── Stage 1: Stereo-to-Mono Downmix ─────────────────────────
                     val left = feedback.leftMotorSpeed
                     val right = feedback.rightMotorSpeed
                     
                     val combinedSpeed = when (rumbleMode) {
-                        "max"   -> maxOf(left, right)
-                        "smart" -> {
+                        com.sanket.tools.nexpad.model.RumbleMode.MAX   -> maxOf(left, right)
+                        com.sanket.tools.nexpad.model.RumbleMode.SMART -> {
                             if (left == 0 || right == 0) maxOf(left, right)
                             else (0.7f * maxOf(left, right) + 0.3f * minOf(left, right)).roundToInt()
                         }
-                        "avg"   -> (left + right) / 2
-                        "min"   -> minOf(left, right)
-                        else    -> minOf(left, right)
+                        com.sanket.tools.nexpad.model.RumbleMode.AVG   -> (left + right) / 2
+                        com.sanket.tools.nexpad.model.RumbleMode.MIN   -> minOf(left, right)
                     }
                     
                     val scaledSpeed = combinedSpeed.coerceIn(0, 255)
@@ -379,11 +378,14 @@ fun GamepadScreen(
         viewModel = viewModel,
         onBack = onBack,
         renderElement = { key, position ->
-            val isStick = key.equals("LS", ignoreCase = true) || key.equals("RS", ignoreCase = true)
-            val mode = if (isStick) {
-                position.joystickMode ?: if (position.isLocked == false) "FULL" else "LOCKED"
+            val isStick = key.equals(com.sanket.tools.nexpad.category.ControlKey.LS.name, ignoreCase = true) ||
+                          key.equals(com.sanket.tools.nexpad.category.ControlKey.RS.name, ignoreCase = true)
+            val resolvedMode = if (isStick) {
+                com.sanket.tools.nexpad.model.JoystickMode.fromId(
+                    position.joystickMode ?: if (position.isLocked == false) com.sanket.tools.nexpad.model.JoystickMode.FULL.id else com.sanket.tools.nexpad.model.JoystickMode.LOCKED.id
+                )
             } else null
-            val isLocked = if (isStick) (mode == "LOCKED") else (position.isLocked ?: true)
+            val isLocked = if (isStick) (resolvedMode == com.sanket.tools.nexpad.model.JoystickMode.LOCKED) else (position.isLocked ?: true)
             com.sanket.tools.nexpad.ui.components.controller.ControllerElementRenderer(
                 key = key,
                 isConnected = isConnected,
@@ -435,27 +437,27 @@ fun GamepadScreenContent(
             )
         }
 
-        val lsEntry = adjustedPositions.entries.firstOrNull { it.key.equals("LS", ignoreCase = true) }
-        val rsEntry = adjustedPositions.entries.firstOrNull { it.key.equals("RS", ignoreCase = true) }
-        val ltpEntry = adjustedPositions.entries.firstOrNull { it.key.equals("LTP", ignoreCase = true) }
-        val rtpEntry = adjustedPositions.entries.firstOrNull { it.key.equals("RTP", ignoreCase = true) }
+        val lsEntry = adjustedPositions.entries.firstOrNull { it.key.equals(com.sanket.tools.nexpad.category.ControlKey.LS.name, ignoreCase = true) }
+        val rsEntry = adjustedPositions.entries.firstOrNull { it.key.equals(com.sanket.tools.nexpad.category.ControlKey.RS.name, ignoreCase = true) }
+        val ltpEntry = adjustedPositions.entries.firstOrNull { it.key.equals(com.sanket.tools.nexpad.category.ControlKey.LTP.name, ignoreCase = true) }
+        val rtpEntry = adjustedPositions.entries.firstOrNull { it.key.equals(com.sanket.tools.nexpad.category.ControlKey.RTP.name, ignoreCase = true) }
 
         val touchpadEntries = remember(adjustedPositions) {
             adjustedPositions.entries.filter { (key, _) ->
-                key.equals("LTP", ignoreCase = true) || key.equals("RTP", ignoreCase = true)
+                key.equals(com.sanket.tools.nexpad.category.ControlKey.LTP.name, ignoreCase = true) || key.equals(com.sanket.tools.nexpad.category.ControlKey.RTP.name, ignoreCase = true)
             }
         }
         val joystickEntries = remember(adjustedPositions) {
             adjustedPositions.entries.filter { (key, _) ->
-                key.equals("LS", ignoreCase = true) || key.equals("RS", ignoreCase = true)
+                key.equals(com.sanket.tools.nexpad.category.ControlKey.LS.name, ignoreCase = true) || key.equals(com.sanket.tools.nexpad.category.ControlKey.RS.name, ignoreCase = true)
             }
         }
         val interactiveButtonEntries = remember(adjustedPositions) {
             adjustedPositions.entries.filter { (key, _) ->
-                !key.equals("LS", ignoreCase = true) &&
-                !key.equals("RS", ignoreCase = true) &&
-                !key.equals("LTP", ignoreCase = true) &&
-                !key.equals("RTP", ignoreCase = true)
+                !key.equals(com.sanket.tools.nexpad.category.ControlKey.LS.name, ignoreCase = true) &&
+                !key.equals(com.sanket.tools.nexpad.category.ControlKey.RS.name, ignoreCase = true) &&
+                !key.equals(com.sanket.tools.nexpad.category.ControlKey.LTP.name, ignoreCase = true) &&
+                !key.equals(com.sanket.tools.nexpad.category.ControlKey.RTP.name, ignoreCase = true)
             }
         }
 
@@ -580,8 +582,10 @@ fun GamepadScreenContent(
         // When LOCKED, the joystick is locked at its home position and handles touches directly without floating.
         if (lsEntry != null) {
             val lsPos = lsEntry.value
-            val lsMode = lsPos.joystickMode ?: if (lsPos.isLocked == false) "FULL" else "LOCKED"
-            if (lsMode != "LOCKED") {
+            val lsMode = com.sanket.tools.nexpad.model.JoystickMode.fromId(
+                lsPos.joystickMode ?: if (lsPos.isLocked == false) com.sanket.tools.nexpad.model.JoystickMode.FULL.id else com.sanket.tools.nexpad.model.JoystickMode.LOCKED.id
+            )
+            if (lsMode != com.sanket.tools.nexpad.model.JoystickMode.LOCKED) {
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
@@ -609,8 +613,10 @@ fun GamepadScreenContent(
         // Right Stick: handles center to right (x >= screenWidth / 2)
         if (rsEntry != null) {
             val rsPos = rsEntry.value
-            val rsMode = rsPos.joystickMode ?: if (rsPos.isLocked == false) "FULL" else "LOCKED"
-            if (rsMode != "LOCKED") {
+            val rsMode = com.sanket.tools.nexpad.model.JoystickMode.fromId(
+                rsPos.joystickMode ?: if (rsPos.isLocked == false) com.sanket.tools.nexpad.model.JoystickMode.FULL.id else com.sanket.tools.nexpad.model.JoystickMode.LOCKED.id
+            )
+            if (rsMode != com.sanket.tools.nexpad.model.JoystickMode.LOCKED) {
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
@@ -668,7 +674,7 @@ fun GamepadScreenContent(
 @Composable
 private fun BoxScope.JoystickTouchLayer(
     isLeft: Boolean,
-    mode: String,
+    mode: JoystickMode,
     hitboxScale: Float,
     position: com.sanket.tools.nexpad.model.Position,
     screenWidthPx: Float,
@@ -691,8 +697,9 @@ private fun BoxScope.JoystickTouchLayer(
     val maxThrowPx = remember(density) { with(density) { 60.dp.toPx() } }
 
     // BOX mode: half-size of the square activation region (centered on home)
-    val boxHalfPx = remember(mode, hitboxScale, position, density, responsiveScale) {
-        if (mode == "BOX") {
+    val resolvedJoystickMode = mode
+    val boxHalfPx = remember(resolvedJoystickMode, hitboxScale, position, density, responsiveScale) {
+        if (resolvedJoystickMode == JoystickMode.BOX) {
             val joystickDiamPx = with(density) { 150.dp.toPx() } * position.scale * responsiveScale
             (joystickDiamPx * hitboxScale) / 2f
         } else 0f
@@ -704,7 +711,7 @@ private fun BoxScope.JoystickTouchLayer(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .pointerInput(mode, homeX, homeY, boxHalfPx, screenWidthPx, isLeft) {
+            .pointerInput(resolvedJoystickMode, homeX, homeY, boxHalfPx, screenWidthPx, isLeft) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
 
@@ -720,11 +727,11 @@ private fun BoxScope.JoystickTouchLayer(
                     if (nearButton) return@awaitEachGesture
 
                     // 3. Activation zone gate (floating joystick only active for FULL or BOX)
-                    val inZone = when (mode) {
-                        "FULL" -> true
-                        "BOX"  -> abs(screenX - homeX) <= boxHalfPx &&
-                                  abs(screenY - homeY) <= boxHalfPx
-                        else   -> false
+                    val inZone = when (resolvedJoystickMode) {
+                        com.sanket.tools.nexpad.model.JoystickMode.FULL -> true
+                        com.sanket.tools.nexpad.model.JoystickMode.BOX  -> abs(screenX - homeX) <= boxHalfPx &&
+                                                                            abs(screenY - homeY) <= boxHalfPx
+                        com.sanket.tools.nexpad.model.JoystickMode.LOCKED -> false
                     }
                     if (!inZone) return@awaitEachGesture
 

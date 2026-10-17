@@ -445,19 +445,7 @@ fun RealisticTouchPad(
         if (sensitivity != null && sensitivity > 0f) {
             sensitivity
         } else {
-            val sp = context.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
-            val specificSens = sp.getFloat("TOUCHPAD_SENSITIVITY_$padKey", -1f)
-            if (specificSens > 0f) {
-                specificSens
-            } else {
-                val globalPadSens = sp.getFloat("TOUCHPAD_SENSITIVITY", -1f)
-                if (globalPadSens > 0f) {
-                    globalPadSens
-                } else {
-                    val camSens = sp.getFloat("CAMERA_SENSITIVITY", 1.0f)
-                    camSens * 2.0f
-                }
-            }
+            com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadSensitivity(padKey)
         }
     }
 

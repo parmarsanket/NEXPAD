@@ -508,21 +508,12 @@ fun NxprcCanvasRenderer(
         val isTouchpad = document.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
                 document.manifest.defaultControl.equals(NexpadKeys.RTP, ignoreCase = true) ||
                 document.manifest.defaultControl.equals(NexpadKeys.LTP, ignoreCase = true)
+        val prefs = com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context)
         if (isTouchpad) {
-            val sp = context.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
             val padKey = if (stick.isLeft) "LTP" else "RTP"
-            val specificSens = sp.getFloat("TOUCHPAD_SENSITIVITY_$padKey", -1f)
-            val sens = if (specificSens > 0f) specificSens else {
-                val globalPadSens = sp.getFloat("TOUCHPAD_SENSITIVITY", -1f)
-                if (globalPadSens > 0f) globalPadSens else sp.getFloat("CAMERA_SENSITIVITY", 1.0f) * 2.0f
-            }
-            Pair(true, sens)
+            Pair(true, prefs.getTouchpadSensitivity(padKey))
         } else if (!stick.isLeft) {
-            val sp = context.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
-            Pair(
-                sp.getBoolean("RIGHT_STICK_CAMERA_MODE", false),
-                sp.getFloat("CAMERA_SENSITIVITY", 1.0f)
-            )
+            Pair(prefs.isRightStickCameraMode, prefs.cameraSensitivity)
         } else {
             Pair(false, 1.0f)
         }

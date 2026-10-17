@@ -7,12 +7,12 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class LayoutProfile(
-    val name: String = "Standard Elite",
+    val name: String = DefaultProfileType.DEFAULT.profileName,
     val isDefault: Boolean = false,
     val isRgbEnabled: Boolean = true,
     val positions: Map<String, Position> = standardElitePositions(),
     val description: String = "",
-    val labelStyle: String = "XBOX"
+    val labelStyle: String = ControllerLabelStyle.DEFAULT.id
 ) {
     val controllerLabelStyle: ControllerLabelStyle
         get() = ControllerLabelStyle.fromId(labelStyle)
@@ -23,7 +23,7 @@ data class LayoutProfile(
         positions.forEach { (rawKey, pos) ->
             val canonicalKey = ControlKey.fromIdentifier(rawKey)?.key ?: rawKey.uppercase()
             if (!normalized.containsKey(canonicalKey)) {
-                normalized[canonicalKey] = pos
+                normalized[canonicalKey] = pos.sanitized()
             }
         }
         // Self-heal: If both composite 4-way DPAD and discrete directional buttons exist,
@@ -60,7 +60,7 @@ data class LayoutProfile(
     fun withUpdatedElements(elements: List<HudElement>): LayoutProfile = copy(
         positions = elements.associate {
             val canonical = ControlKey.fromIdentifier(it.controlKey)?.key ?: it.controlKey.uppercase()
-            canonical to it.toPosition()
+            canonical to it.toPosition().sanitized()
         }
     )
 }
@@ -78,7 +78,21 @@ data class Position(
     val isLocked: Boolean? = null,
     val joystickMode: String? = null,
     val hitboxScale: Float? = null
-)
+) {
+    /**
+     * Sanitizes floating point coordinates against NaN, Infinity, and out-of-bound values.
+     * Prevents UI layout rounding crashes and ensures valid coordinate bounds.
+     */
+    fun sanitized(): Position = copy(
+        xRatio = if (xRatio.isFinite()) xRatio.coerceIn(0.0f, 1.0f) else 0.5f,
+        yRatio = if (yRatio.isFinite()) yRatio.coerceIn(0.0f, 1.0f) else 0.5f,
+        scale = if (scale.isFinite()) scale.coerceIn(0.2f, 3.0f) else 1.0f,
+        opacity = if (opacity.isFinite()) opacity.coerceIn(0.05f, 1.0f) else 1.0f,
+        sensitivity = sensitivity?.let { if (it.isFinite()) it.coerceIn(0.1f, 5.0f) else 1.0f },
+        heightScale = heightScale?.let { if (it.isFinite()) it.coerceIn(0.2f, 3.0f) else 1.0f },
+        hitboxScale = hitboxScale?.let { if (it.isFinite()) it.coerceIn(0.5f, 3.0f) else 1.5f }
+    )
+}
 
 /**
  * Default Layout 1: Standard Elite (Physical Xbox Asymmetric Ergonomics).
@@ -354,44 +368,44 @@ fun getControlDefaultPosition(canonicalKey: String): Position? {
 private val DEFAULT_LAYOUT_PROFILES: List<LayoutProfile> by lazy {
     listOf(
         LayoutProfile(
-            name = "Standard Elite",
+            name = DefaultProfileType.STANDARD_ELITE.profileName,
             isDefault = true,
-            labelStyle = "XBOX",
+            labelStyle = ControllerLabelStyle.XBOX.id,
             positions = standardElitePositions(),
             description = "Precision Xbox asymmetric layout with ergonomic thumbstick offsets, dual triggers, and balanced central controls."
         ),
         LayoutProfile(
-            name = "PlayStation DualSense Pro",
+            name = DefaultProfileType.PLAYSTATION_DUALSENSE_PRO.profileName,
             isDefault = true,
-            labelStyle = "PLAYSTATION",
+            labelStyle = ControllerLabelStyle.PLAYSTATION.id,
             positions = playStationDualSensePositions(),
             description = "Authentic PlayStation symmetric layout with DualSense thumbsticks, d-pad primacy, and iconic geometric glyphs."
         ),
         LayoutProfile(
-            name = "FPS Tactical Claw",
+            name = DefaultProfileType.FPS_TACTICAL_CLAW.profileName,
             isDefault = true,
-            labelStyle = "XBOX",
+            labelStyle = ControllerLabelStyle.XBOX.id,
             positions = fpsTacticalClawPositions(),
             description = "Competitive claw layout with hair triggers, separated aiming arcs, and instant tactical response."
         ),
         LayoutProfile(
-            name = "Retro Arcade Fightstick",
+            name = DefaultProfileType.RETRO_ARCADE_FIGHTSTICK.profileName,
             isDefault = true,
-            labelStyle = "XBOX",
+            labelStyle = ControllerLabelStyle.XBOX.id,
             positions = retroArcadeFightstickPositions(),
             description = "Authentic Japanese 6-button arcade cabinet fightstick grid with heavy punch/kick buttons and 8-way D-Pad."
         ),
         LayoutProfile(
-            name = "Sim Racing & Flight",
+            name = DefaultProfileType.SIM_RACING_FLIGHT.profileName,
             isDefault = true,
-            labelStyle = "XBOX",
+            labelStyle = ControllerLabelStyle.XBOX.id,
             positions = simRacingFlightPositions(),
             description = "Analog throttle & brake primacy with paddle shifters, steering telemetry stick, and pit-stop controls."
         ),
         LayoutProfile(
-            name = "Grand MOBA & RPG",
+            name = DefaultProfileType.GRAND_MOBA_RPG.profileName,
             isDefault = true,
-            labelStyle = "XBOX",
+            labelStyle = ControllerLabelStyle.XBOX.id,
             positions = grandMobaRpgPositions(),
             description = "Ergonomic radial ability sweep with primary attack anchor, directional skillshot triggers, and quick spell controls."
         )

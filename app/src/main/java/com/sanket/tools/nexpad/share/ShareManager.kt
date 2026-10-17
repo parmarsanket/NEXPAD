@@ -28,7 +28,7 @@ import java.io.File
 data class NxLayoutDocument(
     val version: Int = 1,
     val name: String,
-    val labelStyle: String = "XBOX",
+    val labelStyle: String = com.sanket.tools.nexpad.category.ControllerLabelStyle.DEFAULT.id,
     val isRgbEnabled: Boolean = true,
     val description: String = "",
     val positions: Map<String, Position>,

@@ -301,12 +301,12 @@ class HudEditorViewModel(
         val targetKey = resolveElementKey(controlKey)
         val current = elements[targetKey] ?: return
         val newLocked = !current.transform.isLocked
-        val currentMode = current.transform.joystickMode.takeIf { it.isNotEmpty() } ?: "BOX"
-        val newMode = if (newLocked) "LOCKED" else (currentMode.takeIf { it != "LOCKED" } ?: "BOX")
+        val currentMode = com.sanket.tools.nexpad.model.JoystickMode.fromId(current.transform.joystickMode)
+        val newMode = if (newLocked) com.sanket.tools.nexpad.model.JoystickMode.LOCKED else (if (currentMode != com.sanket.tools.nexpad.model.JoystickMode.LOCKED) currentMode else com.sanket.tools.nexpad.model.JoystickMode.BOX)
         val updated = current.copy(
             transform = current.transform.copy(
                 isLocked = newLocked,
-                joystickMode = newMode
+                joystickMode = newMode.id
             )
         )
         elements[targetKey] = updated
@@ -316,12 +316,12 @@ class HudEditorViewModel(
     fun setLock(controlKey: String, isLocked: Boolean) {
         val targetKey = resolveElementKey(controlKey)
         val current = elements[targetKey] ?: return
-        val currentMode = current.transform.joystickMode.takeIf { it.isNotEmpty() } ?: "BOX"
-        val newMode = if (isLocked) "LOCKED" else (currentMode.takeIf { it != "LOCKED" } ?: "BOX")
+        val currentMode = com.sanket.tools.nexpad.model.JoystickMode.fromId(current.transform.joystickMode)
+        val newMode = if (isLocked) com.sanket.tools.nexpad.model.JoystickMode.LOCKED else (if (currentMode != com.sanket.tools.nexpad.model.JoystickMode.LOCKED) currentMode else com.sanket.tools.nexpad.model.JoystickMode.BOX)
         val updated = current.copy(
             transform = current.transform.copy(
                 isLocked = isLocked,
-                joystickMode = newMode
+                joystickMode = newMode.id
             )
         )
         elements[targetKey] = updated
@@ -331,10 +331,11 @@ class HudEditorViewModel(
     fun setJoystickMode(controlKey: String, mode: String) {
         val targetKey = resolveElementKey(controlKey)
         val current = elements[targetKey] ?: return
-        val isLocked = (mode == "LOCKED")
+        val resolvedMode = com.sanket.tools.nexpad.model.JoystickMode.fromId(mode)
+        val isLocked = (resolvedMode == com.sanket.tools.nexpad.model.JoystickMode.LOCKED)
         val updated = current.copy(
             transform = current.transform.copy(
-                joystickMode = mode,
+                joystickMode = resolvedMode.id,
                 isLocked = isLocked
             )
         )

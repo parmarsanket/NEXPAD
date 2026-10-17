@@ -17,7 +17,7 @@ data class LayoutTransform(
     val heightScale: Float = 1.0f,
     val isFlipped: Boolean = false,
     val isLocked: Boolean = true,
-    val joystickMode: String = "LOCKED",
+    val joystickMode: String = com.sanket.tools.nexpad.model.JoystickMode.DEFAULT.id,
     val hitboxScale: Float = 1.5f
 )
 
@@ -85,8 +85,8 @@ data class HudElement(
 
     companion object {
         fun fromPosition(key: String, position: Position): HudElement {
-            val resolvedMode = position.joystickMode ?: if (position.isLocked == false) "BOX" else "LOCKED"
-            val resolvedLocked = (resolvedMode == "LOCKED")
+            val resolvedMode = position.joystickMode ?: if (position.isLocked == false) com.sanket.tools.nexpad.model.JoystickMode.BOX.id else com.sanket.tools.nexpad.model.JoystickMode.LOCKED.id
+            val resolvedLocked = (resolvedMode == com.sanket.tools.nexpad.model.JoystickMode.LOCKED.id)
             return HudElement(
                 controlKey = key.uppercase(),
                 transform = LayoutTransform(

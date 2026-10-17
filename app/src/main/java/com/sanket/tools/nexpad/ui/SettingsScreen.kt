@@ -2,7 +2,6 @@ package com.sanket.tools.nexpad.ui
 
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
@@ -69,8 +68,12 @@ import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.utils.HapticFeedbackHelper
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
+import com.sanket.tools.nexpad.model.DefaultProfileType
+import com.sanket.tools.nexpad.model.HapticStyle
+import com.sanket.tools.nexpad.model.RumbleMode
+import com.sanket.tools.nexpad.utils.NexpadPreferenceKeys
 
-const val PREF_DOUBLE_TAP_BACK_EXIT = "DOUBLE_TAP_BACK_EXIT"
+const val PREF_DOUBLE_TAP_BACK_EXIT = NexpadPreferenceKeys.KEY_DOUBLE_TAP_BACK_EXIT
 const val NEXPAD_DESKTOP_GITHUB_URL = "https://github.com/parmarsanket/NEXPAD-Desktop"
 const val DEV_LINKEDIN_URL = "https://www.linkedin.com/in/sanket-parmar-571b00323"
 const val DEV_YOUTUBE_URL = "https://www.youtube.com/channel/UCwZYa5I4rn7I5LmCZmx9RdQ"
@@ -82,8 +85,8 @@ fun SettingsScreen(
     viewModel: GamepadViewModel
 ) {
     val context = LocalContext.current
-    val sharedPref = remember(context) {
-        context.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
+    val nexpadPrefs = remember(context) {
+        com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context)
     }
     val isConnected by viewModel.isConnected.collectAsState()
     val profiles by layoutManager.profilesFlow.collectAsState()
@@ -93,23 +96,22 @@ fun SettingsScreen(
     }
 
     var buttonHapticsEnabled by remember {
-        mutableStateOf(sharedPref.getBoolean(HapticFeedbackHelper.PREF_BUTTON_HAPTICS_ENABLED, true))
+        mutableStateOf(nexpadPrefs.isButtonHapticsEnabled)
     }
     var vibrateOfflineEnabled by remember {
-        mutableStateOf(sharedPref.getBoolean(HapticFeedbackHelper.PREF_HAPTICS_OFFLINE_ENABLED, false))
+        mutableStateOf(nexpadPrefs.isHapticsOfflineEnabled)
     }
     var hapticClickStrength by remember {
-        mutableFloatStateOf(sharedPref.getFloat(HapticFeedbackHelper.PREF_HAPTICS_CLICK_STRENGTH, 0.3f))
+        mutableFloatStateOf(nexpadPrefs.hapticClickStrength)
     }
     var hapticStyle by remember {
-        mutableStateOf(
-            sharedPref.getString(HapticFeedbackHelper.PREF_HAPTICS_STYLE, HapticFeedbackHelper.STYLE_CRISP)
-                ?: HapticFeedbackHelper.STYLE_CRISP
-        )
+        mutableStateOf(nexpadPrefs.hapticStyle)
     }
-    var rumbleMode by remember { mutableStateOf(sharedPref.getString("RUMBLE_MODE", "min") ?: "min") }
+    var rumbleMode by remember {
+        mutableStateOf(nexpadPrefs.rumbleMode)
+    }
     var doubleTapBackExitEnabled by remember {
-        mutableStateOf(sharedPref.getBoolean(PREF_DOUBLE_TAP_BACK_EXIT, true))
+        mutableStateOf(nexpadPrefs.isDoubleTapExitEnabled)
     }
 
     val hapticHelper = remember(context) { HapticFeedbackHelper(context) }
@@ -129,35 +131,35 @@ fun SettingsScreen(
         },
         onButtonHapticsChange = {
             buttonHapticsEnabled = it
-            sharedPref.edit().putBoolean(HapticFeedbackHelper.PREF_BUTTON_HAPTICS_ENABLED, it).apply()
+            nexpadPrefs.isButtonHapticsEnabled = it
             if (it) {
                 hapticHelper.performPreviewClick(style = hapticStyle, strength = hapticClickStrength)
             }
         },
         onVibrateOfflineChange = {
             vibrateOfflineEnabled = it
-            sharedPref.edit().putBoolean(HapticFeedbackHelper.PREF_HAPTICS_OFFLINE_ENABLED, it).apply()
+            nexpadPrefs.isHapticsOfflineEnabled = it
             hapticHelper.performPreviewClick(style = hapticStyle, strength = hapticClickStrength)
         },
         onHapticClickStrengthChange = {
             hapticClickStrength = it
-            sharedPref.edit().putFloat(HapticFeedbackHelper.PREF_HAPTICS_CLICK_STRENGTH, it).apply()
+            nexpadPrefs.hapticClickStrength = it
         },
         onHapticClickStrengthFinished = {
             hapticHelper.performPreviewClick(style = hapticStyle, strength = hapticClickStrength)
         },
         onHapticStyleChange = {
             hapticStyle = it
-            sharedPref.edit().putString(HapticFeedbackHelper.PREF_HAPTICS_STYLE, it).apply()
+            nexpadPrefs.hapticStyle = it
             hapticHelper.performPreviewClick(style = it, strength = hapticClickStrength)
         },
         onRumbleModeChange = {
             rumbleMode = it
-            sharedPref.edit().putString("RUMBLE_MODE", it).apply()
+            nexpadPrefs.rumbleMode = it
         },
         onDoubleTapBackExitChange = {
             doubleTapBackExitEnabled = it
-            sharedPref.edit().putBoolean(PREF_DOUBLE_TAP_BACK_EXIT, it).apply()
+            nexpadPrefs.isDoubleTapExitEnabled = it
         },
         onOpenUrl = { url ->
             if (url.isNullOrBlank()) {
@@ -180,21 +182,21 @@ fun SettingsScreen(
 @Composable
 fun SettingsScreenContent(
     isConnected: Boolean = false,
-    activeProfileName: String = "Standard Elite",
+    activeProfileName: String = DefaultProfileType.DEFAULT.profileName,
     isRgbEnabled: Boolean = true,
     buttonHapticsEnabled: Boolean = true,
     vibrateOfflineEnabled: Boolean = false,
-    hapticClickStrength: Float = 0.3f,
-    hapticStyle: String = HapticFeedbackHelper.STYLE_CRISP,
-    rumbleMode: String = "min",
+    hapticClickStrength: Float = NexpadPreferenceKeys.DEFAULT_HAPTICS_CLICK_STRENGTH,
+    hapticStyle: HapticStyle = HapticStyle.DEFAULT,
+    rumbleMode: RumbleMode = RumbleMode.DEFAULT,
     doubleTapBackExitEnabled: Boolean = true,
     onRgbChange: (Boolean) -> Unit = {},
     onButtonHapticsChange: (Boolean) -> Unit = {},
     onVibrateOfflineChange: (Boolean) -> Unit = {},
     onHapticClickStrengthChange: (Float) -> Unit = {},
     onHapticClickStrengthFinished: () -> Unit = {},
-    onHapticStyleChange: (String) -> Unit = {},
-    onRumbleModeChange: (String) -> Unit = {},
+    onHapticStyleChange: (HapticStyle) -> Unit = {},
+    onRumbleModeChange: (RumbleMode) -> Unit = {},
     onDoubleTapBackExitChange: (Boolean) -> Unit = {},
     onOpenUrl: (String?) -> Unit = {},
     onBack: () -> Unit = {},
@@ -287,11 +289,9 @@ fun SettingsScreenContent(
                     SettingsSegmentedSelector(
                         title = "Mechanical Click Profile",
                         description = "Acoustic and tactile impulse waveform tuning",
-                        options = listOf(
-                            Triple(HapticFeedbackHelper.STYLE_CRISP, "Crisp Click", "Fast & Sharp"),
-                            Triple(HapticFeedbackHelper.STYLE_HEAVY, "Heavy Snap", "Tactile Bump"),
-                            Triple(HapticFeedbackHelper.STYLE_SOFT, "Soft Tick", "Quiet Tone")
-                        ),
+                        options = HapticStyle.entries.map {
+                            Triple(it, it.title, it.subtitle)
+                        },
                         selectedValue = hapticStyle,
                         onSelect = onHapticStyleChange,
                         accentColor = NeonPalette.Green,
@@ -309,12 +309,9 @@ fun SettingsScreenContent(
                     SettingsSegmentedSelector(
                         title = "Stereo Mix Routing",
                         description = "Blends Left (low frequency / heavy) and Right (high frequency / sharp) motor channels",
-                        options = listOf(
-                            Triple("min", "Soft Min", "Subtle Floor (Default)"),
-                            Triple("max", "Peak Force", "1:1 Peak Impact"),
-                            Triple("smart", "Smart Intent", "Dynamic Stereo Blend"),
-                            Triple("avg", "Balanced Average", "50/50 Channel Mean")
-                        ),
+                        options = RumbleMode.entries.map {
+                            Triple(it, it.title, it.subtitle)
+                        },
                         selectedValue = rumbleMode,
                         onSelect = onRumbleModeChange,
                         accentColor = NeonPalette.Magenta

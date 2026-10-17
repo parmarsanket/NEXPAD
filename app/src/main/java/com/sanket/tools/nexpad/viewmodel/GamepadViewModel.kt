@@ -56,13 +56,11 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     val requestedSensorMode: Byte get() = sensorController.requestedSensorMode
     val requestedSensorModeFlow: StateFlow<Byte> get() = sensorController.requestedSensorModeFlow
 
-    private val sharedPreferences = application.getSharedPreferences("nexpad_prefs", android.content.Context.MODE_PRIVATE)
-    private val _emulationMode = MutableStateFlow(sharedPreferences.getString("emulation_mode", "generic") ?: "generic")
-    val emulationMode: StateFlow<String> = _emulationMode.asStateFlow()
+    private val nexpadPrefs = com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(application)
+    val emulationMode: StateFlow<com.sanket.tools.nexpad.model.ControllerEmulationMode> = nexpadPrefs.emulationModeFlow
 
-    fun setEmulationMode(mode: String) {
-        sharedPreferences.edit().putString("emulation_mode", mode).apply()
-        _emulationMode.value = mode
+    fun setEmulationMode(mode: com.sanket.tools.nexpad.model.ControllerEmulationMode) {
+        nexpadPrefs.emulationMode = mode
     }
 
     private val _isAoaAttached = MutableStateFlow(false)
@@ -86,9 +84,9 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     private val usbReceiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
-                "android.hardware.usb.action.USB_STATE" -> {
-                    val connected = intent.getBooleanExtra("connected", false)
-                    val adb = intent.getBooleanExtra("adb", false)
+                com.sanket.tools.nexpad.utils.NexpadHardwareActions.ACTION_USB_STATE -> {
+                    val connected = intent.getBooleanExtra(com.sanket.tools.nexpad.utils.NexpadHardwareActions.EXTRA_USB_CONNECTED, false)
+                    val adb = intent.getBooleanExtra(com.sanket.tools.nexpad.utils.NexpadHardwareActions.EXTRA_USB_ADB, false)
                     _isUsbCableConnected.value = connected
                     _isUsbAdbActive.value = connected && adb
                     if (!connected) {
@@ -111,16 +109,16 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
                         disconnect()
                     }
                 }
-                "com.sanket.tools.nexpad.ADB_DEVICE_READY" -> {
-                    val pcName = intent.getStringExtra("pc_name")?.trim()
+                com.sanket.tools.nexpad.utils.NexpadHardwareActions.ACTION_ADB_DEVICE_READY -> {
+                    val pcName = intent.getStringExtra(com.sanket.tools.nexpad.utils.NexpadHardwareActions.EXTRA_PC_NAME)?.trim()
                     if (_isUsbCableConnected.value && isUsbDebuggingEnabled()) {
-                        _adbServerName.value = if (!pcName.isNullOrEmpty()) pcName else "Windows PC"
+                        _adbServerName.value = if (!pcName.isNullOrEmpty()) pcName else com.sanket.tools.nexpad.utils.NexpadHardwareActions.DEFAULT_PC_NAME
                         _isAdbAvailable.value = true
                         lastAdbSeenTimestamp = System.currentTimeMillis()
                         android.util.Log.d("NEXPAD", "🤝 Received ADB_DEVICE_READY from: ${_adbServerName.value}")
                     }
                 }
-                "com.sanket.tools.nexpad.ADB_DEVICE_DISCONNECTED" -> {
+                com.sanket.tools.nexpad.utils.NexpadHardwareActions.ACTION_ADB_DEVICE_DISCONNECTED -> {
                     _isAdbAvailable.value = false
                     _adbServerName.value = null
                 }
@@ -141,21 +139,21 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
 
     init {
         // Initial sticky USB state query
-        val stickyUsb = application.registerReceiver(null, IntentFilter("android.hardware.usb.action.USB_STATE"))
+        val stickyUsb = application.registerReceiver(null, IntentFilter(com.sanket.tools.nexpad.utils.NexpadHardwareActions.ACTION_USB_STATE))
         if (stickyUsb != null) {
-            val connected = stickyUsb.getBooleanExtra("connected", false)
-            val adb = stickyUsb.getBooleanExtra("adb", false)
+            val connected = stickyUsb.getBooleanExtra(com.sanket.tools.nexpad.utils.NexpadHardwareActions.EXTRA_USB_CONNECTED, false)
+            val adb = stickyUsb.getBooleanExtra(com.sanket.tools.nexpad.utils.NexpadHardwareActions.EXTRA_USB_ADB, false)
             _isUsbCableConnected.value = connected
             _isUsbAdbActive.value = connected && adb
         }
 
         // Register receiver for USB state, accessory, and ADB readiness
         val filter = IntentFilter().apply {
-            addAction("android.hardware.usb.action.USB_STATE")
+            addAction(com.sanket.tools.nexpad.utils.NexpadHardwareActions.ACTION_USB_STATE)
             addAction(android.hardware.usb.UsbManager.ACTION_USB_ACCESSORY_ATTACHED)
             addAction(android.hardware.usb.UsbManager.ACTION_USB_ACCESSORY_DETACHED)
-            addAction("com.sanket.tools.nexpad.ADB_DEVICE_READY")
-            addAction("com.sanket.tools.nexpad.ADB_DEVICE_DISCONNECTED")
+            addAction(com.sanket.tools.nexpad.utils.NexpadHardwareActions.ACTION_ADB_DEVICE_READY)
+            addAction(com.sanket.tools.nexpad.utils.NexpadHardwareActions.ACTION_ADB_DEVICE_DISCONNECTED)
         }
         ContextCompat.registerReceiver(
             getApplication<Application>(),

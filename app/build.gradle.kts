@@ -36,6 +36,9 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
     @Incubating
     experimentalProperties["android.experimental.enableScreenshotTest"] = true
 }

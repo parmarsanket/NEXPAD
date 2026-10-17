@@ -1,105 +1,191 @@
 package com.sanket.tools.nexpad.utils
 
 import android.content.Context
+import android.util.Log
+import androidx.core.content.edit
 import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
+import com.sanket.tools.nexpad.model.DefaultProfileType
 import com.sanket.tools.nexpad.model.LayoutProfile
-import com.sanket.tools.nexpad.model.Position
-import com.sanket.tools.nexpad.model.defaultPositions
 import com.sanket.tools.nexpad.model.getDefaultLayoutProfiles
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import androidx.core.content.edit
+import java.util.Locale
 
-class LayoutManager(context: Context) {
-    private val appContext = context.applicationContext
-    private val prefs = appContext.getSharedPreferences("NEXPAD_LAYOUTS_V3", Context.MODE_PRIVATE)
+/**
+ * Result of validating a layout profile name.
+ */
+sealed class ProfileNameValidation {
+    object Valid : ProfileNameValidation()
+    data class Error(val message: String) : ProfileNameValidation()
+}
+
+/**
+ * Production-hardened layout profile manager for NEXPAD.
+ * Manages factory default layouts, custom user configurations, persistent JSON storage,
+ * atomic in-memory caching, validation, and observable StateFlow streams.
+ */
+class LayoutManager(
+    context: Context,
+    prefsOverride: android.content.SharedPreferences? = null
+) {
+    private val appContext = context.applicationContext ?: context
+    private val prefs = prefsOverride ?: appContext.getSharedPreferences(NexpadPreferenceKeys.FILE_LAYOUTS, Context.MODE_PRIVATE)
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true; allowSpecialFloatingPointValues = true }
 
-    private val LAYOUT_MIGRATION_VERSION = 0
+    private val lock = Any()
+
+    @Volatile
+    private var cacheVersion = 0L
+
+    @Volatile
+    private var cachedProfiles: List<LayoutProfile>? = null
 
     private val _profilesFlow = MutableStateFlow<List<LayoutProfile>>(emptyList())
     val profilesFlow: StateFlow<List<LayoutProfile>> = _profilesFlow.asStateFlow()
 
     private val _activeProfileNameFlow = MutableStateFlow<String>(
-        prefs.getString("active_profile", "Standard Elite")?.let {
-            if (it == "Standard") "Standard Elite" else it
-        } ?: "Standard Elite"
+        DefaultProfileType.resolveCanonicalName(
+            prefs.getString(NexpadPreferenceKeys.KEY_ACTIVE_PROFILE, DefaultProfileType.DEFAULT.profileName)
+        )
     )
     val activeProfileNameFlow: StateFlow<String> = _activeProfileNameFlow.asStateFlow()
 
     init {
         // Schema Migration & Cache Cleanup:
         // Version 0 represents initial release baseline. When layout schema changes in future updates,
-        // increment LAYOUT_MIGRATION_VERSION (1, 2, ...) to trigger update migrations.
+        // increment KEY_LAYOUT_MIGRATION_VERSION to trigger update migrations.
         val defaults = getDefaultLayoutProfiles()
-        val defaultNames = defaults.map { it.name.trim().lowercase() }.toSet()
-        val editor = prefs.edit()
-        var needsCommit = false
+        val defaultNames = defaults.map { it.name.trim().lowercase(Locale.ROOT) }.toSet()
+        val savedVersion = prefs.getInt(NexpadPreferenceKeys.KEY_LAYOUT_MIGRATION_VERSION, 0)
+        val shouldUpdateVersion = savedVersion != NexpadPreferenceKeys.DEFAULT_LAYOUT_MIGRATION_VERSION
 
-        val savedVersion = prefs.getInt("layout_migration_version", 0)
-        if (savedVersion < LAYOUT_MIGRATION_VERSION) {
-            // Reserved for future release schema migrations (v1.1+)
-            editor.putInt("layout_migration_version", LAYOUT_MIGRATION_VERSION)
-            needsCommit = true
-        }
+        synchronized(lock) {
+            val rawCustomNames = getCustomProfileNamesInternal()
+            val cleanedCustomNames = rawCustomNames.filterNot { defaultNames.contains(it.trim().lowercase(Locale.ROOT)) }.toSet()
+            val shouldCleanCustomNames = cleanedCustomNames.size != rawCustomNames.size
 
-        // 2. Sanitize custom_profile_names to ensure no default layout is ever treated as custom
-        synchronized(this) {
-            val rawCustomNames = prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()
-            val cleanedCustomNames = rawCustomNames.filterNot { defaultNames.contains(it.trim().lowercase()) }.toSet()
-            if (cleanedCustomNames.size != rawCustomNames.size) {
-                editor.putStringSet("custom_profile_names", HashSet(cleanedCustomNames))
-                needsCommit = true
+            if (shouldUpdateVersion || shouldCleanCustomNames) {
+                prefs.edit {
+                    if (shouldUpdateVersion) {
+                        putInt(NexpadPreferenceKeys.KEY_LAYOUT_MIGRATION_VERSION, NexpadPreferenceKeys.DEFAULT_LAYOUT_MIGRATION_VERSION)
+                    }
+                    if (shouldCleanCustomNames) {
+                        putStringSet(NexpadPreferenceKeys.KEY_CUSTOM_PROFILE_NAMES, HashSet(cleanedCustomNames))
+                    }
+                }
             }
-        }
 
-        if (needsCommit) {
-            editor.apply()
+            val savedName = prefs.getString(NexpadPreferenceKeys.KEY_ACTIVE_PROFILE, DefaultProfileType.DEFAULT.profileName)
+            _activeProfileNameFlow.value = DefaultProfileType.resolveCanonicalName(savedName)
+            refreshProfilesFlowLocked()
         }
-
-        val savedName = prefs.getString("active_profile", "Standard Elite") ?: "Standard Elite"
-        _activeProfileNameFlow.value = if (savedName == "Standard") "Standard Elite" else savedName
-        refreshProfilesFlow()
     }
 
-    @Volatile
-    private var cachedProfiles: List<LayoutProfile>? = null
+    private fun getCustomProfileNamesInternal(): Set<String> {
+        return prefs.getStringSet(NexpadPreferenceKeys.KEY_CUSTOM_PROFILE_NAMES, emptySet()) ?: emptySet()
+    }
 
-    private fun refreshProfilesFlow() {
+    /**
+     * Validates a candidate layout profile name against system constraints:
+     * 1. Rejects blank or whitespace-only names.
+     * 2. Enforces maximum length limit (32 characters).
+     * 3. Rejects control characters, newlines, and tabs.
+     * 4. Enforces case-insensitive uniqueness against reserved factory default profiles.
+     * 5. Enforces case-insensitive uniqueness against existing custom profiles (excluding [currentName]).
+     */
+    fun validateProfileName(name: String, currentName: String? = null): ProfileNameValidation {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) {
+            return ProfileNameValidation.Error("Profile name cannot be blank.")
+        }
+        if (trimmed.length > MAX_PROFILE_NAME_LENGTH) {
+            return ProfileNameValidation.Error("Profile name cannot exceed $MAX_PROFILE_NAME_LENGTH characters.")
+        }
+        if (trimmed.any { it.isISOControl() || it == '\n' || it == '\r' || it == '\t' }) {
+            return ProfileNameValidation.Error("Profile name contains invalid control characters.")
+        }
+
+        // Check collision against factory defaults
+        val isDefaultCollision = DefaultProfileType.isDefaultProfile(trimmed) ||
+            getDefaultLayoutProfiles().any { it.name.trim().equals(trimmed, ignoreCase = true) }
+        if (isDefaultCollision) {
+            return ProfileNameValidation.Error("Cannot use reserved default layout name '$trimmed'.")
+        }
+
+        // Check collision against other custom profiles
+        val customNames = getCustomProfileNamesInternal()
+        val isCustomCollision = customNames.any {
+            it.trim().equals(trimmed, ignoreCase = true) &&
+                (currentName == null || !it.trim().equals(currentName.trim(), ignoreCase = true))
+        }
+        if (isCustomCollision) {
+            return ProfileNameValidation.Error("A layout with name '$trimmed' already exists.")
+        }
+
+        return ProfileNameValidation.Valid
+    }
+
+    /**
+     * Resolves the canonical profile name matching [name] case-insensitively.
+     * Returns the exact casing stored in factory defaults or custom profile preferences,
+     * or null if the profile does not exist.
+     */
+    fun findCanonicalProfileName(name: String): String? {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return null
+
+        // 1. Check default layouts
+        getDefaultLayoutProfiles().find { it.name.trim().equals(trimmed, ignoreCase = true) }?.let {
+            return it.name
+        }
+
+        // 2. Check custom profiles
+        val customNames = getCustomProfileNamesInternal()
+        return customNames.find { it.trim().equals(trimmed, ignoreCase = true) }
+    }
+
+    private fun refreshProfilesFlowLocked() {
+        cacheVersion++
         cachedProfiles = null
-        val loaded = getAllProfiles()
+        val loaded = getAllProfilesInternal()
         cachedProfiles = loaded
         _profilesFlow.value = loaded
     }
 
-    /** Applies a button skin (or default) to the active profile. */
-    fun applyButtonSkinToActiveProfile(key: String, customComponentId: String?) {
-        val active = getActiveProfile()
-        val posMap = active.positions.toMutableMap()
-        val currentPos = posMap[key] ?: defaultPositions()[key] ?: Position(0.5f, 0.5f)
-        posMap[key] = currentPos.copy(customComponentId = customComponentId)
-        saveProfile(active.copy(positions = posMap), activate = true)
+    private fun refreshProfilesFlow() {
+        synchronized(lock) {
+            refreshProfilesFlowLocked()
+        }
     }
 
-    /** Returns all available profiles: default layouts (using factory positions) plus user custom layouts. */
+    /** Returns all available profiles: default layouts plus user custom layouts. Fully thread-safe. */
     fun getAllProfiles(): List<LayoutProfile> {
         cachedProfiles?.let { return it }
+        synchronized(lock) {
+            cachedProfiles?.let { return it }
+            val loaded = getAllProfilesInternal()
+            cachedProfiles = loaded
+            return loaded
+        }
+    }
+
+    private fun getAllProfilesInternal(): List<LayoutProfile> {
         val defaults = getDefaultLayoutProfiles()
         val result = mutableListOf<LayoutProfile>()
 
         // 1. Load default profiles (preserving user customizations, falling back to factory positions for missing keys)
         for (defaultProfile in defaults) {
-            val savedJson = prefs.getString("profile_${defaultProfile.name}", null)
+            val savedJson = prefs.getString(NexpadPreferenceKeys.profileKey(defaultProfile.name), null)
             if (savedJson != null) {
                 try {
                     val loaded = json.decodeFromString<LayoutProfile>(savedJson)
                     val mergedPositions = defaultProfile.canonicalPositions().toMutableMap()
                     loaded.canonicalPositions().forEach { (k, v) ->
-                        mergedPositions[k] = v
+                        mergedPositions[k] = v.sanitized()
                     }
                     result.add(
                         defaultProfile.copy(
@@ -110,6 +196,7 @@ class LayoutManager(context: Context) {
                         )
                     )
                 } catch (e: Exception) {
+                    Log.w(TAG, "Failed to decode customizations for default profile '${defaultProfile.name}'. Resetting to factory defaults.", e)
                     result.add(defaultProfile.copy(positions = defaultProfile.canonicalPositions()))
                 }
             } else {
@@ -118,97 +205,147 @@ class LayoutManager(context: Context) {
         }
 
         // 2. Load custom profiles (ignoring any name that collides with a default layout)
-        val defaultNames = defaults.map { it.name.trim().lowercase() }.toSet()
-        val customNames = prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()
+        val defaultNames = defaults.map { it.name.trim().lowercase(Locale.ROOT) }.toSet()
+        val customNames = getCustomProfileNamesInternal()
         for (name in customNames) {
-            if (defaultNames.contains(name.trim().lowercase())) continue
+            if (defaultNames.contains(name.trim().lowercase(Locale.ROOT))) continue
 
-            val savedJson = prefs.getString("profile_$name", null)
-                ?: prefs.getString("profile_${name.trim()}", null)
+            val savedJson = prefs.getString(NexpadPreferenceKeys.profileKey(name), null)
             if (savedJson != null) {
                 try {
                     val loaded = json.decodeFromString<LayoutProfile>(savedJson)
                     result.add(loaded.copy(isDefault = false, positions = loaded.canonicalPositions()))
                 } catch (e: Exception) {
-                    // Ignore corrupted profile
+                    Log.w(TAG, "Failed to decode custom profile '$name'. Skipping corrupt entry.", e)
                 }
             }
         }
 
-        // 3. Apply custom ordering if saved
-        val savedOrderJson = prefs.getString("profile_order", null)
+        // 3. Apply custom ordering if saved (deduplicating and filtering unknown names)
+        val savedOrderJson = prefs.getString(NexpadPreferenceKeys.KEY_PROFILE_ORDER, null)
         if (savedOrderJson != null) {
             try {
                 val orderList = json.decodeFromString<List<String>>(savedOrderJson)
-                val profileMap = result.associateBy { it.name }
+                val profileMap = result.associateBy { it.name.lowercase(Locale.ROOT) }
                 val orderedResult = mutableListOf<LayoutProfile>()
-                for (name in orderList) {
-                    profileMap[name]?.let { orderedResult.add(it) }
+
+                val seenKeys = mutableSetOf<String>()
+                for (rawName in orderList) {
+                    val normKey = rawName.trim().lowercase(Locale.ROOT)
+                    if (seenKeys.add(normKey)) {
+                        profileMap[normKey]?.let { orderedResult.add(it) }
+                    }
                 }
-                // Append any unlisted profiles (e.g., newly created or defaults not yet in order)
+
+                // Append any unlisted profiles (newly created or defaults not yet in order)
                 for (profile in result) {
-                    if (orderedResult.none { it.name.equals(profile.name, ignoreCase = true) }) {
+                    val normKey = profile.name.trim().lowercase(Locale.ROOT)
+                    if (seenKeys.add(normKey)) {
                         orderedResult.add(profile)
                     }
                 }
-                cachedProfiles = orderedResult
                 return orderedResult
             } catch (e: Exception) {
-                // Fallback to un-ordered result on decode issue
+                Log.w(TAG, "Failed to decode profile order JSON. Falling back to default order.", e)
             }
         }
 
-        cachedProfiles = result
         return result
     }
 
-    /** Saves custom display ordering of layouts and notifies active observers. */
+    /**
+     * Saves custom display ordering of layouts and notifies active observers.
+     * Automatically deduplicates entries, normalizes case, and appends any omitted valid profiles.
+     */
     fun saveProfileOrder(order: List<String>) {
-        val jsonOrder = json.encodeToString(order)
-        prefs.edit().putString("profile_order", jsonOrder).apply()
-        refreshProfilesFlow()
+        synchronized(lock) {
+            val allProfiles = getAllProfilesInternal()
+            val validNameMap = allProfiles.associateBy { it.name.lowercase(Locale.ROOT) }
+
+            val sanitizedOrder = order
+                .map { it.trim() }
+                .filter { validNameMap.containsKey(it.lowercase(Locale.ROOT)) }
+                .distinctBy { it.lowercase(Locale.ROOT) }
+                .map { validNameMap[it.lowercase(Locale.ROOT)]!!.name }
+                .toMutableList()
+
+            // Append any valid profiles missing from order
+            allProfiles.forEach { profile ->
+                if (sanitizedOrder.none { it.equals(profile.name, ignoreCase = true) }) {
+                    sanitizedOrder.add(profile.name)
+                }
+            }
+
+            val jsonOrder = json.encodeToString(sanitizedOrder)
+            prefs.edit { putString(NexpadPreferenceKeys.KEY_PROFILE_ORDER, jsonOrder) }
+            refreshProfilesFlowLocked()
+        }
     }
 
-    /** Save profile. If it's custom, adds to custom profiles set. */
-    fun saveProfile(profile: LayoutProfile, activate: Boolean = false) {
-        val canonicalProfile = profile.copy(positions = profile.canonicalPositions())
+    /**
+     * Persists a profile to disk.
+     * Validates custom profile names against collisions with default layouts.
+     * Returns true on success, false if validation fails.
+     */
+    fun saveProfile(profile: LayoutProfile, activate: Boolean = false): Boolean {
+        val trimmedName = profile.name.trim()
+
+        if (!profile.isDefault) {
+            val validation = validateProfileName(trimmedName, currentName = trimmedName)
+            if (validation is ProfileNameValidation.Error &&
+                !validation.message.contains("already exists", ignoreCase = true)
+            ) {
+                Log.w(TAG, "Cannot save custom profile '${profile.name}': ${validation.message}")
+                return false
+            }
+        }
+
+        val canonicalProfile = profile.copy(
+            name = trimmedName,
+            positions = profile.canonicalPositions()
+        )
         val jsonString = json.encodeToString(canonicalProfile)
 
-        synchronized(this) {
-            val editor = prefs.edit()
-            editor.putString("profile_${canonicalProfile.name}", jsonString)
+        synchronized(lock) {
+            prefs.edit {
+                putString(NexpadPreferenceKeys.profileKey(canonicalProfile.name), jsonString)
 
-            if (!canonicalProfile.isDefault) {
-                val rawCustomNames = prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()
-                val customNames = HashSet(rawCustomNames)
-                customNames.removeAll { it.trim().equals(canonicalProfile.name.trim(), ignoreCase = true) }
-                customNames.add(canonicalProfile.name)
-                editor.putStringSet("custom_profile_names", customNames)
+                if (!canonicalProfile.isDefault) {
+                    val rawCustomNames = getCustomProfileNamesInternal()
+                    val customNames = HashSet(rawCustomNames)
+                    customNames.removeAll { it.trim().equals(canonicalProfile.name, ignoreCase = true) }
+                    customNames.add(canonicalProfile.name)
+                    putStringSet(NexpadPreferenceKeys.KEY_CUSTOM_PROFILE_NAMES, customNames)
+                }
             }
-            editor.apply()
+            refreshProfilesFlowLocked()
         }
 
         if (activate) {
             setActiveProfile(canonicalProfile.name)
-        } else {
-            refreshProfilesFlow()
         }
+        return true
     }
 
-    /** Load profile by name. */
+    /**
+     * Loads a profile by name.
+     * Resolves the canonical profile name first to ensure case-insensitive requests
+     * (e.g. "standard elite") correctly retrieve saved customizations.
+     */
     fun loadProfile(name: String): LayoutProfile? {
         val trimmedName = name.trim()
-        val defaultProfile = getDefaultLayoutProfiles().find { it.name.trim().equals(trimmedName, ignoreCase = true) }
-        val savedJson = prefs.getString("profile_$trimmedName", null)
-            ?: prefs.getString("profile_$name", null)
+        if (trimmedName.isEmpty()) return null
 
+        // 1. Check default layouts
+        val defaultProfile = getDefaultLayoutProfiles().find { it.name.trim().equals(trimmedName, ignoreCase = true) }
         if (defaultProfile != null) {
+            val savedJson = prefs.getString(NexpadPreferenceKeys.profileKey(defaultProfile.name), null)
             if (savedJson != null) {
                 return try {
                     val loaded = json.decodeFromString<LayoutProfile>(savedJson)
                     val mergedPositions = defaultProfile.canonicalPositions().toMutableMap()
                     loaded.canonicalPositions().forEach { (k, v) ->
-                        mergedPositions[k] = v
+                        mergedPositions[k] = v.sanitized()
                     }
                     defaultProfile.copy(
                         isDefault = true,
@@ -217,17 +354,22 @@ class LayoutManager(context: Context) {
                         positions = mergedPositions
                     )
                 } catch (e: Exception) {
+                    Log.w(TAG, "Failed to decode customizations for default profile '${defaultProfile.name}'. Falling back to factory default.", e)
                     defaultProfile.copy(positions = defaultProfile.canonicalPositions())
                 }
             }
             return defaultProfile.copy(positions = defaultProfile.canonicalPositions())
         }
 
+        // 2. Check custom profiles using canonical name
+        val canonicalCustomName = findCanonicalProfileName(trimmedName) ?: trimmedName
+        val savedJson = prefs.getString(NexpadPreferenceKeys.profileKey(canonicalCustomName), null)
         if (savedJson != null) {
             return try {
                 val loaded = json.decodeFromString<LayoutProfile>(savedJson)
                 loaded.copy(isDefault = false, positions = loaded.canonicalPositions())
             } catch (e: Exception) {
+                Log.w(TAG, "Failed to decode custom profile '$canonicalCustomName'.", e)
                 null
             }
         }
@@ -235,54 +377,56 @@ class LayoutManager(context: Context) {
     }
 
     /**
-     * Delete profile.
-     * Default layouts (1 to 6) CANNOT be deleted. Returns false if default.
+     * Deletes a custom profile.
+     * Default layouts (1 to 6) CANNOT be deleted. Returns false if default or not found.
      */
     fun deleteProfile(name: String): Boolean {
         val trimmedName = name.trim()
-        val isDefault = getDefaultLayoutProfiles().any { it.name.trim().equals(trimmedName, ignoreCase = true) }
+        val isDefault = DefaultProfileType.isDefaultProfile(trimmedName) ||
+            getDefaultLayoutProfiles().any { it.name.trim().equals(trimmedName, ignoreCase = true) }
         if (isDefault) {
-            // Protected: Default layouts cannot be deleted
+            Log.w(TAG, "Cannot delete protected default layout '$trimmedName'.")
             return false
         }
 
-        val removed = synchronized(this) {
-            val rawCustomNames = prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()
+        val removed = synchronized(lock) {
+            val rawCustomNames = getCustomProfileNamesInternal()
             val customNames = HashSet(rawCustomNames)
             val wasRemoved = customNames.removeAll { it.trim().equals(trimmedName, ignoreCase = true) }
 
-            val editor = prefs.edit()
-                .putStringSet("custom_profile_names", customNames)
-                .remove("profile_$trimmedName")
-                .remove("profile_$name")
+            prefs.edit {
+                putStringSet(NexpadPreferenceKeys.KEY_CUSTOM_PROFILE_NAMES, customNames)
+                remove(NexpadPreferenceKeys.profileKey(trimmedName))
+                remove(NexpadPreferenceKeys.profileKey(name))
 
-            // Also remove any key starting with "profile_" matching trimmedName case-insensitively
-            prefs.all.keys.forEach { key ->
-                if (key.startsWith("profile_") && key.substringAfter("profile_").trim().equals(trimmedName, ignoreCase = true)) {
-                    editor.remove(key)
+                prefs.all.keys.forEach { key ->
+                    if (NexpadPreferenceKeys.isProfileKey(key) &&
+                        NexpadPreferenceKeys.extractProfileName(key).equals(trimmedName, ignoreCase = true)
+                    ) {
+                        remove(key)
+                    }
+                }
+
+                val savedOrderJson = prefs.getString(NexpadPreferenceKeys.KEY_PROFILE_ORDER, null)
+                if (savedOrderJson != null) {
+                    try {
+                        val orderList = json.decodeFromString<List<String>>(savedOrderJson).toMutableList()
+                        if (orderList.removeAll { it.trim().equals(trimmedName, ignoreCase = true) }) {
+                            putString(NexpadPreferenceKeys.KEY_PROFILE_ORDER, json.encodeToString(orderList))
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Error updating profile order during delete", e)
+                    }
                 }
             }
-
-            // Also update saved profile_order
-            val savedOrderJson = prefs.getString("profile_order", null)
-            if (savedOrderJson != null) {
-                try {
-                    val orderList = json.decodeFromString<List<String>>(savedOrderJson).toMutableList()
-                    if (orderList.removeAll { it.trim().equals(trimmedName, ignoreCase = true) }) {
-                        editor.putString("profile_order", json.encodeToString(orderList))
-                    }
-                } catch (_: Exception) {}
-            }
-            editor.apply()
+            refreshProfilesFlowLocked()
             wasRemoved
         }
 
         // If the deleted profile was active, switch to Default 1 (Standard Elite)
-        val activeName = prefs.getString("active_profile", "Standard Elite")
+        val activeName = prefs.getString(NexpadPreferenceKeys.KEY_ACTIVE_PROFILE, DefaultProfileType.DEFAULT.profileName)
         if (activeName == null || activeName.trim().equals(trimmedName, ignoreCase = true)) {
-            setActiveProfile("Standard Elite")
-        } else {
-            refreshProfilesFlow()
+            setActiveProfile(DefaultProfileType.DEFAULT.profileName)
         }
 
         return removed
@@ -291,7 +435,8 @@ class LayoutManager(context: Context) {
     /**
      * Renames a custom layout profile.
      * Default layouts (1 to 6) cannot be renamed.
-     * Returns true on success, false if oldName is default or not found.
+     * Rejects empty names, collisions with defaults, or collisions with other custom layouts.
+     * Returns true on success, false if invalid or not found.
      */
     fun renameProfile(oldName: String, newName: String): Boolean {
         val trimmedOld = oldName.trim()
@@ -299,16 +444,24 @@ class LayoutManager(context: Context) {
         if (trimmedNew.isEmpty()) return false
         if (trimmedOld.equals(trimmedNew, ignoreCase = false)) return true
 
-        val isDefault = getDefaultLayoutProfiles().any { it.name.trim().equals(trimmedOld, ignoreCase = true) }
+        val isDefault = DefaultProfileType.isDefaultProfile(trimmedOld) ||
+            getDefaultLayoutProfiles().any { it.name.trim().equals(trimmedOld, ignoreCase = true) }
         if (isDefault) {
+            Log.w(TAG, "Cannot rename protected default profile '$trimmedOld'.")
+            return false
+        }
+
+        val validation = validateProfileName(trimmedNew, currentName = trimmedOld)
+        if (validation is ProfileNameValidation.Error) {
+            Log.w(TAG, "Cannot rename profile to '$trimmedNew': ${validation.message}")
             return false
         }
 
         val existing = loadProfile(trimmedOld) ?: return false
         val wasActive = getActiveProfile().name.trim().equals(trimmedOld, ignoreCase = true)
 
-        synchronized(this) {
-            val rawCustomNames = prefs.getStringSet("custom_profile_names", emptySet()) ?: emptySet()
+        synchronized(lock) {
+            val rawCustomNames = getCustomProfileNamesInternal()
             val customNames = HashSet(rawCustomNames)
             customNames.removeAll { it.trim().equals(trimmedOld, ignoreCase = true) }
             customNames.add(trimmedNew)
@@ -317,39 +470,41 @@ class LayoutManager(context: Context) {
             val canonicalProfile = renamed.copy(positions = renamed.canonicalPositions())
             val jsonString = json.encodeToString(canonicalProfile)
 
-            val renameEditor = prefs.edit()
-                .putStringSet("custom_profile_names", customNames)
-                .remove("profile_$trimmedOld")
-                .remove("profile_$oldName")
-                .putString("profile_$trimmedNew", jsonString)
+            prefs.edit {
+                putStringSet(NexpadPreferenceKeys.KEY_CUSTOM_PROFILE_NAMES, customNames)
+                remove(NexpadPreferenceKeys.profileKey(trimmedOld))
+                remove(NexpadPreferenceKeys.profileKey(oldName))
+                putString(NexpadPreferenceKeys.profileKey(trimmedNew), jsonString)
 
-            prefs.all.keys.forEach { key ->
-                if (key.startsWith("profile_") && key.substringAfter("profile_").trim().equals(trimmedOld, ignoreCase = true)) {
-                    renameEditor.remove(key)
+                prefs.all.keys.forEach { key ->
+                    if (NexpadPreferenceKeys.isProfileKey(key) &&
+                        NexpadPreferenceKeys.extractProfileName(key).equals(trimmedOld, ignoreCase = true)
+                    ) {
+                        remove(key)
+                    }
+                }
+
+                // Update saved profile_order if present
+                val savedOrderJson = prefs.getString(NexpadPreferenceKeys.KEY_PROFILE_ORDER, null)
+                if (savedOrderJson != null) {
+                    try {
+                        val orderList = json.decodeFromString<List<String>>(savedOrderJson).toMutableList()
+                        val idx = orderList.indexOfFirst { it.trim().equals(trimmedOld, ignoreCase = true) }
+                        if (idx != -1) {
+                            orderList[idx] = trimmedNew
+                            putString(NexpadPreferenceKeys.KEY_PROFILE_ORDER, json.encodeToString(orderList))
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Error updating profile order during rename", e)
+                    }
                 }
             }
-
-            // Also update saved profile_order
-            val savedOrderJson = prefs.getString("profile_order", null)
-            if (savedOrderJson != null) {
-                try {
-                    val orderList = json.decodeFromString<List<String>>(savedOrderJson).toMutableList()
-                    val idx = orderList.indexOfFirst { it.trim().equals(trimmedOld, ignoreCase = true) }
-                    if (idx != -1) {
-                        orderList[idx] = trimmedNew
-                        renameEditor.putString("profile_order", json.encodeToString(orderList))
-                    }
-                } catch (_: Exception) {}
-            }
-            renameEditor.apply()
+            refreshProfilesFlowLocked()
         }
 
         if (wasActive) {
             setActiveProfile(trimmedNew)
-        } else {
-            refreshProfilesFlow()
         }
-
         return true
     }
 
@@ -357,16 +512,20 @@ class LayoutManager(context: Context) {
     fun resetDefaultProfile(name: String): LayoutProfile? {
         val trimmedName = name.trim()
         val factoryDefault = getDefaultLayoutProfiles().find { it.name.trim().equals(trimmedName, ignoreCase = true) } ?: return null
-        val editor = prefs.edit()
-            .remove("profile_$trimmedName")
-            .remove("profile_$name")
-        prefs.all.keys.forEach { key ->
-            if (key.startsWith("profile_") && key.substringAfter("profile_").trim().equals(trimmedName, ignoreCase = true)) {
-                editor.remove(key)
+        synchronized(lock) {
+            prefs.edit {
+                remove(NexpadPreferenceKeys.profileKey(factoryDefault.name))
+                remove(NexpadPreferenceKeys.profileKey(trimmedName))
+                prefs.all.keys.forEach { key ->
+                    if (NexpadPreferenceKeys.isProfileKey(key) &&
+                        NexpadPreferenceKeys.extractProfileName(key).equals(trimmedName, ignoreCase = true)
+                    ) {
+                        remove(key)
+                    }
+                }
             }
+            refreshProfilesFlowLocked()
         }
-        editor.apply()
-        refreshProfilesFlow()
         return factoryDefault
     }
 
@@ -377,13 +536,14 @@ class LayoutManager(context: Context) {
         selectedButtons: Set<String>? = null,
         activate: Boolean = false
     ): LayoutProfile {
+        val trimmed = name.trim()
         val baseCanonical = baseProfile.canonicalPositions()
         val positions = if (selectedButtons != null) {
             val selectedCanonical = selectedButtons.map {
-                ControlKey.fromIdentifier(it)?.key ?: it.uppercase()
+                ControlKey.fromIdentifier(it)?.key ?: it.uppercase(Locale.ROOT)
             }.toSet()
             baseCanonical.filterKeys { k ->
-                val can = ControlKey.fromIdentifier(k)?.key ?: k.uppercase()
+                val can = ControlKey.fromIdentifier(k)?.key ?: k.uppercase(Locale.ROOT)
                 selectedCanonical.contains(can)
             }
         } else {
@@ -391,7 +551,7 @@ class LayoutManager(context: Context) {
         }
 
         val newProfile = LayoutProfile(
-            name = name.trim(),
+            name = trimmed,
             isDefault = false,
             isRgbEnabled = baseProfile.isRgbEnabled,
             positions = positions,
@@ -410,19 +570,32 @@ class LayoutManager(context: Context) {
         saveProfile(profile.copy(labelStyle = style.id), activate = wasActive)
     }
 
-    /** Set the active layout profile. */
-    fun setActiveProfile(name: String) {
-        val effectiveName = if (name.trim().equals("Standard", ignoreCase = true)) "Standard Elite" else name.trim()
-        prefs.edit { putString("active_profile", effectiveName) }
-        _activeProfileNameFlow.value = effectiveName
-        refreshProfilesFlow()
+    /**
+     * Set the active layout profile.
+     * Validates that the requested profile exists before persisting.
+     * Persists the exact canonical casing to SharedPreferences and publishes to [activeProfileNameFlow].
+     * Returns true on success, false if the requested profile was not found.
+     */
+    fun setActiveProfile(name: String): Boolean {
+        val trimmed = name.trim()
+        synchronized(lock) {
+            val all = getAllProfiles()
+            val target = all.find { it.name.trim().equals(trimmed, ignoreCase = true) }
+            if (target == null) {
+                Log.w(TAG, "Cannot activate layout '$name': profile not found.")
+                return false
+            }
+            val canonicalName = target.name
+            prefs.edit { putString(NexpadPreferenceKeys.KEY_ACTIVE_PROFILE, canonicalName) }
+            _activeProfileNameFlow.value = canonicalName
+            return true
+        }
     }
 
     /** Returns currently active profile. */
     fun getActiveProfile(): LayoutProfile {
-        val activeName = prefs.getString("active_profile", "Standard Elite") ?: "Standard Elite"
-        // Handle legacy "Standard" name mapping to "Standard Elite"
-        val effectiveName = if (activeName.trim().equals("Standard", ignoreCase = true)) "Standard Elite" else activeName.trim()
+        val activeName = prefs.getString(NexpadPreferenceKeys.KEY_ACTIVE_PROFILE, DefaultProfileType.DEFAULT.profileName)
+        val effectiveName = DefaultProfileType.resolveCanonicalName(activeName)
 
         val all = cachedProfiles ?: _profilesFlow.value.ifEmpty { getAllProfiles() }
         return all.find { it.name.trim().equals(effectiveName, ignoreCase = true) }
@@ -430,13 +603,13 @@ class LayoutManager(context: Context) {
             ?: LayoutProfile(name = effectiveName)
     }
 
-    /** Updates touchpad sensitivity preferences in nexpad_prefs. */
+    /** Updates touchpad sensitivity preferences via centralized NexpadPreferences repository. */
     fun updateTouchpadSensitivity(key: String, sens: Float) {
-        val sp = appContext.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE)
-        val upperKey = key.uppercase()
-        sp.edit {
-            putFloat("TOUCHPAD_SENSITIVITY_$upperKey", sens)
-                .putFloat("TOUCHPAD_SENSITIVITY", sens)
-        }
+        com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(appContext).setTouchpadSensitivity(key, sens)
+    }
+
+    companion object {
+        private const val TAG = "NexpadLayoutManager"
+        const val MAX_PROFILE_NAME_LENGTH = 32
     }
 }

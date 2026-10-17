@@ -246,7 +246,7 @@ fun VirtualControllerScreen(
 @Composable
 fun VirtualControllerScreenContent(
     profiles: List<LayoutProfile> = getDefaultLayoutProfiles(),
-    activeProfileName: String = "Standard Elite",
+    activeProfileName: String = com.sanket.tools.nexpad.model.DefaultProfileType.DEFAULT.profileName,
     isAnyItemDragging: Boolean = false,
     onBack: () -> Unit = {},
     onOpenButtonStudio: () -> Unit = {},

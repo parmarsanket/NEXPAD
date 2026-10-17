@@ -36,6 +36,7 @@ import com.sanket.tools.nexpad.category.CategoryType
 import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.model.Position
+import com.sanket.tools.nexpad.model.shortDisplayName
 import com.sanket.tools.nexpad.model.defaultPositions
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
@@ -384,7 +385,7 @@ fun ButtonStudioScreen(
                             ) {
                                 val isXbox = studioLabelStyle == ControllerLabelStyle.XBOX
                                 Text(
-                                    if (isXbox) "Xbox" else "PS",
+                                    studioLabelStyle.shortDisplayName,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = if (isXbox) NeonPalette.Green else NeonPalette.Cyan

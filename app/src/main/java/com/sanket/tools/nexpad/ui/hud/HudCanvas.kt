@@ -67,12 +67,13 @@ fun HudCanvas(
         elements.forEach { (controlKey, element) ->
             key(controlKey) {
                 val isSelected = selectedControl == controlKey
-                val isJoystick = controlKey.equals("LS", ignoreCase = true) ||
-                        controlKey.equals("RS", ignoreCase = true) ||
+                val isJoystick = controlKey.equals(com.sanket.tools.nexpad.category.ControlKey.LS.name, ignoreCase = true) ||
+                        controlKey.equals(com.sanket.tools.nexpad.category.ControlKey.RS.name, ignoreCase = true) ||
                         element.categoryTitle.equals("JOYSTICK", ignoreCase = true)
+                val jsMode = com.sanket.tools.nexpad.model.JoystickMode.fromId(element.transform.joystickMode)
 
                 // 1. Hitbox Box for BOX mode (white border 50% alpha, visible in HUD screen for setting joystick)
-                if (isJoystick && element.transform.joystickMode == "BOX") {
+                if (isJoystick && jsMode == com.sanket.tools.nexpad.model.JoystickMode.BOX) {
                     val boxSizeDp = 150.dp * element.transform.hitboxScale * element.transform.scale * responsiveScale
                     Box(
                         modifier = Modifier
@@ -107,8 +108,8 @@ fun HudCanvas(
                 }
 
                 // 2. Full-Screen Zone Indicator for FULL mode (visible when selected in HUD editor)
-                if (isJoystick && element.transform.joystickMode == "FULL" && isSelected) {
-                    val isLeftStick = controlKey.equals("LS", ignoreCase = true)
+                if (isJoystick && jsMode == com.sanket.tools.nexpad.model.JoystickMode.FULL && isSelected) {
+                    val isLeftStick = controlKey.equals(com.sanket.tools.nexpad.category.ControlKey.LS.name, ignoreCase = true)
                     val density = LocalDensity.current.density
                     val halfWidthDp = (screenWidthPx / 2f / density).dp
                     val fullHeightDp = (screenHeightPx / density).dp

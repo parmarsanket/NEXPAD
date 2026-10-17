@@ -192,11 +192,11 @@ fun HudDockedInspector(
                     }
 
                     if (isJoystick) {
-                        val mode = transform.joystickMode
-                        val (modeBadgeText, modeBadgeColor) = when (mode) {
-                            "FULL" -> "Mode: Full Screen" to NeonPalette.Purple
-                            "BOX" -> "Mode: Box (${(transform.hitboxScale * 100).roundToInt()}%)" to NeonPalette.AmberHighlight
-                            else -> "Mode: Locked" to NeonPalette.Cyan
+                        val jsMode = com.sanket.tools.nexpad.model.JoystickMode.fromId(transform.joystickMode)
+                        val (modeBadgeText, modeBadgeColor) = when (jsMode) {
+                            com.sanket.tools.nexpad.model.JoystickMode.FULL -> "Mode: Full Screen" to NeonPalette.Purple
+                            com.sanket.tools.nexpad.model.JoystickMode.BOX -> "Mode: Box (${(transform.hitboxScale * 100).roundToInt()}%)" to NeonPalette.AmberHighlight
+                            com.sanket.tools.nexpad.model.JoystickMode.LOCKED -> "Mode: Locked" to NeonPalette.Cyan
                         }
                         Surface(
                             shape = RoundedCornerShape(4.dp),
@@ -484,11 +484,11 @@ fun HudDockedInspector(
                 if (isJoystick && (onJoystickModeChange != null || onToggleLock != null)) {
                     VerticalDivider(modifier = Modifier.height(28.dp), color = Color.White.copy(alpha = 0.1f))
 
-                    val currentMode = transform.joystickMode
-                    val activeColor = when (currentMode) {
-                        "FULL" -> NeonPalette.Purple
-                        "BOX" -> NeonPalette.AmberHighlight
-                        else -> NeonPalette.Cyan
+                    val resolvedCurrentMode = com.sanket.tools.nexpad.model.JoystickMode.fromId(transform.joystickMode)
+                    val activeColor = when (resolvedCurrentMode) {
+                        com.sanket.tools.nexpad.model.JoystickMode.FULL -> NeonPalette.Purple
+                        com.sanket.tools.nexpad.model.JoystickMode.BOX -> NeonPalette.AmberHighlight
+                        com.sanket.tools.nexpad.model.JoystickMode.LOCKED -> NeonPalette.Cyan
                     }
 
                     Row(
@@ -503,26 +503,26 @@ fun HudDockedInspector(
                         )
 
                         val modes = listOf(
-                            Triple("LOCKED", "Locked", Icons.Rounded.Lock),
-                            Triple("BOX", "Box Zone", Icons.Rounded.CropSquare),
-                            Triple("FULL", "Full Screen", Icons.Rounded.Fullscreen)
+                            Triple(com.sanket.tools.nexpad.model.JoystickMode.LOCKED, com.sanket.tools.nexpad.model.JoystickMode.LOCKED.displayName, Icons.Rounded.Lock),
+                            Triple(com.sanket.tools.nexpad.model.JoystickMode.BOX, com.sanket.tools.nexpad.model.JoystickMode.BOX.displayName, Icons.Rounded.CropSquare),
+                            Triple(com.sanket.tools.nexpad.model.JoystickMode.FULL, com.sanket.tools.nexpad.model.JoystickMode.FULL.displayName, Icons.Rounded.Fullscreen)
                         )
 
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            modes.forEach { (modeKey, modeTitle, modeIcon) ->
-                                val isSelected = currentMode == modeKey
-                                val buttonColor = when (modeKey) {
-                                    "FULL" -> NeonPalette.Purple
-                                    "BOX" -> NeonPalette.AmberHighlight
-                                    else -> NeonPalette.Cyan
+                            modes.forEach { (modeEntry, modeTitle, modeIcon) ->
+                                val isSelected = resolvedCurrentMode == modeEntry
+                                val buttonColor = when (modeEntry) {
+                                    com.sanket.tools.nexpad.model.JoystickMode.FULL -> NeonPalette.Purple
+                                    com.sanket.tools.nexpad.model.JoystickMode.BOX -> NeonPalette.AmberHighlight
+                                    com.sanket.tools.nexpad.model.JoystickMode.LOCKED -> NeonPalette.Cyan
                                 }
 
                                 Button(
                                     onClick = {
-                                        onJoystickModeChange?.invoke(modeKey)
+                                        onJoystickModeChange?.invoke(modeEntry.id)
                                             ?: onToggleLock?.invoke()
                                     },
                                     shape = RoundedCornerShape(6.dp),
@@ -554,7 +554,7 @@ fun HudDockedInspector(
                         }
 
                         // If BOX mode is active, provide Hitbox Size slider & buttons
-                        if (currentMode == "BOX" && onHitboxScaleChange != null) {
+                        if (resolvedCurrentMode == com.sanket.tools.nexpad.model.JoystickMode.BOX && onHitboxScaleChange != null) {
                             Spacer(Modifier.width(4.dp))
                             Text(
                                 text = "Hitbox: ${(transform.hitboxScale * 100).roundToInt()}%",

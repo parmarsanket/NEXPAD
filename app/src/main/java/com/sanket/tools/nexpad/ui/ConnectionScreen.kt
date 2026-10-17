@@ -59,10 +59,8 @@ import com.sanket.tools.nexpad.ui.components.effects.ScanLine
 import com.sanket.tools.nexpad.ui.layout.AdaptiveLayoutSpec
 import com.sanket.tools.nexpad.ui.layout.adaptiveLayoutSpec
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
-import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
-import androidx.core.content.edit
 import com.sanket.tools.nexpad.ui.components.common.NxOutlinedButton
-import org.w3c.dom.Text
+import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
 const val NEXPAD_DESKTOP_DOWNLOAD_URL = "https://github.com/parmarsanket/NEXPAD-Desktop"
 
@@ -129,9 +127,11 @@ fun ConnectionScreen(
         }
     }
 
-    val prefs = remember { context.getSharedPreferences("nexpad_connection_prefs", android.content.Context.MODE_PRIVATE) }
-    var manualIp by remember { mutableStateOf(prefs.getString("last_manual_ip", "") ?: "") }
-    var manualPort by remember { mutableStateOf(prefs.getString("last_manual_port", "9999") ?: "9999") }
+    val nexpadPrefs = remember(context) {
+        com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context)
+    }
+    var manualIp by remember { mutableStateOf(nexpadPrefs.lastManualIp) }
+    var manualPort by remember { mutableStateOf(nexpadPrefs.lastManualPort) }
 
     ConnectionScreenContent(
         isConnected = isConnected,
@@ -148,15 +148,15 @@ fun ConnectionScreen(
         manualPort = manualPort,
         onManualIpChange = { newIp ->
             manualIp = newIp
-            prefs.edit { putString("last_manual_ip", newIp) }
+            nexpadPrefs.lastManualIp = newIp
         },
         onManualPortChange = { newPort ->
             manualPort = newPort
-            prefs.edit { putString("last_manual_port", newPort) }
+            nexpadPrefs.lastManualPort = newPort
         },
         onConnectManualIp = {
             if (manualIp.isNotBlank()) {
-                val port = manualPort.toIntOrNull() ?: 9999
+                val port = manualPort.toIntOrNull() ?: com.sanket.tools.nexpad.utils.NexpadPreferenceKeys.DEFAULT_MANUAL_PORT.toInt()
                 viewModel.connect(manualIp.trim(), port, "Direct IP")
             }
         },
