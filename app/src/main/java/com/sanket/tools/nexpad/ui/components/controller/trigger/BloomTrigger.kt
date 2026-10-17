@@ -65,7 +65,8 @@ fun BloomTrigger(
     displayLabel: String? = null,
     isInteractive: Boolean = true
 ) {
-    var isPressed by remember { mutableStateOf(false) }
+    var isPressedLocally by remember { mutableStateOf(false) }
+    val isPressed = isPressedLocally || com.sanket.tools.nexpad.ui.components.controller.isControlPressed(key)
     val isLeft = key.uppercase() == NexpadKeys.LT
     // HTML source palette: Electric Periwinkle (#7C9CFF) for LT, Neon Rose (#FF6584) for RT
     val glowColor = if (isLeft) NeonPalette.Periwinkle else NeonPalette.NeonRose
@@ -268,10 +269,10 @@ fun BloomTrigger(
                         detectTapGestures(
                             onPress = {
                                 currentOnVibrate()
-                                isPressed = true
+                                isPressedLocally = true
                                 currentViewModel?.updateButton(key, true)
                                 tryAwaitRelease()
-                                isPressed = false
+                                isPressedLocally = false
                                 currentViewModel?.updateButton(key, false)
                             }
                         )

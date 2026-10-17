@@ -54,6 +54,7 @@ object NexpadPreferenceKeys {
 
     // Navigation & Emulation Keys (FILE_PREFS)
     const val KEY_DOUBLE_TAP_BACK_EXIT = "DOUBLE_TAP_BACK_EXIT"
+    const val KEY_JOYSTICK_SLIDE_GUARD_ENABLED = "JOYSTICK_SLIDE_GUARD_ENABLED"
     const val KEY_EMULATION_MODE = "emulation_mode"
     val DEFAULT_EMULATION_MODE = com.sanket.tools.nexpad.model.ControllerEmulationMode.DEFAULT.id
     const val EMULATION_MODE_GENERIC = "generic"

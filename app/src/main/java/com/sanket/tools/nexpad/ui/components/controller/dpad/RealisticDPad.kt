@@ -141,11 +141,13 @@ fun RealisticDPad(
 
     val K = com.sanket.tools.nexpad.model.NexpadKeys
 
-    val isUpPressed = pressedDirs.contains(K.UP)
-    val isDownPressed = pressedDirs.contains(K.DOWN)
-    val isLeftPressed = pressedDirs.contains(K.LEFT)
-    val isRightPressed = pressedDirs.contains(K.RIGHT)
-    val hasActivePress = pressedDirs.isNotEmpty()
+    val externalPressedDirs = com.sanket.tools.nexpad.ui.components.controller.LocalPressedControlKeys.current
+
+    val isUpPressed = pressedDirs.contains(K.UP) || externalPressedDirs.contains(K.UP)
+    val isDownPressed = pressedDirs.contains(K.DOWN) || externalPressedDirs.contains(K.DOWN)
+    val isLeftPressed = pressedDirs.contains(K.LEFT) || externalPressedDirs.contains(K.LEFT)
+    val isRightPressed = pressedDirs.contains(K.RIGHT) || externalPressedDirs.contains(K.RIGHT)
+    val hasActivePress = pressedDirs.isNotEmpty() || (isUpPressed || isDownPressed || isLeftPressed || isRightPressed)
 
     val neonColor = if (isRgbEnabled) NeonPalette.Cyan else NeonPalette.Emerald
 
@@ -888,7 +890,8 @@ fun RealisticDPadButton(
     isInteractive: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    var isPressed by remember { mutableStateOf(false) }
+    var isPressedLocally by remember { mutableStateOf(false) }
+    val isPressed = isPressedLocally || com.sanket.tools.nexpad.ui.components.controller.isControlPressed(direction)
 
     val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.92f else 1.0f,
@@ -987,11 +990,11 @@ fun RealisticDPadButton(
                     Modifier.pointerInput(direction) {
                         detectTapGestures(
                             onPress = {
-                                isPressed = true
+                                isPressedLocally = true
                                 currentOnVibrate()
                                 currentViewModel?.updateButton(direction, true)
                                 tryAwaitRelease()
-                                isPressed = false
+                                isPressedLocally = false
                                 currentViewModel?.updateButton(direction, false)
                             }
                         )

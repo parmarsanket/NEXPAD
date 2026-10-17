@@ -113,6 +113,9 @@ fun SettingsScreen(
     var doubleTapBackExitEnabled by remember {
         mutableStateOf(nexpadPrefs.isDoubleTapExitEnabled)
     }
+    var joystickSlideGuardEnabled by remember {
+        mutableStateOf(nexpadPrefs.isJoystickSlideGuardEnabled)
+    }
 
     val hapticHelper = remember(context) { HapticFeedbackHelper(context) }
 
@@ -126,6 +129,7 @@ fun SettingsScreen(
         hapticStyle = hapticStyle,
         rumbleMode = rumbleMode,
         doubleTapBackExitEnabled = doubleTapBackExitEnabled,
+        joystickSlideGuardEnabled = joystickSlideGuardEnabled,
         onRgbChange = {
             layoutManager.saveProfile(currentProfile.copy(isRgbEnabled = it), activate = true)
         },
@@ -161,6 +165,10 @@ fun SettingsScreen(
             doubleTapBackExitEnabled = it
             nexpadPrefs.isDoubleTapExitEnabled = it
         },
+        onJoystickSlideGuardChange = {
+            joystickSlideGuardEnabled = it
+            nexpadPrefs.isJoystickSlideGuardEnabled = it
+        },
         onOpenUrl = { url ->
             if (url.isNullOrBlank()) {
                 Toast.makeText(context, "YouTube channel link coming soon!", Toast.LENGTH_SHORT).show()
@@ -190,6 +198,7 @@ fun SettingsScreenContent(
     hapticStyle: HapticStyle = HapticStyle.DEFAULT,
     rumbleMode: RumbleMode = RumbleMode.DEFAULT,
     doubleTapBackExitEnabled: Boolean = true,
+    joystickSlideGuardEnabled: Boolean = true,
     onRgbChange: (Boolean) -> Unit = {},
     onButtonHapticsChange: (Boolean) -> Unit = {},
     onVibrateOfflineChange: (Boolean) -> Unit = {},
@@ -198,6 +207,7 @@ fun SettingsScreenContent(
     onHapticStyleChange: (HapticStyle) -> Unit = {},
     onRumbleModeChange: (RumbleMode) -> Unit = {},
     onDoubleTapBackExitChange: (Boolean) -> Unit = {},
+    onJoystickSlideGuardChange: (Boolean) -> Unit = {},
     onOpenUrl: (String?) -> Unit = {},
     onBack: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -328,7 +338,7 @@ fun SettingsScreenContent(
                 SettingsSectionCard(
                     accentColor = NeonPalette.Amber,
                     title = "GAMEPLAY & ACCIDENTAL EXIT PROTECTION",
-                    subtitle = "Accidental interruption and back navigation guards",
+                    subtitle = "Accidental interruption, slide sweeps, and back navigation guards",
                     icon = Icons.Rounded.Shield
                 ) {
                     SettingsToggleRow(
@@ -336,6 +346,14 @@ fun SettingsScreenContent(
                         description = "Requires pressing the back gesture or button twice within 2 seconds to exit the gamepad, preventing accidental game quits while playing",
                         checked = doubleTapBackExitEnabled,
                         onCheckedChange = onDoubleTapBackExitChange,
+                        accentColor = NeonPalette.Amber
+                    )
+
+                    SettingsToggleRow(
+                        title = "Active Joystick Slide Guard",
+                        description = "Suppresses continuous slide/sweep button activation on the half of the screen where a joystick is actively in motion, preventing accidental button presses during intense movement or camera aiming",
+                        checked = joystickSlideGuardEnabled,
+                        onCheckedChange = onJoystickSlideGuardChange,
                         accentColor = NeonPalette.Amber
                     )
                 }

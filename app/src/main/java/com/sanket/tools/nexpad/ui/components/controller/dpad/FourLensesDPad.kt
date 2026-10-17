@@ -434,21 +434,23 @@ fun FourLensesDPad(
     isInteractive: Boolean = true
 ) {
     var pressedDirs by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val externalPressedDirs = com.sanket.tools.nexpad.ui.components.controller.LocalPressedControlKeys.current
+    val combinedDirs = pressedDirs + externalPressedDirs
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
     val density = LocalDensity.current.density
 
-    val isUpPressed = pressedDirs.contains(K.UP)
-    val isDownPressed = pressedDirs.contains(K.DOWN)
-    val isLeftPressed = pressedDirs.contains(K.LEFT)
-    val isRightPressed = pressedDirs.contains(K.RIGHT)
+    val isUpPressed = combinedDirs.contains(K.UP)
+    val isDownPressed = combinedDirs.contains(K.DOWN)
+    val isLeftPressed = combinedDirs.contains(K.LEFT)
+    val isRightPressed = combinedDirs.contains(K.RIGHT)
 
     // Snappy 3D physical rocker tilt kinematics:
     // UP: rx = +8°, DOWN: rx = -8°
     // RIGHT: ry = +8°, LEFT: ry = -8°
     // Compounded diagonally (e.g. UP+RIGHT: rx = +8°, ry = +8°)
-    val (targetTiltX, targetTiltY) = remember(pressedDirs) {
-        calculateFourLensesTilt(pressedDirs)
+    val (targetTiltX, targetTiltY) = remember(combinedDirs) {
+        calculateFourLensesTilt(combinedDirs)
     }
 
     val tiltXAnimState = animateFloatAsState(

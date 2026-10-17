@@ -122,25 +122,27 @@ fun LensDPad(
     isInteractive: Boolean = true
 ) {
     var pressedDirs by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val externalPressedDirs = com.sanket.tools.nexpad.ui.components.controller.LocalPressedControlKeys.current
+    val combinedDirs = pressedDirs + externalPressedDirs
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)
     val density = LocalDensity.current.density
 
-    val isUpPressed = pressedDirs.contains(K.UP)
-    val isDownPressed = pressedDirs.contains(K.DOWN)
-    val isLeftPressed = pressedDirs.contains(K.LEFT)
-    val isRightPressed = pressedDirs.contains(K.RIGHT)
+    val isUpPressed = combinedDirs.contains(K.UP)
+    val isDownPressed = combinedDirs.contains(K.DOWN)
+    val isLeftPressed = combinedDirs.contains(K.LEFT)
+    val isRightPressed = combinedDirs.contains(K.RIGHT)
 
     // Physical Rocker Tilt Kinematics matching reference CSS:
     // UP: rx = +8°, DOWN: rx = -8°, RIGHT: ry = +8°, LEFT: ry = -8°
     // transition: transform 0.08s ease
-    val targetTiltX = remember(pressedDirs) {
+    val targetTiltX = remember(combinedDirs) {
         var tilt = 0f
         if (isUpPressed) tilt += 8.0f
         if (isDownPressed) tilt -= 8.0f
         tilt
     }
-    val targetTiltY = remember(pressedDirs) {
+    val targetTiltY = remember(combinedDirs) {
         var tilt = 0f
         if (isRightPressed) tilt += 8.0f
         if (isLeftPressed) tilt -= 8.0f

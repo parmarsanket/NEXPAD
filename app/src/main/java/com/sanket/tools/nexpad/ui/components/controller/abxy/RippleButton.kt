@@ -66,7 +66,9 @@ fun RippleButton(
     displayLabel: String? = null,
     isInteractive: Boolean = true
 ) {
-    var isPressed by remember { mutableStateOf(false) }
+    var isPressedLocally by remember { mutableStateOf(false) }
+    val externalPressed = com.sanket.tools.nexpad.ui.components.controller.isControlPressed(key)
+    val isPressed = isPressedLocally || externalPressed
 
     val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1.0f,
@@ -90,6 +92,12 @@ fun RippleButton(
     val ring3Progress = remember { Animatable(1f) }
 
     var rippleTrigger by remember { mutableLongStateOf(0L) }
+
+    LaunchedEffect(externalPressed) {
+        if (externalPressed) {
+            rippleTrigger = System.nanoTime()
+        }
+    }
 
     LaunchedEffect(rippleTrigger) {
         if (rippleTrigger == 0L) return@LaunchedEffect
@@ -287,11 +295,11 @@ fun RippleButton(
                             detectTapGestures(
                                 onPress = {
                                     currentOnVibrate()
-                                    isPressed = true
+                                    isPressedLocally = true
                                     currentViewModel?.updateButton(key, true)
                                     rippleTrigger = System.nanoTime()
                                     tryAwaitRelease()
-                                    isPressed = false
+                                    isPressedLocally = false
                                     currentViewModel?.updateButton(key, false)
                                 }
                             )

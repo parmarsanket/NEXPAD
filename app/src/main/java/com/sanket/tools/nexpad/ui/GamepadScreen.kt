@@ -19,8 +19,10 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.pointerInput
+import com.sanket.tools.nexpad.ui.components.controller.LocalPressedControlKeys
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
@@ -103,6 +105,74 @@ class BoundsRegistry {
         val midX = screenWidthPx / 2f
         return bounds.values.filter { if (isLeft) it.center.x < midX else it.center.x >= midX }
     }
+
+    /**
+     * Esports Hitbox Hit-Testing:
+     * Evaluates a circular contact patch (representing human thumb contact surface on capacitive glass)
+     * against all registered interactive buttons.
+     *
+     * Features:
+     * 1. Joystick Priority Gate: Touches inside excluded joystick circles return empty, preserving joysticks.
+     * 2. Slide / Roll Hitbox Detection: Touches within [thumbRadiusPx] of button perimeter register as hits.
+     * 3. Fat-Thumb Multi-Button Bridging: If the thumb patch bridges multiple buttons, returns all bridged keys.
+     * 4. Integrated 4-Way D-Pad Directional Resolution: Angles resolve to UP, DOWN, LEFT, RIGHT, or diagonals.
+     */
+    fun hitTestTouchDisk(
+        screenX: Float,
+        screenY: Float,
+        thumbRadiusPx: Float,
+        excludedJoystickCenters: List<Pair<Offset, Float>> = emptyList()
+    ): Set<String> {
+        for ((center, radius) in excludedJoystickCenters) {
+            if (hypot(screenX - center.x, screenY - center.y) <= radius) {
+                return emptySet()
+            }
+        }
+
+        val hits = mutableSetOf<String>()
+        val thumbRadiusSq = thumbRadiusPx * thumbRadiusPx
+
+        for ((key, rect) in bounds) {
+            val isCompositeDpad = key.equals("DPAD", ignoreCase = true)
+            val isSymmetricCircle = abs(rect.width - rect.height) < 4f
+
+            if (isCompositeDpad) {
+                val cx = rect.center.x
+                val cy = rect.center.y
+                val distToCenter = hypot(screenX - cx, screenY - cy)
+                val dpadRadius = minOf(rect.width, rect.height) / 2f
+
+                if (distToCenter <= dpadRadius + thumbRadiusPx) {
+                    val deadzone = dpadRadius * 0.15f
+                    if (distToCenter >= deadzone) {
+                        val dx = screenX - cx
+                        val dy = screenY - cy
+                        val angle = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble()))
+                        if (angle in -157.5..-22.5) hits.add(com.sanket.tools.nexpad.model.NexpadKeys.UP)
+                        if (angle in -67.5..67.5) hits.add(com.sanket.tools.nexpad.model.NexpadKeys.RIGHT)
+                        if (angle in 22.5..157.5) hits.add(com.sanket.tools.nexpad.model.NexpadKeys.DOWN)
+                        if (angle >= 112.5 || angle <= -112.5) hits.add(com.sanket.tools.nexpad.model.NexpadKeys.LEFT)
+                    }
+                }
+            } else if (isSymmetricCircle) {
+                val cx = rect.center.x
+                val cy = rect.center.y
+                val radius = minOf(rect.width, rect.height) / 2f
+                val distToCenter = hypot(screenX - cx, screenY - cy)
+                val distToPerimeter = maxOf(distToCenter - radius, 0f)
+                if (distToPerimeter <= thumbRadiusPx) {
+                    hits.add(key)
+                }
+            } else {
+                val dx = maxOf(rect.left - screenX, 0f, screenX - rect.right)
+                val dy = maxOf(rect.top - screenY, 0f, screenY - rect.bottom)
+                if ((dx * dx + dy * dy) <= thumbRadiusSq) {
+                    hits.add(key)
+                }
+            }
+        }
+        return hits
+    }
 }
 
 @Composable
@@ -167,6 +237,7 @@ fun GamepadScreen(
         }
     }
     val isConnected by viewModel.isConnected.collectAsState()
+    val isSlideGuardEnabled by nexpadPrefs.isJoystickSlideGuardEnabledFlow.collectAsState()
     
     LockScreenOrientation(
         ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
@@ -377,6 +448,8 @@ fun GamepadScreen(
         isConnected = isConnected,
         viewModel = viewModel,
         onBack = onBack,
+        onVibrate = safeOnVibrate,
+        isSlideGuardEnabled = isSlideGuardEnabled,
         renderElement = { key, position ->
             val isStick = key.equals(com.sanket.tools.nexpad.category.ControlKey.LS.name, ignoreCase = true) ||
                           key.equals(com.sanket.tools.nexpad.category.ControlKey.RS.name, ignoreCase = true)
@@ -409,6 +482,8 @@ fun GamepadScreenContent(
     isConnected: Boolean = false,
     viewModel: GamepadViewModel? = null,
     onBack: () -> Unit = {},
+    onVibrate: () -> Unit = {},
+    isSlideGuardEnabled: Boolean = true,
     renderElement: @Composable (key: String, position: com.sanket.tools.nexpad.model.Position) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -437,27 +512,122 @@ fun GamepadScreenContent(
             )
         }
 
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val remoteRegistry = remember(context) { com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry.getInstance(context) }
+        val loadedRemoteDocs by remoteRegistry.loadedComponents.collectAsState()
+
         val lsEntry = adjustedPositions.entries.firstOrNull { it.key.equals(com.sanket.tools.nexpad.category.ControlKey.LS.name, ignoreCase = true) }
         val rsEntry = adjustedPositions.entries.firstOrNull { it.key.equals(com.sanket.tools.nexpad.category.ControlKey.RS.name, ignoreCase = true) }
         val ltpEntry = adjustedPositions.entries.firstOrNull { it.key.equals(com.sanket.tools.nexpad.category.ControlKey.LTP.name, ignoreCase = true) }
         val rtpEntry = adjustedPositions.entries.firstOrNull { it.key.equals(com.sanket.tools.nexpad.category.ControlKey.RTP.name, ignoreCase = true) }
 
-        val touchpadEntries = remember(adjustedPositions) {
-            adjustedPositions.entries.filter { (key, _) ->
-                key.equals(com.sanket.tools.nexpad.category.ControlKey.LTP.name, ignoreCase = true) || key.equals(com.sanket.tools.nexpad.category.ControlKey.RTP.name, ignoreCase = true)
+        val touchpadEntries = remember(adjustedPositions, loadedRemoteDocs) {
+            adjustedPositions.entries.filter { (key, pos) ->
+                val upperKey = key.uppercase()
+                upperKey == com.sanket.tools.nexpad.category.ControlKey.LTP.name ||
+                upperKey == com.sanket.tools.nexpad.category.ControlKey.RTP.name ||
+                upperKey.contains("TOUCHPAD") ||
+                pos.customComponentId?.let { id ->
+                    id.contains("touchpad", ignoreCase = true) ||
+                    id.contains("inbuild_", ignoreCase = true) ||
+                    (id.startsWith("rc.") && (remoteRegistry.getComponent(id) ?: loadedRemoteDocs.firstOrNull { it.manifest.id == id })?.let { doc ->
+                        doc.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
+                        doc.manifest.id.contains("touchpad", ignoreCase = true) ||
+                        doc.manifest.defaultControl.contains("TOUCHPAD", ignoreCase = true) ||
+                        doc.manifest.defaultControl.equals("LTP", ignoreCase = true) ||
+                        doc.manifest.defaultControl.equals("RTP", ignoreCase = true)
+                    } == true)
+                } == true
             }
         }
-        val joystickEntries = remember(adjustedPositions) {
-            adjustedPositions.entries.filter { (key, _) ->
-                key.equals(com.sanket.tools.nexpad.category.ControlKey.LS.name, ignoreCase = true) || key.equals(com.sanket.tools.nexpad.category.ControlKey.RS.name, ignoreCase = true)
+        val hasTouchpad = remember(touchpadEntries) { touchpadEntries.isNotEmpty() }
+        val isEsportsSurfaceActive = !hasTouchpad
+        val pressedButtonKeysState = remember { mutableStateOf(emptySet<String>()) }
+
+        val joystickEntries = remember(adjustedPositions, loadedRemoteDocs) {
+            adjustedPositions.entries.filter { (key, pos) ->
+                val upperKey = key.uppercase()
+                upperKey == com.sanket.tools.nexpad.category.ControlKey.LS.name ||
+                upperKey == com.sanket.tools.nexpad.category.ControlKey.RS.name ||
+                upperKey.contains("JOYSTICK") ||
+                pos.customComponentId?.let { id ->
+                    id.contains("joystick", ignoreCase = true) ||
+                    (id.startsWith("rc.") && (remoteRegistry.getComponent(id) ?: loadedRemoteDocs.firstOrNull { it.manifest.id == id })?.let { doc ->
+                        doc.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
+                        doc.manifest.id.contains("joystick", ignoreCase = true) ||
+                        doc.manifest.defaultControl.contains("JOYSTICK", ignoreCase = true) ||
+                        doc.manifest.defaultControl.equals("LS", ignoreCase = true) ||
+                        doc.manifest.defaultControl.equals("RS", ignoreCase = true)
+                    } == true)
+                } == true
             }
         }
-        val interactiveButtonEntries = remember(adjustedPositions) {
+
+        var isLeftStickTouching by remember { mutableStateOf(false) }
+        var isRightStickTouching by remember { mutableStateOf(false) }
+
+        val isLeftStickActive = remember(
+            joystickEntries,
+            isLeftStickTouching,
+            isRightStickTouching,
+            viewModel?.leftStickX,
+            viewModel?.leftStickY,
+            viewModel?.rightStickX,
+            viewModel?.rightStickY
+        ) {
+            val leftJoysticks = joystickEntries.filter { it.value.xRatio < 0.5f }
+            if (leftJoysticks.isEmpty()) {
+                isLeftStickTouching || hypot(viewModel?.leftStickX ?: 0f, viewModel?.leftStickY ?: 0f) > 0.05f
+            } else {
+                leftJoysticks.any { (key, _) ->
+                    if (key.equals(com.sanket.tools.nexpad.category.ControlKey.RS.name, ignoreCase = true)) {
+                        isRightStickTouching || hypot(viewModel?.rightStickX ?: 0f, viewModel?.rightStickY ?: 0f) > 0.05f
+                    } else {
+                        isLeftStickTouching || hypot(viewModel?.leftStickX ?: 0f, viewModel?.leftStickY ?: 0f) > 0.05f
+                    }
+                }
+            }
+        }
+
+        val isRightStickActive = remember(
+            joystickEntries,
+            isLeftStickTouching,
+            isRightStickTouching,
+            viewModel?.leftStickX,
+            viewModel?.leftStickY,
+            viewModel?.rightStickX,
+            viewModel?.rightStickY
+        ) {
+            val rightJoysticks = joystickEntries.filter { it.value.xRatio >= 0.5f }
+            if (rightJoysticks.isEmpty()) {
+                isRightStickTouching || hypot(viewModel?.rightStickX ?: 0f, viewModel?.rightStickY ?: 0f) > 0.05f
+            } else {
+                rightJoysticks.any { (key, _) ->
+                    if (key.equals(com.sanket.tools.nexpad.category.ControlKey.LS.name, ignoreCase = true)) {
+                        isLeftStickTouching || hypot(viewModel?.leftStickX ?: 0f, viewModel?.leftStickY ?: 0f) > 0.05f
+                    } else {
+                        isRightStickTouching || hypot(viewModel?.rightStickX ?: 0f, viewModel?.rightStickY ?: 0f) > 0.05f
+                    }
+                }
+            }
+        }
+
+        val excludedJoystickCenters = remember(joystickEntries, screenWidthPx, screenHeightPx, responsiveScale, density) {
+            val list = mutableListOf<Pair<Offset, Float>>()
+            val defaultRadius = with(density) { 75.dp.toPx() }
+            joystickEntries.forEach { (_, pos) ->
+                val cx = pos.xRatio * screenWidthPx
+                val cy = pos.yRatio * screenHeightPx
+                val r = defaultRadius * pos.scale * responsiveScale
+                list.add(Pair(Offset(cx, cy), r))
+            }
+            list
+        }
+
+        val interactiveButtonEntries = remember(adjustedPositions, joystickEntries, touchpadEntries) {
+            val nonButtonKeys = (joystickEntries.map { it.key } + touchpadEntries.map { it.key }).toSet()
             adjustedPositions.entries.filter { (key, _) ->
-                !key.equals(com.sanket.tools.nexpad.category.ControlKey.LS.name, ignoreCase = true) &&
-                !key.equals(com.sanket.tools.nexpad.category.ControlKey.RS.name, ignoreCase = true) &&
-                !key.equals(com.sanket.tools.nexpad.category.ControlKey.LTP.name, ignoreCase = true) &&
-                !key.equals(com.sanket.tools.nexpad.category.ControlKey.RTP.name, ignoreCase = true)
+                !nonButtonKeys.contains(key)
             }
         }
 
@@ -551,31 +721,6 @@ fun GamepadScreenContent(
             }
         }
 
-        // 2. Render joystick UI elements (LS, RS) — Middle Z-order (visual base & knob)
-        joystickEntries.forEach { (key, position) ->
-            val isLs = key.equals("LS", ignoreCase = true)
-            val isRs = key.equals("RS", ignoreCase = true)
-
-            Box(
-                modifier = Modifier
-                    .layout { measurable, childConstraints ->
-                        val placeable = measurable.measure(childConstraints)
-                        val safeX = if (position.xRatio.isFinite()) position.xRatio else 0f
-                        val safeY = if (position.yRatio.isFinite()) position.yRatio else 0f
-                        val baseX = (safeX * screenWidthPx - placeable.width / 2f).roundToInt()
-                        val baseY = (safeY * screenHeightPx - placeable.height / 2f).roundToInt()
-                        layout(placeable.width, placeable.height) {
-                            val extraX = if (isLs) lsFloatX.value else if (isRs) rsFloatX.value else 0f
-                            val extraY = if (isLs) lsFloatY.value else if (isRs) rsFloatY.value else 0f
-                            placeable.placeRelative(baseX + extraX.roundToInt(), baseY + extraY.roundToInt())
-                        }
-                    }
-                    .scale(position.scale * responsiveScale)
-                    .alpha(position.opacity)
-            ) {
-                renderElement(key, position)
-            }
-        }
 
         // Independent Half-Screen Joystick Touch Layers (Center-to-Left for LS, Center-to-Right for RS)
         // Floating joystick is ONLY active for BOX and FULL modes.
@@ -604,7 +749,8 @@ fun GamepadScreenContent(
                         viewModel = viewModel,
                         isConnected = isConnected,
                         boundsRegistry = boundsRegistry,
-                        responsiveScale = responsiveScale
+                        responsiveScale = responsiveScale,
+                        onTouchChanged = { touching -> isLeftStickTouching = touching }
                     )
                 }
             }
@@ -635,7 +781,8 @@ fun GamepadScreenContent(
                         viewModel = viewModel,
                         isConnected = isConnected,
                         boundsRegistry = boundsRegistry,
-                        responsiveScale = responsiveScale
+                        responsiveScale = responsiveScale,
+                        onTouchChanged = { touching -> isRightStickTouching = touching }
                     )
                 }
             }
@@ -643,32 +790,255 @@ fun GamepadScreenContent(
 
         // 3. Render all interactive buttons, D-pad, triggers, bumpers, menu buttons — HIGHEST Z-order.
         // Direct button taps are captured by the buttons with absolute priority.
-        interactiveButtonEntries.forEach { (key, position) ->
-            DisposableEffect(key) {
-                onDispose { boundsRegistry.remove(key) }
+        CompositionLocalProvider(LocalPressedControlKeys provides pressedButtonKeysState.value) {
+            interactiveButtonEntries.forEach { (key, position) ->
+                DisposableEffect(key) {
+                    onDispose { boundsRegistry.remove(key) }
+                }
+                Box(
+                    modifier = Modifier
+                        .layout { measurable, childConstraints ->
+                            val placeable = measurable.measure(childConstraints)
+                            val safeX = if (position.xRatio.isFinite()) position.xRatio else 0f
+                            val safeY = if (position.yRatio.isFinite()) position.yRatio else 0f
+                            val x = (safeX * screenWidthPx - placeable.width / 2f).roundToInt()
+                            val y = (safeY * screenHeightPx - placeable.height / 2f).roundToInt()
+                            layout(placeable.width, placeable.height) {
+                                placeable.placeRelative(x, y)
+                            }
+                        }
+                        .scale(position.scale * responsiveScale)
+                        .alpha(position.opacity)
+                        .onGloballyPositioned { coordinates ->
+                            boundsRegistry.put(key, coordinates.boundsInParent())
+                        }
+                ) {
+                    renderElement(key, position)
+                }
             }
+        }
+
+        // 4. Esports Multi-Touch Surface Coordinator (Top Z-Order Touch Interceptor)
+        // Active ONLY when NO touchpad exists in the layout (hasTouchpad == false).
+        // Empowers rolling-thumb sweep/slide and fat-thumb dual chord press across all button hitboxes.
+        if (isEsportsSurfaceActive) {
+            val thumbRadiusPx = with(density) { 20.dp.toPx() }
+            EsportsTouchSurface(
+                boundsRegistry = boundsRegistry,
+                excludedJoystickCenters = excludedJoystickCenters,
+                thumbRadiusPx = thumbRadiusPx,
+                screenWidthPx = screenWidthPx,
+                isLeftStickActive = isLeftStickActive,
+                isRightStickActive = isRightStickActive,
+                isSlideGuardEnabled = isSlideGuardEnabled,
+                onButtonPressed = { key ->
+                    onVibrate()
+                    viewModel?.updateButton(key, true)
+                },
+                onButtonReleased = { key ->
+                    viewModel?.updateButton(key, false)
+                },
+                onPressedKeysChanged = { keys ->
+                    pressedButtonKeysState.value = keys
+                }
+            )
+        }
+
+        // Render joystick UI elements (LS, RS) — Rendered on top of EsportsTouchSurface
+        // so joystick pointerInput receives touches directly without interference.
+        joystickEntries.forEach { (key, position) ->
+            val isLs = key.equals("LS", ignoreCase = true)
+            val isRs = key.equals("RS", ignoreCase = true)
+
             Box(
                 modifier = Modifier
                     .layout { measurable, childConstraints ->
                         val placeable = measurable.measure(childConstraints)
                         val safeX = if (position.xRatio.isFinite()) position.xRatio else 0f
                         val safeY = if (position.yRatio.isFinite()) position.yRatio else 0f
-                        val x = (safeX * screenWidthPx - placeable.width / 2f).roundToInt()
-                        val y = (safeY * screenHeightPx - placeable.height / 2f).roundToInt()
+                        val baseX = (safeX * screenWidthPx - placeable.width / 2f).roundToInt()
+                        val baseY = (safeY * screenHeightPx - placeable.height / 2f).roundToInt()
                         layout(placeable.width, placeable.height) {
-                            placeable.placeRelative(x, y)
+                            val extraX = if (isLs) lsFloatX.value else if (isRs) rsFloatX.value else 0f
+                            val extraY = if (isLs) lsFloatY.value else if (isRs) rsFloatY.value else 0f
+                            placeable.placeRelative(baseX + extraX.roundToInt(), baseY + extraY.roundToInt())
                         }
                     }
                     .scale(position.scale * responsiveScale)
                     .alpha(position.opacity)
-                    .onGloballyPositioned { coordinates ->
-                        boundsRegistry.put(key, coordinates.boundsInParent())
-                    }
             ) {
                 renderElement(key, position)
             }
         }
     }
+}
+
+/**
+ * Esports Multi-Touch Surface Coordinator.
+ *
+ * Active ONLY when NO touchpad exists in the layout (hasTouchpad == false).
+ * Intercepts touch events on PointerEventPass.Initial and enables:
+ * - Fluid sliding between buttons without lifting the finger (A -> B).
+ * - Fat thumb simultaneous multi-button chord pressing (A + B).
+ * - Leaves joysticks (LS, RS) 100% untouched and unconsumed.
+ */
+@Composable
+fun EsportsTouchSurface(
+    boundsRegistry: BoundsRegistry,
+    excludedJoystickCenters: List<Pair<Offset, Float>>,
+    thumbRadiusPx: Float,
+    screenWidthPx: Float,
+    isLeftStickActive: Boolean = false,
+    isRightStickActive: Boolean = false,
+    isSlideGuardEnabled: Boolean = true,
+    onButtonPressed: (String) -> Unit,
+    onButtonReleased: (String) -> Unit,
+    onPressedKeysChanged: (Set<String>) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val currentBoundsRegistry by rememberUpdatedState(boundsRegistry)
+    val currentExcludedJoysticks by rememberUpdatedState(excludedJoystickCenters)
+    val currentThumbRadius by rememberUpdatedState(thumbRadiusPx)
+    val currentScreenWidthPx by rememberUpdatedState(screenWidthPx)
+    val currentIsLeftStickActive by rememberUpdatedState(isLeftStickActive)
+    val currentIsRightStickActive by rememberUpdatedState(isRightStickActive)
+    val currentIsSlideGuardEnabled by rememberUpdatedState(isSlideGuardEnabled)
+    val currentOnButtonPressed by rememberUpdatedState(onButtonPressed)
+    val currentOnButtonReleased by rememberUpdatedState(onButtonReleased)
+    val currentOnPressedKeysChanged by rememberUpdatedState(onPressedKeysChanged)
+
+    var currentGlobalPressed by remember { mutableStateOf(emptySet<String>()) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            for (key in currentGlobalPressed) {
+                currentOnButtonReleased(key)
+            }
+            currentGlobalPressed = emptySet()
+            currentOnPressedKeysChanged(emptySet())
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                val activePointers = mutableMapOf<PointerId, Set<String>>()
+                val initialPointers = mutableMapOf<PointerId, Set<String>>()
+
+                fun syncButtons() {
+                    val newGlobal = mutableSetOf<String>()
+                    for (set in activePointers.values) {
+                        newGlobal.addAll(set)
+                    }
+
+                    val added = newGlobal - currentGlobalPressed
+                    val removed = currentGlobalPressed - newGlobal
+
+                    if (added.isNotEmpty() || removed.isNotEmpty()) {
+                        currentGlobalPressed = newGlobal
+                        currentOnPressedKeysChanged(newGlobal)
+
+                        for (key in added) {
+                            currentOnButtonPressed(key)
+                        }
+                        for (key in removed) {
+                            currentOnButtonReleased(key)
+                        }
+                    }
+                }
+
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+
+                        for (change in event.changes) {
+                            val pid = change.id
+                            val isDown = !change.previousPressed && change.pressed
+                            val isUp = change.previousPressed && !change.pressed
+
+                            if (isDown) {
+                                val hits = currentBoundsRegistry.hitTestTouchDisk(
+                                    screenX = change.position.x,
+                                    screenY = change.position.y,
+                                    thumbRadiusPx = currentThumbRadius,
+                                    excludedJoystickCenters = currentExcludedJoysticks
+                                )
+
+                                if (hits.isNotEmpty()) {
+                                    change.consume()
+                                    activePointers[pid] = hits
+                                    initialPointers[pid] = hits
+                                    syncButtons()
+                                }
+                            } else if (change.pressed) {
+                                val px = change.position.x
+                                val isRightSide = px >= currentScreenWidthPx / 2f
+                                val isSideGuarded = currentIsSlideGuardEnabled && (if (isRightSide) currentIsRightStickActive else currentIsLeftStickActive)
+
+                                if (isSideGuarded) {
+                                    // Active Joystick Slide Guard: Suppress continuous slide / sweep into adjacent buttons on active stick half.
+                                    if (activePointers.containsKey(pid)) {
+                                        // Pointer started directly on a button on this side: allow holding it, but NEVER acquire new buttons via slide
+                                        val initial = initialPointers[pid] ?: emptySet()
+                                        val hits = currentBoundsRegistry.hitTestTouchDisk(
+                                            screenX = change.position.x,
+                                            screenY = change.position.y,
+                                            thumbRadiusPx = currentThumbRadius,
+                                            excludedJoystickCenters = currentExcludedJoysticks
+                                        )
+                                        val preserved = hits.filter { initial.contains(it) }.toSet()
+                                        change.consume()
+                                        if (preserved.isNotEmpty()) {
+                                            activePointers[pid] = preserved
+                                        } else {
+                                            activePointers.remove(pid)
+                                        }
+                                        syncButtons()
+                                    }
+                                    // Pointers not in activePointers (e.g. dragging joystick or neutral space) are strictly ignored
+                                } else {
+                                    // Guard not active on this side: full Esports rolling sweep
+                                    val hits = currentBoundsRegistry.hitTestTouchDisk(
+                                        screenX = change.position.x,
+                                        screenY = change.position.y,
+                                        thumbRadiusPx = currentThumbRadius,
+                                        excludedJoystickCenters = currentExcludedJoysticks
+                                    )
+                                    if (hits.isNotEmpty() || activePointers.containsKey(pid)) {
+                                        change.consume()
+                                        if (hits.isNotEmpty()) {
+                                            activePointers[pid] = hits
+                                        } else {
+                                            activePointers.remove(pid)
+                                        }
+                                        syncButtons()
+                                    }
+                                }
+                            } else if (isUp || !change.pressed) {
+                                initialPointers.remove(pid)
+                                if (activePointers.containsKey(pid)) {
+                                    activePointers.remove(pid)
+                                    syncButtons()
+                                }
+                            }
+                        }
+
+                        // Clean up any stale pointers that are no longer pressed
+                        val unpressedIds = activePointers.keys.filter { id ->
+                            event.changes.any { it.id == id && !it.pressed }
+                        }
+                        if (unpressedIds.isNotEmpty()) {
+                            for (id in unpressedIds) {
+                                activePointers.remove(id)
+                                initialPointers.remove(id)
+                            }
+                            syncButtons()
+                        }
+                    }
+                }
+            }
+    )
 }
 
 @Composable
@@ -684,10 +1054,17 @@ private fun BoxScope.JoystickTouchLayer(
     viewModel: GamepadViewModel?,
     isConnected: Boolean,
     boundsRegistry: BoundsRegistry,
-    responsiveScale: Float = 1.0f
+    responsiveScale: Float = 1.0f,
+    onTouchChanged: ((Boolean) -> Unit)? = null
 ) {
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
+
+    DisposableEffect(isLeft) {
+        onDispose {
+            onTouchChanged?.invoke(false)
+        }
+    }
 
     // Joystick home center in screen coordinates
     val homeX = remember(position, screenWidthPx) { position.xRatio * screenWidthPx }
@@ -737,66 +1114,71 @@ private fun BoxScope.JoystickTouchLayer(
 
                     // Claim touch
                     down.consume()
+                    onTouchChanged?.invoke(true)
 
-                    // In floating modes, base snaps to finger and locks during drag
-                    val baseX = screenX
-                    val baseY = screenY
+                    try {
+                        // In floating modes, base snaps to finger and locks during drag
+                        val baseX = screenX
+                        val baseY = screenY
 
-                    coroutineScope.launch {
-                        floatX.stop()
-                        floatY.stop()
-                        floatX.snapTo(baseX - homeX)
-                        floatY.snapTo(baseY - homeY)
-                    }
-
-                    // Zero deflection at touch down
-                    if (isLeft) viewModel?.updateLeftStick(0f, 0f)
-                    else        viewModel?.updateRightStick(0f, 0f)
-
-                    // Drag loop
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        val change = event.changes.firstOrNull { it.id == down.id }
-                        if (change == null || !change.pressed) break
-                        change.consume()
-
-                        val currentScreenX = if (isLeft) change.position.x else change.position.x + screenWidthPx / 2f
-                        val currentScreenY = change.position.y
-
-                        // Vector from fixed base origin to finger
-                        val deltaX = currentScreenX - baseX
-                        val deltaY = currentScreenY - baseY
-                        val dist   = hypot(deltaX, deltaY)
-
-                        // Base is LOCKED at touch-down point in floating mode (never drifts during drag)
-                        // Knob tracks finger up to maxThrowPx, then clamps to the rim
-                        val clampedDist = dist.coerceAtMost(maxThrowPx)
-                        val knobX: Float
-                        val knobY: Float
-                        if (dist < 0.001f) {
-                            knobX = 0f
-                            knobY = 0f
-                        } else {
-                            val invDist = 1f / dist
-                            knobX = deltaX * invDist * clampedDist
-                            knobY = deltaY * invDist * clampedDist
+                        coroutineScope.launch {
+                            floatX.stop()
+                            floatY.stop()
+                            floatX.snapTo(baseX - homeX)
+                            floatY.snapTo(baseY - homeY)
                         }
 
-                        val deadPx = maxThrowPx * 0.05f
-                        val normX = if (dist < deadPx) 0f else (knobX / maxThrowPx).coerceIn(-1f, 1f)
-                        val normY = if (dist < deadPx) 0f else (-knobY / maxThrowPx).coerceIn(-1f, 1f)
+                        // Zero deflection at touch down
+                        if (isLeft) viewModel?.updateLeftStick(0f, 0f)
+                        else        viewModel?.updateRightStick(0f, 0f)
 
-                        if (isLeft) viewModel?.updateLeftStick(normX, normY)
-                        else        viewModel?.updateRightStick(normX, normY)
-                    }
+                        // Drag loop
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id }
+                            if (change == null || !change.pressed) break
+                            change.consume()
 
-                    // Release — zero output, spring base back to home
-                    if (isLeft) viewModel?.updateLeftStick(0f, 0f)
-                    else        viewModel?.updateRightStick(0f, 0f)
+                            val currentScreenX = if (isLeft) change.position.x else change.position.x + screenWidthPx / 2f
+                            val currentScreenY = change.position.y
 
-                    coroutineScope.launch {
-                        launch { floatX.animateTo(0f, spring(dampingRatio = 0.70f, stiffness = 400f)) }
-                        launch { floatY.animateTo(0f, spring(dampingRatio = 0.70f, stiffness = 400f)) }
+                            // Vector from fixed base origin to finger
+                            val deltaX = currentScreenX - baseX
+                            val deltaY = currentScreenY - baseY
+                            val dist   = hypot(deltaX, deltaY)
+
+                            // Base is LOCKED at touch-down point in floating mode (never drifts during drag)
+                            // Knob tracks finger up to maxThrowPx, then clamps to the rim
+                            val clampedDist = dist.coerceAtMost(maxThrowPx)
+                            val knobX: Float
+                            val knobY: Float
+                            if (dist < 0.001f) {
+                                knobX = 0f
+                                knobY = 0f
+                            } else {
+                                val invDist = 1f / dist
+                                knobX = deltaX * invDist * clampedDist
+                                knobY = deltaY * invDist * clampedDist
+                            }
+
+                            val deadPx = maxThrowPx * 0.05f
+                            val normX = if (dist < deadPx) 0f else (knobX / maxThrowPx).coerceIn(-1f, 1f)
+                            val normY = if (dist < deadPx) 0f else (-knobY / maxThrowPx).coerceIn(-1f, 1f)
+
+                            if (isLeft) viewModel?.updateLeftStick(normX, normY)
+                            else        viewModel?.updateRightStick(normX, normY)
+                        }
+
+                        // Release — zero output, spring base back to home
+                        if (isLeft) viewModel?.updateLeftStick(0f, 0f)
+                        else        viewModel?.updateRightStick(0f, 0f)
+
+                        coroutineScope.launch {
+                            launch { floatX.animateTo(0f, spring(dampingRatio = 0.70f, stiffness = 400f)) }
+                            launch { floatY.animateTo(0f, spring(dampingRatio = 0.70f, stiffness = 400f)) }
+                        }
+                    } finally {
+                        onTouchChanged?.invoke(false)
                     }
                 }
             }

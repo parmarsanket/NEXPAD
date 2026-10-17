@@ -70,7 +70,8 @@ fun NeedleTrigger(
     displayLabel: String? = null,
     isInteractive: Boolean = true
 ) {
-    var isPressed by remember { mutableStateOf(false) }
+    var isPressedLocally by remember { mutableStateOf(false) }
+    val isPressed = isPressedLocally || com.sanket.tools.nexpad.ui.components.controller.isControlPressed(key)
     val isLeft = key.uppercase() == NexpadKeys.LT
     // HTML source palette: Mint Green (#5CF29A) for LT, Coral Pink (#FF5C8A) for RT
     val glowColor = if (isLeft) NeonPalette.MintGreen else NeonPalette.RoseNeon
@@ -313,10 +314,10 @@ fun NeedleTrigger(
                         detectTapGestures(
                             onPress = {
                                 currentOnVibrate()
-                                isPressed = true
+                                isPressedLocally = true
                                 currentViewModel?.updateButton(key, true)
                                 tryAwaitRelease()
-                                isPressed = false
+                                isPressedLocally = false
                                 currentViewModel?.updateButton(key, false)
                             }
                         )

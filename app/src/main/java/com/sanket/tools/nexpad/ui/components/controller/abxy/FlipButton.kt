@@ -60,7 +60,8 @@ fun FlipButton(
     displayLabel: String? = null,
     isInteractive: Boolean = true
 ) {
-    var isPressed by remember { mutableStateOf(false) }
+    var isPressedLocally by remember { mutableStateOf(false) }
+    val isPressed = isPressedLocally || com.sanket.tools.nexpad.ui.components.controller.isControlPressed(key)
 
     // 3D rotation around Y axis with spring overshoot bounce (cubic-bezier .3, 1.4, .5, 1)
     val flipAngleState = animateFloatAsState(
@@ -260,10 +261,10 @@ fun FlipButton(
                             detectTapGestures(
                                 onPress = {
                                     currentOnVibrate()
-                                    isPressed = true
+                                    isPressedLocally = true
                                     currentViewModel?.updateButton(key, true)
                                     tryAwaitRelease()
-                                    isPressed = false
+                                    isPressedLocally = false
                                     currentViewModel?.updateButton(key, false)
                                 }
                             )

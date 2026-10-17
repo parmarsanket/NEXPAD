@@ -64,7 +64,9 @@ fun RealisticBumper(
     displayLabel: String? = null,
     isInteractive: Boolean = true
 ) {
-    var isPressed by remember { mutableStateOf(false) }
+    var isPressedLocally by remember { mutableStateOf(false) }
+    val isPressedExternally = com.sanket.tools.nexpad.ui.components.controller.isControlPressed(key)
+    val isPressed = isPressedLocally || isPressedExternally
     val isLeft = remember(key) {
         val upper = key.uppercase()
         upper == NexpadKeys.LB || upper == "L1" || upper == "LEFT"
@@ -342,10 +344,10 @@ fun RealisticBumper(
                         detectTapGestures(
                             onPress = {
                                 currentOnVibrate()
-                                isPressed = true
+                                isPressedLocally = true
                                 currentViewModel?.updateButton(key, true)
                                 tryAwaitRelease()
-                                isPressed = false
+                                isPressedLocally = false
                                 currentViewModel?.updateButton(key, false)
                             }
                         )

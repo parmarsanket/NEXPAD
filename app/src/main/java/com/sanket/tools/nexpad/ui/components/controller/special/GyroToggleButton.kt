@@ -61,6 +61,7 @@ import kotlin.math.roundToInt
  */
 @Composable
 fun GyroToggleButton(
+    key: String = "GYRO",
     isConnected: Boolean = true,
     onVibrate: () -> Unit = {},
     viewModel: GamepadViewModel? = null,
@@ -69,7 +70,8 @@ fun GyroToggleButton(
     displayLabel: String? = null,
     isInteractive: Boolean = true
 ) {
-    var isPressed by remember { mutableStateOf(false) }
+    var isPressedLocally by remember { mutableStateOf(false) }
+    val isPressed = isPressedLocally || com.sanket.tools.nexpad.ui.components.controller.isControlPressed(key)
     val isGyroEnabled = if (isInteractive) {
         viewModel?.isGyroEnabled?.collectAsState()?.value ?: true
     } else true
@@ -207,11 +209,11 @@ fun GyroToggleButton(
                         Modifier.pointerInput(Unit) {
                             detectTapGestures(
                                 onPress = {
-                                    isPressed = true
+                                    isPressedLocally = true
                                     currentOnVibrate()
                                     currentViewModel?.toggleGyro()
                                     tryAwaitRelease()
-                                    isPressed = false
+                                    isPressedLocally = false
                                 }
                             )
                         }

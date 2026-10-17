@@ -454,7 +454,37 @@ fun NxprcCanvasRenderer(
     labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
     sizingPolicy: NxprcSizingPolicy = NxprcSizingPolicy.GamepadHud
 ) {
-    var isPressed by remember { mutableStateOf(false) }
+    val buttonControl = remember(assignedControl) {
+        when (assignedControl) {
+            is NexPadControl.Button -> assignedControl
+            is NexPadControl.DPad -> NexPadControl.Button(assignedControl.direction)
+            is NexPadControl.Trigger -> NexPadControl.Button(assignedControl.key)
+            is NexPadControl.Stick -> NexPadControl.Button(if (assignedControl.isLeft) NexpadKeys.LS else NexpadKeys.RS)
+        }
+    }
+
+    val effectiveControlKey = remember(buttonControl, document.manifest.defaultControl) {
+        val key = buttonControl.key.ifBlank { document.manifest.defaultControl }
+        key.trim().uppercase()
+    }
+
+    val isStickOrTouchpadControl = assignedControl is NexPadControl.Stick ||
+        document.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
+        document.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
+        document.manifest.id.contains("joystick", ignoreCase = true) ||
+        document.manifest.id.contains("touchpad", ignoreCase = true) ||
+        effectiveControlKey == NexpadKeys.LS ||
+        effectiveControlKey == NexpadKeys.RS ||
+        effectiveControlKey == NexpadKeys.LTP ||
+        effectiveControlKey == NexpadKeys.RTP ||
+        effectiveControlKey.contains("TOUCHPAD") ||
+        effectiveControlKey.contains("JOYSTICK")
+
+    var isPressedLocally by remember { mutableStateOf(false) }
+    val isPressedExternally = if (!isStickOrTouchpadControl) {
+        com.sanket.tools.nexpad.ui.components.controller.isControlPressed(effectiveControlKey)
+    } else false
+    val isPressed = isPressedLocally || isPressedExternally
     val currentInputTarget by rememberUpdatedState(inputTarget)
     val coroutineScope = rememberCoroutineScope()
 
@@ -645,20 +675,6 @@ fun NxprcCanvasRenderer(
     val widthDp = rawWidthDp.roundToInt()
     val heightDp = rawHeightDp.roundToInt()
 
-    val buttonControl = remember(assignedControl) {
-        when (assignedControl) {
-            is NexPadControl.Button -> assignedControl
-            is NexPadControl.DPad -> NexPadControl.Button(assignedControl.direction)
-            is NexPadControl.Trigger -> NexPadControl.Button(assignedControl.key)
-            is NexPadControl.Stick -> NexPadControl.Button(if (assignedControl.isLeft) NexpadKeys.LS else NexpadKeys.RS)
-        }
-    }
-
-    val effectiveControlKey = remember(buttonControl, document.manifest.defaultControl) {
-        val key = buttonControl.key.ifBlank { document.manifest.defaultControl }
-        key.trim().uppercase()
-    }
-
     val isDpadCross = (assignedControl is NexPadControl.Button && (assignedControl.key.equals(NexpadKeys.DPAD, ignoreCase = true) || document.manifest.defaultControl.equals(NexpadKeys.DPAD, ignoreCase = true))) ||
             (document.manifest.category.equals(NexpadKeys.DPAD, ignoreCase = true) && assignedControl is NexPadControl.Button && assignedControl.key.equals(NexpadKeys.DPAD, ignoreCase = true)) ||
             (document.manifest.id.contains("dpad_cross", ignoreCase = true))
@@ -749,7 +765,7 @@ fun NxprcCanvasRenderer(
             Modifier.pointerInput(document.manifest.id, assignedControl, isCameraMode, cameraSensitivity, density) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
-                    isPressed = true
+                    isPressedLocally = true
                     val maxRadius = widthDp * 0.28f * density
                     val deadzoneRadius = 6f * density
                     var previousTouchX = down.position.x
@@ -895,7 +911,7 @@ fun NxprcCanvasRenderer(
                     }
 
                     // Release: reset input and spring back to center
-                    isPressed = false
+                    isPressedLocally = false
                     decayJob?.cancel()
                     val releaseSpeed = velocityBuffer.peakSpeed()
                     if (isCameraMode && releaseSpeed > 400f) {
@@ -945,14 +961,14 @@ fun NxprcCanvasRenderer(
                     val down = awaitFirstDown(requireUnconsumed = false)
                     val isInside = down.position.x in 0f..size.width.toFloat() && down.position.y in 0f..size.height.toFloat()
                     if (isInside) {
-                        isPressed = true
+                        isPressedLocally = true
                         coroutineScope.launch {
                             pullProgress.animateTo(1f, spring(stiffness = 900f, dampingRatio = 0.7f))
                         }
                         currentInputTarget.onTriggerMove(trigger, 1f)
 
                         val upOrCancel = waitForUpOrCancellation()
-                        isPressed = false
+                        isPressedLocally = false
                         coroutineScope.launch {
                             pullProgress.animateTo(0f, spring(stiffness = 700f, dampingRatio = 0.7f))
                         }
@@ -966,7 +982,7 @@ fun NxprcCanvasRenderer(
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     down.consume()
-                    isPressed = true
+                    isPressedLocally = true
                     var activeDirs = emptySet<String>()
 
                     fun evaluateOffset(pos: Offset) {
@@ -1012,7 +1028,7 @@ fun NxprcCanvasRenderer(
                         }
                     } finally {
                         activeDirs.forEach { dir -> currentInputTarget.onButtonRelease(NexPadControl.Button(dir)) }
-                        isPressed = false
+                        isPressedLocally = false
                     }
                 }
             }
@@ -1030,11 +1046,11 @@ fun NxprcCanvasRenderer(
                         down.position.x in 0f..size.width.toFloat() && down.position.y in 0f..size.height.toFloat()
                     }
                     if (isInside) {
-                        isPressed = true
+                        isPressedLocally = true
                         currentInputTarget.onButtonPress(buttonControl)
 
                         val upOrCancel = waitForUpOrCancellation()
-                        isPressed = false
+                        isPressedLocally = false
                         currentInputTarget.onButtonRelease(buttonControl)
                     }
                 }

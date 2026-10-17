@@ -129,7 +129,8 @@ fun RailsDPad(
     isInteractive: Boolean = true
 ) {
     var pressedDirs by remember { mutableStateOf<Set<String>>(emptySet()) }
-    val currentlyPressed = pressedDirs
+    val externalPressedDirs = com.sanket.tools.nexpad.ui.components.controller.LocalPressedControlKeys.current
+    val currentlyPressed = pressedDirs + externalPressedDirs
 
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentViewModel by rememberUpdatedState(viewModel)

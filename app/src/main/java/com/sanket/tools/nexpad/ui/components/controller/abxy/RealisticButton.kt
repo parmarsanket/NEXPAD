@@ -161,7 +161,9 @@ fun RealisticButton(
     displayLabel: String? = null,
     isInteractive: Boolean = true
 ) {
-    var isPressed by remember { mutableStateOf(false) }
+    var isPressedLocally by remember { mutableStateOf(false) }
+    val isPressedExternally = com.sanket.tools.nexpad.ui.components.controller.isControlPressed(key)
+    val isPressed = isPressedLocally || isPressedExternally
 
     // Physical Spring Kinematics (stiffness: 440f, damping: 0.68f, press-scale: 0.95f)
     val scaleAnimState = animateFloatAsState(
@@ -443,10 +445,10 @@ fun RealisticButton(
                             detectTapGestures(
                                 onPress = {
                                     currentOnVibrate()
-                                    isPressed = true
+                                    isPressedLocally = true
                                     currentViewModel?.updateButton(key, true)
                                     tryAwaitRelease()
-                                    isPressed = false
+                                    isPressedLocally = false
                                     currentViewModel?.updateButton(key, false)
                                 }
                             )

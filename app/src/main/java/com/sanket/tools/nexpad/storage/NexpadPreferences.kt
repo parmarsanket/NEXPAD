@@ -43,6 +43,9 @@ class NexpadPreferences private constructor(context: Context) {
     private val _emulationModeFlow = MutableStateFlow(emulationMode)
     val emulationModeFlow: StateFlow<com.sanket.tools.nexpad.model.ControllerEmulationMode> = _emulationModeFlow.asStateFlow()
 
+    private val _isJoystickSlideGuardEnabledFlow = MutableStateFlow(isJoystickSlideGuardEnabled)
+    val isJoystickSlideGuardEnabledFlow: StateFlow<Boolean> = _isJoystickSlideGuardEnabledFlow.asStateFlow()
+
     // ─── Controller & Analog Stick Domain APIs ──────────────────────────
 
     var isRightStickCameraMode: Boolean
@@ -84,6 +87,13 @@ class NexpadPreferences private constructor(context: Context) {
     var isDoubleTapExitEnabled: Boolean
         get() = prefs.getBoolean(NexpadPreferenceKeys.KEY_DOUBLE_TAP_BACK_EXIT, true)
         set(value) = prefs.edit { putBoolean(NexpadPreferenceKeys.KEY_DOUBLE_TAP_BACK_EXIT, value) }
+
+    var isJoystickSlideGuardEnabled: Boolean
+        get() = prefs.getBoolean(NexpadPreferenceKeys.KEY_JOYSTICK_SLIDE_GUARD_ENABLED, true)
+        set(value) {
+            prefs.edit { putBoolean(NexpadPreferenceKeys.KEY_JOYSTICK_SLIDE_GUARD_ENABLED, value) }
+            _isJoystickSlideGuardEnabledFlow.value = value
+        }
 
     var emulationMode: com.sanket.tools.nexpad.model.ControllerEmulationMode
         get() = com.sanket.tools.nexpad.model.ControllerEmulationMode.fromId(prefs.getString(NexpadPreferenceKeys.KEY_EMULATION_MODE, NexpadPreferenceKeys.DEFAULT_EMULATION_MODE))

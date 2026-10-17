@@ -2581,6 +2581,7 @@ object NativeComponentRegistry {
     ) {
         if (key.equals("GYRO", ignoreCase = true) || customComponentId?.startsWith("builtin.gyro_btn") == true) {
             GyroToggleButton(
+                key = key,
                 isConnected = isConnected,
                 onVibrate = onVibrate,
                 viewModel = viewModel,

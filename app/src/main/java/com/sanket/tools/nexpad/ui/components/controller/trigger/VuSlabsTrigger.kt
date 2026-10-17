@@ -72,7 +72,8 @@ fun VuSlabsTrigger(
     displayLabel: String? = null,
     isInteractive: Boolean = true
 ) {
-    var isPressed by remember { mutableStateOf(false) }
+    var isPressedLocally by remember { mutableStateOf(false) }
+    val isPressed = isPressedLocally || com.sanket.tools.nexpad.ui.components.controller.isControlPressed(key)
     val isLeft = key.uppercase() == NexpadKeys.LT
 
     // Physical Spring Kinematics
@@ -306,10 +307,10 @@ fun VuSlabsTrigger(
                         detectTapGestures(
                             onPress = {
                                 currentOnVibrate()
-                                isPressed = true
+                                isPressedLocally = true
                                 currentViewModel?.updateButton(key, true)
                                 tryAwaitRelease()
-                                isPressed = false
+                                isPressedLocally = false
                                 currentViewModel?.updateButton(key, false)
                             }
                         )

@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -108,9 +109,29 @@ fun SliderTrigger(
     // Current pull value [0f, 1f]
     var isDragging by remember { mutableStateOf(false) }
     val fillAnim = remember { Animatable(0f) }
+    val isPressedExternally = com.sanket.tools.nexpad.ui.components.controller.isControlPressed(key)
+
+    LaunchedEffect(isPressedExternally) {
+        if (!isDragging) {
+            if (isPressedExternally) {
+                fillAnim.animateTo(
+                    targetValue = 1f,
+                    animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f)
+                )
+            } else {
+                fillAnim.animateTo(
+                    targetValue = 0f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    )
+                )
+            }
+        }
+    }
 
     val rgbBloomAlpha = animateFloatAsState(
-        targetValue = if (isDragging || fillAnim.value > 0.05f) 1.0f else 0.45f,
+        targetValue = if (isDragging || isPressedExternally || fillAnim.value > 0.05f) 1.0f else 0.45f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
         label = "slider_rgb_bloom"
     )

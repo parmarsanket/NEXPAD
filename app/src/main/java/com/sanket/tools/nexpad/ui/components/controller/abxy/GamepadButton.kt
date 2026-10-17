@@ -38,7 +38,8 @@ fun GamepadButton(
     viewModel: GamepadViewModel,
     modifier: Modifier = Modifier
 ) {
-    var isPressed by remember { mutableStateOf(false) }
+    var isPressedLocally by remember { mutableStateOf(false) }
+    val isPressed = isPressedLocally || com.sanket.tools.nexpad.ui.components.controller.isControlPressed(text)
 
     val scaleAnimState = animateFloatAsState(
         targetValue = if (isPressed) 0.92f else 1.0f,
@@ -108,10 +109,10 @@ fun GamepadButton(
                 detectTapGestures(
                     onPress = {
                         currentOnVibrate()
-                        isPressed = true
+                        isPressedLocally = true
                         currentViewModel.updateButton(text, true)
                         tryAwaitRelease()
-                        isPressed = false
+                        isPressedLocally = false
                         currentViewModel.updateButton(text, false)
                     }
                 )
