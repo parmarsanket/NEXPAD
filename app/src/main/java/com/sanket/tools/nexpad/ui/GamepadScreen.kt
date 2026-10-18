@@ -238,6 +238,7 @@ fun GamepadScreen(
     }
     val isConnected by viewModel.isConnected.collectAsState()
     val isSlideGuardEnabled by nexpadPrefs.isJoystickSlideGuardEnabledFlow.collectAsState()
+    val isEsportsMultitouchEnabled by nexpadPrefs.isEsportsMultitouchEnabledFlow.collectAsState()
     
     LockScreenOrientation(
         ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
@@ -450,6 +451,7 @@ fun GamepadScreen(
         onBack = onBack,
         onVibrate = safeOnVibrate,
         isSlideGuardEnabled = isSlideGuardEnabled,
+        isEsportsMultitouchEnabled = isEsportsMultitouchEnabled,
         renderElement = { key, position ->
             val isStick = key.equals(com.sanket.tools.nexpad.category.ControlKey.LS.name, ignoreCase = true) ||
                           key.equals(com.sanket.tools.nexpad.category.ControlKey.RS.name, ignoreCase = true)
@@ -484,6 +486,7 @@ fun GamepadScreenContent(
     onBack: () -> Unit = {},
     onVibrate: () -> Unit = {},
     isSlideGuardEnabled: Boolean = true,
+    isEsportsMultitouchEnabled: Boolean = true,
     renderElement: @Composable (key: String, position: com.sanket.tools.nexpad.model.Position) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -541,7 +544,7 @@ fun GamepadScreenContent(
             }
         }
         val hasTouchpad = remember(touchpadEntries) { touchpadEntries.isNotEmpty() }
-        val isEsportsSurfaceActive = !hasTouchpad
+        val isEsportsSurfaceActive = !hasTouchpad && isEsportsMultitouchEnabled
         val pressedButtonKeysState = remember { mutableStateOf(emptySet<String>()) }
 
         val joystickEntries = remember(adjustedPositions, loadedRemoteDocs) {

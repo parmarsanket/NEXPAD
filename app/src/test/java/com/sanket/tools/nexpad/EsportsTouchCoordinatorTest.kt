@@ -223,6 +223,16 @@ class EsportsTouchCoordinatorTest {
         }
         val isEsportsSurfaceActive3 = touchpadEntries3.isEmpty()
         assertFalse("Esports Touch Coordinator must be INACTIVE when an NXPRC touchpad is present", isEsportsSurfaceActive3)
+
+        // Case 4: Layout without touchpad, but Esports Multi-Touch disabled by user in Settings
+        val isEsportsMultitouchEnabled4 = false
+        val isEsportsSurfaceActive4 = touchpadEntries1.isEmpty() && isEsportsMultitouchEnabled4
+        assertFalse("Esports Touch Coordinator must be INACTIVE when disabled in Settings (reverts to old/classic mode)", isEsportsSurfaceActive4)
+
+        // Case 5: Layout without touchpad, and Esports Multi-Touch enabled by user in Settings (default)
+        val isEsportsMultitouchEnabled5 = true
+        val isEsportsSurfaceActive5 = touchpadEntries1.isEmpty() && isEsportsMultitouchEnabled5
+        assertTrue("Esports Touch Coordinator must be ACTIVE when enabled in Settings", isEsportsSurfaceActive5)
     }
 
     @Test

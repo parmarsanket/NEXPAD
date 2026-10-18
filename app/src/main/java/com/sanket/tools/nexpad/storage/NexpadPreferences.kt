@@ -46,6 +46,9 @@ class NexpadPreferences private constructor(context: Context) {
     private val _isJoystickSlideGuardEnabledFlow = MutableStateFlow(isJoystickSlideGuardEnabled)
     val isJoystickSlideGuardEnabledFlow: StateFlow<Boolean> = _isJoystickSlideGuardEnabledFlow.asStateFlow()
 
+    private val _isEsportsMultitouchEnabledFlow = MutableStateFlow(isEsportsMultitouchEnabled)
+    val isEsportsMultitouchEnabledFlow: StateFlow<Boolean> = _isEsportsMultitouchEnabledFlow.asStateFlow()
+
     // ─── Controller & Analog Stick Domain APIs ──────────────────────────
 
     var isRightStickCameraMode: Boolean
@@ -93,6 +96,13 @@ class NexpadPreferences private constructor(context: Context) {
         set(value) {
             prefs.edit { putBoolean(NexpadPreferenceKeys.KEY_JOYSTICK_SLIDE_GUARD_ENABLED, value) }
             _isJoystickSlideGuardEnabledFlow.value = value
+        }
+
+    var isEsportsMultitouchEnabled: Boolean
+        get() = prefs.getBoolean(NexpadPreferenceKeys.KEY_ESPORTS_MULTITOUCH_ENABLED, true)
+        set(value) {
+            prefs.edit { putBoolean(NexpadPreferenceKeys.KEY_ESPORTS_MULTITOUCH_ENABLED, value) }
+            _isEsportsMultitouchEnabledFlow.value = value
         }
 
     var emulationMode: com.sanket.tools.nexpad.model.ControllerEmulationMode

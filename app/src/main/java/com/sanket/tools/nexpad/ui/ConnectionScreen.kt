@@ -50,6 +50,7 @@ import androidx.core.content.ContextCompat
 import com.sanket.tools.nexpad.ui.AppNavigator
 import com.sanket.tools.nexpad.ui.components.badge.HeaderStatusPill
 import com.sanket.tools.nexpad.ui.components.common.NexpadTopAppBar
+import com.sanket.tools.nexpad.ui.components.common.NxIconBox
 import com.sanket.tools.nexpad.ui.components.connection.ActiveSessionCard
 import com.sanket.tools.nexpad.ui.components.connection.ConnectionHubStatusCard
 import com.sanket.tools.nexpad.ui.components.connection.ConnectionTransportsContent
@@ -459,21 +460,13 @@ fun ConnectionDesktopDownloadCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(iconBoxSize)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(NeonPalette.Cyan.copy(alpha = 0.12f))
-                    .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.35f), RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.DesktopWindows,
-                    contentDescription = null,
-                    tint = NeonPalette.Cyan,
-                    modifier = Modifier.size(iconSize)
-                )
-            }
+//
+            NxIconBox(
+                iconBoxSize = iconBoxSize,
+                iconSize = iconSize,
+                imageVector = Icons.Rounded.DesktopWindows,
+                color = NeonPalette.Cyan
+            )
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(

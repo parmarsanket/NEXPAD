@@ -116,6 +116,9 @@ fun SettingsScreen(
     var joystickSlideGuardEnabled by remember {
         mutableStateOf(nexpadPrefs.isJoystickSlideGuardEnabled)
     }
+    var esportsMultitouchEnabled by remember {
+        mutableStateOf(nexpadPrefs.isEsportsMultitouchEnabled)
+    }
 
     val hapticHelper = remember(context) { HapticFeedbackHelper(context) }
 
@@ -130,6 +133,7 @@ fun SettingsScreen(
         rumbleMode = rumbleMode,
         doubleTapBackExitEnabled = doubleTapBackExitEnabled,
         joystickSlideGuardEnabled = joystickSlideGuardEnabled,
+        esportsMultitouchEnabled = esportsMultitouchEnabled,
         onRgbChange = {
             layoutManager.saveProfile(currentProfile.copy(isRgbEnabled = it), activate = true)
         },
@@ -169,6 +173,10 @@ fun SettingsScreen(
             joystickSlideGuardEnabled = it
             nexpadPrefs.isJoystickSlideGuardEnabled = it
         },
+        onEsportsMultitouchChange = {
+            esportsMultitouchEnabled = it
+            nexpadPrefs.isEsportsMultitouchEnabled = it
+        },
         onOpenUrl = { url ->
             if (url.isNullOrBlank()) {
                 Toast.makeText(context, "YouTube channel link coming soon!", Toast.LENGTH_SHORT).show()
@@ -199,6 +207,7 @@ fun SettingsScreenContent(
     rumbleMode: RumbleMode = RumbleMode.DEFAULT,
     doubleTapBackExitEnabled: Boolean = true,
     joystickSlideGuardEnabled: Boolean = true,
+    esportsMultitouchEnabled: Boolean = true,
     onRgbChange: (Boolean) -> Unit = {},
     onButtonHapticsChange: (Boolean) -> Unit = {},
     onVibrateOfflineChange: (Boolean) -> Unit = {},
@@ -208,6 +217,7 @@ fun SettingsScreenContent(
     onRumbleModeChange: (RumbleMode) -> Unit = {},
     onDoubleTapBackExitChange: (Boolean) -> Unit = {},
     onJoystickSlideGuardChange: (Boolean) -> Unit = {},
+    onEsportsMultitouchChange: (Boolean) -> Unit = {},
     onOpenUrl: (String?) -> Unit = {},
     onBack: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -350,11 +360,20 @@ fun SettingsScreenContent(
                     )
 
                     SettingsToggleRow(
+                        title = "Esports Multi-Touch",
+                        description = "ON: Enables rolling thumb sweeps (A->B) and fat-thumb multi-button chord presses. OFF: Reverts to classic discrete button taps only",
+                        checked = esportsMultitouchEnabled,
+                        onCheckedChange = onEsportsMultitouchChange,
+                        accentColor = NeonPalette.Amber
+                    )
+
+                    SettingsToggleRow(
                         title = "Active Joystick Slide Guard",
                         description = "Suppresses continuous slide/sweep button activation on the half of the screen where a joystick is actively in motion, preventing accidental button presses during intense movement or camera aiming",
                         checked = joystickSlideGuardEnabled,
                         onCheckedChange = onJoystickSlideGuardChange,
-                        accentColor = NeonPalette.Amber
+                        accentColor = NeonPalette.Amber,
+                        enabled = esportsMultitouchEnabled
                     )
                 }
 

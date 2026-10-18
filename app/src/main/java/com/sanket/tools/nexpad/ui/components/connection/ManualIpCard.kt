@@ -38,6 +38,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.ui.components.common.NxIconBox
 import com.sanket.tools.nexpad.ui.components.common.NxOutlinedButton
 import com.sanket.tools.nexpad.ui.layout.AdaptiveLayoutSpec
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
@@ -86,21 +87,12 @@ fun ManualIpCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(iconBoxSize)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(NeonPalette.Cyan.copy(alpha = 0.12f))
-                        .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.35f), RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Lan,
-                        contentDescription = null,
-                        tint = NeonPalette.Cyan,
-                        modifier = Modifier.size(iconSize)
-                    )
-                }
+                NxIconBox(
+                    iconBoxSize = iconBoxSize,
+                    iconSize = iconSize,
+                    imageVector = Icons.Rounded.Lan,
+                    color = NeonPalette.Cyan
+                )
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
