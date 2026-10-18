@@ -50,7 +50,6 @@ composeCompiler {
 }
 
 dependencies {
-    implementation(libs.androidx.compose.ui.unit)
     screenshotTestImplementation(libs.screenshot.validation.api)
     screenshotTestImplementation(libs.androidx.compose.ui.tooling)
 

@@ -49,145 +49,47 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <intent-filter>
-                <action android:name="android.hardware.usb.action.USB_ACCESSORY_ATTACHED" />
-            </intent-filter>
-            <meta-data
-                android:name="android.hardware.usb.action.USB_ACCESSORY_ATTACHED"
-                android:resource="@xml/accessory_filter" />
-
-            <!-- Handle opening .nxlayout files via file scheme (File managers, SD card) -->
+            <!-- 1. Direct File Open: handles .nxlayout & .nxprc via file:// and content:// (without MIME) -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:host="*" />
+                <data android:pathPattern=".*\\.nxlayout" />
+                <data android:pathPattern=".*\\.NXLAYOUT" />
+                <data android:pathPattern=".*\\.nxprc" />
+                <data android:pathPattern=".*\\.NXPRC" />
+            </intent-filter>
+
+            <!-- 2. Wildcard MIME Open: For file managers that pass mimeType="*/*" with file extension -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:host="*" />
                 <data android:mimeType="*/*" />
                 <data android:pathPattern=".*\\.nxlayout" />
-                <data android:pathPattern=".*\\..*\\.nxlayout" />
-                <data android:pathPattern=".*\\..*\\..*\\.nxlayout" />
-                <data android:pathSuffix=".nxlayout" />
-                <data android:pathSuffix=".NXLAYOUT" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="file" />
-                <data android:pathPattern=".*\\.nxlayout" />
-                <data android:pathPattern=".*\\..*\\.nxlayout" />
-                <data android:pathPattern=".*\\..*\\..*\\.nxlayout" />
-                <data android:pathSuffix=".nxlayout" />
-                <data android:pathSuffix=".NXLAYOUT" />
+                <data android:pathPattern=".*\\.NXLAYOUT" />
+                <data android:pathPattern=".*\\.nxprc" />
+                <data android:pathPattern=".*\\.NXPRC" />
             </intent-filter>
 
-            <!-- Handle opening .nxlayout files via content scheme with explicit extension (Downloads, FileProvider) -->
+            <!-- 3. Messaging & Cloud Apps: WhatsApp, Discord, Telegram (opaque ID + octet-stream) -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="content" />
-                <data android:mimeType="*/*" />
-                <data android:pathPattern=".*\\.nxlayout" />
-                <data android:pathPattern=".*\\..*\\.nxlayout" />
-                <data android:pathPattern=".*\\..*\\..*\\.nxlayout" />
-                <data android:pathSuffix=".nxlayout" />
-                <data android:pathSuffix=".NXLAYOUT" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="content" />
-                <data android:pathPattern=".*\\.nxlayout" />
-                <data android:pathPattern=".*\\..*\\.nxlayout" />
-                <data android:pathPattern=".*\\..*\\..*\\.nxlayout" />
-                <data android:pathSuffix=".nxlayout" />
-                <data android:pathSuffix=".NXLAYOUT" />
-            </intent-filter>
-
-            <!-- Handle opening .nxprc button components via file scheme -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="file" />
-                <data android:mimeType="*/*" />
-                <data android:pathPattern=".*\\.nxprc" />
-                <data android:pathPattern=".*\\..*\\.nxprc" />
-                <data android:pathPattern=".*\\..*\\..*\\.nxprc" />
-                <data android:pathSuffix=".nxprc" />
-                <data android:pathSuffix=".NXPRC" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="file" />
-                <data android:pathPattern=".*\\.nxprc" />
-                <data android:pathPattern=".*\\..*\\.nxprc" />
-                <data android:pathPattern=".*\\..*\\..*\\.nxprc" />
-                <data android:pathSuffix=".nxprc" />
-                <data android:pathSuffix=".NXPRC" />
-            </intent-filter>
-
-            <!-- Handle opening .nxprc button components via content scheme with explicit extension -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="content" />
-                <data android:mimeType="*/*" />
-                <data android:pathPattern=".*\\.nxprc" />
-                <data android:pathPattern=".*\\..*\\.nxprc" />
-                <data android:pathPattern=".*\\..*\\..*\\.nxprc" />
-                <data android:pathSuffix=".nxprc" />
-                <data android:pathSuffix=".NXPRC" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="content" />
-                <data android:pathPattern=".*\\.nxprc" />
-                <data android:pathPattern=".*\\..*\\.nxprc" />
-                <data android:pathPattern=".*\\..*\\..*\\.nxprc" />
-                <data android:pathSuffix=".nxprc" />
-                <data android:pathSuffix=".NXPRC" />
-            </intent-filter>
-
-            <!-- Handle opening files from messaging apps (WhatsApp, Telegram, Gmail, Discord, etc.) -->
-            <!-- Messaging apps serve attachments via internal ContentProviders with opaque IDs (e.g. /item/123) -->
-            <!-- and tag them as application/octet-stream. -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="content" />
                 <data android:mimeType="application/octet-stream" />
             </intent-filter>
 
-            <!-- Handle files shared directly to NEXPAD via Android system Share Sheet (ACTION_SEND) -->
+            <!-- 4. Handle files shared directly to NEXPAD via Android system Share Sheet (ACTION_SEND) -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="application/octet-stream" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:scheme="content" />
                 <data android:mimeType="*/*" />
-                <data android:pathPattern=".*\\.nxlayout" />
-                <data android:pathSuffix=".nxlayout" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:scheme="content" />
-                <data android:mimeType="*/*" />
-                <data android:pathPattern=".*\\.nxprc" />
-                <data android:pathSuffix=".nxprc" />
             </intent-filter>
 <!--            android:screenOrientation="landscape"-->
         </activity>
