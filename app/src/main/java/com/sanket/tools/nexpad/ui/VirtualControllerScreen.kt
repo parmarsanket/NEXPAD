@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.model.LayoutProfile
 import com.sanket.tools.nexpad.model.getDefaultLayoutProfiles
+import com.sanket.tools.nexpad.ui.components.common.NexPadOutlinedButton
 import com.sanket.tools.nexpad.ui.components.common.NexpadTopAppBar
 import com.sanket.tools.nexpad.ui.components.effects.CyberGrid
 import com.sanket.tools.nexpad.ui.components.effects.ScanLine
@@ -285,89 +286,33 @@ fun VirtualControllerScreenContent(
                 onBack = onBack,
                 isNavigationEnabled = !dragging,
                 actions = {
-                    if (isVeryCompact) {
-                        IconButton(
+                        NexPadOutlinedButton(
+                            text =  "Button Studio" ,
+                            icon = Icons.Rounded.Palette,
+                            color = NeonPalette.Purple,
+                            isDragging = dragging,
+                            isCompact = isCompact,
                             onClick = onOpenButtonStudio,
-                            enabled = !dragging,
-                            modifier = Modifier.padding(end = 2.dp).size(36.dp)
-                        ) {
-                            Icon(
-                                Icons.Rounded.Palette,
-                                contentDescription = "Button Studio",
-                                tint = if (dragging) NeonPalette.Purple.copy(alpha = 0.4f) else NeonPalette.Purple,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        IconButton(
-                            onClick = onImportLayout,
-                            enabled = !dragging,
-                            modifier = Modifier.padding(end = 2.dp).size(36.dp)
-                        ) {
-                            Icon(
-                                Icons.Rounded.Upload,
-                                contentDescription = "Import Layout",
-                                tint = if (dragging) NeonPalette.Amber.copy(alpha = 0.4f) else NeonPalette.Amber,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        FilledIconButton(
-                            onClick = onAddCustom,
-                            enabled = !dragging,
-                            colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = NeonPalette.Cyan,
-                                contentColor = Color.Black
-                            ),
-                            modifier = Modifier.padding(end = 8.dp).size(36.dp)
-                        ) {
-                            Icon(
-                                Icons.Rounded.Add,
-                                contentDescription = "Add Custom",
-                                tint = Color.Black,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    } else {
-                        OutlinedButton(
-                            onClick = onOpenButtonStudio,
-                            enabled = !dragging,
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Purple),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Purple.copy(alpha = if (dragging) 0.3f else 0.7f)),
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                            modifier = Modifier.padding(end = 6.dp).height(36.dp)
-                        ) {
-                            Icon(Icons.Rounded.Palette, contentDescription = null, tint = if (dragging) NeonPalette.Purple.copy(alpha = 0.4f) else NeonPalette.Purple, modifier = Modifier.size(15.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text(if (isCompact) "" else "Button Studio", color = if (dragging) NeonPalette.Purple.copy(alpha = 0.4f) else NeonPalette.Purple, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                        }
+                        )
 
-                        OutlinedButton(
-                            onClick = onAddCustom,
-                            enabled = !dragging,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = if (dragging) 0.3f else 0.7f)),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor =NeonPalette.Cyan),
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                            modifier = Modifier.padding(end = 8.dp).height(36.dp)
-                        ) {
-                            Icon(Icons.Rounded.Add, contentDescription = null, tint = NeonPalette.Cyan.copy(alpha = if (dragging) 0.3f else 1f), modifier = Modifier.size(15.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text(if (isCompact) "" else "Add Custom", color = NeonPalette.Cyan.copy(alpha = if (dragging) 0.3f else 0.7f), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                        OutlinedButton(
-                            onClick = onImportLayout,
-                            enabled = !dragging,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Amber.copy(alpha = if (dragging) 0.3f else 0.7f)),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor  = NeonPalette.Amber),
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                            modifier = Modifier.padding(end = 8.dp).height(36.dp)
-                        ) {
-                            Icon(Icons.Rounded.Upload, contentDescription = null, tint =  NeonPalette.Amber.copy(alpha = if (dragging) 0.3f else 1f), modifier = Modifier.size(15.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text(if (isCompact) "" else "Add layout", color = NeonPalette.Amber.copy(alpha = if (dragging) 0.3f else 0.7f), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                    }
+                        NexPadOutlinedButton(
+                            text = "Add Custom",
+                            icon = Icons.Rounded.Add,
+                            color = NeonPalette.Cyan,
+                            isDragging = dragging,
+                            isCompact = isCompact,
+                            onClick = onAddCustom
+                        )
+
+                        NexPadOutlinedButton(
+                            text = "Add layout",
+                            icon = Icons.Rounded.Upload,
+                            color = NeonPalette.Amber,
+                            isDragging = dragging,
+                            isCompact = isCompact,
+                            onClick = onImportLayout
+                        )
+//                    }
                 }
             )
         },
