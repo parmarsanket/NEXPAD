@@ -425,18 +425,23 @@ fun InbuildTouchpadHalf(
                             if (isLeft) {
                                 val dx = currentTouchX - anchorX
                                 val dy = currentTouchY - anchorY
-                                val maxRadiusPx = 50.dp.toPx()
+                                // 100% sensitivity boost: travel radius cut to 24dp for rapid 1.0f reach with short movement
+                                val baseRadiusDp = 24.dp
+                                val maxRadiusPx = baseRadiusDp.toPx()
                                 val dist = hypot(dx, dy)
                                 if (dist > 0f) {
-                                    val clampedDist = dist.coerceAtMost(maxRadiusPx)
-                                    val norm = clampedDist / maxRadiusPx
+                                    val sens = effectiveSensitivity.coerceAtLeast(1.0f)
+                                    val scaledDist = dist * sens
+                                    val clampedDist = scaledDist.coerceAtMost(maxRadiusPx)
+                                    val norm = (clampedDist / maxRadiusPx).coerceIn(0f, 1f)
                                     val normX = (dx / dist * norm).coerceIn(-1f, 1f)
                                     val normY = (-dy / dist * norm).coerceIn(-1f, 1f)
                                     viewModel?.updateLeftStick(normX, normY)
                                     // Sliding anchor tracking
-                                    if (dist > maxRadiusPx) {
-                                        anchorX = currentTouchX - (dx / dist * maxRadiusPx)
-                                        anchorY = currentTouchY - (dy / dist * maxRadiusPx)
+                                    val maxTravelPx = maxRadiusPx / sens
+                                    if (dist > maxTravelPx) {
+                                        anchorX = currentTouchX - (dx / dist * maxTravelPx)
+                                        anchorY = currentTouchY - (dy / dist * maxTravelPx)
                                     }
                                 }
                             } else {
@@ -462,7 +467,9 @@ fun InbuildTouchpadHalf(
                                     velocityBuffer.push(distDp, dtSec)
                                     val smoothedSpeed = velocityBuffer.averageSpeed()
 
-                                    val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, effectiveSensitivity)
+                                    // 100% sensitivity boost: 2x factor enables reaching 1.0f with moderate swipe speeds
+                                    val boostSensitivity = effectiveSensitivity * 2.0f
+                                    val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, boostSensitivity)
 
                                     if (stickMagnitude > 0f) {
                                         val dirX = finalDeltaX / distPx
@@ -471,8 +478,9 @@ fun InbuildTouchpadHalf(
                                         val targetStickX = (dirX * stickMagnitude).coerceIn(-1f, 1f)
                                         val targetStickY = (-dirY * stickMagnitude).coerceIn(-1f, 1f) // Up is positive Y
 
-                                        currentStickX = 0.55f * targetStickX + 0.45f * currentStickX
-                                        currentStickY = 0.55f * targetStickY + 0.45f * currentStickY
+                                        // Snappy 75/25 responsiveness (faster output reach)
+                                        currentStickX = 0.75f * targetStickX + 0.25f * currentStickX
+                                        currentStickY = 0.75f * targetStickY + 0.25f * currentStickY
 
                                         viewModel?.updateRightStick(currentStickX, currentStickY)
 
