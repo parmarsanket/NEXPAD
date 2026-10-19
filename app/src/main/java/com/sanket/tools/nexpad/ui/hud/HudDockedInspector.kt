@@ -336,7 +336,7 @@ fun HudDockedInspector(
                 ) {
                     Text("Scale: ${(transform.scale * 100).roundToInt()}%", fontSize = 11.sp, color = Color.White)
                     IconButton(
-                        onClick = { onScaleChange(transform.scale - 0.05f) },
+                        onClick = { onScaleChange((transform.scale - 0.05f).coerceIn(0.4f, 3.0f)) },
                         modifier = Modifier.size(28.dp)
                     ) {
                         Icon(Icons.Rounded.Remove, contentDescription = "Decrease Scale", tint = Color.White, modifier = Modifier.size(16.dp))
@@ -349,7 +349,7 @@ fun HudDockedInspector(
                         colors = SliderDefaults.colors(thumbColor = NeonPalette.Cyan, activeTrackColor = NeonPalette.Cyan)
                     )
                     IconButton(
-                        onClick = { onScaleChange(transform.scale + 0.05f) },
+                        onClick = { onScaleChange((transform.scale + 0.05f).coerceIn(0.4f, 3.0f)) },
                         modifier = Modifier.size(28.dp)
                     ) {
                         Icon(Icons.Rounded.Add, contentDescription = "Increase Scale", tint = Color.White, modifier = Modifier.size(16.dp))

@@ -362,7 +362,7 @@ fun RealisticDPad(
                         // 2. Multi-Button Broad Thumb Zone
                         // If a player's thumb covers the physical intersection between two buttons (e.g. UP and RIGHT),
                         // both are activated when the touch point reaches within reach of both button centers.
-                        val diagonalBridgeRadius = satelliteRadius * 1.55f
+                        val diagonalBridgeRadius = satelliteRadius * 1.85f
                         if (dUp <= diagonalBridgeRadius && dRight <= diagonalBridgeRadius) {
                             newDirs.add(K.UP)
                             newDirs.add(K.RIGHT)

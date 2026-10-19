@@ -450,6 +450,7 @@ private fun RenderNxpJoystick(
     isInteractive: Boolean = true
 ) {
     var thumbOffset by remember { mutableStateOf(Offset.Zero) }
+    val currentInputTarget by rememberUpdatedState(inputTarget)
     val baseSizePx = remember(def.size.widthDp) { def.size.widthDp * 2.5f }
     val maxRadiusPx = remember(baseSizePx) { baseSizePx * 0.45f }
 
@@ -482,8 +483,10 @@ private fun RenderNxpJoystick(
         Modifier
     } else if (isCameraMode) {
         Modifier.pointerInput(isConnected, stickControl, cameraSensitivity, density) {
+            var coastJob: Job? = null
             awaitEachGesture {
                 val down = awaitFirstDown(requireUnconsumed = false)
+                coastJob?.cancel()
                 val startTime = System.currentTimeMillis()
                 var previousTouchX = down.position.x
                 var previousTouchY = down.position.y
@@ -493,7 +496,7 @@ private fun RenderNxpJoystick(
                 var lastSpeed = 0f
                 var decayJob: Job? = null
                 val velocityBuffer = VelocityRingBuffer(8)
-                inputTarget.onStickMove(stickControl, 0f, 0f)
+                currentInputTarget.onStickMove(stickControl, 0f, 0f)
 
                 while (true) {
                     val event = awaitPointerEvent()
@@ -544,7 +547,7 @@ private fun RenderNxpJoystick(
                             currentStickX = 0.55f * targetStickX + 0.45f * currentStickX
                             currentStickY = 0.55f * targetStickY + 0.45f * currentStickY
 
-                            inputTarget.onStickMove(stickControl, currentStickX, currentStickY)
+                            currentInputTarget.onStickMove(stickControl, currentStickX, currentStickY)
 
                             thumbOffset = Offset(
                                 (currentStickX * maxRadiusPx).coerceIn(-maxRadiusPx, maxRadiusPx),
@@ -559,7 +562,7 @@ private fun RenderNxpJoystick(
                                 // 3-stage gentle decay
                                 currentStickX *= 0.5f
                                 currentStickY *= 0.5f
-                                inputTarget.onStickMove(stickControl, currentStickX, currentStickY)
+                                currentInputTarget.onStickMove(stickControl, currentStickX, currentStickY)
                                 thumbOffset = Offset(
                                     currentStickX * maxRadiusPx,
                                     -currentStickY * maxRadiusPx
@@ -567,7 +570,7 @@ private fun RenderNxpJoystick(
                                 delay(30)
                                 currentStickX *= 0.2f
                                 currentStickY *= 0.2f
-                                inputTarget.onStickMove(stickControl, currentStickX, currentStickY)
+                                currentInputTarget.onStickMove(stickControl, currentStickX, currentStickY)
                                 thumbOffset = Offset(
                                     currentStickX * maxRadiusPx,
                                     -currentStickY * maxRadiusPx
@@ -575,7 +578,7 @@ private fun RenderNxpJoystick(
                                 delay(25)
                                 currentStickX = 0f
                                 currentStickY = 0f
-                                inputTarget.onStickMove(stickControl, 0f, 0f)
+                                currentInputTarget.onStickMove(stickControl, 0f, 0f)
                                 thumbOffset = Offset.Zero
                                 lastSpeed = 0f
                             }
@@ -586,13 +589,13 @@ private fun RenderNxpJoystick(
                 val releaseSpeed = velocityBuffer.peakSpeed()
                 if (releaseSpeed > 400f) {
                     val coastSteps = ((releaseSpeed / 200f).toInt()).coerceIn(3, 7)
-                    coroutineScope.launch {
+                    coastJob = coroutineScope.launch {
                         var coastX = currentStickX
                         var coastY = currentStickY
                         repeat(coastSteps) {
                             coastX *= 0.68f
                             coastY *= 0.68f
-                            inputTarget.onStickMove(stickControl, coastX, coastY)
+                            currentInputTarget.onStickMove(stickControl, coastX, coastY)
                             thumbOffset = Offset(
                                 coastX * maxRadiusPx,
                                 -coastY * maxRadiusPx
@@ -600,11 +603,11 @@ private fun RenderNxpJoystick(
                             delay(16)
                         }
                         thumbOffset = Offset.Zero
-                        inputTarget.onStickMove(stickControl, 0f, 0f)
+                        currentInputTarget.onStickMove(stickControl, 0f, 0f)
                     }
                 } else {
                     thumbOffset = Offset.Zero
-                    inputTarget.onStickMove(stickControl, 0f, 0f)
+                    currentInputTarget.onStickMove(stickControl, 0f, 0f)
                 }
             }
         }
@@ -621,17 +624,18 @@ private fun RenderNxpJoystick(
                         Offset(vecX / dist * maxRadiusPx, vecY / dist * maxRadiusPx)
                     } else Offset(vecX, vecY)
                     thumbOffset = clamped
-                    val normX = (clamped.x / maxRadiusPx).coerceIn(-1.0f, 1.0f)
-                    val normY = (-clamped.y / maxRadiusPx).coerceIn(-1.0f, 1.0f)
-                    inputTarget.onStickMove(stickControl, normX, normY)
+                    val safeRadius = maxRadiusPx.coerceAtLeast(1f)
+                    val normX = if (safeRadius > 0f) (clamped.x / safeRadius).coerceIn(-1.0f, 1.0f) else 0f
+                    val normY = if (safeRadius > 0f) (-clamped.y / safeRadius).coerceIn(-1.0f, 1.0f) else 0f
+                    currentInputTarget.onStickMove(stickControl, normX, normY)
                 },
                 onDragEnd = {
                     thumbOffset = Offset.Zero
-                    inputTarget.onStickMove(stickControl, 0f, 0f)
+                    currentInputTarget.onStickMove(stickControl, 0f, 0f)
                 },
                 onDragCancel = {
                     thumbOffset = Offset.Zero
-                    inputTarget.onStickMove(stickControl, 0f, 0f)
+                    currentInputTarget.onStickMove(stickControl, 0f, 0f)
                 },
                 onDrag = { change, _ ->
                     change.consume()
@@ -643,10 +647,11 @@ private fun RenderNxpJoystick(
                     } else Offset(vecX, vecY)
                     thumbOffset = clamped
 
-                    val normX = (clamped.x / maxRadiusPx).coerceIn(-1.0f, 1.0f)
-                    val normY = (-clamped.y / maxRadiusPx).coerceIn(-1.0f, 1.0f)
+                    val safeRadius = maxRadiusPx.coerceAtLeast(1f)
+                    val normX = if (safeRadius > 0f) (clamped.x / safeRadius).coerceIn(-1.0f, 1.0f) else 0f
+                    val normY = if (safeRadius > 0f) (-clamped.y / safeRadius).coerceIn(-1.0f, 1.0f) else 0f
 
-                    inputTarget.onStickMove(stickControl, normX, normY)
+                    currentInputTarget.onStickMove(stickControl, normX, normY)
                 }
             )
         }
@@ -686,7 +691,7 @@ private fun DrawScope.drawNxpGeometry(
     borderColor: Color,
     borderWidth: Float
 ) {
-    when (geometry.type.lowercase()) {
+    when (geometry.type.trim().lowercase()) {
         "polygon" -> {
             val sides = geometry.sides.coerceAtLeast(3)
             val radius = (size.minDimension / 2f) - (borderWidth / 2f) - 2f
@@ -707,7 +712,7 @@ private fun DrawScope.drawNxpGeometry(
                 drawPath(path, borderColor, style = Stroke(width = borderWidth))
             }
         }
-        "roundedrect" -> {
+        "roundedrect", "roundedrectangle", "roundrect", "rect", "rectangle" -> {
             val cr = CornerRadius(geometry.cornerRadius, geometry.cornerRadius)
             drawRoundRect(fillColor, cornerRadius = cr)
             if (borderWidth > 0f) {
@@ -715,10 +720,12 @@ private fun DrawScope.drawNxpGeometry(
             }
         }
         else -> { // "circle" default
-            val radius = (size.minDimension / 2f) - (borderWidth / 2f) - 2f
-            drawCircle(fillColor, radius = radius)
-            if (borderWidth > 0f) {
-                drawCircle(borderColor, radius = radius, style = Stroke(width = borderWidth))
+            val radius = ((size.minDimension / 2f) - (borderWidth / 2f) - 2f).coerceAtLeast(0f)
+            if (radius > 0f) {
+                drawCircle(fillColor, radius = radius)
+                if (borderWidth > 0f) {
+                    drawCircle(borderColor, radius = radius, style = Stroke(width = borderWidth))
+                }
             }
         }
     }

@@ -51,6 +51,7 @@ import com.sanket.tools.nexpad.ui.components.controller.abxy.getPlayStationShape
 import com.sanket.tools.nexpad.ui.components.controller.abxy.getPlayStationColor
 import com.sanket.tools.nexpad.ui.components.controller.special.calculateGamingStickMagnitude
 import com.sanket.tools.nexpad.ui.components.controller.special.VelocityRingBuffer
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.cos
@@ -566,9 +567,9 @@ fun NxprcCanvasRenderer(
         }
     }
 
-    val needsPulse = isInteractive && isButtonActive && (document.animations.idleType == "PULSE" || document.canvas.layers.any { it is CanvasLayer.GlowRing && it.pulseEnabled })
-    val needsRotation = isInteractive && isButtonActive && document.animations.idleType == "ROTATE"
-    val needsRgbCycle = isInteractive && isButtonActive && document.animations.idleType == "RGB_CYCLE"
+    val needsPulse = isInteractive && (document.animations.idleType == "PULSE" || document.canvas.layers.any { it is CanvasLayer.GlowRing && it.pulseEnabled })
+    val needsRotation = isInteractive && document.animations.idleType == "ROTATE"
+    val needsRgbCycle = isInteractive && document.animations.idleType == "RGB_CYCLE"
 
     val hasDynamicTracks = isInteractive && isButtonActive && document.animations.tracks.isNotEmpty()
     val tracksByProperty = remember(document) {
@@ -763,8 +764,10 @@ fun NxprcCanvasRenderer(
     } else when {
         isStick -> {
             Modifier.pointerInput(document.manifest.id, assignedControl, isCameraMode, cameraSensitivity, density) {
+                var coastJob: Job? = null
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
+                    coastJob?.cancel()
                     isPressedLocally = true
                     val maxRadius = widthDp * 0.28f * density
                     val deadzoneRadius = 6f * density
@@ -782,7 +785,7 @@ fun NxprcCanvasRenderer(
 
                     if (isCameraMode) {
                         // Relative camera look touch: zero stick on down, do not anchor to center
-                        inputTarget.onStickMove(stick, 0f, 0f)
+                        currentInputTarget.onStickMove(stick, 0f, 0f)
                     } else {
                         // Traditional joystick deflection calculation
                         fun updateStickDeflection(rawPos: Offset) {
@@ -800,9 +803,10 @@ fun NxprcCanvasRenderer(
                             thumbOffsetX = clampedX
                             thumbOffsetY = clampedY
 
-                            val normX = if (dist < deadzoneRadius) 0f else (clampedX / maxRadius).coerceIn(-1f, 1f)
-                            val normY = if (dist < deadzoneRadius) 0f else (-clampedY / maxRadius).coerceIn(-1f, 1f)
-                            inputTarget.onStickMove(stick, normX, normY)
+                            val safeRadius = maxRadius.coerceAtLeast(1f)
+                            val normX = if (dist < deadzoneRadius) 0f else if (safeRadius > 0f) (clampedX / safeRadius).coerceIn(-1f, 1f) else 0f
+                            val normY = if (dist < deadzoneRadius) 0f else if (safeRadius > 0f) (-clampedY / safeRadius).coerceIn(-1f, 1f) else 0f
+                            currentInputTarget.onStickMove(stick, normX, normY)
                         }
                         updateStickDeflection(down.position)
                     }
@@ -858,7 +862,7 @@ fun NxprcCanvasRenderer(
                                     currentStickX = 0.55f * targetStickX + 0.45f * currentStickX
                                     currentStickY = 0.55f * targetStickY + 0.45f * currentStickY
 
-                                    inputTarget.onStickMove(stick, currentStickX, currentStickY)
+                                     currentInputTarget.onStickMove(stick, currentStickX, currentStickY)
 
                                     thumbOffsetX = (currentStickX * maxRadius).coerceIn(-maxRadius, maxRadius)
                                     thumbOffsetY = (-currentStickY * maxRadius).coerceIn(-maxRadius, maxRadius)
@@ -871,19 +875,19 @@ fun NxprcCanvasRenderer(
                                         // 3-stage gentle decay
                                         currentStickX *= 0.5f
                                         currentStickY *= 0.5f
-                                        inputTarget.onStickMove(stick, currentStickX, currentStickY)
+                                        currentInputTarget.onStickMove(stick, currentStickX, currentStickY)
                                         thumbOffsetX = (currentStickX * maxRadius)
                                         thumbOffsetY = (-currentStickY * maxRadius)
                                         kotlinx.coroutines.delay(30)
                                         currentStickX *= 0.2f
                                         currentStickY *= 0.2f
-                                        inputTarget.onStickMove(stick, currentStickX, currentStickY)
+                                        currentInputTarget.onStickMove(stick, currentStickX, currentStickY)
                                         thumbOffsetX = (currentStickX * maxRadius)
                                         thumbOffsetY = (-currentStickY * maxRadius)
                                         kotlinx.coroutines.delay(25)
                                         currentStickX = 0f
                                         currentStickY = 0f
-                                        inputTarget.onStickMove(stick, 0f, 0f)
+                                        currentInputTarget.onStickMove(stick, 0f, 0f)
                                         thumbOffsetX = 0f
                                         thumbOffsetY = 0f
                                         lastSpeed = 0f
@@ -904,9 +908,10 @@ fun NxprcCanvasRenderer(
                             thumbOffsetX = clampedX
                             thumbOffsetY = clampedY
 
-                            val normX = if (currentDist < deadzoneRadius) 0f else (clampedX / maxRadius).coerceIn(-1f, 1f)
-                            val normY = if (currentDist < deadzoneRadius) 0f else (-clampedY / maxRadius).coerceIn(-1f, 1f)
-                            inputTarget.onStickMove(stick, normX, normY)
+                            val safeRadius = maxRadius.coerceAtLeast(1f)
+                            val normX = if (currentDist < deadzoneRadius) 0f else if (safeRadius > 0f) (clampedX / safeRadius).coerceIn(-1f, 1f) else 0f
+                            val normY = if (currentDist < deadzoneRadius) 0f else if (safeRadius > 0f) (-clampedY / safeRadius).coerceIn(-1f, 1f) else 0f
+                            currentInputTarget.onStickMove(stick, normX, normY)
                         }
                     }
 
@@ -916,18 +921,18 @@ fun NxprcCanvasRenderer(
                     val releaseSpeed = velocityBuffer.peakSpeed()
                     if (isCameraMode && releaseSpeed > 400f) {
                         val coastSteps = ((releaseSpeed / 200f).toInt()).coerceIn(3, 7)
-                        coroutineScope.launch {
+                        coastJob = coroutineScope.launch {
                             var coastX = currentStickX
                             var coastY = currentStickY
                             repeat(coastSteps) {
                                 coastX *= 0.68f
                                 coastY *= 0.68f
-                                inputTarget.onStickMove(stick, coastX, coastY)
+                                currentInputTarget.onStickMove(stick, coastX, coastY)
                                 thumbOffsetX = (coastX * maxRadius)
                                 thumbOffsetY = (-coastY * maxRadius)
                                 kotlinx.coroutines.delay(16)
                             }
-                            inputTarget.onStickMove(stick, 0f, 0f)
+                            currentInputTarget.onStickMove(stick, 0f, 0f)
                             thumbOffsetX = 0f
                             thumbOffsetY = 0f
                         }
@@ -950,7 +955,7 @@ fun NxprcCanvasRenderer(
                                 }
                             }
                         }
-                        inputTarget.onStickMove(stick, 0f, 0f)
+                        currentInputTarget.onStickMove(stick, 0f, 0f)
                     }
                 }
             }
@@ -1158,8 +1163,8 @@ fun NxprcCanvasRenderer(
 
                 val auraBloomAlpha = auraBloomAlphaState?.value ?: 0.40f
                 val effAlpha = if (isButtonActive) {
-                    val stickMaxR = size.minDimension * 0.35f
-                    val stickDispFraction = (hypot(thumbOffsetX, thumbOffsetY) / stickMaxR.coerceAtLeast(1f)).coerceIn(0f, 1f)
+                    val stickMaxR = (size.minDimension * 0.35f).coerceAtLeast(1f)
+                    val stickDispFraction = (hypot(thumbOffsetX, thumbOffsetY) / stickMaxR).coerceIn(0f, 1f)
                     val stickBloomAlpha = if (isInteractive) 0.40f + 0.55f * stickDispFraction else 0.40f
                     (if (needsPulse) (pulseAlphaState?.value ?: 1.0f) else 1.0f) * (if (isStick) stickBloomAlpha else auraBloomAlpha)
                 } else {
@@ -1167,8 +1172,9 @@ fun NxprcCanvasRenderer(
                 }
 
                 if (isStick && !isTouchpad) {
-                    val maxR = size.minDimension * 0.35f
-                    val dispFraction = (hypot(thumbOffsetX, thumbOffsetY) / maxR).coerceIn(0f, 1f)
+                    val maxR = (size.minDimension * 0.35f).coerceAtLeast(1f)
+                    val rawDist = hypot(thumbOffsetX, thumbOffsetY)
+                    val dispFraction = (rawDist / maxR).coerceIn(0f, 1f)
 
                     // 1. Base socket containment bloom
                     val baseBloomR = size.minDimension * 0.75f
@@ -1185,7 +1191,7 @@ fun NxprcCanvasRenderer(
                         center.x + thumbOffsetX * 0.65f,
                         center.y + thumbOffsetY * 0.65f
                     )
-                    val plumeRadius = size.minDimension * (0.40f + 0.35f * dispFraction)
+                    val plumeRadius = (size.minDimension * (0.40f + 0.35f * dispFraction)).coerceAtLeast(1f)
                     stickPlumeStops[0] = 0.00f to (if (dispFraction > 0.4f) Color.White else baseColor).copy(alpha = effAlpha * (0.50f + 0.35f * dispFraction))
                     stickPlumeStops[1] = 0.40f to baseColor.copy(alpha = effAlpha * (0.30f + 0.25f * dispFraction))
                     stickPlumeStops[2] = 1.00f to Color.Transparent

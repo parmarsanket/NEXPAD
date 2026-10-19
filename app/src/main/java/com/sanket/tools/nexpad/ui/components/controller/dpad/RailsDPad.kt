@@ -97,10 +97,10 @@ fun resolveRailsTouch(pos: Offset, sizePx: Float): Set<String> {
     val isRight = dx in centerDeadzone..armMaxReach && abs(dy) <= armHalfWidth
 
     return when {
-        isUp && isRight -> if (abs(dy) >= abs(dx)) setOf(K.UP) else setOf(K.RIGHT)
-        isUp && isLeft  -> if (abs(dy) >= abs(dx)) setOf(K.UP) else setOf(K.LEFT)
-        isDown && isRight -> if (abs(dy) >= abs(dx)) setOf(K.DOWN) else setOf(K.RIGHT)
-        isDown && isLeft  -> if (abs(dy) >= abs(dx)) setOf(K.DOWN) else setOf(K.LEFT)
+        isUp && isRight -> setOf(K.UP, K.RIGHT)
+        isUp && isLeft  -> setOf(K.UP, K.LEFT)
+        isDown && isRight -> setOf(K.DOWN, K.RIGHT)
+        isDown && isLeft  -> setOf(K.DOWN, K.LEFT)
         isUp -> setOf(K.UP)
         isDown -> setOf(K.DOWN)
         isLeft -> setOf(K.LEFT)

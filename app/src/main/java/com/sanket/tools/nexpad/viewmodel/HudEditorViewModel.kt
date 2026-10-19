@@ -280,7 +280,8 @@ class HudEditorViewModel(
         if (!newScale.isFinite()) return
         val targetKey = resolveElementKey(controlKey)
         val current = elements[targetKey] ?: return
-        updateTransform(targetKey, current.transform.xRatio, current.transform.yRatio, scale = newScale)
+        val clampedScale = newScale.coerceIn(0.4f, 3.0f)
+        updateTransform(targetKey, current.transform.xRatio, current.transform.yRatio, scale = clampedScale)
     }
 
     fun setOpacity(controlKey: String, newOpacity: Float) {
@@ -326,30 +327,24 @@ class HudEditorViewModel(
         val targetKey = resolveElementKey(controlKey)
         val current = elements[targetKey] ?: return
         val newLocked = !current.transform.isLocked
-        val currentMode = com.sanket.tools.nexpad.model.JoystickMode.fromId(current.transform.joystickMode)
-        val newMode = if (newLocked) com.sanket.tools.nexpad.model.JoystickMode.LOCKED else (if (currentMode != com.sanket.tools.nexpad.model.JoystickMode.LOCKED) currentMode else com.sanket.tools.nexpad.model.JoystickMode.BOX)
-        val updated = current.copy(
+        // Preserve existing joystickMode — only change isLocked flag
+        elements[targetKey] = current.copy(
             transform = current.transform.copy(
-                isLocked = newLocked,
-                joystickMode = newMode.id
+                isLocked = newLocked
+                // Do NOT change joystickMode here
             )
         )
-        elements[targetKey] = updated
         _hasUnsavedChanges.value = true
     }
 
     fun setLock(controlKey: String, isLocked: Boolean) {
         val targetKey = resolveElementKey(controlKey)
         val current = elements[targetKey] ?: return
-        val currentMode = com.sanket.tools.nexpad.model.JoystickMode.fromId(current.transform.joystickMode)
-        val newMode = if (isLocked) com.sanket.tools.nexpad.model.JoystickMode.LOCKED else (if (currentMode != com.sanket.tools.nexpad.model.JoystickMode.LOCKED) currentMode else com.sanket.tools.nexpad.model.JoystickMode.BOX)
-        val updated = current.copy(
+        elements[targetKey] = current.copy(
             transform = current.transform.copy(
-                isLocked = isLocked,
-                joystickMode = newMode.id
+                isLocked = isLocked
             )
         )
-        elements[targetKey] = updated
         _hasUnsavedChanges.value = true
     }
 
@@ -621,7 +616,10 @@ class HudEditorViewModel(
             try {
                 _saveState.value = HudSaveState.Saving
                 val wasActive = layoutManager.getActiveProfile().name.equals(updatedProfile.name, ignoreCase = true)
-                layoutManager.saveProfile(updatedProfile, activate = wasActive)
+                val success = layoutManager.saveProfile(updatedProfile, activate = wasActive)
+                if (!success) {
+                    throw IllegalStateException("Failed to save layout profile '${updatedProfile.name}'. Name may be invalid or reserved.")
+                }
                 // Persist any updated touchpad sensitivities
                 elementsSnapshot.forEach { element ->
                     val key = element.controlKey

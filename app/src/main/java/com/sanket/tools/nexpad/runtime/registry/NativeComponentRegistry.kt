@@ -2292,8 +2292,8 @@ object DefaultNativeFamily {
     val familyName: String = "Default Native"
     val familyId: String = "builtin.default"
 
-    private val variantsById = mutableMapOf<String, NativeElementVariant>()
-    private val variantsByControl = mutableMapOf<ControlKey, MutableList<NativeElementVariant>>()
+    private val variantsById = java.util.concurrent.ConcurrentHashMap<String, NativeElementVariant>()
+    private val variantsByControl = java.util.concurrent.ConcurrentHashMap<ControlKey, java.util.concurrent.CopyOnWriteArrayList<NativeElementVariant>>()
 
     init {
         // --- 1. Baseline Hardware Variants ---
@@ -2470,7 +2470,7 @@ object DefaultNativeFamily {
      */
     fun register(variant: NativeElementVariant) {
         variantsById[variant.id] = variant
-        variantsByControl.getOrPut(variant.controlKey) { mutableListOf() }.apply {
+        variantsByControl.getOrPut(variant.controlKey) { java.util.concurrent.CopyOnWriteArrayList() }.apply {
             if (!contains(variant)) add(variant)
         }
     }
@@ -2553,11 +2553,12 @@ object NativeComponentRegistry {
      * If the ID is null, blank, or not found, it gracefully resolves to the baseline default variant.
      */
     fun resolveVariant(key: String, customComponentId: String?): NativeElementVariant? {
-        val ctrl = ControlKey.fromIdentifier(key) ?: return null
+        // Check custom ID first before key lookup
         if (!customComponentId.isNullOrBlank()) {
             val found = DefaultNativeFamily.getVariant(customComponentId)
             if (found != null) return found
         }
+        val ctrl = ControlKey.fromIdentifier(key) ?: return null
         return DefaultNativeFamily.getDefaultVariant(ctrl)
     }
 

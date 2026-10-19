@@ -360,6 +360,7 @@ fun InbuildTouchpadHalf(
             .pointerInput(isLeft, effectiveSensitivity, density, screenWidthPx) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
+                    decayJob?.cancel()
 
                     // 1. Skip if already claimed by any higher Z-order control
                     if (down.isConsumed) return@awaitEachGesture
@@ -386,6 +387,8 @@ fun InbuildTouchpadHalf(
                     isTouching = true
                     touchX = down.position.x
                     touchY = down.position.y
+                    var anchorX = down.position.x
+                    var anchorY = down.position.y
 
                     var previousTouchX = down.position.x
                     var previousTouchY = down.position.y
@@ -400,106 +403,104 @@ fun InbuildTouchpadHalf(
                         viewModel?.updateRightStick(0f, 0f)
                     }
 
-                    // Drag loop
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        val change = event.changes.firstOrNull { it.id == down.id }
-                        if (change == null || !change.pressed) break
+                    try {
+                        // Drag loop
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id }
+                            if (change == null || !change.pressed) break
 
-                        val currentTouchX = change.position.x
-                        val currentTouchY = change.position.y
-                        val deltaX = currentTouchX - previousTouchX
-                        val deltaY = currentTouchY - previousTouchY
+                            val currentTouchX = change.position.x
+                            val currentTouchY = change.position.y
+                            val deltaX = currentTouchX - previousTouchX
+                            val deltaY = currentTouchY - previousTouchY
 
-                        previousTouchX = currentTouchX
-                        previousTouchY = currentTouchY
-                        change.consume()
+                            previousTouchX = currentTouchX
+                            previousTouchY = currentTouchY
+                            change.consume()
 
-                        touchX = currentTouchX
-                        touchY = currentTouchY
+                            touchX = currentTouchX
+                            touchY = currentTouchY
 
-                        // Directional axis stabilization: suppress minor diagonal cross-talk
-                        var finalDeltaX = deltaX
-                        var finalDeltaY = deltaY
-                        val absX = abs(deltaX)
-                        val absY = abs(deltaY)
-                        if (absX > 3.0f * absY) {
-                            finalDeltaY *= 0.5f
-                        } else if (absY > 3.0f * absX) {
-                            finalDeltaX *= 0.5f
-                        }
-
-                        val distPx = hypot(finalDeltaX, finalDeltaY)
-                        val distDp = distPx / density
-
-                        if (distDp > 0.15f) {
-                            val currentTimeMs = System.currentTimeMillis()
-                            val dtSec = ((currentTimeMs - previousTimeMs).coerceAtLeast(1L)) / 1000f
-                            previousTimeMs = currentTimeMs
-
-                            velocityBuffer.push(distDp, dtSec)
-                            val smoothedSpeed = velocityBuffer.averageSpeed()
-
-                            val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, effectiveSensitivity)
-
-                            if (stickMagnitude > 0f) {
-                                val dirX = finalDeltaX / distPx
-                                val dirY = finalDeltaY / distPx
-
-                                val targetStickX = (dirX * stickMagnitude).coerceIn(-1f, 1f)
-                                val targetStickY = (-dirY * stickMagnitude).coerceIn(-1f, 1f) // Up is positive Y
-
-                                currentStickX = 0.55f * targetStickX + 0.45f * currentStickX
-                                currentStickY = 0.55f * targetStickY + 0.45f * currentStickY
-
-                                if (isLeft) {
-                                    viewModel?.updateLeftStick(currentStickX, currentStickY)
-                                } else {
-                                    viewModel?.updateRightStick(currentStickX, currentStickY)
+                            if (isLeft) {
+                                val dx = currentTouchX - anchorX
+                                val dy = currentTouchY - anchorY
+                                val maxRadiusPx = 50.dp.toPx()
+                                val dist = hypot(dx, dy)
+                                if (dist > 0f) {
+                                    val clampedDist = dist.coerceAtMost(maxRadiusPx)
+                                    val norm = clampedDist / maxRadiusPx
+                                    val normX = (dx / dist * norm).coerceIn(-1f, 1f)
+                                    val normY = (-dy / dist * norm).coerceIn(-1f, 1f)
+                                    viewModel?.updateLeftStick(normX, normY)
+                                    // Sliding anchor tracking
+                                    if (dist > maxRadiusPx) {
+                                        anchorX = currentTouchX - (dx / dist * maxRadiusPx)
+                                        anchorY = currentTouchY - (dy / dist * maxRadiusPx)
+                                    }
+                                }
+                            } else {
+                                // Directional axis stabilization: suppress minor diagonal cross-talk
+                                var finalDeltaX = deltaX
+                                var finalDeltaY = deltaY
+                                val absX = abs(deltaX)
+                                val absY = abs(deltaY)
+                                if (absX > 3.0f * absY) {
+                                    finalDeltaY *= 0.5f
+                                } else if (absY > 3.0f * absX) {
+                                    finalDeltaX *= 0.5f
                                 }
 
-                                val decayTimeoutMs = (120L - (smoothedSpeed / 20f).toLong()).coerceIn(50L, 120L)
-                                decayJob?.cancel()
-                                decayJob = coroutineScope.launch {
-                                    delay(decayTimeoutMs)
-                                    currentStickX *= 0.5f
-                                    currentStickY *= 0.5f
-                                    if (isLeft) {
-                                        viewModel?.updateLeftStick(currentStickX, currentStickY)
-                                    } else {
+                                val distPx = hypot(finalDeltaX, finalDeltaY)
+                                val distDp = distPx / density
+
+                                if (distDp > 0.15f) {
+                                    val currentTimeMs = System.currentTimeMillis()
+                                    val dtSec = ((currentTimeMs - previousTimeMs).coerceAtLeast(1L)) / 1000f
+                                    previousTimeMs = currentTimeMs
+
+                                    velocityBuffer.push(distDp, dtSec)
+                                    val smoothedSpeed = velocityBuffer.averageSpeed()
+
+                                    val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, effectiveSensitivity)
+
+                                    if (stickMagnitude > 0f) {
+                                        val dirX = finalDeltaX / distPx
+                                        val dirY = finalDeltaY / distPx
+
+                                        val targetStickX = (dirX * stickMagnitude).coerceIn(-1f, 1f)
+                                        val targetStickY = (-dirY * stickMagnitude).coerceIn(-1f, 1f) // Up is positive Y
+
+                                        currentStickX = 0.55f * targetStickX + 0.45f * currentStickX
+                                        currentStickY = 0.55f * targetStickY + 0.45f * currentStickY
+
                                         viewModel?.updateRightStick(currentStickX, currentStickY)
-                                    }
-                                    delay(30.milliseconds)
-                                    currentStickX *= 0.2f
-                                    currentStickY *= 0.2f
-                                    if (isLeft) {
-                                        viewModel?.updateLeftStick(currentStickX, currentStickY)
-                                    } else {
-                                        viewModel?.updateRightStick(currentStickX, currentStickY)
-                                    }
-                                    delay(25.milliseconds)
-                                    currentStickX = 0f
-                                    currentStickY = 0f
-                                    if (isLeft) {
-                                        viewModel?.updateLeftStick(0f, 0f)
-                                    } else {
-                                        viewModel?.updateRightStick(0f, 0f)
+
+                                        val decayTimeoutMs = (120L - (smoothedSpeed / 20f).toLong()).coerceIn(50L, 120L)
+                                        decayJob?.cancel()
+                                        decayJob = coroutineScope.launch {
+                                            delay(decayTimeoutMs)
+                                            currentStickX *= 0.5f
+                                            currentStickY *= 0.5f
+                                            viewModel?.updateRightStick(currentStickX, currentStickY)
+                                            delay(30.milliseconds)
+                                            currentStickX *= 0.2f
+                                            currentStickY *= 0.2f
+                                            viewModel?.updateRightStick(currentStickX, currentStickY)
+                                            delay(25.milliseconds)
+                                            currentStickX = 0f
+                                            currentStickY = 0f
+                                            viewModel?.updateRightStick(0f, 0f)
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-
-                    // Gesture released
-                    isTouching = false
-                    val peakReleaseSpeed = velocityBuffer.peakSpeed()
-                    if (peakReleaseSpeed < 80f) {
+                    } finally {
+                        isTouching = false
                         decayJob?.cancel()
-                        if (isLeft) {
-                            viewModel?.updateLeftStick(0f, 0f)
-                        } else {
-                            viewModel?.updateRightStick(0f, 0f)
-                        }
+                        if (isLeft) viewModel?.updateLeftStick(0f, 0f)
+                        else viewModel?.updateRightStick(0f, 0f)
                     }
                 }
             }

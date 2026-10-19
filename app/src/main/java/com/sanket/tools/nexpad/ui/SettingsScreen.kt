@@ -151,9 +151,9 @@ fun SettingsScreen(
         },
         onHapticClickStrengthChange = {
             hapticClickStrength = it
-            nexpadPrefs.hapticClickStrength = it
         },
         onHapticClickStrengthFinished = {
+            nexpadPrefs.hapticClickStrength = hapticClickStrength
             hapticHelper.performPreviewClick(style = hapticStyle, strength = hapticClickStrength)
         },
         onHapticStyleChange = {

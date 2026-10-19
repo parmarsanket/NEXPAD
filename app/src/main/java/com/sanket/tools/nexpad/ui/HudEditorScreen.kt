@@ -265,41 +265,44 @@ fun HudEditorScreen(
         // 3. Docked Control Panel for Selected Element (Draggable up/down with auto-dodge & snap-to-dock)
         if (selectedControl != null && elements.containsKey(selectedControl)) {
             val element = elements[selectedControl]!!
+            val activeKey = selectedControl ?: ""
             HudDockedInspector(
                 element = element,
                 compatibleSkins = compatibleSkins,
                 screenWidthPx = screenWidthPx,
                 screenHeightPx = screenHeightPx,
                 onClose = { viewModel.selectControl(null) },
-                onNudge = { dx, dy -> viewModel.nudge(selectedControl!!, dx, dy) },
-                onScaleChange = { viewModel.setScale(selectedControl!!, it) },
-                onOpacityChange = { viewModel.setOpacity(selectedControl!!, it) },
-                onSensitivityChange = { viewModel.setSensitivity(selectedControl!!, it) },
-                onHeightScaleChange = { viewModel.setHeightScale(selectedControl!!, it) },
-                onToggleFlip = { viewModel.toggleFlip(selectedControl!!) },
-                onToggleLock = { viewModel.toggleLock(selectedControl!!) },
-                onJoystickModeChange = { viewModel.setJoystickMode(selectedControl!!, it) },
-                onHitboxScaleChange = { viewModel.setHitboxScale(selectedControl!!, it) },
-                onCycleSkin = { viewModel.cycleNextSkin(selectedControl!!) },
+                onNudge = { dx, dy -> if (activeKey.isNotEmpty()) viewModel.nudge(activeKey, dx, dy) },
+                onScaleChange = { if (activeKey.isNotEmpty()) viewModel.setScale(activeKey, it) },
+                onOpacityChange = { if (activeKey.isNotEmpty()) viewModel.setOpacity(activeKey, it) },
+                onSensitivityChange = { if (activeKey.isNotEmpty()) viewModel.setSensitivity(activeKey, it) },
+                onHeightScaleChange = { if (activeKey.isNotEmpty()) viewModel.setHeightScale(activeKey, it) },
+                onToggleFlip = { if (activeKey.isNotEmpty()) viewModel.toggleFlip(activeKey) },
+                onToggleLock = { if (activeKey.isNotEmpty()) viewModel.toggleLock(activeKey) },
+                onJoystickModeChange = { if (activeKey.isNotEmpty()) viewModel.setJoystickMode(activeKey, it) },
+                onHitboxScaleChange = { if (activeKey.isNotEmpty()) viewModel.setHitboxScale(activeKey, it) },
+                onCycleSkin = { if (activeKey.isNotEmpty()) viewModel.cycleNextSkin(activeKey) },
                 onOpenStudio = {
-                    navigationViewModel?.beginAssetSelection(
-                        profileName = profile.name,
-                        controlKey = selectedControl!!,
-                        currentAssetId = element.skinId,
-                        originScreen = OriginScreen.HUD_EDITOR
-                    )
-                    navController.navigate(
-                        Route.ButtonStudio(
-                            mode = ButtonStudioMode.BUTTON_EDITOR,
+                    if (activeKey.isNotEmpty()) {
+                        navigationViewModel?.beginAssetSelection(
                             profileName = profile.name,
-                            controlKey = selectedControl!!,
-                            currentAssetId = element.skinId
+                            controlKey = activeKey,
+                            currentAssetId = element.skinId,
+                            originScreen = OriginScreen.HUD_EDITOR
                         )
-                    )
+                        navController.navigate(
+                            Route.ButtonStudio(
+                                mode = ButtonStudioMode.BUTTON_EDITOR,
+                                profileName = profile.name,
+                                controlKey = activeKey,
+                                currentAssetId = element.skinId
+                            )
+                        )
+                    }
                 },
-                onResetPos = { viewModel.resetControlToDefault(selectedControl!!) },
-                onRemove = { viewModel.removeControl(selectedControl!!) },
-                onSwapStickTouchpad = { viewModel.swapStickAndTouchpad(selectedControl!!) },
+                onResetPos = { if (activeKey.isNotEmpty()) viewModel.resetControlToDefault(activeKey) },
+                onRemove = { if (activeKey.isNotEmpty()) viewModel.removeControl(activeKey) },
+                onSwapStickTouchpad = { if (activeKey.isNotEmpty()) viewModel.swapStickAndTouchpad(activeKey) },
                 isDragging = autoDodgeCoordinator.isDraggingInspector,
                 onDragStart = { autoDodgeCoordinator.isDraggingInspector = true },
                 onDragEnd = { autoDodgeCoordinator.onInspectorDragEnd() },

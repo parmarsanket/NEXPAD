@@ -6,6 +6,7 @@ import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 import android.content.Context
 import android.util.Log
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
@@ -63,11 +64,17 @@ fun RealisticJoystick(
     isInteractive: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    var thumbOffsetX by remember { mutableFloatStateOf(0f) }
-    var thumbOffsetY by remember { mutableFloatStateOf(0f) }
-    var decayJob by remember { mutableStateOf<Job?>(null) }
-    val maxRadius = 80f
     val coroutineScope = rememberCoroutineScope()
+    val density = LocalDensity.current.density
+    val currentViewModel by rememberUpdatedState(viewModel)
+
+    val animOffsetX = remember { Animatable(0f) }
+    val animOffsetY = remember { Animatable(0f) }
+    var decayJob by remember { mutableStateOf<Job?>(null) }
+    var coastJob by remember { mutableStateOf<Job?>(null) }
+    val maxRadius = 80f
+    val tapThresholdPx = with(LocalDensity.current) { 8.dp.toPx() }
+    val stickKey = remember(isLeft) { if (isLeft) "LSB" else "RSB" }
 
     val context = LocalContext.current
     val (isCameraMode, cameraSensitivity) = remember(context, isLeft) {
@@ -82,7 +89,6 @@ fun RealisticJoystick(
         }
     }
 
-    val density = LocalDensity.current.density
     val baseGradient = Brush.radialGradient(
         colors = listOf(NeonPalette.MetalSubtle, NeonPalette.MetalAbyss),
         center = Offset(0.5f, 0.5f),
@@ -98,8 +104,8 @@ fun RealisticJoystick(
     val neonColor = if (isLeft) NeonPalette.Cyan else NeonPalette.Magenta
     val stickX = if (viewModel != null) (if (isLeft) viewModel.leftStickX else viewModel.rightStickX) else 0f
     val stickY = if (viewModel != null) (if (isLeft) viewModel.leftStickY else viewModel.rightStickY) else 0f
-    val effX = if (isLocked) thumbOffsetX else stickX * maxRadius
-    val effY = if (isLocked) thumbOffsetY else -stickY * maxRadius
+    val effX = if (isLocked) animOffsetX.value else stickX * maxRadius
+    val effY = if (isLocked) animOffsetY.value else -stickY * maxRadius
     val deflectionFraction = (hypot(effX, effY) / maxRadius).coerceIn(0f, 1f)
     val rgbBloomAlpha by animateFloatAsState(
         targetValue = 0.40f + 0.55f * deflectionFraction,
@@ -125,7 +131,7 @@ fun RealisticJoystick(
                     val capPos = Offset(center.x + effX, center.y + effY)
                     val disp = hypot(effX, effY)
                     val maxR = size.minDimension * 0.35f
-                    val dispFraction = (disp / maxR).coerceIn(0f, 1f)
+                    val dispFraction = if (maxR > 0f) (disp / maxR).coerceIn(0f, 1f) else 0f
 
                     // 1. Base socket containment bloom
                     drawCircle(
@@ -194,15 +200,18 @@ fun RealisticJoystick(
             )
             .then(
                 if (isInteractive) {
-                    Modifier.pointerInput(isConnected, isLocked, isLeft, isCameraMode, cameraSensitivity, density) {
+                    Modifier.pointerInput(isConnected, isLocked, isLeft, isCameraMode, cameraSensitivity, density, maxRadius, tapThresholdPx) {
                 if (!isLocked) return@pointerInput
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
+                    decayJob?.cancel()
+                    coastJob?.cancel()
                     val centerX = size.width / 2f
                     val centerY = size.height / 2f
                     val deadzoneRadius = 6f
 
                     val startTime = System.currentTimeMillis()
+                    var maxDragDistance = 0f
                     var previousTouchX = down.position.x
                     var previousTouchY = down.position.y
                     var previousTimeMs = startTime
@@ -211,32 +220,35 @@ fun RealisticJoystick(
                     var lastSpeed = 0f
                     val velocityBuffer = VelocityRingBuffer(8)
 
+                    val initialDownVecX = down.position.x - centerX
+                    val initialDownVecY = down.position.y - centerY
+                    val initialDist = hypot(initialDownVecX, initialDownVecY)
+                    maxDragDistance = initialDist
+
                     if (isCameraMode) {
                         // ── Right Stick Camera Mode: Pure relative touch ──
-                        viewModel?.updateRightStick(0f, 0f)
+                        currentViewModel?.updateRightStick(0f, 0f)
                     } else {
                         // ── Traditional analog stick steering: Direct vector from center to finger ──
-                        val downVecX = down.position.x - centerX
-                        val downVecY = down.position.y - centerY
-                        val downDist = hypot(downVecX, downVecY)
-
-                        val (clampedX, clampedY) = if (downDist > maxRadius) {
-                            val angle = atan2(downVecY, downVecX)
+                        val (clampedX, clampedY) = if (initialDist > maxRadius) {
+                            val angle = atan2(initialDownVecY, initialDownVecX)
                             Pair(cos(angle) * maxRadius, sin(angle) * maxRadius)
                         } else {
-                            Pair(downVecX, downVecY)
+                            Pair(initialDownVecX, initialDownVecY)
                         }
 
-                        thumbOffsetX = clampedX
-                        thumbOffsetY = clampedY
+                        coroutineScope.launch {
+                            animOffsetX.snapTo(clampedX)
+                            animOffsetY.snapTo(clampedY)
+                        }
 
-                        val normX = if (downDist < deadzoneRadius) 0f else (clampedX / maxRadius).coerceIn(-1f, 1f)
-                        val normY = if (downDist < deadzoneRadius) 0f else (-clampedY / maxRadius).coerceIn(-1f, 1f)
+                        val normX = if (initialDist < deadzoneRadius) 0f else (clampedX / maxRadius).coerceIn(-1f, 1f)
+                        val normY = if (initialDist < deadzoneRadius) 0f else (-clampedY / maxRadius).coerceIn(-1f, 1f)
 
                         if (isLeft) {
-                            viewModel?.updateLeftStick(normX, normY)
+                            currentViewModel?.updateLeftStick(normX, normY)
                         } else {
-                            viewModel?.updateRightStick(normX, normY)
+                            currentViewModel?.updateRightStick(normX, normY)
                         }
                     }
 
@@ -292,11 +304,17 @@ fun RealisticJoystick(
                                     currentStickX = 0.55f * targetStickX + 0.45f * currentStickX
                                     currentStickY = 0.55f * targetStickY + 0.45f * currentStickY
 
-                                    viewModel?.updateRightStick(currentStickX, currentStickY)
+                                    currentViewModel?.updateRightStick(currentStickX, currentStickY)
 
                                     // VISUAL THUMB KNOB DEFLECTS PROPORTIONAL TO SPEED AND DIRECTION!
-                                    thumbOffsetX = (currentStickX * maxRadius).coerceIn(-maxRadius, maxRadius)
-                                    thumbOffsetY = (-currentStickY * maxRadius).coerceIn(-maxRadius, maxRadius)
+                                    val stickDist = hypot(currentStickX, currentStickY)
+                                    val scale = if (stickDist > 1f) 1f / stickDist else 1f
+                                    val targetOffsetX = currentStickX * scale * maxRadius
+                                    val targetOffsetY = -currentStickY * scale * maxRadius
+                                    coroutineScope.launch {
+                                        animOffsetX.snapTo(targetOffsetX)
+                                        animOffsetY.snapTo(targetOffsetY)
+                                    }
 
                                     // Adaptive stationary watchdog: timeout scales with speed
                                     val decayTimeoutMs = (120L - (smoothedSpeed / 20f).toLong()).coerceIn(50L, 120L)
@@ -306,21 +324,21 @@ fun RealisticJoystick(
                                         // 3-stage gentle decay
                                         currentStickX *= 0.5f
                                         currentStickY *= 0.5f
-                                        viewModel?.updateRightStick(currentStickX, currentStickY)
-                                        thumbOffsetX = (currentStickX * maxRadius)
-                                        thumbOffsetY = (-currentStickY * maxRadius)
+                                        currentViewModel?.updateRightStick(currentStickX, currentStickY)
+                                        animOffsetX.snapTo(currentStickX * maxRadius)
+                                        animOffsetY.snapTo(-currentStickY * maxRadius)
                                         delay(30.milliseconds)
                                         currentStickX *= 0.2f
                                         currentStickY *= 0.2f
-                                        viewModel?.updateRightStick(currentStickX, currentStickY)
-                                        thumbOffsetX = (currentStickX * maxRadius)
-                                        thumbOffsetY = (-currentStickY * maxRadius)
+                                        currentViewModel?.updateRightStick(currentStickX, currentStickY)
+                                        animOffsetX.snapTo(currentStickX * maxRadius)
+                                        animOffsetY.snapTo(-currentStickY * maxRadius)
                                         delay(25.milliseconds)
                                         currentStickX = 0f
                                         currentStickY = 0f
-                                        viewModel?.updateRightStick(0f, 0f)
-                                        thumbOffsetX = 0f
-                                        thumbOffsetY = 0f
+                                        currentViewModel?.updateRightStick(0f, 0f)
+                                        animOffsetX.snapTo(0f)
+                                        animOffsetY.snapTo(0f)
                                         lastSpeed = 0f
                                     }
                                 }
@@ -330,6 +348,7 @@ fun RealisticJoystick(
                             val vecX = change.position.x - centerX
                             val vecY = change.position.y - centerY
                             val dist = hypot(vecX, vecY)
+                            if (dist > maxDragDistance) maxDragDistance = dist
 
                             val (clampedX, clampedY) = if (dist > maxRadius) {
                                 val angle = atan2(vecY, vecX)
@@ -338,49 +357,66 @@ fun RealisticJoystick(
                                 Pair(vecX, vecY)
                             }
 
-                            thumbOffsetX = clampedX
-                            thumbOffsetY = clampedY
+                            coroutineScope.launch {
+                                animOffsetX.snapTo(clampedX)
+                                animOffsetY.snapTo(clampedY)
+                            }
 
                             val normX = if (dist < deadzoneRadius) 0f else (clampedX / maxRadius).coerceIn(-1f, 1f)
                             val normY = if (dist < deadzoneRadius) 0f else (-clampedY / maxRadius).coerceIn(-1f, 1f) // Invert Y so up is positive
 
                             if (isLeft) {
-                                viewModel?.updateLeftStick(normX, normY)
+                                currentViewModel?.updateLeftStick(normX, normY)
                             } else {
-                                viewModel?.updateRightStick(normX, normY)
+                                currentViewModel?.updateRightStick(normX, normY)
                             }
+                        }
+                    }
+
+                    // Release handling: check stationary tap (L3/R3 click) vs drag release
+                    val touchDuration = System.currentTimeMillis() - startTime
+                    if (maxDragDistance <= tapThresholdPx && touchDuration < 300L) {
+                        currentViewModel?.updateButton(stickKey, true)
+                        coroutineScope.launch {
+                            delay(60.milliseconds)
+                            currentViewModel?.updateButton(stickKey, false)
                         }
                     }
 
                     // On finger lift / cancellation
                     decayJob?.cancel()
+                    coastJob?.cancel()
                     if (isLeft) {
-                        thumbOffsetX = 0f
-                        thumbOffsetY = 0f
-                        viewModel?.updateLeftStick(0f, 0f)
+                        currentViewModel?.updateLeftStick(0f, 0f)
+                        coroutineScope.launch {
+                            launch { animOffsetX.animateTo(0f, spring(dampingRatio = 0.65f, stiffness = 420f)) }
+                            launch { animOffsetY.animateTo(0f, spring(dampingRatio = 0.65f, stiffness = 420f)) }
+                        }
                     } else {
                         val releaseSpeed = velocityBuffer.peakSpeed()
                         if (isCameraMode && releaseSpeed > 400f) {
                             val coastSteps = ((releaseSpeed / 200f).toInt()).coerceIn(3, 7)
-                            coroutineScope.launch {
+                            coastJob = coroutineScope.launch {
                                 var coastX = currentStickX
                                 var coastY = currentStickY
                                 repeat(coastSteps) {
                                     coastX *= 0.68f
                                     coastY *= 0.68f
-                                    viewModel?.updateRightStick(coastX, coastY)
-                                    thumbOffsetX = (coastX * maxRadius)
-                                    thumbOffsetY = (-coastY * maxRadius)
+                                    currentViewModel?.updateRightStick(coastX, coastY)
+                                    animOffsetX.snapTo(coastX * maxRadius)
+                                    animOffsetY.snapTo(-coastY * maxRadius)
                                     delay(16.milliseconds)
                                 }
-                                viewModel?.updateRightStick(0f, 0f)
-                                thumbOffsetX = 0f
-                                thumbOffsetY = 0f
+                                currentViewModel?.updateRightStick(0f, 0f)
+                                animOffsetX.animateTo(0f, spring(dampingRatio = 0.65f, stiffness = 420f))
+                                animOffsetY.animateTo(0f, spring(dampingRatio = 0.65f, stiffness = 420f))
                             }
                         } else {
-                            thumbOffsetX = 0f
-                            thumbOffsetY = 0f
-                            viewModel?.updateRightStick(0f, 0f)
+                            currentViewModel?.updateRightStick(0f, 0f)
+                            coroutineScope.launch {
+                                launch { animOffsetX.animateTo(0f, spring(dampingRatio = 0.65f, stiffness = 420f)) }
+                                launch { animOffsetY.animateTo(0f, spring(dampingRatio = 0.65f, stiffness = 420f)) }
+                            }
                         }
                     }
                 }

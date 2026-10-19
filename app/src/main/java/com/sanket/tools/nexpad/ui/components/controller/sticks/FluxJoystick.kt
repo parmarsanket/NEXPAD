@@ -77,6 +77,7 @@ fun FluxJoystick(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current.density
+    val currentViewModel by rememberUpdatedState(viewModel)
 
     // Travel bounds matching CSS: MAX = 24px in a 150px housing with 96px cap
     val maxTravelPx = with(LocalDensity.current) { 24.dp.toPx() }
@@ -283,6 +284,7 @@ fun FluxJoystick(
                         if (!isLocked) return@pointerInput
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)
+                            decayJob?.cancel()
                             val centerX = size.width / 2f
                             val centerY = size.height / 2f
 
@@ -300,7 +302,7 @@ fun FluxJoystick(
                             isPressed = true
 
                             if (isCameraMode) {
-                                viewModel?.updateRightStick(0f, 0f)
+                                currentViewModel?.updateRightStick(0f, 0f)
                             } else {
                                 val downVecX = down.position.x - centerX
                                 val downVecY = down.position.y - centerY
@@ -322,9 +324,9 @@ fun FluxJoystick(
                                 val normY = if (downDist < 4f) 0f else (-clampedY / maxTravelPx).coerceIn(-1f, 1f)
 
                                 if (isLeft) {
-                                    viewModel?.updateLeftStick(normX, normY)
+                                    currentViewModel?.updateLeftStick(normX, normY)
                                 } else {
-                                    viewModel?.updateRightStick(normX, normY)
+                                    currentViewModel?.updateRightStick(normX, normY)
                                 }
                             }
 
@@ -379,10 +381,12 @@ fun FluxJoystick(
                                             currentStickX = 0.55f * targetStickX + 0.45f * currentStickX
                                             currentStickY = 0.55f * targetStickY + 0.45f * currentStickY
 
-                                            viewModel?.updateRightStick(currentStickX, currentStickY)
+                                            currentViewModel?.updateRightStick(currentStickX, currentStickY)
 
-                                            val targetOffsetX = (currentStickX * maxTravelPx).coerceIn(-maxTravelPx, maxTravelPx)
-                                            val targetOffsetY = (-currentStickY * maxTravelPx).coerceIn(-maxTravelPx, maxTravelPx)
+                                            val stickDist = hypot(currentStickX, currentStickY)
+                                            val scale = if (stickDist > 1f) 1f / stickDist else 1f
+                                            val targetOffsetX = currentStickX * scale * maxTravelPx
+                                            val targetOffsetY = -currentStickY * scale * maxTravelPx
 
                                             coroutineScope.launch {
                                                 animOffsetX.snapTo(targetOffsetX)
@@ -395,19 +399,19 @@ fun FluxJoystick(
                                                 delay(decayTimeoutMs.milliseconds)
                                                 currentStickX *= 0.5f
                                                 currentStickY *= 0.5f
-                                                viewModel?.updateRightStick(currentStickX, currentStickY)
+                                                currentViewModel?.updateRightStick(currentStickX, currentStickY)
                                                 animOffsetX.snapTo(currentStickX * maxTravelPx)
                                                 animOffsetY.snapTo(-currentStickY * maxTravelPx)
                                                 delay(30.milliseconds)
                                                 currentStickX *= 0.2f
                                                 currentStickY *= 0.2f
-                                                viewModel?.updateRightStick(currentStickX, currentStickY)
+                                                currentViewModel?.updateRightStick(currentStickX, currentStickY)
                                                 animOffsetX.snapTo(currentStickX * maxTravelPx)
                                                 animOffsetY.snapTo(-currentStickY * maxTravelPx)
                                                 delay(25.milliseconds)
                                                 currentStickX = 0f
                                                 currentStickY = 0f
-                                                viewModel?.updateRightStick(0f, 0f)
+                                                currentViewModel?.updateRightStick(0f, 0f)
                                                 animOffsetX.snapTo(0f)
                                                 animOffsetY.snapTo(0f)
                                             }
@@ -434,9 +438,9 @@ fun FluxJoystick(
                                     val normY = if (dist < 4f) 0f else (-clampedY / maxTravelPx).coerceIn(-1f, 1f)
 
                                     if (isLeft) {
-                                        viewModel?.updateLeftStick(normX, normY)
+                                        currentViewModel?.updateLeftStick(normX, normY)
                                     } else {
-                                        viewModel?.updateRightStick(normX, normY)
+                                        currentViewModel?.updateRightStick(normX, normY)
                                     }
                                 }
                             }
@@ -449,9 +453,9 @@ fun FluxJoystick(
                             if (totalMovedDistance <= tapThresholdPx) {
                                 // Stationary tap: trigger thumbstick click (L3/R3)
                                 coroutineScope.launch {
-                                    viewModel?.updateButton(stickKey, true)
+                                    currentViewModel?.updateButton(stickKey, true)
                                     delay(60.milliseconds)
-                                    viewModel?.updateButton(stickKey, false)
+                                    currentViewModel?.updateButton(stickKey, false)
                                 }
                             }
 
@@ -472,9 +476,9 @@ fun FluxJoystick(
                             }
 
                             if (isLeft) {
-                                viewModel?.updateLeftStick(0f, 0f)
+                                currentViewModel?.updateLeftStick(0f, 0f)
                             } else {
-                                viewModel?.updateRightStick(0f, 0f)
+                                currentViewModel?.updateRightStick(0f, 0f)
                             }
                         }
                     }

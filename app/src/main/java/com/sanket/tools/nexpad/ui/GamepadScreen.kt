@@ -196,6 +196,7 @@ fun GamepadScreen(
     DisposableEffect(Unit) {
         viewModel.onGamepadScreenActive(true)
         onDispose {
+            viewModel.releaseAllInputs()
             viewModel.onGamepadScreenActive(false)
             viewModel.updateLeftStick(0f, 0f)
             viewModel.updateRightStick(0f, 0f)
@@ -206,11 +207,14 @@ fun GamepadScreen(
 
     BackHandler {
         if (!doubleTapExitEnabled) {
+            navigationViewModel?.clearGamepadSession()
             onBack()
         } else {
             val now = SystemClock.uptimeMillis()
             if (now - lastBackPressTime < 2000L) {
                 backToast?.cancel()
+                lastBackPressTime = 0L
+                navigationViewModel?.clearGamepadSession()
                 onBack()
             } else {
                 lastBackPressTime = now
@@ -287,16 +291,15 @@ fun GamepadScreen(
         profile
     }
 
-    var isRumbling by remember { mutableStateOf(false) }
-    var rumbleStopJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    val isRumblingRef = remember { java.util.concurrent.atomic.AtomicBoolean(false) }
+    val rumbleJobRef = remember { java.util.concurrent.atomic.AtomicReference<kotlinx.coroutines.Job?>(null) }
     val hapticHelper = remember(context) { com.sanket.tools.nexpad.utils.HapticFeedbackHelper(context) }
-    val currentIsRumbling by rememberUpdatedState(isRumbling)
     val currentViewModel by rememberUpdatedState(viewModel)
 
     val safeOnVibrate: () -> Unit = remember(hapticHelper) {
         {
             val connected = currentViewModel.isConnected.value
-            if (hapticHelper.canVibrate(connected, currentIsRumbling)) {
+            if (hapticHelper.canVibrate(connected, isRumblingRef.get())) {
                 hapticHelper.performButtonClick()
             }
         }
@@ -321,8 +324,8 @@ fun GamepadScreen(
                 val currentBand = lastAppliedBand.get()
                 if (currentBand > 0 && (now - lastPacketTimeMs.get()) > 250) {
                     if (lastAppliedBand.compareAndSet(currentBand, 0)) {
-                        rumbleStopJob?.cancel()
-                        isRumbling = false
+                        rumbleJobRef.getAndSet(null)?.cancel()
+                        isRumblingRef.set(false)
                         vibrator?.cancel()
                     }
                 }
@@ -380,7 +383,7 @@ fun GamepadScreen(
                     val gap = now - lastUpdateTimeMs.get()
                     
                     if (band > 0) {
-                        rumbleStopJob?.cancel()
+                        rumbleJobRef.getAndSet(null)?.cancel()
                         val prevBand = lastAppliedBand.get()
                         val shouldUpdate = when {
                             prevBand <= 0 -> true // ON: always instant
@@ -394,7 +397,7 @@ fun GamepadScreen(
                             }
                             lastAppliedBand.set(band)
                             lastUpdateTimeMs.set(now)
-                            isRumbling = true
+                            isRumblingRef.set(true)
                             
                             when (motorProfile.tier) {
                                 1 -> {
@@ -417,17 +420,18 @@ fun GamepadScreen(
                             val minBurstMs = if (motorProfile.tier == 3) 35L else 50L
                             val elapsed = now - motorOnStartTimeMs.get()
                             if (elapsed < minBurstMs) {
-                                rumbleStopJob?.cancel()
-                                rumbleStopJob = launch(kotlinx.coroutines.Dispatchers.Default) {
+                                rumbleJobRef.getAndSet(null)?.cancel()
+                                val job = launch(kotlinx.coroutines.Dispatchers.Default) {
                                     delay(minBurstMs - elapsed)
                                     lastAppliedBand.set(0)
-                                    isRumbling = false
+                                    isRumblingRef.set(false)
                                     vibrator?.cancel()
                                 }
+                                rumbleJobRef.set(job)
                             } else {
-                                rumbleStopJob?.cancel()
+                                rumbleJobRef.getAndSet(null)?.cancel()
                                 lastAppliedBand.set(0)
-                                isRumbling = false
+                                isRumblingRef.set(false)
                                 vibrator?.cancel()
                             }
                         }
@@ -438,9 +442,8 @@ fun GamepadScreen(
 
     DisposableEffect(Unit) {
         onDispose {
-            rumbleStopJob?.cancel()
+            rumbleJobRef.getAndSet(null)?.cancel()
             vibrator?.cancel()
-            navigationViewModel?.clearGamepadSession()
         }
     }
     
@@ -569,49 +572,16 @@ fun GamepadScreenContent(
         var isLeftStickTouching by remember { mutableStateOf(false) }
         var isRightStickTouching by remember { mutableStateOf(false) }
 
-        val isLeftStickActive = remember(
-            joystickEntries,
-            isLeftStickTouching,
-            isRightStickTouching,
-            viewModel?.leftStickX,
-            viewModel?.leftStickY,
-            viewModel?.rightStickX,
-            viewModel?.rightStickY
-        ) {
-            val leftJoysticks = joystickEntries.filter { it.value.xRatio < 0.5f }
-            if (leftJoysticks.isEmpty()) {
-                isLeftStickTouching || hypot(viewModel?.leftStickX ?: 0f, viewModel?.leftStickY ?: 0f) > 0.05f
-            } else {
-                leftJoysticks.any { (key, _) ->
-                    if (key.equals(com.sanket.tools.nexpad.category.ControlKey.RS.name, ignoreCase = true)) {
-                        isRightStickTouching || hypot(viewModel?.rightStickX ?: 0f, viewModel?.rightStickY ?: 0f) > 0.05f
-                    } else {
-                        isLeftStickTouching || hypot(viewModel?.leftStickX ?: 0f, viewModel?.leftStickY ?: 0f) > 0.05f
-                    }
-                }
+        val isLeftStickActive by remember(joystickEntries, isLeftStickTouching) {
+            derivedStateOf {
+                isLeftStickTouching ||
+                hypot(viewModel?.leftStickX ?: 0f, viewModel?.leftStickY ?: 0f) > 0.05f
             }
         }
-
-        val isRightStickActive = remember(
-            joystickEntries,
-            isLeftStickTouching,
-            isRightStickTouching,
-            viewModel?.leftStickX,
-            viewModel?.leftStickY,
-            viewModel?.rightStickX,
-            viewModel?.rightStickY
-        ) {
-            val rightJoysticks = joystickEntries.filter { it.value.xRatio >= 0.5f }
-            if (rightJoysticks.isEmpty()) {
-                isRightStickTouching || hypot(viewModel?.rightStickX ?: 0f, viewModel?.rightStickY ?: 0f) > 0.05f
-            } else {
-                rightJoysticks.any { (key, _) ->
-                    if (key.equals(com.sanket.tools.nexpad.category.ControlKey.LS.name, ignoreCase = true)) {
-                        isLeftStickTouching || hypot(viewModel?.leftStickX ?: 0f, viewModel?.leftStickY ?: 0f) > 0.05f
-                    } else {
-                        isRightStickTouching || hypot(viewModel?.rightStickX ?: 0f, viewModel?.rightStickY ?: 0f) > 0.05f
-                    }
-                }
+        val isRightStickActive by remember(joystickEntries, isRightStickTouching) {
+            derivedStateOf {
+                isRightStickTouching ||
+                hypot(viewModel?.rightStickX ?: 0f, viewModel?.rightStickY ?: 0f) > 0.05f
             }
         }
 
@@ -1172,15 +1142,14 @@ private fun BoxScope.JoystickTouchLayer(
                             else        viewModel?.updateRightStick(normX, normY)
                         }
 
-                        // Release — zero output, spring base back to home
-                        if (isLeft) viewModel?.updateLeftStick(0f, 0f)
-                        else        viewModel?.updateRightStick(0f, 0f)
-
+                        // Release — spring base back to home
                         coroutineScope.launch {
                             launch { floatX.animateTo(0f, spring(dampingRatio = 0.70f, stiffness = 400f)) }
                             launch { floatY.animateTo(0f, spring(dampingRatio = 0.70f, stiffness = 400f)) }
                         }
                     } finally {
+                        if (isLeft) viewModel?.updateLeftStick(0f, 0f)
+                        else        viewModel?.updateRightStick(0f, 0f)
                         onTouchChanged?.invoke(false)
                     }
                 }

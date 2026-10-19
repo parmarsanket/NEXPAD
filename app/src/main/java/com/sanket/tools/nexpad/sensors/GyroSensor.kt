@@ -299,8 +299,8 @@ class MotionSensorManager(
                 }
                 // ROTATION_90 remap: q' = q * q_rotZ(-90 deg)
                 val k = 0.70710678f
-                motion.qX = k * (qRawX + qRawY)
-                motion.qY = k * (qRawY - qRawX)
+                motion.qX = k * (qRawX - qRawY)
+                motion.qY = k * (qRawX + qRawY)
                 motion.qZ = k * (qRawZ - qRawW)
                 motion.qW = k * (qRawW + qRawZ)
             }

@@ -1,14 +1,14 @@
 package com.sanket.tools.nexpad.ui.components.controller
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.compositionLocalOf
 import com.sanket.tools.nexpad.category.ControlKey
 
 /**
  * CompositionLocal holding the set of currently pressed controller element keys
  * driven by the Esports Multi-Touch Surface Coordinator.
  */
-val LocalPressedControlKeys = staticCompositionLocalOf<Set<String>> { emptySet() }
+val LocalPressedControlKeys = compositionLocalOf<Set<String>> { emptySet() }
 
 /**
  * Industry-grade helper function to query whether a given control key or alias is actively pressed.

@@ -101,10 +101,10 @@ fun resolveMetaballsTouch(pos: Offset, sizePx: Float): Set<String> {
     val isRight = dx in centerDeadzone..armMaxReach && abs(dy) <= armHalfWidth
 
     return when {
-        isUp && isRight -> if (abs(dy) >= abs(dx)) setOf(K.UP) else setOf(K.RIGHT)
-        isUp && isLeft  -> if (abs(dy) >= abs(dx)) setOf(K.UP) else setOf(K.LEFT)
-        isDown && isRight -> if (abs(dy) >= abs(dx)) setOf(K.DOWN) else setOf(K.RIGHT)
-        isDown && isLeft  -> if (abs(dy) >= abs(dx)) setOf(K.DOWN) else setOf(K.LEFT)
+        isUp && isRight -> setOf(K.UP, K.RIGHT)
+        isUp && isLeft  -> setOf(K.UP, K.LEFT)
+        isDown && isRight -> setOf(K.DOWN, K.RIGHT)
+        isDown && isLeft  -> setOf(K.DOWN, K.LEFT)
         isUp -> setOf(K.UP)
         isDown -> setOf(K.DOWN)
         isLeft -> setOf(K.LEFT)
@@ -531,7 +531,10 @@ fun MetaballsDPad(
                 // UP (-90°)
                 if (upProgress > 0.05f && dUp < maxBridgeDist) {
                     val blend = ((maxBridgeDist - dUp) / bridgeDistDiff).coerceIn(0f, 1f)
-                    withTransform({ rotate(degrees = -90f, pivot = center) }) {
+                    withTransform({
+                        translate(center.x, center.y)
+                        rotate(degrees = -90f, pivot = Offset.Zero)
+                    }) {
                         val wCenter = rCenterPx * (0.60f + 0.35f * blend)
                         val wSat = rSatPx * (0.60f + 0.35f * blend)
                         val wMid = 6f * density + 10f * density * blend
@@ -548,7 +551,10 @@ fun MetaballsDPad(
                 // RIGHT (0°)
                 if (rightProgress > 0.05f && dRight < maxBridgeDist) {
                     val blend = ((maxBridgeDist - dRight) / bridgeDistDiff).coerceIn(0f, 1f)
-                    withTransform({ rotate(degrees = 0f, pivot = center) }) {
+                    withTransform({
+                        translate(center.x, center.y)
+                        rotate(degrees = 0f, pivot = Offset.Zero)
+                    }) {
                         val wCenter = rCenterPx * (0.60f + 0.35f * blend)
                         val wSat = rSatPx * (0.60f + 0.35f * blend)
                         val wMid = 6f * density + 10f * density * blend
@@ -565,7 +571,10 @@ fun MetaballsDPad(
                 // DOWN (90°)
                 if (downProgress > 0.05f && dDown < maxBridgeDist) {
                     val blend = ((maxBridgeDist - dDown) / bridgeDistDiff).coerceIn(0f, 1f)
-                    withTransform({ rotate(degrees = 90f, pivot = center) }) {
+                    withTransform({
+                        translate(center.x, center.y)
+                        rotate(degrees = 90f, pivot = Offset.Zero)
+                    }) {
                         val wCenter = rCenterPx * (0.60f + 0.35f * blend)
                         val wSat = rSatPx * (0.60f + 0.35f * blend)
                         val wMid = 6f * density + 10f * density * blend
@@ -582,7 +591,10 @@ fun MetaballsDPad(
                 // LEFT (180°)
                 if (leftProgress > 0.05f && dLeft < maxBridgeDist) {
                     val blend = ((maxBridgeDist - dLeft) / bridgeDistDiff).coerceIn(0f, 1f)
-                    withTransform({ rotate(degrees = 180f, pivot = center) }) {
+                    withTransform({
+                        translate(center.x, center.y)
+                        rotate(degrees = 180f, pivot = Offset.Zero)
+                    }) {
                         val wCenter = rCenterPx * (0.60f + 0.35f * blend)
                         val wSat = rSatPx * (0.60f + 0.35f * blend)
                         val wMid = 6f * density + 10f * density * blend

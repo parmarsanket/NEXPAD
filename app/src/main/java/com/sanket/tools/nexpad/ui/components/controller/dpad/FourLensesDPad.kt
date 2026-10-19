@@ -90,10 +90,10 @@ fun resolveFourLensesTouch(
     val isRight = distRight <= keyHitRadius
 
     return when {
-        isUp && isRight -> if (distUp <= distRight) setOf(K.UP) else setOf(K.RIGHT)
-        isUp && isLeft  -> if (distUp <= distLeft) setOf(K.UP) else setOf(K.LEFT)
-        isDown && isRight -> if (distDown <= distRight) setOf(K.DOWN) else setOf(K.RIGHT)
-        isDown && isLeft  -> if (distDown <= distLeft) setOf(K.DOWN) else setOf(K.LEFT)
+        isUp && isRight -> setOf(K.UP, K.RIGHT)
+        isUp && isLeft  -> setOf(K.UP, K.LEFT)
+        isDown && isRight -> setOf(K.DOWN, K.RIGHT)
+        isDown && isLeft  -> setOf(K.DOWN, K.LEFT)
         isUp -> setOf(K.UP)
         isDown -> setOf(K.DOWN)
         isLeft -> setOf(K.LEFT)

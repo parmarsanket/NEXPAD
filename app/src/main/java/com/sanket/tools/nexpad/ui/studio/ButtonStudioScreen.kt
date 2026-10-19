@@ -78,7 +78,7 @@ fun ButtonStudioScreen(
     val components by registry.installedComponents.collectAsState()
 
     // Current Studio Mode (VIEWER vs EDITOR)
-    var currentMode by remember { mutableStateOf(initialMode) }
+    var currentMode by remember(initialMode) { mutableStateOf(initialMode) }
 
     // Whether we are in a contextual selection session (launched from HUD Editor or Virtual Controller)
     val isContextual = (initialMode == ButtonStudioMode.EDITOR || initialMode == ButtonStudioMode.BUTTON_EDITOR) && targetControlKey != null
@@ -122,8 +122,9 @@ fun ButtonStudioScreen(
         } else null
     }
 
-    var selectedCategory by remember { mutableStateOf(initialCategory) }
-    var selectedSubFilter by remember { mutableStateOf<StudioSubFilter?>(initialSubFilter) }
+    var selectedCategory by remember(initialCategory) { mutableStateOf(initialCategory) }
+    var selectedSubFilter by remember(initialSubFilter) { mutableStateOf<StudioSubFilter?>(initialSubFilter) }
+    var lastNavTime by remember { mutableStateOf(0L) }
     var showImportMenu by rememberSaveable { mutableStateOf(false) }
     var showImportDialog by rememberSaveable { mutableStateOf(false) }
     var previewTarget by remember { mutableStateOf<NxpComponentDef?>(null) }
@@ -327,7 +328,13 @@ fun ButtonStudioScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = {
+                        val now = System.currentTimeMillis()
+                        if (now - lastNavTime >= 500L) {
+                            lastNavTime = now
+                            navController.popBackStack()
+                        }
+                    }) {
                         Icon(
                             Icons.AutoMirrored.Rounded.ArrowBack,
                             contentDescription = "Back",
@@ -339,7 +346,13 @@ fun ButtonStudioScreen(
                     // Contextual Done / Selected Outlined Button on the right
                     if (isContextual || currentMode == ButtonStudioMode.BUTTON_EDITOR) {
                         OutlinedButton(
-                            onClick = { navController.popBackStack() },
+                            onClick = {
+                                val now = System.currentTimeMillis()
+                                if (now - lastNavTime >= 500L) {
+                                    lastNavTime = now
+                                    navController.popBackStack()
+                                }
+                            },
                             shape = RoundedCornerShape(8.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 contentColor = NeonPalette.Cyan

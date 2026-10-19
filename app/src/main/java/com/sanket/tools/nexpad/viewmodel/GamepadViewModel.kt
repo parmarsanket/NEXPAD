@@ -30,6 +30,31 @@ import kotlinx.coroutines.launch
 class GamepadViewModel(application: Application) : AndroidViewModel(application) {
     // Single shared instance for zero-allocation state updates
     val inputState = GamepadInput()
+
+    var leftStickX by mutableFloatStateOf(0f)
+        private set
+    var leftStickY by mutableFloatStateOf(0f)
+        private set
+    var rightStickX by mutableFloatStateOf(0f)
+        private set
+    var rightStickY by mutableFloatStateOf(0f)
+        private set
+
+    val leftStickState: Pair<Float, Float>
+        get() = Pair(leftStickX, leftStickY)
+    val rightStickState: Pair<Float, Float>
+        get() = Pair(rightStickX, rightStickY)
+
+    fun resetStickState() {
+        inputState.leftStickX = 0f
+        inputState.leftStickY = 0f
+        inputState.rightStickX = 0f
+        inputState.rightStickY = 0f
+        leftStickX = 0f
+        leftStickY = 0f
+        rightStickX = 0f
+        rightStickY = 0f
+    }
     
     private val discoveryClient = DiscoveryClient()
     
@@ -222,9 +247,7 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
                     stopDiscovery()
                     _discoveredServers.value = emptyList()
                 } else {
-                    // Note: leftStickX/Y, rightStickX/Y Compose states are reset inside
-                    // updateLeftStick(0f,0f) / updateRightStick(0f,0f) called by GamepadNetworkManager
-                    // on disconnect, so we must NOT access them here (init-order NPE risk).
+                    resetStickState()
                     startDiscovery()
                 }
             }
@@ -301,6 +324,7 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     fun connect(ip: String, port: Int, serverName: String? = null) = networkManager.connect(ip, port, serverName)
     fun disconnect() {
         cancelScreenOffDisconnectTimer()
+        resetStickState()
         networkManager.disconnect()
     }
     fun switchToAoaConnection() = networkManager.switchToAoaConnection()
@@ -364,6 +388,41 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
         }
     }
     
+    fun releaseAllInputs() {
+        inputState.btnA = false
+        inputState.btnB = false
+        inputState.btnX = false
+        inputState.btnY = false
+        inputState.btnL1 = false
+        inputState.btnR1 = false
+        inputState.btnL3 = false
+        inputState.btnR3 = false
+        inputState.btnStart = false
+        inputState.btnSelect = false
+        inputState.btnGuide = false
+        inputState.dpadUp = false
+        inputState.dpadDown = false
+        inputState.dpadLeft = false
+        inputState.dpadRight = false
+        inputState.btnShare = false
+        inputState.btnScreenshot = false
+        inputState.btnM1 = false
+        inputState.btnM2 = false
+        inputState.btnM3 = false
+        inputState.btnM4 = false
+        inputState.triggerL2 = 0f
+        inputState.triggerR2 = 0f
+        inputState.leftStickX = 0f
+        inputState.leftStickY = 0f
+        inputState.rightStickX = 0f
+        inputState.rightStickY = 0f
+        leftStickX = 0f
+        leftStickY = 0f
+        rightStickX = 0f
+        rightStickY = 0f
+        networkManager.sendImmediate()
+    }
+
     fun updateButton(buttonName: String, isPressed: Boolean) {
         applyButtonState(buttonName, isPressed)
         // Zero-Delay dispatch: Fire a UDP packet immediately, bypassing the 16ms loop
@@ -429,19 +488,6 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    var leftStickX by mutableFloatStateOf(0f)
-        private set
-    var leftStickY by mutableFloatStateOf(0f)
-        private set
-    var rightStickX by mutableFloatStateOf(0f)
-        private set
-    var rightStickY by mutableFloatStateOf(0f)
-        private set
-
-    val leftStickState: Pair<Float, Float>
-        get() = Pair(leftStickX, leftStickY)
-    val rightStickState: Pair<Float, Float>
-        get() = Pair(rightStickX, rightStickY)
 
     fun updateLeftStick(x: Float, y: Float) {
         val safeX = (if (x.isFinite()) x else 0f).coerceIn(-1f, 1f)
