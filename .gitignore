@@ -65,3 +65,4 @@ google-services.json
 **/screenshotTestDebug/
 **/screenshotTestRelease/
 **/screenshotTest*/**/*.png
+.scratch/
