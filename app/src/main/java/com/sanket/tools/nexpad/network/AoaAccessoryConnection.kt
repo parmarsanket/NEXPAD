@@ -9,7 +9,7 @@ import android.hardware.usb.UsbAccessory
 import android.hardware.usb.UsbManager
 import android.os.Build
 import android.os.ParcelFileDescriptor
-import android.util.Log
+import com.sanket.tools.nexpad.utils.AppLog as Log
 import androidx.core.content.ContextCompat
 import androidx.core.content.IntentCompat
 import com.sanket.tools.nexpad.model.GamepadInput

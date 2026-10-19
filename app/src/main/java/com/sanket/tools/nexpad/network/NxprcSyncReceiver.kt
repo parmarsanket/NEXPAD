@@ -1,7 +1,7 @@
 package com.sanket.tools.nexpad.network
 
 import android.content.Context
-import android.util.Log
+import com.sanket.tools.nexpad.utils.AppLog as Log
 import com.sanket.tools.nexpad.protocol.NexpadProtocol
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import java.io.ByteArrayInputStream

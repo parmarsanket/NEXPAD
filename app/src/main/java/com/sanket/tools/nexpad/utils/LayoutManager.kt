@@ -1,7 +1,7 @@
 package com.sanket.tools.nexpad.utils
 
 import android.content.Context
-import android.util.Log
+import com.sanket.tools.nexpad.utils.AppLog as Log
 import androidx.core.content.edit
 import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.category.ControllerLabelStyle

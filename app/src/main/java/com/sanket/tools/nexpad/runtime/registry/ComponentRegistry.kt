@@ -1,7 +1,7 @@
 package com.sanket.tools.nexpad.runtime.registry
 
 import android.content.Context
-import android.util.Log
+import com.sanket.tools.nexpad.utils.AppLog as Log
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
 import com.sanket.tools.nexpad.runtime.model.NxpManifest
 import com.sanket.tools.nexpad.runtime.model.NxpSize

@@ -5,7 +5,7 @@ import com.sanket.tools.nexpad.ui.components.controller.special.calculateGamingS
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 import android.content.Context
-import android.util.Log
+import com.sanket.tools.nexpad.utils.AppLog as Log
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring

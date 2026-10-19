@@ -1,6 +1,6 @@
 package com.sanket.tools.nexpad.viewmodel
 
-import android.util.Log
+import com.sanket.tools.nexpad.utils.AppLog as Log
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

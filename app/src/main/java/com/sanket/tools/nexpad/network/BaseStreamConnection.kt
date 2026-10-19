@@ -1,6 +1,6 @@
 package com.sanket.tools.nexpad.network
 
-import android.util.Log
+import com.sanket.tools.nexpad.utils.AppLog as Log
 import com.sanket.tools.nexpad.model.GamepadFeedback
 import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpad.protocol.NexpadProtocol

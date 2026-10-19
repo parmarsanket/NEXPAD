@@ -1,7 +1,7 @@
 package com.sanket.tools.nexpad.ui.components.connection
 
 import android.bluetooth.BluetoothDevice
-import android.util.Log
+import com.sanket.tools.nexpad.utils.AppLog as Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

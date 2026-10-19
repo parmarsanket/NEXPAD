@@ -4,7 +4,7 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
 import android.content.Context
-import android.util.Log
+import com.sanket.tools.nexpad.utils.AppLog as Log
 import com.sanket.tools.nexpad.protocol.NexpadProtocol
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

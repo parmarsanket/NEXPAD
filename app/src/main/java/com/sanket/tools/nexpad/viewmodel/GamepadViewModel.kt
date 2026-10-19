@@ -2,6 +2,7 @@ package com.sanket.tools.nexpad.viewmodel
 
 import android.app.Application
 import android.content.Context
+import com.sanket.tools.nexpad.utils.AppLog as Log
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.ConnectivityManager
@@ -124,11 +125,11 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
                     }
                 }
                 android.hardware.usb.UsbManager.ACTION_USB_ACCESSORY_ATTACHED -> {
-                    android.util.Log.d("NEXPAD", "AOA accessory attached intent received.")
+                    Log.d("NEXPAD", "AOA accessory attached intent received.")
                     checkAoaAccessory()
                 }
                 android.hardware.usb.UsbManager.ACTION_USB_ACCESSORY_DETACHED -> {
-                    android.util.Log.d("NEXPAD", "AOA accessory detached intent received.")
+                    Log.d("NEXPAD", "AOA accessory detached intent received.")
                     _isAoaAttached.value = false
                     if (connectionStats.value.transport == ConnectionType.USB) {
                         disconnect()
@@ -140,7 +141,7 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
                         _adbServerName.value = if (!pcName.isNullOrEmpty()) pcName else com.sanket.tools.nexpad.utils.NexpadHardwareActions.DEFAULT_PC_NAME
                         _isAdbAvailable.value = true
                         lastAdbSeenTimestamp = System.currentTimeMillis()
-                        android.util.Log.d("NEXPAD", "🤝 Received ADB_DEVICE_READY from: ${_adbServerName.value}")
+                        Log.d("NEXPAD", "🤝 Received ADB_DEVICE_READY from: ${_adbServerName.value}")
                     }
                 }
                 com.sanket.tools.nexpad.utils.NexpadHardwareActions.ACTION_ADB_DEVICE_DISCONNECTED -> {
@@ -301,10 +302,10 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
         if (screenOffDisconnectJob?.isActive == true) return
         screenOffDisconnectJob = viewModelScope.launch(Dispatchers.Default) {
             networkManager.refreshWakeLock(10 * 60 * 1000L)
-            android.util.Log.d("NEXPAD", "🌙 Screen OFF / Background: 10-minute idle disconnect countdown started.")
+            Log.d("NEXPAD", "🌙 Screen OFF / Background: 10-minute idle disconnect countdown started.")
             delay(10 * 60 * 1000L)
             if (isConnected.value) {
-                android.util.Log.i("NEXPAD", "⏰ Screen OFF for 10 minutes! Disconnecting session to conserve CPU & battery.")
+                Log.i("NEXPAD", "⏰ Screen OFF for 10 minutes! Disconnecting session to conserve CPU & battery.")
                 disconnect()
             }
         }
@@ -317,7 +318,7 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
         if (screenOffDisconnectJob != null) {
             screenOffDisconnectJob?.cancel()
             screenOffDisconnectJob = null
-            android.util.Log.d("NEXPAD", "☀️ Screen ON / Foreground: Screen-off idle timer cancelled. Session active.")
+            Log.d("NEXPAD", "☀️ Screen ON / Foreground: Screen-off idle timer cancelled. Session active.")
         }
     }
 

@@ -1,7 +1,7 @@
 package com.sanket.tools.nexpad.network
 
 import android.content.Context
-import android.util.Log
+import com.sanket.tools.nexpad.utils.AppLog as Log
 import com.sanket.tools.nexpad.protocol.NexpadProtocol
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

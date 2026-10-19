@@ -3,7 +3,7 @@ package com.sanket.tools.nexpad.network
 import android.content.Context
 import android.net.LocalSocket
 import android.net.LocalSocketAddress
-import android.util.Log
+import com.sanket.tools.nexpad.utils.AppLog as Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

@@ -1,6 +1,7 @@
 package com.sanket.tools.nexpad.viewmodel
 
 import android.content.Context
+import com.sanket.tools.nexpad.utils.AppLog as Log
 import com.sanket.tools.nexpad.model.GamepadFeedback
 import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpad.network.IGamepadConnection
@@ -124,7 +125,7 @@ class GamepadNetworkManager(
     fun switchToAdbConnection(serverName: String? = null) {
         val resolvedName = serverName ?: "PC via USB ADB"
         if (!isUsbDebuggingEnabled()) {
-            android.util.Log.w("NEXPAD", "Refusing ADB switch: USB Debugging is OFF.")
+            Log.w("NEXPAD", "Refusing ADB switch: USB Debugging is OFF.")
             _connectionStatus.value = "USB Debugging is OFF"
             return
         }
@@ -512,7 +513,7 @@ class GamepadNetworkManager(
                 setReferenceCounted(false)
                 acquire()
             }
-            android.util.Log.d("NEXPAD", "🔒 WifiLock Acquired: WIFI_MODE_FULL_LOW_LATENCY")
+            Log.d("NEXPAD", "🔒 WifiLock Acquired: WIFI_MODE_FULL_LOW_LATENCY")
             
             if (wakeLock?.isHeld != true) {
                 val powerManager = context.applicationContext.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
@@ -520,10 +521,10 @@ class GamepadNetworkManager(
                     setReferenceCounted(false)
                     acquire(10 * 60 * 1000L)
                 }
-                android.util.Log.d("NEXPAD", "🔒 WakeLock Acquired (Partial, 10-min safety timeout)")
+                Log.d("NEXPAD", "🔒 WakeLock Acquired (Partial, 10-min safety timeout)")
             }
         } catch (e: Exception) {
-            android.util.Log.e("NEXPAD", "❌ Failed to acquire locks: ${e.message}")
+            Log.e("NEXPAD", "❌ Failed to acquire locks: ${e.message}")
         }
     }
 
@@ -537,9 +538,9 @@ class GamepadNetworkManager(
                 setReferenceCounted(false)
                 acquire(timeoutMs)
             }
-            android.util.Log.d("NEXPAD", "🔒 WakeLock Refreshed (Partial, ${timeoutMs / 60000}m timeout)")
+            Log.d("NEXPAD", "🔒 WakeLock Refreshed (Partial, ${timeoutMs / 60000}m timeout)")
         } catch (e: Exception) {
-            android.util.Log.e("NEXPAD", "❌ Failed to refresh WakeLock: ${e.message}")
+            Log.e("NEXPAD", "❌ Failed to refresh WakeLock: ${e.message}")
         }
     }
 
@@ -547,11 +548,11 @@ class GamepadNetworkManager(
         try {
             if (wifiLock?.isHeld == true) {
                 wifiLock?.release()
-                android.util.Log.d("NEXPAD", "🔓 WifiLock Released")
+                Log.d("NEXPAD", "🔓 WifiLock Released")
             }
             if (wakeLock?.isHeld == true) {
                 wakeLock?.release()
-                android.util.Log.d("NEXPAD", "🔓 WakeLock Released")
+                Log.d("NEXPAD", "🔓 WakeLock Released")
             }
         } catch (e: Exception) {
             e.printStackTrace()
