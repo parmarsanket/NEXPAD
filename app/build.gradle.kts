@@ -45,6 +45,12 @@ android {
     experimentalProperties["android.experimental.enableScreenshotTest"] = true
 }
 
+androidComponents {
+    beforeVariants(selector().withBuildType("release")) { variantBuilder ->
+        variantBuilder.hostTests[com.android.build.api.variant.HostTestBuilder.SCREENSHOT_TEST_TYPE]?.enable = false
+    }
+}
+
 composeCompiler {
     reportsDestination = layout.buildDirectory.dir("compose_reports")
     metricsDestination = layout.buildDirectory.dir("compose_metrics")
