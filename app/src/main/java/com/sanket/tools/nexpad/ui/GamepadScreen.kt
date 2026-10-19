@@ -475,7 +475,8 @@ fun GamepadScreen(
                 heightScale = position.heightScale ?: 1.0f,
                 isFlipped = position.isFlipped ?: false,
                 isLocked = isLocked,
-                labelStyle = profile.controllerLabelStyle
+                labelStyle = profile.controllerLabelStyle,
+                touchpadCurve = position.touchpadCurve
             )
         }
     )
@@ -633,7 +634,8 @@ fun GamepadScreenContent(
                     isConnected = isConnected,
                     isRgbEnabled = profile.isRgbEnabled,
                     viewModel = viewModel,
-                    sensitivity = ltpPos.sensitivity
+                    sensitivity = ltpPos.sensitivity,
+                    curve = com.sanket.tools.nexpad.model.TouchpadCurve.fromId(ltpPos.touchpadCurve)
                 )
             }
         }
@@ -654,7 +656,8 @@ fun GamepadScreenContent(
                     isConnected = isConnected,
                     isRgbEnabled = profile.isRgbEnabled,
                     viewModel = viewModel,
-                    sensitivity = rtpPos.sensitivity
+                    sensitivity = rtpPos.sensitivity,
+                    curve = com.sanket.tools.nexpad.model.TouchpadCurve.fromId(rtpPos.touchpadCurve)
                 )
             }
         }

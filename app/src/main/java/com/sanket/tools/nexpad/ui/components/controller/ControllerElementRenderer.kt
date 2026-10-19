@@ -40,7 +40,8 @@ fun ControllerElementRenderer(
     isFlipped: Boolean = false,
     isLocked: Boolean = true,
     labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    touchpadCurve: String? = null
 ) {
     val context = LocalContext.current
     val isNative = remember(customComponentId) { NativeComponentRegistry.isNativeBuiltin(customComponentId) }
@@ -81,7 +82,8 @@ fun ControllerElementRenderer(
                 inputTarget = viewModel?.asInputTarget(onVibrate) ?: NoOpInputTarget,
                 rumbleIntensity = rumbleIntensity,
                 labelStyle = labelStyle,
-                sizingPolicy = com.sanket.tools.nexpad.runtime.engine.NxprcSizingPolicy.GamepadHud
+                sizingPolicy = com.sanket.tools.nexpad.runtime.engine.NxprcSizingPolicy.GamepadHud,
+                touchpadCurve = touchpadCurve
             )
             return
         }
@@ -101,7 +103,8 @@ fun ControllerElementRenderer(
             isFlipped = isFlipped,
             isLocked = isLocked,
             labelStyle = labelStyle,
-            modifier = modifier
+            modifier = modifier,
+            touchpadCurve = touchpadCurve
         )
         return
     }
@@ -129,7 +132,8 @@ fun ControllerElementRenderer(
             definition = customDef,
             assignedControl = targetControl,
             isConnected = isConnected,
-            inputTarget = viewModel?.asInputTarget(onVibrate) ?: NoOpInputTarget
+            inputTarget = viewModel?.asInputTarget(onVibrate) ?: NoOpInputTarget,
+            touchpadCurve = touchpadCurve
         )
         return
     }
@@ -145,6 +149,7 @@ fun ControllerElementRenderer(
         sensitivity = sensitivity,
         isLocked = isLocked,
         labelStyle = labelStyle,
-        modifier = modifier
+        modifier = modifier,
+        touchpadCurve = touchpadCurve
     )
 }

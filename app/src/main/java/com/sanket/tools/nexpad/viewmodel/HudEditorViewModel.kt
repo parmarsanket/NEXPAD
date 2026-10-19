@@ -302,6 +302,16 @@ class HudEditorViewModel(
         _hasUnsavedChanges.value = true
     }
 
+    fun setTouchpadCurve(controlKey: String, newCurve: String) {
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
+        val updated = current.copy(
+            transform = current.transform.copy(touchpadCurve = newCurve)
+        )
+        elements[targetKey] = updated
+        _hasUnsavedChanges.value = true
+    }
+
     fun setHeightScale(controlKey: String, newHeightScale: Float) {
         val targetKey = resolveElementKey(controlKey)
         val current = elements[targetKey] ?: return
@@ -620,11 +630,12 @@ class HudEditorViewModel(
                 if (!success) {
                     throw IllegalStateException("Failed to save layout profile '${updatedProfile.name}'. Name may be invalid or reserved.")
                 }
-                // Persist any updated touchpad sensitivities
+                // Persist any updated touchpad sensitivities and curves
                 elementsSnapshot.forEach { element ->
                     val key = element.controlKey
                     if (key.equals(ControlKey.LTP.key, ignoreCase = true) || key.equals(ControlKey.RTP.key, ignoreCase = true)) {
                         layoutManager.updateTouchpadSensitivity(key, element.transform.sensitivity)
+                        layoutManager.updateTouchpadCurve(key, element.transform.touchpadCurve)
                     }
                 }
                 withContext(Dispatchers.Main) {

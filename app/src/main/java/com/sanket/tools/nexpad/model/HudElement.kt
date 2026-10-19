@@ -18,7 +18,8 @@ data class LayoutTransform(
     val isFlipped: Boolean = false,
     val isLocked: Boolean = true,
     val joystickMode: String = com.sanket.tools.nexpad.model.JoystickMode.DEFAULT.id,
-    val hitboxScale: Float = 1.5f
+    val hitboxScale: Float = 1.5f,
+    val touchpadCurve: String = com.sanket.tools.nexpad.model.TouchpadCurve.DEFAULT.id
 )
 
 /**
@@ -80,7 +81,8 @@ data class HudElement(
         isFlipped = transform.isFlipped,
         isLocked = transform.isLocked,
         joystickMode = transform.joystickMode,
-        hitboxScale = transform.hitboxScale
+        hitboxScale = transform.hitboxScale,
+        touchpadCurve = transform.touchpadCurve
     )
 
     companion object {
@@ -99,7 +101,8 @@ data class HudElement(
                     isFlipped = position.isFlipped ?: false,
                     isLocked = resolvedLocked,
                     joystickMode = resolvedMode,
-                    hitboxScale = position.hitboxScale ?: 1.5f
+                    hitboxScale = position.hitboxScale ?: 1.5f,
+                    touchpadCurve = position.touchpadCurve ?: com.sanket.tools.nexpad.model.TouchpadCurve.DEFAULT.id
                 ),
                 skinId = position.customComponentId
             )

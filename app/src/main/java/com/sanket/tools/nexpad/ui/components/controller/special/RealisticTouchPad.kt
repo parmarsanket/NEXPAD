@@ -136,17 +136,29 @@ internal class VelocityRingBuffer(private val capacity: Int = 8) {
  * - Exponential Acceleration Zone: 400..1200 dp/s -> 0.50..1.00 (Smooth flick curve to full 1.00 deflection)
  * - Saturation Zone: > 1200 dp/s -> 1.00 (clamped maximum)
  */
-internal fun calculateGamingStickMagnitude(speedDpPerSec: Float, sensitivity: Float): Float {
+internal fun calculateGamingStickMagnitude(
+    speedDpPerSec: Float,
+    sensitivity: Float,
+    curve: com.sanket.tools.nexpad.model.TouchpadCurve = com.sanket.tools.nexpad.model.TouchpadCurve.POWER
+): Float {
     val effSpeed = speedDpPerSec * sensitivity.coerceAtLeast(0.1f)
-    return when {
-        effSpeed < 8f -> 0f
-        effSpeed <= 120f -> 0.16f + 0.09f * ((effSpeed - 8f) / 112f)
-        effSpeed <= 400f -> 0.25f + 0.25f * ((effSpeed - 120f) / 280f)
-        effSpeed <= 1200f -> {
-            val norm = (effSpeed - 400f) / 800f
-            0.50f + 0.50f * norm.toDouble().pow(1.35).toFloat()
+    return when (curve) {
+        com.sanket.tools.nexpad.model.TouchpadCurve.LINEAR -> {
+            if (effSpeed <= 0.5f) 0f
+            else (effSpeed / 600f).coerceIn(0f, 1f)
         }
-        else -> 1.0f
+        com.sanket.tools.nexpad.model.TouchpadCurve.POWER -> {
+            when {
+                effSpeed < 8f -> 0f
+                effSpeed <= 120f -> 0.16f + 0.09f * ((effSpeed - 8f) / 112f)
+                effSpeed <= 400f -> 0.25f + 0.25f * ((effSpeed - 120f) / 280f)
+                effSpeed <= 1200f -> {
+                    val norm = (effSpeed - 400f) / 800f
+                    0.50f + 0.50f * norm.toDouble().pow(1.35).toFloat()
+                }
+                else -> 1.0f
+            }
+        }
     }
 }
 
@@ -385,6 +397,7 @@ fun RealisticTouchPad(
     onVibrate: () -> Unit = {},
     isRgbEnabled: Boolean = false,
     sensitivity: Float? = null,
+    curve: com.sanket.tools.nexpad.model.TouchpadCurve? = null,
     modifier: Modifier = Modifier,
     isInteractive: Boolean = true
 ) {
@@ -448,6 +461,13 @@ fun RealisticTouchPad(
             com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadSensitivity(padKey)
         }
     }
+    val effectiveCurve = remember(context, curve, padKey) {
+        if (curve != null) {
+            curve
+        } else {
+            com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadCurve(padKey)
+        }
+    }
 
     Box(
         modifier = modifier
@@ -482,7 +502,7 @@ fun RealisticTouchPad(
             )
             .then(
                 if (isInteractive) {
-                    Modifier.pointerInput(isLeft, effectiveSensitivity, density) {
+                    Modifier.pointerInput(isLeft, effectiveSensitivity, effectiveCurve, density) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     var previousTouchX = down.position.x
@@ -491,6 +511,8 @@ fun RealisticTouchPad(
                     var previousTimeMs = System.currentTimeMillis()
                     var currentStickX = 0f
                     var currentStickY = 0f
+                    var accumulatedDeltaX = 0f
+                    var accumulatedDeltaY = 0f
                     val velocityBuffer = VelocityRingBuffer(8)
 
                     isDragging = true
@@ -549,20 +571,25 @@ fun RealisticTouchPad(
                                 }
                             } else {
                                 // Directional axis stabilization: suppress minor diagonal cross-talk
-                                var finalDeltaX = deltaX
-                                var finalDeltaY = deltaY
+                                var stepDeltaX = deltaX
+                                var stepDeltaY = deltaY
                                 val absX = abs(deltaX)
                                 val absY = abs(deltaY)
                                 if (absX > 3.0f * absY) {
-                                    finalDeltaY *= 0.5f
+                                    stepDeltaY *= 0.5f
                                 } else if (absY > 3.0f * absX) {
-                                    finalDeltaX *= 0.5f
+                                    stepDeltaX *= 0.5f
                                 }
 
-                                val distPx = hypot(finalDeltaX, finalDeltaY)
+                                accumulatedDeltaX += stepDeltaX
+                                accumulatedDeltaY += stepDeltaY
+
+                                val distPx = hypot(accumulatedDeltaX, accumulatedDeltaY)
                                 val distDp = distPx / density
 
-                                if (distDp > 0.15f) {
+                                // Micro-delta threshold: 0.04f dp ensures creeping thumb movements safely accumulate
+                                // across frames without being dropped, delivering smooth micro-aim at any framerate (60Hz, 120Hz).
+                                if (distDp >= 0.04f) {
                                     val currentTimeMs = System.currentTimeMillis()
                                     val dtSec = ((currentTimeMs - previousTimeMs).coerceAtLeast(1L)) / 1000f
                                     previousTimeMs = currentTimeMs
@@ -572,11 +599,11 @@ fun RealisticTouchPad(
 
                                     // 100% sensitivity boost: 2x factor enables reaching 1.0f with moderate swipe speeds
                                     val boostSensitivity = effectiveSensitivity * 2.0f
-                                    val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, boostSensitivity)
+                                    val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, boostSensitivity, effectiveCurve)
 
                                     if (stickMagnitude > 0f) {
-                                        val dirX = finalDeltaX / distPx
-                                        val dirY = finalDeltaY / distPx
+                                        val dirX = accumulatedDeltaX / distPx
+                                        val dirY = accumulatedDeltaY / distPx
 
                                         val targetStickX = (dirX * stickMagnitude).coerceIn(-1f, 1f)
                                         val targetStickY = (-dirY * stickMagnitude).coerceIn(-1f, 1f) // Up is positive Y
@@ -604,11 +631,16 @@ fun RealisticTouchPad(
                                             viewModel?.updateRightStick(0f, 0f)
                                         }
                                     }
+
+                                    accumulatedDeltaX = 0f
+                                    accumulatedDeltaY = 0f
                                 }
                             }
                         }
                     } finally {
                         isDragging = false
+                        accumulatedDeltaX = 0f
+                        accumulatedDeltaY = 0f
                         decayJob?.cancel()
                         if (isLeft) viewModel?.updateLeftStick(0f, 0f)
                         else viewModel?.updateRightStick(0f, 0f)

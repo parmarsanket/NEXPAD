@@ -68,7 +68,8 @@ fun NxpComposeInterpreter(
     inputTarget: NexPadInputTarget,
     modifier: Modifier = Modifier,
     isInteractive: Boolean = true,
-    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX
+    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
+    touchpadCurve: String? = null
 ) {
     val isDpadCross = definition.manifest.defaultControl.equals(NexpadKeys.DPAD, ignoreCase = true) ||
             (definition.manifest.category.equals(NexpadKeys.DPAD, ignoreCase = true) && definition.size.widthDp >= 100) ||
@@ -77,7 +78,7 @@ fun NxpComposeInterpreter(
     if (definition.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
         definition.interaction.type.equals("Joystick", ignoreCase = true)
     ) {
-        RenderNxpJoystick(definition, assignedControl, isConnected, inputTarget, modifier, isInteractive)
+        RenderNxpJoystick(definition, assignedControl, isConnected, inputTarget, modifier, isInteractive, touchpadCurve)
     } else if (isDpadCross) {
         RenderNxpDPad(definition, isConnected, inputTarget, modifier, isInteractive)
     } else {
@@ -447,7 +448,8 @@ private fun RenderNxpJoystick(
     isConnected: Boolean,
     inputTarget: NexPadInputTarget,
     modifier: Modifier,
-    isInteractive: Boolean = true
+    isInteractive: Boolean = true,
+    touchpadCurve: String? = null
 ) {
     var thumbOffset by remember { mutableStateOf(Offset.Zero) }
     val currentInputTarget by rememberUpdatedState(inputTarget)
@@ -476,13 +478,28 @@ private fun RenderNxpJoystick(
             Pair(false, 1.0f)
         }
     }
+    val effectiveTouchpadCurve = remember(context, stickControl.isLeft, def.manifest, touchpadCurve) {
+        val isTouchpad = def.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
+                def.manifest.defaultControl.contains("RTP", ignoreCase = true) ||
+                def.manifest.defaultControl.contains("LTP", ignoreCase = true)
+        if (isTouchpad) {
+            if (!touchpadCurve.isNullOrBlank()) {
+                com.sanket.tools.nexpad.model.TouchpadCurve.fromId(touchpadCurve)
+            } else {
+                val padKey = if (stickControl.isLeft) "LTP" else "RTP"
+                com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadCurve(padKey)
+            }
+        } else {
+            com.sanket.tools.nexpad.model.TouchpadCurve.DEFAULT
+        }
+    }
     val coroutineScope = rememberCoroutineScope()
     val density = androidx.compose.ui.platform.LocalDensity.current.density
 
     val gestureModifier = if (!isInteractive) {
         Modifier
     } else if (isCameraMode) {
-        Modifier.pointerInput(isConnected, stickControl, cameraSensitivity, density) {
+        Modifier.pointerInput(isConnected, stickControl, cameraSensitivity, effectiveTouchpadCurve, density) {
             var coastJob: Job? = null
             awaitEachGesture {
                 val down = awaitFirstDown(requireUnconsumed = false)
@@ -493,6 +510,8 @@ private fun RenderNxpJoystick(
                 var previousTimeMs = startTime
                 var currentStickX = 0f
                 var currentStickY = 0f
+                var accumulatedDeltaX = 0f
+                var accumulatedDeltaY = 0f
                 var lastSpeed = 0f
                 var decayJob: Job? = null
                 val velocityBuffer = VelocityRingBuffer(8)
@@ -511,20 +530,25 @@ private fun RenderNxpJoystick(
                     previousTouchX = currentTouchX
                     previousTouchY = currentTouchY
 
-                    var finalDeltaX = deltaX
-                    var finalDeltaY = deltaY
+                    var stepDeltaX = deltaX
+                    var stepDeltaY = deltaY
                     val absX = kotlin.math.abs(deltaX)
                     val absY = kotlin.math.abs(deltaY)
                     if (absX > 3.0f * absY) {
-                        finalDeltaY *= 0.5f // Suppress vertical wobble during horizontal turns
+                        stepDeltaY *= 0.5f // Suppress vertical wobble during horizontal turns
                     } else if (absY > 3.0f * absX) {
-                        finalDeltaX *= 0.5f // Suppress horizontal wobble during vertical looks
+                        stepDeltaX *= 0.5f // Suppress horizontal wobble during vertical looks
                     }
 
-                    val distPx = hypot(finalDeltaX, finalDeltaY)
+                    accumulatedDeltaX += stepDeltaX
+                    accumulatedDeltaY += stepDeltaY
+
+                    val distPx = hypot(accumulatedDeltaX, accumulatedDeltaY)
                     val distDp = distPx / density
 
-                    if (distDp > 0.15f) {
+                    // Micro-delta threshold: 0.04f dp ensures creeping thumb movements safely accumulate
+                    // across frames without being dropped, delivering smooth micro-aim at any framerate (60Hz, 120Hz).
+                    if (distDp >= 0.04f) {
                         val currentTimeMs = System.currentTimeMillis()
                         val dtSec = ((currentTimeMs - previousTimeMs).coerceAtLeast(1L)) / 1000f
                         previousTimeMs = currentTimeMs
@@ -534,11 +558,11 @@ private fun RenderNxpJoystick(
                         val smoothedSpeed = velocityBuffer.averageSpeed()
                         lastSpeed = smoothedSpeed
 
-                        val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, cameraSensitivity)
+                        val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, cameraSensitivity, effectiveTouchpadCurve)
 
                         if (stickMagnitude > 0f) {
-                            val dirX = finalDeltaX / distPx
-                            val dirY = finalDeltaY / distPx
+                            val dirX = accumulatedDeltaX / distPx
+                            val dirY = accumulatedDeltaY / distPx
 
                             val targetStickX = (dirX * stickMagnitude).coerceIn(-1f, 1f)
                             val targetStickY = (-dirY * stickMagnitude).coerceIn(-1f, 1f)
@@ -583,6 +607,9 @@ private fun RenderNxpJoystick(
                                 lastSpeed = 0f
                             }
                         }
+
+                        accumulatedDeltaX = 0f
+                        accumulatedDeltaY = 0f
                     }
                 }
                 decayJob?.cancel()

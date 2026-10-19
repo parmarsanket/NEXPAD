@@ -2,6 +2,7 @@ package com.sanket.tools.nexpad.ui.hud
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
@@ -45,6 +46,7 @@ fun HudDockedInspector(
     onScaleChange: (Float) -> Unit,
     onOpacityChange: (Float) -> Unit,
     onSensitivityChange: ((Float) -> Unit)? = null,
+    onTouchpadCurveChange: ((String) -> Unit)? = null,
     onHeightScaleChange: ((Float) -> Unit)? = null,
     onToggleFlip: (() -> Unit)? = null,
     onToggleLock: (() -> Unit)? = null,
@@ -186,6 +188,21 @@ fun HudDockedInspector(
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = NeonPalette.Green,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+
+                        val padCurve = com.sanket.tools.nexpad.model.TouchpadCurve.fromId(transform.touchpadCurve)
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = if (padCurve == com.sanket.tools.nexpad.model.TouchpadCurve.LINEAR) NeonPalette.Cyan.copy(alpha = 0.18f) else NeonPalette.Purple.copy(alpha = 0.18f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (padCurve == com.sanket.tools.nexpad.model.TouchpadCurve.LINEAR) NeonPalette.Cyan.copy(alpha = 0.5f) else NeonPalette.Purple.copy(alpha = 0.5f))
+                        ) {
+                            Text(
+                                text = "Curve: ${padCurve.displayName}",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (padCurve == com.sanket.tools.nexpad.model.TouchpadCurve.LINEAR) NeonPalette.Cyan else NeonPalette.Purple,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
@@ -411,6 +428,54 @@ fun HudDockedInspector(
                             modifier = Modifier.size(28.dp)
                         ) {
                             Icon(Icons.Rounded.Add, contentDescription = "Increase Sensitivity", tint = Color.White, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
+
+                // 3.5b. Touchpad Response Curve Controls (Linear vs Power Curve)
+                if (isTouchpad && onTouchpadCurveChange != null) {
+                    VerticalDivider(modifier = Modifier.height(28.dp), color = Color.White.copy(alpha = 0.1f))
+
+                    val activeCurve = com.sanket.tools.nexpad.model.TouchpadCurve.fromId(transform.touchpadCurve)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "Curve:",
+                            fontSize = 11.sp,
+                            color = Color.White.copy(alpha = 0.7f),
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        // Power Curve Button
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = if (activeCurve == com.sanket.tools.nexpad.model.TouchpadCurve.POWER) NeonPalette.Purple.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.06f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (activeCurve == com.sanket.tools.nexpad.model.TouchpadCurve.POWER) NeonPalette.Purple else Color.White.copy(alpha = 0.15f)),
+                            modifier = Modifier.clickable { onTouchpadCurveChange(com.sanket.tools.nexpad.model.TouchpadCurve.POWER.id) }
+                        ) {
+                            Text(
+                                text = "Power",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (activeCurve == com.sanket.tools.nexpad.model.TouchpadCurve.POWER) NeonPalette.Purple else Color.White.copy(alpha = 0.6f),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                        // Linear Curve Button
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = if (activeCurve == com.sanket.tools.nexpad.model.TouchpadCurve.LINEAR) NeonPalette.Cyan.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.06f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (activeCurve == com.sanket.tools.nexpad.model.TouchpadCurve.LINEAR) NeonPalette.Cyan else Color.White.copy(alpha = 0.15f)),
+                            modifier = Modifier.clickable { onTouchpadCurveChange(com.sanket.tools.nexpad.model.TouchpadCurve.LINEAR.id) }
+                        ) {
+                            Text(
+                                text = "Linear",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (activeCurve == com.sanket.tools.nexpad.model.TouchpadCurve.LINEAR) NeonPalette.Cyan else Color.White.copy(alpha = 0.6f),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
                         }
                     }
                 }

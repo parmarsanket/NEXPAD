@@ -608,6 +608,12 @@ class LayoutManager(
         com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(appContext).setTouchpadSensitivity(key, sens)
     }
 
+    /** Updates touchpad response curve preferences (POWER vs LINEAR) via centralized repository. */
+    fun updateTouchpadCurve(key: String, curveId: String) {
+        val curve = com.sanket.tools.nexpad.model.TouchpadCurve.fromId(curveId)
+        com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(appContext).setTouchpadCurve(key, curve)
+    }
+
     companion object {
         private const val TAG = "NexpadLayoutManager"
         const val MAX_PROFILE_NAME_LENGTH = 32

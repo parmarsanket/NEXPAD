@@ -453,7 +453,8 @@ fun NxprcCanvasRenderer(
     rumbleIntensity: Float = 0f,
     isInteractive: Boolean = true,
     labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
-    sizingPolicy: NxprcSizingPolicy = NxprcSizingPolicy.GamepadHud
+    sizingPolicy: NxprcSizingPolicy = NxprcSizingPolicy.GamepadHud,
+    touchpadCurve: String? = null
 ) {
     val buttonControl = remember(assignedControl) {
         when (assignedControl) {
@@ -547,6 +548,21 @@ fun NxprcCanvasRenderer(
             Pair(prefs.isRightStickCameraMode, prefs.cameraSensitivity)
         } else {
             Pair(false, 1.0f)
+        }
+    }
+    val effectiveTouchpadCurve = remember(context, stick.isLeft, document.manifest, touchpadCurve) {
+        val isTouchpad = document.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
+                document.manifest.defaultControl.equals(NexpadKeys.RTP, ignoreCase = true) ||
+                document.manifest.defaultControl.equals(NexpadKeys.LTP, ignoreCase = true)
+        if (isTouchpad) {
+            if (!touchpadCurve.isNullOrBlank()) {
+                com.sanket.tools.nexpad.model.TouchpadCurve.fromId(touchpadCurve)
+            } else {
+                val padKey = if (stick.isLeft) "LTP" else "RTP"
+                com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadCurve(padKey)
+            }
+        } else {
+            com.sanket.tools.nexpad.model.TouchpadCurve.DEFAULT
         }
     }
 
@@ -763,7 +779,7 @@ fun NxprcCanvasRenderer(
         Modifier
     } else when {
         isStick -> {
-            Modifier.pointerInput(document.manifest.id, assignedControl, isCameraMode, cameraSensitivity, density) {
+            Modifier.pointerInput(document.manifest.id, assignedControl, isCameraMode, cameraSensitivity, effectiveTouchpadCurve, density) {
                 var coastJob: Job? = null
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -776,6 +792,8 @@ fun NxprcCanvasRenderer(
                     var previousTimeMs = System.currentTimeMillis()
                     var currentStickX = 0f
                     var currentStickY = 0f
+                    var accumulatedDeltaX = 0f
+                    var accumulatedDeltaY = 0f
                     var lastSpeed = 0f
                     var decayJob: kotlinx.coroutines.Job? = null
                     val velocityBuffer = VelocityRingBuffer(8)
@@ -826,20 +844,25 @@ fun NxprcCanvasRenderer(
                         previousTouchY = currentTouchY
 
                         if (isCameraMode) {
-                            var finalDeltaX = deltaX
-                            var finalDeltaY = deltaY
+                            var stepDeltaX = deltaX
+                            var stepDeltaY = deltaY
                             val absX = kotlin.math.abs(deltaX)
                             val absY = kotlin.math.abs(deltaY)
                             if (absX > 3.0f * absY) {
-                                finalDeltaY *= 0.5f // Suppress vertical wobble during horizontal turns
+                                stepDeltaY *= 0.5f // Suppress vertical wobble during horizontal turns
                             } else if (absY > 3.0f * absX) {
-                                finalDeltaX *= 0.5f // Suppress horizontal wobble during vertical looks
+                                stepDeltaX *= 0.5f // Suppress horizontal wobble during vertical looks
                             }
 
-                            val distPx = hypot(finalDeltaX, finalDeltaY)
+                            accumulatedDeltaX += stepDeltaX
+                            accumulatedDeltaY += stepDeltaY
+
+                            val distPx = hypot(accumulatedDeltaX, accumulatedDeltaY)
                             val distDp = distPx / density
 
-                            if (distDp > 0.15f) {
+                            // Micro-delta threshold: 0.04f dp ensures creeping thumb movements safely accumulate
+                            // across frames without being dropped, delivering smooth micro-aim at any framerate (60Hz, 120Hz).
+                            if (distDp >= 0.04f) {
                                 val currentTimeMs = System.currentTimeMillis()
                                 val dtSec = ((currentTimeMs - previousTimeMs).coerceAtLeast(1L)) / 1000f
                                 previousTimeMs = currentTimeMs
@@ -849,11 +872,11 @@ fun NxprcCanvasRenderer(
                                 val smoothedSpeed = velocityBuffer.averageSpeed()
                                 lastSpeed = smoothedSpeed
 
-                                val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, cameraSensitivity)
+                                val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, cameraSensitivity, effectiveTouchpadCurve)
 
                                 if (stickMagnitude > 0f) {
-                                    val dirX = finalDeltaX / distPx
-                                    val dirY = finalDeltaY / distPx
+                                    val dirX = accumulatedDeltaX / distPx
+                                    val dirY = accumulatedDeltaY / distPx
 
                                     val targetStickX = (dirX * stickMagnitude).coerceIn(-1f, 1f)
                                     val targetStickY = (-dirY * stickMagnitude).coerceIn(-1f, 1f)
@@ -862,7 +885,7 @@ fun NxprcCanvasRenderer(
                                     currentStickX = 0.55f * targetStickX + 0.45f * currentStickX
                                     currentStickY = 0.55f * targetStickY + 0.45f * currentStickY
 
-                                     currentInputTarget.onStickMove(stick, currentStickX, currentStickY)
+                                    currentInputTarget.onStickMove(stick, currentStickX, currentStickY)
 
                                     thumbOffsetX = (currentStickX * maxRadius).coerceIn(-maxRadius, maxRadius)
                                     thumbOffsetY = (-currentStickY * maxRadius).coerceIn(-maxRadius, maxRadius)
@@ -893,6 +916,9 @@ fun NxprcCanvasRenderer(
                                         lastSpeed = 0f
                                     }
                                 }
+
+                                accumulatedDeltaX = 0f
+                                accumulatedDeltaY = 0f
                             }
                         } else {
                             val vecX = change.position.x - centerX

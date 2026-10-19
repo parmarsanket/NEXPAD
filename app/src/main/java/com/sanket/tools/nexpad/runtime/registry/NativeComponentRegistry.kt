@@ -37,7 +37,8 @@ data class NativeRenderContext(
     val isFlipped: Boolean = false,
     val isLocked: Boolean = true,
     val labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
-    val modifier: Modifier = Modifier
+    val modifier: Modifier = Modifier,
+    val touchpadCurve: String? = null
 ) {
     val displayLabel: String get() = CategoryManager.getLabelForStyle(key, labelStyle)
 }
@@ -2102,6 +2103,7 @@ object RealisticLeftTouchPadVariant : BaseNativeVariant("builtin.default_ltp", C
             onVibrate = context.onVibrate,
             isRgbEnabled = context.isRgbEnabled,
             sensitivity = context.sensitivity,
+            curve = com.sanket.tools.nexpad.model.TouchpadCurve.fromId(context.touchpadCurve),
             modifier = context.modifier
         )
     }
@@ -2129,6 +2131,7 @@ object RealisticRightTouchPadVariant : BaseNativeVariant("builtin.default_rtp", 
             onVibrate = context.onVibrate,
             isRgbEnabled = context.isRgbEnabled,
             sensitivity = context.sensitivity,
+            curve = com.sanket.tools.nexpad.model.TouchpadCurve.fromId(context.touchpadCurve),
             modifier = context.modifier
         )
     }
@@ -2578,7 +2581,8 @@ object NativeComponentRegistry {
         isFlipped: Boolean = false,
         isLocked: Boolean = true,
         labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
-        modifier: Modifier = Modifier
+        modifier: Modifier = Modifier,
+        touchpadCurve: String? = null
     ) {
         if (key.equals("GYRO", ignoreCase = true) || customComponentId?.startsWith("builtin.gyro_btn") == true) {
             GyroToggleButton(
@@ -2606,7 +2610,8 @@ object NativeComponentRegistry {
             isFlipped = isFlipped,
             isLocked = isLocked,
             labelStyle = labelStyle,
-            modifier = modifier
+            modifier = modifier,
+            touchpadCurve = touchpadCurve
         )
 
         if (variant != null) {

@@ -78,6 +78,22 @@ class NexpadPreferences private constructor(context: Context) {
         }
     }
 
+    fun getTouchpadCurve(padKey: String): com.sanket.tools.nexpad.model.TouchpadCurve {
+        val specific = prefs.getString(NexpadPreferenceKeys.touchpadCurveKey(padKey), null)
+        if (!specific.isNullOrBlank()) return com.sanket.tools.nexpad.model.TouchpadCurve.fromId(specific)
+        val global = prefs.getString(NexpadPreferenceKeys.KEY_TOUCHPAD_CURVE, null)
+        if (!global.isNullOrBlank()) return com.sanket.tools.nexpad.model.TouchpadCurve.fromId(global)
+        return com.sanket.tools.nexpad.model.TouchpadCurve.DEFAULT
+    }
+
+    fun setTouchpadCurve(padKey: String, curve: com.sanket.tools.nexpad.model.TouchpadCurve) {
+        val upperKey = padKey.uppercase()
+        prefs.edit {
+            putString(NexpadPreferenceKeys.touchpadCurveKey(upperKey), curve.id)
+            putString(NexpadPreferenceKeys.KEY_TOUCHPAD_CURVE, curve.id)
+        }
+    }
+
     // ─── Rumble & Navigation Domain APIs ────────────────────────────────
 
     var rumbleMode: com.sanket.tools.nexpad.model.RumbleMode

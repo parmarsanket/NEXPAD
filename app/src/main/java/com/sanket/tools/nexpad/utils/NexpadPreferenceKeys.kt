@@ -36,6 +36,8 @@ object NexpadPreferenceKeys {
 
     const val KEY_TOUCHPAD_SENSITIVITY = "TOUCHPAD_SENSITIVITY"
     fun touchpadSensitivityKey(padKey: String): String = "TOUCHPAD_SENSITIVITY_${padKey.uppercase()}"
+    const val KEY_TOUCHPAD_CURVE = "TOUCHPAD_CURVE"
+    fun touchpadCurveKey(padKey: String): String = "TOUCHPAD_CURVE_${padKey.uppercase()}"
 
     // Haptics & Vibration Keys (FILE_PREFS)
     const val KEY_BUTTON_HAPTICS_ENABLED = "BUTTON_HAPTICS_ENABLED"

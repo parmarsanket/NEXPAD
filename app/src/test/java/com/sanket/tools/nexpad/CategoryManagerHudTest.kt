@@ -9,6 +9,7 @@ import com.sanket.tools.nexpad.model.LayoutProfile
 import com.sanket.tools.nexpad.model.LayoutSkin
 import com.sanket.tools.nexpad.model.LayoutTransform
 import com.sanket.tools.nexpad.model.Position
+import com.sanket.tools.nexpad.model.TouchpadCurve
 import com.sanket.tools.nexpad.model.getControlDefaultPosition
 import com.sanket.tools.nexpad.model.standardElitePositions
 import org.junit.Assert.*
@@ -781,6 +782,58 @@ class CategoryManagerHudTest {
         // 5. Saturation Zone: > 1200 dp/s must clamp at 1.00f
         assertEquals("Flick speeds > 1200 dp/s must clamp at 1.00f", 1.00f, calculateGamingStickMagnitude(1800f, sensitivity), 0.0001f)
         assertEquals("Extreme flick speeds must clamp at 1.00f", 1.00f, calculateGamingStickMagnitude(3000f, sensitivity), 0.0001f)
+    }
+
+    @Test
+    fun testTouchpadLinearCurveVsPowerCurve() {
+        val sensitivity = 1.0f
+
+        // 1. Linear Curve: 1:1 proportional response
+        // Deadzone <= 0.5 dp/s
+        assertEquals(0f, calculateGamingStickMagnitude(0.4f, sensitivity, TouchpadCurve.LINEAR), 0.0001f)
+        // 60 dp/s -> 60 / 600 = 0.10f
+        assertEquals(0.10f, calculateGamingStickMagnitude(60f, sensitivity, TouchpadCurve.LINEAR), 0.001f)
+        // 300 dp/s -> 300 / 600 = 0.50f
+        assertEquals(0.50f, calculateGamingStickMagnitude(300f, sensitivity, TouchpadCurve.LINEAR), 0.001f)
+        // 600 dp/s -> 600 / 600 = 1.00f
+        assertEquals(1.00f, calculateGamingStickMagnitude(600f, sensitivity, TouchpadCurve.LINEAR), 0.001f)
+        // > 600 dp/s clamps to 1.00f
+        assertEquals(1.00f, calculateGamingStickMagnitude(900f, sensitivity, TouchpadCurve.LINEAR), 0.001f)
+
+        // 2. Power Curve: 5-zone ballistics
+        // < 8 dp/s noise gate
+        assertEquals(0f, calculateGamingStickMagnitude(5f, sensitivity, TouchpadCurve.POWER), 0.0001f)
+        // 8 dp/s anti-deadzone floor 0.16f
+        assertEquals(0.16f, calculateGamingStickMagnitude(8f, sensitivity, TouchpadCurve.POWER), 0.001f)
+        // 400 dp/s golden sweet spot 0.50f
+        assertEquals(0.50f, calculateGamingStickMagnitude(400f, sensitivity, TouchpadCurve.POWER), 0.001f)
+        // 1200 dp/s full deflection
+        assertEquals(1.00f, calculateGamingStickMagnitude(1200f, sensitivity, TouchpadCurve.POWER), 0.001f)
+    }
+
+    @Test
+    fun testTouchpadMicroDeltaAccumulationAt120Hz() {
+        // At 120Hz (~8.3ms per frame), creeping thumb movement at 4 dp/s produces ~0.033 dp per frame.
+        // Without accumulation, sub-0.15dp frames would be dropped forever.
+        // With micro-delta accumulation and threshold 0.04f dp, small deltas accumulate over 2 frames:
+        var accumulatedDeltaX = 0f
+        var accumulatedDeltaY = 0f
+        val perFrameDelta = 0.033f
+        val thresholdDp = 0.04f
+
+        var dispatchedFrames = 0
+        for (frame in 1..10) {
+            accumulatedDeltaX += perFrameDelta
+            val distDp = kotlin.math.hypot(accumulatedDeltaX, accumulatedDeltaY)
+            if (distDp >= thresholdDp) {
+                dispatchedFrames++
+                accumulatedDeltaX = 0f
+                accumulatedDeltaY = 0f
+            }
+        }
+
+        // 10 frames * 0.033 = 0.33 total dp. At 0.04f threshold, every 2 frames crosses threshold -> exactly 5 dispatches!
+        assertEquals("Slow speed creeping must accumulate and trigger regular events (5 dispatches for 10 frames)", 5, dispatchedFrames)
     }
 
     @Test

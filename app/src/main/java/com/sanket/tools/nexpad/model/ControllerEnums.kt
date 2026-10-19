@@ -93,6 +93,28 @@ enum class JoystickMode(
 }
 
 /**
+ * Touchpad acceleration and speed response curves.
+ * Mirrors gyro response curves for flexible game handling (sniping micro-aim vs fast turns).
+ */
+enum class TouchpadCurve(
+    val id: String,
+    val displayName: String
+) {
+    POWER("POWER", "Power Curve"),
+    LINEAR("LINEAR", "Linear Curve");
+
+    companion object {
+        val DEFAULT = POWER
+
+        fun fromId(id: String?): TouchpadCurve {
+            if (id.isNullOrBlank()) return DEFAULT
+            val clean = id.trim().uppercase()
+            return entries.firstOrNull { it.id == clean } ?: DEFAULT
+        }
+    }
+}
+
+/**
  * Clean UI badge display name for ControllerLabelStyle ("Xbox" vs "PS").
  */
 val com.sanket.tools.nexpad.category.ControllerLabelStyle.shortDisplayName: String

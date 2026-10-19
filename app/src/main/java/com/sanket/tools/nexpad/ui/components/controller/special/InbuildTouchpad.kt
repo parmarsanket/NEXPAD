@@ -322,6 +322,7 @@ fun InbuildTouchpadHalf(
     viewModel: GamepadViewModel?,
     onVibrate: () -> Unit = {},
     sensitivity: Float? = null,
+    curve: com.sanket.tools.nexpad.model.TouchpadCurve? = null,
     modifier: Modifier = Modifier,
     boundsProvider: (() -> List<Rect>)? = null
 ) {
@@ -351,13 +352,20 @@ fun InbuildTouchpadHalf(
             com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadSensitivity(padKey)
         }
     }
+    val effectiveCurve = remember(context, curve, padKey) {
+        if (curve != null) {
+            curve
+        } else {
+            com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadCurve(padKey)
+        }
+    }
 
     val marginPx = with(LocalDensity.current) { 16.dp.toPx() }
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .pointerInput(isLeft, effectiveSensitivity, density, screenWidthPx) {
+            .pointerInput(isLeft, effectiveSensitivity, effectiveCurve, density, screenWidthPx) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     decayJob?.cancel()
@@ -395,6 +403,8 @@ fun InbuildTouchpadHalf(
                     var previousTimeMs = System.currentTimeMillis()
                     var currentStickX = 0f
                     var currentStickY = 0f
+                    var accumulatedDeltaX = 0f
+                    var accumulatedDeltaY = 0f
                     val velocityBuffer = VelocityRingBuffer(8)
 
                     if (isLeft) {
@@ -446,20 +456,25 @@ fun InbuildTouchpadHalf(
                                 }
                             } else {
                                 // Directional axis stabilization: suppress minor diagonal cross-talk
-                                var finalDeltaX = deltaX
-                                var finalDeltaY = deltaY
+                                var stepDeltaX = deltaX
+                                var stepDeltaY = deltaY
                                 val absX = abs(deltaX)
                                 val absY = abs(deltaY)
                                 if (absX > 3.0f * absY) {
-                                    finalDeltaY *= 0.5f
+                                    stepDeltaY *= 0.5f
                                 } else if (absY > 3.0f * absX) {
-                                    finalDeltaX *= 0.5f
+                                    stepDeltaX *= 0.5f
                                 }
 
-                                val distPx = hypot(finalDeltaX, finalDeltaY)
+                                accumulatedDeltaX += stepDeltaX
+                                accumulatedDeltaY += stepDeltaY
+
+                                val distPx = hypot(accumulatedDeltaX, accumulatedDeltaY)
                                 val distDp = distPx / density
 
-                                if (distDp > 0.15f) {
+                                // Micro-delta threshold: 0.04f dp ensures creeping thumb movements safely accumulate
+                                // across frames without being dropped, delivering smooth micro-aim at any framerate (60Hz, 120Hz).
+                                if (distDp >= 0.04f) {
                                     val currentTimeMs = System.currentTimeMillis()
                                     val dtSec = ((currentTimeMs - previousTimeMs).coerceAtLeast(1L)) / 1000f
                                     previousTimeMs = currentTimeMs
@@ -469,11 +484,11 @@ fun InbuildTouchpadHalf(
 
                                     // 100% sensitivity boost: 2x factor enables reaching 1.0f with moderate swipe speeds
                                     val boostSensitivity = effectiveSensitivity * 2.0f
-                                    val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, boostSensitivity)
+                                    val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, boostSensitivity, effectiveCurve)
 
                                     if (stickMagnitude > 0f) {
-                                        val dirX = finalDeltaX / distPx
-                                        val dirY = finalDeltaY / distPx
+                                        val dirX = accumulatedDeltaX / distPx
+                                        val dirY = accumulatedDeltaY / distPx
 
                                         val targetStickX = (dirX * stickMagnitude).coerceIn(-1f, 1f)
                                         val targetStickY = (-dirY * stickMagnitude).coerceIn(-1f, 1f) // Up is positive Y
@@ -501,11 +516,16 @@ fun InbuildTouchpadHalf(
                                             viewModel?.updateRightStick(0f, 0f)
                                         }
                                     }
+
+                                    accumulatedDeltaX = 0f
+                                    accumulatedDeltaY = 0f
                                 }
                             }
                         }
                     } finally {
                         isTouching = false
+                        accumulatedDeltaX = 0f
+                        accumulatedDeltaY = 0f
                         decayJob?.cancel()
                         if (isLeft) viewModel?.updateLeftStick(0f, 0f)
                         else viewModel?.updateRightStick(0f, 0f)

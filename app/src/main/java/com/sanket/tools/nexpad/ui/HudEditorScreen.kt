@@ -276,6 +276,7 @@ fun HudEditorScreen(
                 onScaleChange = { if (activeKey.isNotEmpty()) viewModel.setScale(activeKey, it) },
                 onOpacityChange = { if (activeKey.isNotEmpty()) viewModel.setOpacity(activeKey, it) },
                 onSensitivityChange = { if (activeKey.isNotEmpty()) viewModel.setSensitivity(activeKey, it) },
+                onTouchpadCurveChange = { if (activeKey.isNotEmpty()) viewModel.setTouchpadCurve(activeKey, it) },
                 onHeightScaleChange = { if (activeKey.isNotEmpty()) viewModel.setHeightScale(activeKey, it) },
                 onToggleFlip = { if (activeKey.isNotEmpty()) viewModel.toggleFlip(activeKey) },
                 onToggleLock = { if (activeKey.isNotEmpty()) viewModel.toggleLock(activeKey) },

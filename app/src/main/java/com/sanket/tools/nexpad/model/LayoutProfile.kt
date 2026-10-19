@@ -77,7 +77,8 @@ data class Position(
     val isFlipped: Boolean? = null,
     val isLocked: Boolean? = null,
     val joystickMode: String? = null,
-    val hitboxScale: Float? = null
+    val hitboxScale: Float? = null,
+    val touchpadCurve: String? = null
 ) {
     /**
      * Sanitizes floating point coordinates against NaN, Infinity, and out-of-bound values.

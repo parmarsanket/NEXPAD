@@ -172,7 +172,8 @@ fun HudCanvas(
                         heightScale = element.transform.heightScale,
                         isFlipped = element.transform.isFlipped,
                         isLocked = element.transform.isLocked,
-                        labelStyle = labelStyle
+                        labelStyle = labelStyle,
+                        touchpadCurve = element.transform.touchpadCurve
                     )
 
                     // Broken asset warning badge when custom component is missing
