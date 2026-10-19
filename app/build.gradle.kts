@@ -14,8 +14,7 @@ android {
     defaultConfig {
         applicationId = "com.sanket.tools.nexpad"
         minSdk = 29
-        //noinspection OldTargetApi
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
 
