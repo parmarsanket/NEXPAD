@@ -665,12 +665,23 @@ fun NxprcCanvasRenderer(
         )
     } else null
 
-    val (rawWidthDp, rawHeightDp, renderScale) = remember(document, overrideSizeDp, sizingPolicy) {
+    val isDpadCross = (assignedControl is NexPadControl.Button && (assignedControl.key.equals(NexpadKeys.DPAD, ignoreCase = true) || document.manifest.defaultControl.equals(NexpadKeys.DPAD, ignoreCase = true))) ||
+            (document.manifest.category.equals(NexpadKeys.DPAD, ignoreCase = true) && assignedControl is NexPadControl.Button && assignedControl.key.equals(NexpadKeys.DPAD, ignoreCase = true)) ||
+            (document.manifest.id.contains("dpad_cross", ignoreCase = true))
+
+    val isTouchpad = document.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
+            document.manifest.defaultControl.uppercase() in listOf(NexpadKeys.LTP, NexpadKeys.RTP)
+
+    val (rawWidthDp, rawHeightDp, renderScale) = remember(document, overrideSizeDp, sizingPolicy, isStick, isDpadCross, isTouchpad) {
         when (sizingPolicy) {
             is NxprcSizingPolicy.GamepadHud -> {
                 val w = (overrideSizeDp ?: document.manifest.widthDp).toFloat()
                 val h = (overrideSizeDp ?: document.manifest.heightDp).toFloat()
-                Triple(w * 0.82f, h * 0.82f, 1.0f)
+                if (isStick || isDpadCross || isTouchpad) {
+                    Triple(w, h, 1.0f)
+                } else {
+                    Triple(w * 0.82f, h * 0.82f, 1.0f)
+                }
             }
             is NxprcSizingPolicy.StudioGrid -> {
                 val w = (overrideSizeDp ?: document.manifest.widthDp).toFloat()
@@ -691,13 +702,6 @@ fun NxprcCanvasRenderer(
 
     val widthDp = rawWidthDp.roundToInt()
     val heightDp = rawHeightDp.roundToInt()
-
-    val isDpadCross = (assignedControl is NexPadControl.Button && (assignedControl.key.equals(NexpadKeys.DPAD, ignoreCase = true) || document.manifest.defaultControl.equals(NexpadKeys.DPAD, ignoreCase = true))) ||
-            (document.manifest.category.equals(NexpadKeys.DPAD, ignoreCase = true) && assignedControl is NexPadControl.Button && assignedControl.key.equals(NexpadKeys.DPAD, ignoreCase = true)) ||
-            (document.manifest.id.contains("dpad_cross", ignoreCase = true))
-
-    val isTouchpad = document.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
-            document.manifest.defaultControl.uppercase() in listOf(NexpadKeys.LTP, NexpadKeys.RTP)
 
     val rawAuraColor = remember(document, effectiveControlKey, labelStyle) {
         resolveAuraColor(document, effectiveControlKey, labelStyle)
