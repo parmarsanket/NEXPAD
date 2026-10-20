@@ -25,7 +25,8 @@ import com.sanket.tools.nexpad.share.ShareManager
 import com.sanket.tools.nexpad.ui.studio.model.ButtonStudioMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
@@ -273,7 +274,9 @@ fun VirtualControllerScreenContent(
     var localProfiles by remember(profiles) { mutableStateOf(profiles) }
     var dragging by remember { mutableStateOf(isAnyItemDragging) }
 
-    val screenWidthDp = LocalConfiguration.current.screenWidthDp
+    val windowInfo = LocalWindowInfo.current
+    val density = LocalDensity.current
+    val screenWidthDp = with(density) { windowInfo.containerSize.width.toDp().value }
     val isVeryCompact = screenWidthDp < 380
     val isCompact = screenWidthDp < 600
 

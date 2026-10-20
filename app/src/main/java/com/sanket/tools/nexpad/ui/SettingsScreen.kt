@@ -72,6 +72,7 @@ import com.sanket.tools.nexpad.model.DefaultProfileType
 import com.sanket.tools.nexpad.model.HapticStyle
 import com.sanket.tools.nexpad.model.RumbleMode
 import com.sanket.tools.nexpad.utils.NexpadPreferenceKeys
+import androidx.core.net.toUri
 
 const val PREF_DOUBLE_TAP_BACK_EXIT = NexpadPreferenceKeys.KEY_DOUBLE_TAP_BACK_EXIT
 const val NEXPAD_DESKTOP_GITHUB_URL = "https://github.com/parmarsanket/NEXPAD-Desktop"
@@ -182,7 +183,7 @@ fun SettingsScreen(
                 Toast.makeText(context, "YouTube channel link coming soon!", Toast.LENGTH_SHORT).show()
             } else {
                 try {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                    val intent = Intent(Intent.ACTION_VIEW, url.toUri()).apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
                     context.startActivity(intent)

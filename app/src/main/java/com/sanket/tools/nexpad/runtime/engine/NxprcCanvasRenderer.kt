@@ -59,7 +59,6 @@ import kotlin.math.hypot
 import kotlin.math.pow
 import kotlin.math.sin
 
-@Suppress("NOTHING_TO_INLINE")
 internal inline fun Color.toArgbLong(): Long = (this.toArgb().toLong()) and 0xFFFFFFFFL
 
 internal enum class NxprcShapeType {
@@ -1028,7 +1027,7 @@ fun NxprcCanvasRenderer(
                         val deadzone = size.width * 0.12f
                         val maxRadius = size.width * 0.70f
 
-                        val newDirs = if (dist < deadzone || dist > maxRadius) {
+                        val newDirs = if (dist !in deadzone..maxRadius) {
                             emptySet()
                         } else {
                             val angle = Math.toDegrees(kotlin.math.atan2(dy.toDouble(), dx.toDouble()))
@@ -2512,9 +2511,9 @@ private fun computeBrush(fill: FillBrush, size: Size, topLeft: Offset = Offset.Z
             val angleRad = Math.toRadians((fill.angleDegrees - 90.0))
             val cx = topLeft.x + size.width / 2f
             val cy = topLeft.y + size.height / 2f
-            val halfLen = Math.hypot(size.width.toDouble(), size.height.toDouble()).toFloat() / 2f
-            val cos = Math.cos(angleRad).toFloat()
-            val sin = Math.sin(angleRad).toFloat()
+            val halfLen = hypot(size.width.toDouble(), size.height.toDouble()).toFloat() / 2f
+            val cos = cos(angleRad).toFloat()
+            val sin = sin(angleRad).toFloat()
             val start = Offset(cx - cos * halfLen, cy - sin * halfLen)
             val end = Offset(cx + cos * halfLen, cy + sin * halfLen)
 
@@ -2695,8 +2694,8 @@ internal fun buildRegularPolygonPath(sides: Int, targetRect: Rect): Path {
 
     for (i in 0 until sides) {
         val a = startAngle + i * angleStep
-        val x = (cx + rx * Math.cos(a)).toFloat()
-        val y = (cy + ry * Math.sin(a)).toFloat()
+        val x = (cx + rx * cos(a)).toFloat()
+        val y = (cy + ry * sin(a)).toFloat()
         if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
     }
     path.close()

@@ -55,6 +55,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * High-performance Jetpack Compose interpreter for .nxpcomponent definitions.
@@ -582,7 +583,7 @@ private fun RenderNxpJoystick(
                             val decayTimeoutMs = (120L - (smoothedSpeed / 20f).toLong()).coerceIn(50L, 120L)
                             decayJob?.cancel()
                             decayJob = coroutineScope.launch {
-                                delay(decayTimeoutMs)
+                                delay(decayTimeoutMs.milliseconds)
                                 // 3-stage gentle decay
                                 currentStickX *= 0.5f
                                 currentStickY *= 0.5f
@@ -591,7 +592,7 @@ private fun RenderNxpJoystick(
                                     currentStickX * maxRadiusPx,
                                     -currentStickY * maxRadiusPx
                                 )
-                                delay(30)
+                                delay(30.milliseconds)
                                 currentStickX *= 0.2f
                                 currentStickY *= 0.2f
                                 currentInputTarget.onStickMove(stickControl, currentStickX, currentStickY)
@@ -599,7 +600,7 @@ private fun RenderNxpJoystick(
                                     currentStickX * maxRadiusPx,
                                     -currentStickY * maxRadiusPx
                                 )
-                                delay(25)
+                                delay(25.milliseconds)
                                 currentStickX = 0f
                                 currentStickY = 0f
                                 currentInputTarget.onStickMove(stickControl, 0f, 0f)

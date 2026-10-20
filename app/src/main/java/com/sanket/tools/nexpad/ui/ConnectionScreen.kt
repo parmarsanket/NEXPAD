@@ -40,6 +40,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -62,6 +64,7 @@ import com.sanket.tools.nexpad.ui.layout.adaptiveLayoutSpec
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.ui.components.common.NxOutlinedButton
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
+import androidx.core.net.toUri
 
 const val NEXPAD_DESKTOP_DOWNLOAD_URL = "https://github.com/parmarsanket/NEXPAD-Desktop"
 
@@ -211,7 +214,7 @@ fun ConnectionScreen(
         onDisconnect = { viewModel.disconnect() },
         onDownloadDesktop = {
             try {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(NEXPAD_DESKTOP_DOWNLOAD_URL)).apply {
+                val intent = Intent(Intent.ACTION_VIEW, NEXPAD_DESKTOP_DOWNLOAD_URL.toUri()).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
                 context.startActivity(intent)
@@ -256,9 +259,13 @@ fun ConnectionScreenContent(
     onToggleManualIpCard: () -> Unit = {},
     onConnectManualIp: () -> Unit = {}
 ) {
-    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
-    val windowLayout = remember(configuration.screenWidthDp, configuration.screenHeightDp) {
-        adaptiveLayoutSpec(configuration.screenWidthDp.dp, configuration.screenHeightDp.dp)
+    val windowInfo = LocalWindowInfo.current
+    val density = LocalDensity.current
+    val windowLayout = remember(windowInfo.containerSize, density) {
+        val (widthDp, heightDp) = with(density) {
+            windowInfo.containerSize.width.toDp() to windowInfo.containerSize.height.toDp()
+        }
+        adaptiveLayoutSpec(widthDp, heightDp)
     }
 
     Scaffold(

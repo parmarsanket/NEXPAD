@@ -32,6 +32,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -168,9 +170,13 @@ fun HomeScreenContent(
 ) {
     val scrollState = rememberScrollState()
 
-    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
-    val windowLayout = remember(configuration.screenWidthDp, configuration.screenHeightDp) {
-        adaptiveLayoutSpec(configuration.screenWidthDp.dp, configuration.screenHeightDp.dp)
+    val windowInfo = LocalWindowInfo.current
+    val density = LocalDensity.current
+    val windowLayout = remember(windowInfo.containerSize, density) {
+        val (widthDp, heightDp) = with(density) {
+            windowInfo.containerSize.width.toDp() to windowInfo.containerSize.height.toDp()
+        }
+        adaptiveLayoutSpec(widthDp, heightDp)
     }
     val topTitleSize = when (windowLayout.deviceType) {
         com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.Tablet -> 44.sp

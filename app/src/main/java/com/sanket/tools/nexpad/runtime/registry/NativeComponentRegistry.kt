@@ -1,6 +1,7 @@
 package com.sanket.tools.nexpad.runtime.registry
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.sanket.tools.nexpad.category.CategoryManager
@@ -25,6 +26,7 @@ import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
  * Encapsulated context containing all runtime state, haptics, and geometry
  * needed to render an interactive native controller element.
  */
+@Stable
 data class NativeRenderContext(
     val controlKey: ControlKey,
     val key: String,
@@ -2570,6 +2572,7 @@ object NativeComponentRegistry {
      */
     @Composable
     fun RenderNativeElement(
+        modifier: Modifier = Modifier,
         key: String,
         customComponentId: String?,
         isConnected: Boolean,
@@ -2581,7 +2584,6 @@ object NativeComponentRegistry {
         isFlipped: Boolean = false,
         isLocked: Boolean = true,
         labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
-        modifier: Modifier = Modifier,
         touchpadCurve: String? = null
     ) {
         if (key.equals("GYRO", ignoreCase = true) || customComponentId?.startsWith("builtin.gyro_btn") == true) {
@@ -2626,10 +2628,10 @@ object NativeComponentRegistry {
      */
     @Composable
     fun RenderStaticPreview(
+        modifier: Modifier = Modifier,
         id: String?,
         controlKey: String,
         labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
-        modifier: Modifier = Modifier
     ) {
         if (controlKey.equals("GYRO", ignoreCase = true) || id?.startsWith("builtin.gyro_btn") == true) {
             StaticGyroToggleButton(

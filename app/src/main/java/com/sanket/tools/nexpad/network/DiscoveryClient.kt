@@ -108,7 +108,7 @@ class DiscoveryClient {
                     } catch (e: Exception) {
                         if (isActive) {
                             e.printStackTrace()
-                            delay(1000) // Back off if network is temporarily down
+                            delay(1000.milliseconds) // Back off if network is temporarily down
                         }
                     }
                 }
