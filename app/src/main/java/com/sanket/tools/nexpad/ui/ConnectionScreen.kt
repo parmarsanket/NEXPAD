@@ -79,9 +79,11 @@ fun ConnectionScreen(
     val connectionStatus by viewModel.connectionStatus.collectAsState()
     val discoveredServers by viewModel.discoveredServers.collectAsState()
     val isAoaAttached by viewModel.isAoaAttached.collectAsState()
+    val aoaDeviceName by viewModel.aoaDeviceName.collectAsState()
     val isUsbCableConnected by viewModel.isUsbCableConnected.collectAsState()
     val isAdbAvailable by viewModel.isAdbAvailable.collectAsState()
     val adbServerName by viewModel.adbServerName.collectAsState()
+    val adbServerPort by viewModel.adbServerPort.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -143,9 +145,12 @@ fun ConnectionScreen(
         discoveredServers = discoveredServers,
         pairedDevices = pairedDevices,
         isAoaAttached = isAoaAttached,
+        aoaDeviceName = aoaDeviceName,
         isUsbCableConnected = isUsbCableConnected,
         isAdbAvailable = isAdbAvailable,
         adbServerName = adbServerName,
+        adbServerPort = adbServerPort,
+        defaultPort = nexpadPrefs.defaultCommunicationPort,
         isUsbDebuggingEnabled = viewModel.isUsbDebuggingEnabled(),
         snackbarHostState = snackbarHostState,
         manualIp = manualIp,
@@ -168,7 +173,7 @@ fun ConnectionScreen(
         onConnectServer = { ip, port, name ->
             viewModel.connect(ip, port, name)
         },
-        onConnectAoa = { viewModel.switchToAoaConnection() },
+        onConnectAoa = { viewModel.switchToAoaConnection(aoaDeviceName) },
         onConnectAdb = { viewModel.switchToAdbConnection() },
         onConnectBluetooth = { address, name ->
             viewModel.switchToBluetoothConnection(address, name)
@@ -234,9 +239,12 @@ fun ConnectionScreenContent(
     discoveredServers: List<com.sanket.tools.nexpad.network.DiscoveredServer> = emptyList(),
     pairedDevices: List<android.bluetooth.BluetoothDevice> = emptyList(),
     isAoaAttached: Boolean = false,
+    aoaDeviceName: String? = null,
     isUsbCableConnected: Boolean = false,
     isAdbAvailable: Boolean = false,
     adbServerName: String? = null,
+    adbServerPort: Int = 9999,
+    defaultPort: Int = 9999,
     isUsbDebuggingEnabled: Boolean = false,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     onConnectServer: (String, Int, String) -> Unit = { _, _, _ -> },
@@ -311,6 +319,8 @@ fun ConnectionScreenContent(
                     isUsbCableConnected = isUsbCableConnected,
                     isAdbAvailable = isAdbAvailable,
                     adbServerName = adbServerName,
+                    adbServerPort = adbServerPort,
+                    aoaDeviceName = aoaDeviceName,
                     isUsbDebuggingEnabled = isUsbDebuggingEnabled,
                     onConnectServer = onConnectServer,
                     onConnectAoa = onConnectAoa,
@@ -357,7 +367,10 @@ fun ConnectionScreenContent(
                                 isAdbAvailable = isAdbAvailable,
                                 onRescan = onRescanNetwork,
                                 onOpenBluetoothSettings = onOpenBluetoothSettings,
-                                layout = layout
+                                layout = layout,
+                                aoaDeviceName = aoaDeviceName,
+                                adbServerPort = adbServerPort,
+                                adbServerName = adbServerName
                             )
                         }
                     }
@@ -378,7 +391,8 @@ fun ConnectionScreenContent(
                             onIpChange = onManualIpChange,
                             onPortChange = onManualPortChange,
                             onConnect = onConnectManualIp,
-                            layout = layout
+                            layout = layout,
+                            defaultPort = defaultPort
                         )
                         ConnectionDesktopDownloadCard(
                             onDownload = onDownloadDesktop,
@@ -413,7 +427,10 @@ fun ConnectionScreenContent(
                             isAdbAvailable = isAdbAvailable,
                             onRescan = onRescanNetwork,
                             onOpenBluetoothSettings = onOpenBluetoothSettings,
-                            layout = layout
+                            layout = layout,
+                            aoaDeviceName = aoaDeviceName,
+                            adbServerPort = adbServerPort,
+                            adbServerName = adbServerName
                         )
                     }
                     transportsComposable()
@@ -423,7 +440,8 @@ fun ConnectionScreenContent(
                         onIpChange = onManualIpChange,
                         onPortChange = onManualPortChange,
                         onConnect = onConnectManualIp,
-                        layout = layout
+                        layout = layout,
+                        defaultPort = defaultPort
                     )
                     ConnectionDesktopDownloadCard(
                         onDownload = onDownloadDesktop,

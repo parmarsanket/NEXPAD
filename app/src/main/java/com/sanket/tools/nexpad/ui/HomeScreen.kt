@@ -71,9 +71,11 @@ fun HomeScreen(
     val discoveredServers by viewModel.discoveredServers.collectAsState()
     val connectionStats by viewModel.connectionStats.collectAsState()
     val isAoaAttached by viewModel.isAoaAttached.collectAsState()
+    val aoaDeviceName by viewModel.aoaDeviceName.collectAsState()
     val isUsbCableConnected by viewModel.isUsbCableConnected.collectAsState()
     val isAdbAvailable by viewModel.isAdbAvailable.collectAsState()
     val adbServerName by viewModel.adbServerName.collectAsState()
+    val adbServerPort by viewModel.adbServerPort.collectAsState()
     val profiles by layoutManager.profilesFlow.collectAsState()
     val activeProfileName by layoutManager.activeProfileNameFlow.collectAsState()
 
@@ -108,9 +110,11 @@ fun HomeScreen(
         discoveredServers = discoveredServers,
         connectionStats = connectionStats,
         isAoaAttached = isAoaAttached && isUsbCableConnected,
+        aoaDeviceName = aoaDeviceName,
         isUsbCableConnected = isUsbCableConnected,
         isAdbAvailable = isAdbAvailable,
         adbServerName = adbServerName,
+        adbServerPort = adbServerPort,
         profiles = profiles,
         activeProfileName = activeProfileName,
         onProfileSelected = { selected ->
@@ -130,7 +134,7 @@ fun HomeScreen(
             )
             viewModel.connect(server.ipAddress, server.port, server.name)
         },
-        onConnectAoa = { viewModel.switchToAoaConnection() },
+        onConnectAoa = { viewModel.switchToAoaConnection(aoaDeviceName) },
         onConnectAdb = { viewModel.switchToAdbConnection() },
         onDisconnectClick = { viewModel.disconnect() },
         onOpenConnectionHub = { navController.navigate(Route.Connections) },
@@ -148,9 +152,11 @@ fun HomeScreenContent(
     discoveredServers: List<com.sanket.tools.nexpad.network.DiscoveredServer> = emptyList(),
     connectionStats: com.sanket.tools.nexpad.viewmodel.ConnectionStats = com.sanket.tools.nexpad.viewmodel.ConnectionStats(),
     isAoaAttached: Boolean = false,
+    aoaDeviceName: String? = null,
     isUsbCableConnected: Boolean = false,
     isAdbAvailable: Boolean = false,
     adbServerName: String? = null,
+    adbServerPort: Int = 9999,
     profiles: List<com.sanket.tools.nexpad.model.LayoutProfile> = com.sanket.tools.nexpad.model.getDefaultLayoutProfiles(),
     activeProfileName: String = com.sanket.tools.nexpad.model.DefaultProfileType.DEFAULT.profileName,
     onProfileSelected: (com.sanket.tools.nexpad.model.LayoutProfile) -> Unit = {},
@@ -287,7 +293,9 @@ fun HomeScreenContent(
                                 onConnectAdb = onConnectAdb,
                                 onDisconnectClick = onDisconnectClick,
                                 onOpenConnectionHub = onOpenConnectionHub,
-                                layout = layout
+                                layout = layout,
+                                adbServerPort = adbServerPort,
+                                aoaDeviceName = aoaDeviceName
                             )
                         }
 
@@ -357,7 +365,9 @@ fun HomeScreenContent(
                         onConnectAdb = onConnectAdb,
                         onDisconnectClick = onDisconnectClick,
                         onOpenConnectionHub = onOpenConnectionHub,
-                        layout = layout
+                        layout = layout,
+                        adbServerPort = adbServerPort,
+                        aoaDeviceName = aoaDeviceName
                     )
 
                     Text(

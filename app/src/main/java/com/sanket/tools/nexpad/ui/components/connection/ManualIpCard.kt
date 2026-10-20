@@ -62,7 +62,8 @@ fun ManualIpCard(
     onPortChange: (String) -> Unit,
     onConnect: () -> Unit,
     modifier: Modifier = Modifier,
-    layout: AdaptiveLayoutSpec? = null
+    layout: AdaptiveLayoutSpec? = null,
+    defaultPort: Int = 9999
 ) {
     val cardPadding = layout?.cardPadding ?: 16.dp
     val spacing = layout?.cardSpacing ?: 14.dp
@@ -178,7 +179,7 @@ fun ManualIpCard(
                     value = manualPort,
                     onValueChange = onPortChange,
                     label = { Text("Port", color = NeonPalette.SlateText) },
-                    placeholder = { Text("9999", color = NeonPalette.SlateMuted) },
+                    placeholder = { Text(defaultPort.toString(), color = NeonPalette.SlateMuted) },
                     modifier = Modifier
                         .weight(1f)
                         .onFocusEvent { focusState ->

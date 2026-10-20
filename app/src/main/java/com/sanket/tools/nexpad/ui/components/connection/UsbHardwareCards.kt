@@ -51,7 +51,8 @@ fun UsbAoaCard(
     isUsbCableConnected: Boolean,
     onConnectAoa: () -> Unit,
     modifier: Modifier = Modifier,
-    layout: AdaptiveLayoutSpec? = null
+    layout: AdaptiveLayoutSpec? = null,
+    aoaDeviceName: String? = null
 ) {
     val isAoaReady = isAoaAttached && isUsbCableConnected
     val accentColor = if (isAoaReady) NeonPalette.Cyan else Color.White
@@ -103,15 +104,15 @@ fun UsbAoaCard(
                     )
                     TitleColumn(
                         modifier = Modifier.weight(1f),
-                        title = "USB KERNEL DIRECT (AOA 2.0)",
+                        title = if (isAoaReady && !aoaDeviceName.isNullOrBlank()) "$aoaDeviceName (Direct USB)" else "USB KERNEL DIRECT (AOA 2.0)",
                         titleFontSize = titleFontSize,
-                        subtitle ="Sub-millisecond driverless hardware pipe",
+                        subtitle = if (isAoaReady) "Kernel Direct Pipe • USB AOA 2.0" else "Sub-millisecond driverless hardware pipe",
                         subtitleFontSize = subtitleFontSize
                     )
                 }
                 StatusBadgePill(
                     text = when {
-                        isAoaReady -> "Accessory Ready"
+                        isAoaReady -> if (!aoaDeviceName.isNullOrBlank()) "Ready ($aoaDeviceName)" else "Accessory Ready"
                         isUsbCableConnected -> "Waiting Desktop"
                         else -> "No USB Wire"
                     },
@@ -156,7 +157,8 @@ fun UsbAdbCard(
     onConnectAdb: () -> Unit,
     onOpenDeveloperSettings: () -> Unit,
     modifier: Modifier = Modifier,
-    layout: AdaptiveLayoutSpec? = null
+    layout: AdaptiveLayoutSpec? = null,
+    adbPort: Int = 9999
 ) {
     val accentColor = if (isAdbAvailable) NeonPalette.Green else Color.White
     val cardPadding = layout?.cardPadding ?: 16.dp
@@ -209,7 +211,7 @@ fun UsbAdbCard(
                         modifier = Modifier.weight(1f),
                         title = "USB ADB PORT BRIDGE",
                         titleFontSize = titleFontSize,
-                        subtitle = if (isAdbAvailable) "${adbServerName ?: "Desktop PC"} • Port 9999" else "Port forwarding (127.0.0.1:9999)",
+                        subtitle = if (isAdbAvailable) "${adbServerName ?: "Desktop PC"} • Port $adbPort (127.0.0.1:$adbPort)" else "Port Forwarding (127.0.0.1:$adbPort)",
                         subtitleFontSize = subtitleFontSize
                     )
 //
@@ -218,7 +220,7 @@ fun UsbAdbCard(
                     text = when {
                         !isUsbCableConnected -> "No USB Wire"
                         !isAdbOn -> "Debugging OFF"
-                        isAdbAvailable -> "Ready (${adbServerName ?: "PC"})"
+                        isAdbAvailable -> "Ready (${adbServerName ?: "PC"}:$adbPort)"
                         else -> "Waiting Bridge"
                     },
                     isPositive = isAdbAvailable
@@ -229,7 +231,7 @@ fun UsbAdbCard(
                 !isUsbCableConnected -> {
 //
                     ConnectionSubTitle(
-                        subtitle = "Connect phone to PC via USB cable to enable ADB port forwarding.",
+                        subtitle = "Connect phone to PC via USB cable to enable ADB port forwarding (127.0.0.1:$adbPort).",
                         subtitleFontSize = subtitleFontSize
                     )
                 }

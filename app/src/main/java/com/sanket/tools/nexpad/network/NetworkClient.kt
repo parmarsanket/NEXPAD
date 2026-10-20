@@ -19,7 +19,9 @@ import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.abs
 
-class NetworkClient : IGamepadConnection {
+class NetworkClient(
+    private val context: android.content.Context? = null
+) : IGamepadConnection {
     companion object {
         private const val RTT_RING_SIZE = 128
         private const val RTT_HISTORY_SIZE = 100
@@ -84,6 +86,8 @@ class NetworkClient : IGamepadConnection {
         withContext(Dispatchers.IO) {
             try {
                 serverAddress = InetSocketAddress(address, port)
+                val isUsbTethering = NetworkInterfaceHelper.isUsbTetheringAddress(address)
+                val matchingLocalIp = NetworkInterfaceHelper.findMatchingLocalAddress(address)
                 channel = DatagramChannel.open().apply {
                     configureBlocking(true)
                     // 0xB8 = (46 << 2) = DSCP EF (Expedited Forwarding) -> maps to WMM AC_VO (Voice) Queue
@@ -92,7 +96,26 @@ class NetworkClient : IGamepadConnection {
                     } catch (_: Exception) {}
                     socket().sendBufferSize = 65536
                     socket().receiveBufferSize = 65536
-                    socket().bind(InetSocketAddress(0)) // Bind to any local port
+                    // If connecting via Wi-Fi (not USB Tethering), bind socket to the Wi-Fi physical radio
+                    if (!isUsbTethering && context != null) {
+                        val wifiNetwork = NetworkInterfaceHelper.findWifiNetwork(context)
+                        if (wifiNetwork != null) {
+                            try {
+                                wifiNetwork.bindSocket(socket())
+                                Log.d("NEXPAD", "Bound UDP client socket to Wi-Fi Network")
+                            } catch (e: Exception) {
+                                Log.w("NEXPAD", "Could not bind client socket to Wi-Fi: ${e.message}")
+                            }
+                        }
+                    }
+
+                    // Explicitly bind to matching subnet local IP (wlan0 vs rndis0) to prevent kernel multi-homed routing confusion
+                    if (matchingLocalIp != null) {
+                        socket().bind(InetSocketAddress(matchingLocalIp, 0))
+                        Log.d("NEXPAD", "Bound UDP socket to local interface IP: ${matchingLocalIp.hostAddress}")
+                    } else {
+                        socket().bind(InetSocketAddress(0)) // Bind to any local port
+                    }
                     connect(serverAddress) // Restrict UDP channel to this server to fix NAT/Firewall drops
                 }
                 

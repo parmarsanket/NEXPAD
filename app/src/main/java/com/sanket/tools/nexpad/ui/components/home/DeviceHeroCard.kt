@@ -102,9 +102,11 @@ fun DeviceHeroCard(
     onDisconnectClick: () -> Unit,
     onOpenConnectionHub: () -> Unit,
     modifier: Modifier = Modifier,
-    layout: com.sanket.tools.nexpad.ui.layout.AdaptiveLayoutSpec? = null
+    layout: com.sanket.tools.nexpad.ui.layout.AdaptiveLayoutSpec? = null,
+    adbServerPort: Int = 9999,
+    aoaDeviceName: String? = null
 ) {
-    val state: DeviceCardState = remember(isConnected, servers, stats, isAoaAttached, isAdbAvailable, adbServerName) {
+    val state: DeviceCardState = remember(isConnected, servers, stats, isAoaAttached, isAdbAvailable, adbServerName, adbServerPort, aoaDeviceName) {
         when {
             isConnected -> {
                 val resolvedName = stats.serverDeviceName
@@ -121,11 +123,12 @@ fun DeviceHeroCard(
 
                 // 1. USB Direct AOA (Hardware kernel pipe)
                 if (isAoaAttached) {
+                    val displayName = aoaDeviceName ?: "NEXPAD PC (Direct USB)"
                     options.add(
                         HeroConnectionOption(
                             id = "usb_aoa",
-                            title = "NEXPAD PC (Direct USB)",
-                            subtitle = "Kernel Direct Pipe • AOA",
+                            title = displayName,
+                            subtitle = "Direct Hardware Pipe • USB AOA 2.0",
                             icon = Icons.Rounded.Usb,
                             buttonText = "Connect (AOA)",
                             onConnect = onConnectAoa
@@ -140,7 +143,7 @@ fun DeviceHeroCard(
                             HeroConnectionOption(
                                 id = "tether_${server.ipAddress}",
                                 title = server.name,
-                                subtitle = "${server.ipAddress} • USB Tethering",
+                                subtitle = "${server.ipAddress}:${server.port} • USB Tethering",
                                 icon = Icons.Rounded.Link,
                                 buttonText = "Connect (USB Tethering)",
                                 onConnect = { onConnectServer(server) }
@@ -151,7 +154,7 @@ fun DeviceHeroCard(
                             HeroConnectionOption(
                                 id = "wifi_${server.ipAddress}",
                                 title = server.name,
-                                subtitle = "${server.ipAddress} • Wi-Fi",
+                                subtitle = "${server.ipAddress}:${server.port} • Wi-Fi",
                                 icon = Icons.Rounded.Wifi,
                                 buttonText = "Connect (Wi-Fi)",
                                 onConnect = { onConnectServer(server) }
@@ -162,12 +165,12 @@ fun DeviceHeroCard(
 
                 // 3. USB ADB Port Forwarding (ONLY when physical USB connected and Desktop ADB handshake valid)
                 if (isAdbAvailable) {
-                    val displayName = adbServerName ?: "PC via USB ADB"
+                    val displayName = adbServerName ?: "Desktop PC"
                     options.add(
                         HeroConnectionOption(
                             id = "usb_adb",
                             title = displayName,
-                            subtitle = "Port Forwarding (127.0.0.1:9999) • USB ADB",
+                            subtitle = "Port Forwarding (127.0.0.1:$adbServerPort) • USB ADB",
                             icon = Icons.Rounded.Usb,
                             buttonText = "Connect (ADB)",
                             onConnect = onConnectAdb

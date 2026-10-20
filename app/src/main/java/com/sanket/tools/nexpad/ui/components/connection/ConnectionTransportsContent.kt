@@ -66,6 +66,8 @@ fun ConnectionTransportsContent(
     onDownloadDesktop: () -> Unit = {},
     modifier: Modifier = Modifier,
     layout: AdaptiveLayoutSpec? = null,
+    adbServerPort: Int = 9999,
+    aoaDeviceName: String? = null,
     // Optional compatibility parameters (kept with default values)
     manualIp: String = "",
     manualPort: String = "9999",
@@ -204,7 +206,8 @@ fun ConnectionTransportsContent(
                 isAoaAttached = isAoaAttached,
                 isUsbCableConnected = isUsbCableConnected,
                 onConnectAoa = onConnectAoa,
-                layout = layout
+                layout = layout,
+                aoaDeviceName = aoaDeviceName
             )
 
             UsbAdbCard(
@@ -214,7 +217,8 @@ fun ConnectionTransportsContent(
                 adbServerName = adbServerName,
                 onConnectAdb = onConnectAdb,
                 onOpenDeveloperSettings = onOpenDeveloperSettings,
-                layout = layout
+                layout = layout,
+                adbPort = adbServerPort
             )
 
             UsbTetheringCard(

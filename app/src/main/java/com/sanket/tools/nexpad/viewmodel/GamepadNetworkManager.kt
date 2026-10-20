@@ -91,7 +91,7 @@ class GamepadNetworkManager(
     @Volatile
     private var isClosed = false
     @Volatile
-    private var connection: IGamepadConnection = NetworkClient()
+    private var connection: IGamepadConnection = NetworkClient(context)
     @Volatile
     private var transmitThread: Thread? = null
     private val syncServer = NxprcSyncServer(context)
@@ -112,12 +112,13 @@ class GamepadNetworkManager(
         }
     }
 
-    fun switchToAoaConnection() {
+    fun switchToAoaConnection(serverName: String? = null) {
+        val resolvedName = serverName ?: "NEXPAD PC (Direct USB)"
         disconnect()
         connection.close()
         connection = AoaAccessoryConnection(context)
-        _connectedServerName.value = "NEXPAD PC (Direct USB)"
-        _connectionStats.value = _connectionStats.value.copy(transport = ConnectionType.USB, serverDeviceName = "NEXPAD PC (Direct USB)")
+        _connectedServerName.value = resolvedName
+        _connectionStats.value = _connectionStats.value.copy(transport = ConnectionType.USB, serverDeviceName = resolvedName)
         setupConnectionCallbacks()
         scope.launch { connection.connect("aoa", 0) }
     }
@@ -141,7 +142,7 @@ class GamepadNetworkManager(
     fun switchToUdpConnection() {
         disconnect()
         connection.close()
-        connection = NetworkClient()
+        connection = NetworkClient(context)
         _connectionStats.value = _connectionStats.value.copy(transport = ConnectionType.WIFI)
         setupConnectionCallbacks()
     }
@@ -280,7 +281,7 @@ class GamepadNetworkManager(
         if (connection !is NetworkClient) {
             disconnect()
             connection.close()
-            connection = NetworkClient()
+            connection = NetworkClient(context)
             setupConnectionCallbacks()
         }
         detectNetworkType(address)

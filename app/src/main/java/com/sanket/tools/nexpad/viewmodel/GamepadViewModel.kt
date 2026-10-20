@@ -57,7 +57,7 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
         rightStickY = 0f
     }
     
-    private val discoveryClient = DiscoveryClient {
+    private val discoveryClient = DiscoveryClient(getApplication()) {
         com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(getApplication()).defaultCommunicationPort
     }
     
@@ -94,6 +94,9 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     private val _isAoaAttached = MutableStateFlow(false)
     val isAoaAttached: StateFlow<Boolean> = _isAoaAttached.asStateFlow()
 
+    private val _aoaDeviceName = MutableStateFlow<String?>(null)
+    val aoaDeviceName: StateFlow<String?> = _aoaDeviceName.asStateFlow()
+
     private val _isUsbCableConnected = MutableStateFlow(false)
     val isUsbCableConnected: StateFlow<Boolean> = _isUsbCableConnected.asStateFlow()
 
@@ -105,6 +108,9 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
 
     private val _adbServerName = MutableStateFlow<String?>(null)
     val adbServerName: StateFlow<String?> = _adbServerName.asStateFlow()
+
+    private val _adbServerPort = MutableStateFlow(nexpadPrefs.defaultCommunicationPort)
+    val adbServerPort: StateFlow<Int> = _adbServerPort.asStateFlow()
 
     private var lastAdbSeenTimestamp = 0L
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
@@ -121,6 +127,7 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
                         _isAdbAvailable.value = false
                         _adbServerName.value = null
                         _isAoaAttached.value = false
+                        _aoaDeviceName.value = null
                         if (connectionStats.value.transport == ConnectionType.USB) {
                             disconnect()
                         }
@@ -133,17 +140,26 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
                 android.hardware.usb.UsbManager.ACTION_USB_ACCESSORY_DETACHED -> {
                     Log.d("NEXPAD", "AOA accessory detached intent received.")
                     _isAoaAttached.value = false
+                    _aoaDeviceName.value = null
                     if (connectionStats.value.transport == ConnectionType.USB) {
                         disconnect()
                     }
                 }
                 com.sanket.tools.nexpad.utils.NexpadHardwareActions.ACTION_ADB_DEVICE_READY -> {
                     val pcName = intent.getStringExtra(com.sanket.tools.nexpad.utils.NexpadHardwareActions.EXTRA_PC_NAME)?.trim()
-                    if (_isUsbCableConnected.value && isUsbDebuggingEnabled()) {
+                    val adbPort = intent.getIntExtra("port", -1)
+                    val configuredPort = nexpadPrefs.defaultCommunicationPort
+                    val effectivePort = if (adbPort != -1) adbPort else configuredPort
+                    _adbServerPort.value = effectivePort
+                    if (adbPort != -1 && adbPort != configuredPort) {
+                        Log.w("NEXPAD", "⚠️ ADB Port Mismatch: Desktop is on $adbPort, but Android is set to $configuredPort. Connection suppressed.")
+                        _isAdbAvailable.value = false
+                        _adbServerName.value = null
+                    } else if (_isUsbCableConnected.value && isUsbDebuggingEnabled()) {
                         _adbServerName.value = if (!pcName.isNullOrEmpty()) pcName else com.sanket.tools.nexpad.utils.NexpadHardwareActions.DEFAULT_PC_NAME
                         _isAdbAvailable.value = true
                         lastAdbSeenTimestamp = System.currentTimeMillis()
-                        Log.d("NEXPAD", "🤝 Received ADB_DEVICE_READY from: ${_adbServerName.value}")
+                        Log.d("NEXPAD", "🤝 Received ADB_DEVICE_READY from: ${_adbServerName.value} (Port $effectivePort)")
                     }
                 }
                 com.sanket.tools.nexpad.utils.NexpadHardwareActions.ACTION_ADB_DEVICE_DISCONNECTED -> {
@@ -157,8 +173,11 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     fun checkAoaAccessory(): Boolean {
         return try {
             val usbManager = getApplication<Application>().getSystemService(android.content.Context.USB_SERVICE) as? android.hardware.usb.UsbManager
-            val attached = !usbManager?.accessoryList.isNullOrEmpty()
+            val accessory = usbManager?.accessoryList?.firstOrNull()
+            val attached = accessory != null
             _isAoaAttached.value = attached
+            _aoaDeviceName.value = accessory?.description?.takeIf { it.isNotBlank() && it != "NEXPAD USB Gamepad" }
+                ?: accessory?.model?.takeIf { it.isNotBlank() }
             attached
         } catch (_: Exception) {
             false
@@ -330,7 +349,7 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
         resetStickState()
         networkManager.disconnect()
     }
-    fun switchToAoaConnection() = networkManager.switchToAoaConnection()
+    fun switchToAoaConnection(serverName: String? = null) = networkManager.switchToAoaConnection(serverName ?: _aoaDeviceName.value)
     fun switchToAdbConnection(serverName: String? = null) = networkManager.switchToAdbConnection(serverName ?: _adbServerName.value)
     fun getPairedBluetoothDevices() = networkManager.getPairedBluetoothDevices()
     fun switchToBluetoothConnection(macAddress: String, deviceName: String? = null) = networkManager.switchToBluetoothConnection(macAddress, deviceName)

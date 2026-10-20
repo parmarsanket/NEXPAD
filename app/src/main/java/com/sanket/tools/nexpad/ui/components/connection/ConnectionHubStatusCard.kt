@@ -57,7 +57,10 @@ fun ConnectionHubStatusCard(
     onRescan: () -> Unit,
     onOpenBluetoothSettings: () -> Unit,
     modifier: Modifier = Modifier,
-    layout: AdaptiveLayoutSpec? = null
+    layout: AdaptiveLayoutSpec? = null,
+    aoaDeviceName: String? = null,
+    adbServerPort: Int = 9999,
+    adbServerName: String? = null
 ) {
     val isShort = layout?.isShortScreen == true
     val cardPadding = layout?.cardPadding ?: if (isShort) 12.dp else 16.dp
@@ -151,12 +154,12 @@ fun ConnectionHubStatusCard(
                 )
                 StatusIndicatorRow(
                     label = "AOA Accessory",
-                    status = if (isAoaAttached) "Attached" else "Ready",
+                    status = if (isAoaAttached) (aoaDeviceName?.let { "Attached ($it)" } ?: "Attached") else "Ready",
                     isGood = isAoaAttached
                 )
                 StatusIndicatorRow(
                     label = "ADB Server",
-                    status = if (isAdbAvailable) "Online" else "Offline",
+                    status = if (isAdbAvailable) "${adbServerName ?: "Online"} (Port $adbServerPort)" else "Offline",
                     isGood = isAdbAvailable
                 )
             }
