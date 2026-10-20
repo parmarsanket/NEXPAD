@@ -8,6 +8,7 @@ import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.CategoryType
 import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
+import com.sanket.tools.nexpad.model.BuiltinComponentIds
 import com.sanket.tools.nexpad.model.NexpadKeys as K
 import com.sanket.tools.nexpad.ui.components.controller.abxy.*
 import com.sanket.tools.nexpad.ui.components.controller.bumper.*
@@ -2092,7 +2093,7 @@ object RailsDPadVariant : BaseNativeVariant("builtin.rails_dpad", ControlKey.DPA
     }
 }
 
-object RealisticLeftTouchPadVariant : BaseNativeVariant("builtin.default_ltp", ControlKey.LTP, "Realistic 3D", 6001) {
+object RealisticLeftTouchPadVariant : BaseNativeVariant(BuiltinComponentIds.DEFAULT_LTP, ControlKey.LTP, "Realistic 3D", 6001) {
     override val isBaselineDefault: Boolean = true
 
     @Composable
@@ -2120,7 +2121,7 @@ object RealisticLeftTouchPadVariant : BaseNativeVariant("builtin.default_ltp", C
     }
 }
 
-object RealisticRightTouchPadVariant : BaseNativeVariant("builtin.default_rtp", ControlKey.RTP, "Realistic 3D", 6002) {
+object RealisticRightTouchPadVariant : BaseNativeVariant(BuiltinComponentIds.DEFAULT_RTP, ControlKey.RTP, "Realistic 3D", 6002) {
     override val isBaselineDefault: Boolean = true
 
     @Composable
@@ -2148,7 +2149,7 @@ object RealisticRightTouchPadVariant : BaseNativeVariant("builtin.default_rtp", 
     }
 }
 
-object InbuildLeftTouchPadVariant : BaseNativeVariant("builtin.inbuild_ltp", ControlKey.LTP, "Inbuild Surface", 6003) {
+object InbuildLeftTouchPadVariant : BaseNativeVariant(BuiltinComponentIds.INBUILD_LTP, ControlKey.LTP, "Inbuild Surface", 6003) {
     override val isBaselineDefault: Boolean = false
 
     @Composable
@@ -2174,7 +2175,7 @@ object InbuildLeftTouchPadVariant : BaseNativeVariant("builtin.inbuild_ltp", Con
     }
 }
 
-object InbuildRightTouchPadVariant : BaseNativeVariant("builtin.inbuild_rtp", ControlKey.RTP, "Inbuild Surface", 6004) {
+object InbuildRightTouchPadVariant : BaseNativeVariant(BuiltinComponentIds.INBUILD_RTP, ControlKey.RTP, "Inbuild Surface", 6004) {
     override val isBaselineDefault: Boolean = false
 
     @Composable
@@ -2535,7 +2536,7 @@ object NativeComponentRegistry {
             id.startsWith("builtin.flipbtn_") || id.startsWith("builtin.ripple_") ||
             id.startsWith("builtin.orbit_") ||
             id.startsWith("builtin.caps_") || id.startsWith("builtin.ecl_") ||
-            id.startsWith("builtin.inbuild_") || id.startsWith("builtin.gyro_btn")
+            BuiltinComponentIds.isInbuildTouchpad(id) || id == BuiltinComponentIds.GYRO_BUTTON
         ) return true
         return DefaultNativeFamily.getVariant(id) != null
     }

@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -331,9 +332,13 @@ fun SliderTrigger(
             .then(
                 if (isInteractive) {
                     Modifier.pointerInput(key, isFlipped, travelSpanDp, topRestCenterDp, bottomRestCenterDp) {
+                        var springJob: Job? = null
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)
+                            down.consume()
                             isDragging = true
+                            springJob?.cancel()
+                            springJob = null
                             currentOnVibrate()
 
                             val topPx = with(density) { topRestCenterDp.toPx() }
@@ -345,37 +350,39 @@ fun SliderTrigger(
                             }
 
                             val initialFill = calculateFill(down.position.y)
+                            currentViewModel?.updateTrigger(key, initialFill)
                             coroutineScope.launch {
                                 fillAnim.snapTo(initialFill)
-                                currentViewModel?.updateTrigger(key, initialFill)
                             }
 
-                            while (true) {
-                                val event = awaitPointerEvent()
-                                val change = event.changes.firstOrNull { it.id == down.id }
-                                if (change == null || !change.pressed) break
+                            try {
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    val change = event.changes.firstOrNull { it.id == down.id }
+                                    if (change == null || !change.pressed) break
 
-                                change.consume()
-                                val newFill = calculateFill(change.position.y)
-                                coroutineScope.launch {
-                                    fillAnim.snapTo(newFill)
+                                    change.consume()
+                                    val newFill = calculateFill(change.position.y)
                                     currentViewModel?.updateTrigger(key, newFill)
+                                    coroutineScope.launch {
+                                        fillAnim.snapTo(newFill)
+                                    }
                                 }
-                            }
-
-                            // On release: Damped harmonic spring back to idle (0f)
-                            isDragging = false
-                            coroutineScope.launch {
-                                fillAnim.animateTo(
-                                    targetValue = 0f,
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioLowBouncy,
-                                        stiffness = Spring.StiffnessMedium
-                                    )
-                                ) {
-                                    currentViewModel?.updateTrigger(key, value)
+                            } finally {
+                                // On release or cancellation: Damped harmonic spring back to idle (0f)
+                                isDragging = false
+                                springJob = coroutineScope.launch {
+                                    fillAnim.animateTo(
+                                        targetValue = 0f,
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioLowBouncy,
+                                            stiffness = Spring.StiffnessMedium
+                                        )
+                                    ) {
+                                        currentViewModel?.updateTrigger(key, value)
+                                    }
+                                    currentViewModel?.updateTrigger(key, 0f)
                                 }
-                                currentViewModel?.updateTrigger(key, 0f)
                             }
                         }
                     }

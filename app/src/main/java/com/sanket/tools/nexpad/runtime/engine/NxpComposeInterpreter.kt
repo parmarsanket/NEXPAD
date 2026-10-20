@@ -38,6 +38,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.model.NexpadKeys
+import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.model.ControllerTouchClassifier
 import com.sanket.tools.nexpad.runtime.model.NexPadControl
 import com.sanket.tools.nexpad.runtime.model.NexPadInputTarget
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
@@ -478,12 +480,10 @@ private fun RenderNxpJoystick(
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val (isCameraMode, cameraSensitivity) = remember(context, stickControl.isLeft, def.manifest) {
-        val isTouchpad = def.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
-                def.manifest.defaultControl.contains("RTP", ignoreCase = true) ||
-                def.manifest.defaultControl.contains("LTP", ignoreCase = true)
+        val isTouchpad = ControllerTouchClassifier.isTouchpad(def.manifest.defaultControl, def.manifest.id)
         val prefs = com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context)
         if (isTouchpad) {
-            val padKey = if (stickControl.isLeft) "LTP" else "RTP"
+            val padKey = if (stickControl.isLeft) ControlKey.LTP.key else ControlKey.RTP.key
             Pair(true, prefs.getTouchpadSensitivity(padKey))
         } else if (!stickControl.isLeft) {
             Pair(prefs.isRightStickCameraMode, prefs.cameraSensitivity)
@@ -492,14 +492,12 @@ private fun RenderNxpJoystick(
         }
     }
     val effectiveTouchpadCurve = remember(context, stickControl.isLeft, def.manifest, touchpadCurve) {
-        val isTouchpad = def.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
-                def.manifest.defaultControl.contains("RTP", ignoreCase = true) ||
-                def.manifest.defaultControl.contains("LTP", ignoreCase = true)
+        val isTouchpad = ControllerTouchClassifier.isTouchpad(def.manifest.defaultControl, def.manifest.id)
         if (isTouchpad) {
             if (!touchpadCurve.isNullOrBlank()) {
                 com.sanket.tools.nexpad.model.TouchpadCurve.fromId(touchpadCurve)
             } else {
-                val padKey = if (stickControl.isLeft) "LTP" else "RTP"
+                val padKey = if (stickControl.isLeft) ControlKey.LTP.key else ControlKey.RTP.key
                 com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadCurve(padKey)
             }
         } else {
@@ -509,9 +507,7 @@ private fun RenderNxpJoystick(
     val coroutineScope = rememberCoroutineScope()
     val density = androidx.compose.ui.platform.LocalDensity.current.density
 
-    val isTouchpad = def.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
-            def.manifest.defaultControl.contains("RTP", ignoreCase = true) ||
-            def.manifest.defaultControl.contains("LTP", ignoreCase = true)
+    val isTouchpad = ControllerTouchClassifier.isTouchpad(def.manifest.defaultControl, def.manifest.id)
 
     val gestureModifier = if (!isInteractive || (!isLocked && !isTouchpad)) {
         Modifier

@@ -27,6 +27,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sanket.tools.nexpad.category.CategoryManager
+import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.category.ComponentType
+import com.sanket.tools.nexpad.model.ControllerTouchClassifier
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.runtime.engine.NxprcCanvasRenderer
 import com.sanket.tools.nexpad.runtime.engine.NxpComposeInterpreter
@@ -227,17 +230,14 @@ fun SandboxPreviewModal(
                                 labelStyle = labelStyle
                             )
                         } else if (remoteDoc != null) {
-                            val isStickCategory = componentDef.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
-                                    componentDef.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
-                                    controlKey.equals("LS", ignoreCase = true) ||
-                                    controlKey.equals("RS", ignoreCase = true) ||
-                                    controlKey.equals("LTP", ignoreCase = true) ||
-                                    controlKey.equals("RTP", ignoreCase = true)
-                            val isRightStick = controlKey.equals("RS", ignoreCase = true) ||
-                                    controlKey.equals("RTP", ignoreCase = true) ||
-                                    componentDef.manifest.defaultControl.equals("RS", ignoreCase = true) ||
-                                    componentDef.manifest.defaultControl.equals("RTP", ignoreCase = true) ||
-                                    componentDef.manifest.id.contains("rtp", ignoreCase = true)
+                            val isStickCategory = ControllerTouchClassifier.isJoystick(controlKey) ||
+                                    ControllerTouchClassifier.isTouchpad(controlKey) ||
+                                    componentDef.manifest.category.equals(ComponentType.JOYSTICK.name, ignoreCase = true) ||
+                                    componentDef.manifest.category.equals(ComponentType.TOUCHPAD.name, ignoreCase = true)
+                            val isRightStick = ControllerTouchClassifier.isRightTouchpad(controlKey, componentDef.manifest.id) ||
+                                    controlKey.equals(ControlKey.RS.key, ignoreCase = true) ||
+                                    componentDef.manifest.defaultControl.equals(ControlKey.RS.key, ignoreCase = true) ||
+                                    componentDef.manifest.defaultControl.equals(ControlKey.RTP.key, ignoreCase = true)
                             val control = when {
                                 isStickCategory ->
                                     NexPadControl.Stick(isLeft = !isRightStick)
@@ -255,17 +255,14 @@ fun SandboxPreviewModal(
                                 sizingPolicy = com.sanket.tools.nexpad.runtime.engine.NxprcSizingPolicy.StudioModal(targetSizeDp = 115, scale = 0.85f)
                             )
                         } else {
-                            val isStickCategory = componentDef.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
-                                    componentDef.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
-                                    controlKey.equals("LS", ignoreCase = true) ||
-                                    controlKey.equals("RS", ignoreCase = true) ||
-                                    controlKey.equals("LTP", ignoreCase = true) ||
-                                    controlKey.equals("RTP", ignoreCase = true)
-                            val isRightStick = controlKey.equals("RS", ignoreCase = true) ||
-                                    controlKey.equals("RTP", ignoreCase = true) ||
-                                    componentDef.manifest.defaultControl.equals("RS", ignoreCase = true) ||
-                                    componentDef.manifest.defaultControl.equals("RTP", ignoreCase = true) ||
-                                    componentDef.manifest.id.contains("rtp", ignoreCase = true)
+                            val isStickCategory = ControllerTouchClassifier.isJoystick(controlKey) ||
+                                    ControllerTouchClassifier.isTouchpad(controlKey) ||
+                                    componentDef.manifest.category.equals(ComponentType.JOYSTICK.name, ignoreCase = true) ||
+                                    componentDef.manifest.category.equals(ComponentType.TOUCHPAD.name, ignoreCase = true)
+                            val isRightStick = ControllerTouchClassifier.isRightTouchpad(controlKey, componentDef.manifest.id) ||
+                                    controlKey.equals(ControlKey.RS.key, ignoreCase = true) ||
+                                    componentDef.manifest.defaultControl.equals(ControlKey.RS.key, ignoreCase = true) ||
+                                    componentDef.manifest.defaultControl.equals(ControlKey.RTP.key, ignoreCase = true)
                             val control = when {
                                 isStickCategory ->
                                     NexPadControl.Stick(isLeft = !isRightStick)

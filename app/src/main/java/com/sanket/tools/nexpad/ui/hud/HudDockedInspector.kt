@@ -27,6 +27,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.model.HudElement
 import com.sanket.tools.nexpad.model.LayoutSkin
+import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.model.ControllerTouchClassifier
+import com.sanket.tools.nexpad.model.BuiltinComponentIds
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import kotlin.math.roundToInt
 
@@ -65,19 +68,9 @@ fun HudDockedInspector(
     modifier: Modifier = Modifier
 ) {
     val transform = element.transform
-    val isTouchpad = element.controlKey.equals("LTP", ignoreCase = true) ||
-            element.controlKey.equals("RTP", ignoreCase = true) ||
-            element.categoryTitle.equals("TOUCHPAD", ignoreCase = true) ||
-            element.spec?.componentType == com.sanket.tools.nexpad.category.ComponentType.TOUCHPAD
-
-    val isJoystick = element.controlKey.equals("LS", ignoreCase = true) ||
-            element.controlKey.equals("RS", ignoreCase = true) ||
-            element.categoryTitle.equals("JOYSTICK", ignoreCase = true) ||
-            element.spec?.componentType == com.sanket.tools.nexpad.category.ComponentType.JOYSTICK
-
-    val isSliderTrigger = element.skinId?.contains("slider", ignoreCase = true) == true ||
-            element.skinId == "builtin.slider_lt" ||
-            element.skinId == "builtin.slider_rt"
+    val isTouchpad = ControllerTouchClassifier.isTouchpad(element.controlKey, element.skinId)
+    val isJoystick = ControllerTouchClassifier.isJoystick(element.controlKey, element.skinId)
+    val isSliderTrigger = ControllerTouchClassifier.isSliderTrigger(element.skinId)
 
     val borderColor = if (isDragging) NeonPalette.Cyan else NeonPalette.Cyan.copy(alpha = 0.5f)
     val borderWidth = if (isDragging) 1.5.dp else 1.dp
@@ -713,10 +706,10 @@ fun HudDockedInspector(
 
                     // Stick / Touchpad Mutual Exclusivity Quick-Switch
                     val swapTargetLabel = when (element.controlKey.uppercase()) {
-                        "LS" -> "Switch to Touchpad (LTP)"
-                        "LTP" -> "Switch to Stick (LS)"
-                        "RS" -> "Switch to Touchpad (RTP)"
-                        "RTP" -> "Switch to Stick (RS)"
+                        ControlKey.LS.key -> "Switch to Touchpad (${ControlKey.LTP.key})"
+                        ControlKey.LTP.key -> "Switch to Stick (${ControlKey.LS.key})"
+                        ControlKey.RS.key -> "Switch to Touchpad (${ControlKey.RTP.key})"
+                        ControlKey.RTP.key -> "Switch to Stick (${ControlKey.RS.key})"
                         else -> null
                     }
                     if (swapTargetLabel != null && onSwapStickTouchpad != null) {

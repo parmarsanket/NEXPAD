@@ -1,6 +1,7 @@
 package com.sanket.tools.nexpad.ui.components.controller.special
 
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
+import com.sanket.tools.nexpad.category.ControlKey
 import android.content.Context
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -453,7 +454,7 @@ fun RealisticTouchPad(
     }
 
     val context = LocalContext.current
-    val padKey = if (isLeft) "LTP" else "RTP"
+    val padKey = if (isLeft) ControlKey.LTP.key else ControlKey.RTP.key
     val effectiveSensitivity = remember(context, sensitivity, padKey) {
         if (sensitivity != null && sensitivity > 0f) {
             sensitivity

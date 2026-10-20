@@ -2,6 +2,7 @@ package com.sanket.tools.nexpad.runtime.registry
 
 import com.sanket.tools.nexpad.runtime.model.*
 import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.model.BuiltinComponentIds
 import com.sanket.tools.nexpad.nxprc.NxprcCategory
 
 object DefaultComponents {
@@ -963,7 +964,7 @@ object DefaultComponents {
 
     val DEFAULT_STICK_LTP = NxpComponentDef(
         manifest = NxpManifest(
-            id = "builtin.default_ltp",
+            id = BuiltinComponentIds.DEFAULT_LTP,
             name = "Default Left Touchpad (LTP)",
             author = "NEXPAD Core",
             version = "1.0.0",
@@ -981,13 +982,13 @@ object DefaultComponents {
             glowRadius = 12f
         ),
         pressed = NxpPressedState(scale = 0.98f, fillColor = "#181A20", borderColor = "#FFFFFF"),
-        label = NxpLabel(text = "LTP", color = "#00E5FF", pressedColor = "#FFFFFF", fontSize = 16f),
+        label = NxpLabel(text = ControlKey.LTP.key, color = "#00E5FF", pressedColor = "#FFFFFF", fontSize = 16f),
         size = NxpSize(widthDp = 180, heightDp = 180)
     )
 
     val DEFAULT_STICK_RTP = NxpComponentDef(
         manifest = NxpManifest(
-            id = "builtin.default_rtp",
+            id = BuiltinComponentIds.DEFAULT_RTP,
             name = "Default Right Touchpad (RTP)",
             author = "NEXPAD Core",
             version = "1.0.0",
@@ -1005,13 +1006,13 @@ object DefaultComponents {
             glowRadius = 12f
         ),
         pressed = NxpPressedState(scale = 0.98f, fillColor = "#181A20", borderColor = "#FFFFFF"),
-        label = NxpLabel(text = "RTP", color = "#FF007F", pressedColor = "#FFFFFF", fontSize = 16f),
+        label = NxpLabel(text = ControlKey.RTP.key, color = "#FF007F", pressedColor = "#FFFFFF", fontSize = 16f),
         size = NxpSize(widthDp = 180, heightDp = 180)
     )
 
     val INBUILD_STICK_LTP = NxpComponentDef(
         manifest = NxpManifest(
-            id = "builtin.inbuild_ltp",
+            id = BuiltinComponentIds.INBUILD_LTP,
             name = "Inbuild Surface Left Touchpad (LTP)",
             author = "NEXPAD Core",
             version = "1.0.0",
@@ -1029,13 +1030,13 @@ object DefaultComponents {
             glowRadius = 12f
         ),
         pressed = NxpPressedState(scale = 0.98f, fillColor = "#181A20", borderColor = "#FFFFFF"),
-        label = NxpLabel(text = "LTP", color = "#00E5FF", pressedColor = "#FFFFFF", fontSize = 16f),
+        label = NxpLabel(text = ControlKey.LTP.key, color = "#00E5FF", pressedColor = "#FFFFFF", fontSize = 16f),
         size = NxpSize(widthDp = 180, heightDp = 180)
     )
 
     val INBUILD_STICK_RTP = NxpComponentDef(
         manifest = NxpManifest(
-            id = "builtin.inbuild_rtp",
+            id = BuiltinComponentIds.INBUILD_RTP,
             name = "Inbuild Surface Right Touchpad (RTP)",
             author = "NEXPAD Core",
             version = "1.0.0",
@@ -1053,7 +1054,7 @@ object DefaultComponents {
             glowRadius = 12f
         ),
         pressed = NxpPressedState(scale = 0.98f, fillColor = "#181A20", borderColor = "#FFFFFF"),
-        label = NxpLabel(text = "RTP", color = "#FF007F", pressedColor = "#FFFFFF", fontSize = 16f),
+        label = NxpLabel(text = ControlKey.RTP.key, color = "#FF007F", pressedColor = "#FFFFFF", fontSize = 16f),
         size = NxpSize(widthDp = 180, heightDp = 180)
     )
 

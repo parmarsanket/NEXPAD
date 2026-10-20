@@ -519,4 +519,30 @@ class EsportsTouchCoordinatorTest {
             coordinator.globalPressed.contains(K.A)
         )
     }
+
+    @Test
+    fun testSliderTrigger_ExcludedFromDigitalButtonHitTest_ProtectedInNearAnyAndExclusion() {
+        val sliderRect = Rect(left = 100f, top = 200f, right = 200f, bottom = 600f)
+        registry.put(K.LT, sliderRect, isSlider = true)
+
+        // 1. Direct touch inside the slider trigger must NOT be claimed as a digital button
+        val hits = registry.hitTestTouchDisk(
+            screenX = 150f,
+            screenY = 300f,
+            thumbRadiusPx = 25f
+        )
+        assertTrue("Analog slider triggers must NEVER be hit-tested as digital buttons", hits.isEmpty())
+
+        // 2. Direct touch on or near the slider trigger must be recognized by isNearAny to shield against floating joysticks
+        val isNear = registry.isNearAny(screenX = 150f, screenY = 300f, marginPx = 20f)
+        assertTrue("Slider trigger bounds must shield surrounding zone from floating joysticks", isNear)
+
+        // 3. Slider trigger must be included in exclusion rects to shield against inbuild touchpad swipes
+        val leftExclusions = registry.getExclusionRects(isLeft = true, screenWidthPx = 1000f)
+        assertTrue("Slider trigger bounds must be included in touchpad exclusion rects", leftExclusions.contains(sliderRect))
+
+        // 4. If removed, it must be removed from both bounds and sliderKeys
+        registry.remove(K.LT)
+        assertFalse(registry.isNearAny(screenX = 150f, screenY = 300f, marginPx = 20f))
+    }
 }

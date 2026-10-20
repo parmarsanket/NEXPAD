@@ -42,6 +42,8 @@ import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.model.NexpadKeys
+import com.sanket.tools.nexpad.model.ControllerTouchClassifier
+import com.sanket.tools.nexpad.model.TouchpadCurve
 import com.sanket.tools.nexpad.runtime.model.NexPadControl
 import com.sanket.tools.nexpad.runtime.model.NexPadInputTarget
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
@@ -539,12 +541,10 @@ fun NxprcCanvasRenderer(
 
     val context = LocalContext.current
     val (isCameraMode, cameraSensitivity) = remember(context, stick.isLeft, document.manifest) {
-        val isTouchpad = document.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
-                document.manifest.defaultControl.equals(NexpadKeys.RTP, ignoreCase = true) ||
-                document.manifest.defaultControl.equals(NexpadKeys.LTP, ignoreCase = true)
+        val isTouchpad = ControllerTouchClassifier.isTouchpad(document.manifest.defaultControl, document.manifest.id)
         val prefs = com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context)
         if (isTouchpad) {
-            val padKey = if (stick.isLeft) "LTP" else "RTP"
+            val padKey = if (stick.isLeft) ControlKey.LTP.key else ControlKey.RTP.key
             Pair(true, prefs.getTouchpadSensitivity(padKey))
         } else if (!stick.isLeft) {
             Pair(prefs.isRightStickCameraMode, prefs.cameraSensitivity)
@@ -553,18 +553,16 @@ fun NxprcCanvasRenderer(
         }
     }
     val effectiveTouchpadCurve = remember(context, stick.isLeft, document.manifest, touchpadCurve) {
-        val isTouchpad = document.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
-                document.manifest.defaultControl.equals(NexpadKeys.RTP, ignoreCase = true) ||
-                document.manifest.defaultControl.equals(NexpadKeys.LTP, ignoreCase = true)
+        val isTouchpad = ControllerTouchClassifier.isTouchpad(document.manifest.defaultControl, document.manifest.id)
         if (isTouchpad) {
             if (!touchpadCurve.isNullOrBlank()) {
-                com.sanket.tools.nexpad.model.TouchpadCurve.fromId(touchpadCurve)
+                TouchpadCurve.fromId(touchpadCurve)
             } else {
-                val padKey = if (stick.isLeft) "LTP" else "RTP"
+                val padKey = if (stick.isLeft) ControlKey.LTP.key else ControlKey.RTP.key
                 com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadCurve(padKey)
             }
         } else {
-            com.sanket.tools.nexpad.model.TouchpadCurve.DEFAULT
+            TouchpadCurve.DEFAULT
         }
     }
 

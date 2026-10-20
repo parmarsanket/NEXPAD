@@ -22,6 +22,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.pointerInput
+import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.category.ComponentType
+import com.sanket.tools.nexpad.model.BuiltinComponentIds
+import com.sanket.tools.nexpad.model.ControllerTouchClassifier
+import com.sanket.tools.nexpad.model.TouchpadType
+import com.sanket.tools.nexpad.model.TouchpadCurve
+import com.sanket.tools.nexpad.model.JoystickMode
+import com.sanket.tools.nexpad.model.NexpadKeys as K
 import com.sanket.tools.nexpad.ui.components.controller.LocalPressedControlKeys
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
@@ -59,7 +67,6 @@ import com.sanket.tools.nexpad.ui.components.controller.special.calculateGamingS
 import kotlin.time.Duration.Companion.milliseconds
 import com.sanket.tools.nexpad.utils.ImmersiveSystemBars
 import com.sanket.tools.nexpad.utils.LockScreenOrientation
-import com.sanket.tools.nexpad.model.JoystickMode
 import kotlin.math.pow
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
@@ -77,35 +84,32 @@ data class MotorProfile(
 @Stable
 class BoundsRegistry {
     private val bounds = java.util.concurrent.ConcurrentHashMap<String, Rect>()
+    private val sliderKeys = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
-    fun put(key: String, rect: Rect) {
+    fun put(key: String, rect: Rect, isSlider: Boolean = false) {
         bounds[key] = rect
+        if (isSlider) {
+            sliderKeys.add(key)
+        } else {
+            sliderKeys.remove(key)
+        }
     }
 
     fun remove(key: String) {
         bounds.remove(key)
+        sliderKeys.remove(key)
     }
 
     fun clear() {
         bounds.clear()
+        sliderKeys.clear()
     }
 
     companion object {
-        val EXCLUDED_NON_BUTTON_KEYS = setOf(
-            "LS", "RS", "LSB", "RSB", "L3", "R3",
-            "LTP", "RTP", "TOUCHPAD"
-        )
-        val NON_SWEEPABLE_KEYS = setOf(
-            "START", "BACK", "GUIDE", "GYRO", "SHARE",
-            "SELECT", "MENU", "HOME", "CAPTURE"
-        )
+        val EXCLUDED_NON_BUTTON_KEYS = ControllerTouchClassifier.EXCLUDED_NON_BUTTON_KEYS
+        val NON_SWEEPABLE_KEYS = ControllerTouchClassifier.NON_SWEEPABLE_KEYS
 
-        fun isNonButton(key: String): Boolean {
-            val upper = key.uppercase()
-            return EXCLUDED_NON_BUTTON_KEYS.contains(upper) ||
-                    upper.contains("TOUCHPAD") ||
-                    upper.contains("STICK")
-        }
+        fun isNonButton(key: String): Boolean = ControllerTouchClassifier.isNonButton(key)
     }
 
     fun isNearAny(screenX: Float, screenY: Float, marginPx: Float): Boolean {
@@ -136,8 +140,7 @@ class BoundsRegistry {
     fun isInsideDiscreteTouchpad(screenX: Float, screenY: Float): Boolean {
         val pt = Offset(screenX, screenY)
         for ((key, rect) in bounds) {
-            val upper = key.uppercase()
-            if (upper == "LTP" || upper == "RTP" || upper.contains("TOUCHPAD")) {
+            if (ControllerTouchClassifier.isTouchpad(key)) {
                 if (rect.contains(pt)) {
                     return true
                 }
@@ -173,12 +176,13 @@ class BoundsRegistry {
         val thumbRadiusSq = thumbRadiusPx * thumbRadiusPx
 
         for ((key, rect) in bounds) {
-            // Exclude sticks, stick clicks, and touchpads from button hit detection
-            if (isNonButton(key)) {
+            // Exclude sticks, stick clicks, touchpads, and analog slider triggers from button hit detection
+            if (isNonButton(key) || sliderKeys.contains(key)) {
                 continue
             }
 
-            val isCompositeDpad = key.equals("DPAD", ignoreCase = true)
+            val isCompositeDpad = key.equals(ControlKey.DPAD.key, ignoreCase = true) ||
+                    ControlKey.fromIdentifier(key) == ControlKey.DPAD
             val isSymmetricCircle = abs(rect.width - rect.height) < 4f
 
             if (isCompositeDpad) {
@@ -193,10 +197,10 @@ class BoundsRegistry {
                         val dx = screenX - cx
                         val dy = screenY - cy
                         val angle = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble()))
-                        if (angle in -157.5..-22.5) hits.add(com.sanket.tools.nexpad.model.NexpadKeys.UP)
-                        if (angle in -67.5..67.5) hits.add(com.sanket.tools.nexpad.model.NexpadKeys.RIGHT)
-                        if (angle in 22.5..157.5) hits.add(com.sanket.tools.nexpad.model.NexpadKeys.DOWN)
-                        if (angle >= 112.5 || angle <= -112.5) hits.add(com.sanket.tools.nexpad.model.NexpadKeys.LEFT)
+                        if (angle in -157.5..-22.5) hits.add(ControlKey.UP.key)
+                        if (angle in -67.5..67.5) hits.add(ControlKey.RIGHT.key)
+                        if (angle in 22.5..157.5) hits.add(ControlKey.DOWN.key)
+                        if (angle >= 112.5 || angle <= -112.5) hits.add(ControlKey.LEFT.key)
                     }
                 }
             } else if (isSymmetricCircle) {
@@ -571,27 +575,20 @@ fun GamepadScreenContent(
         val remoteRegistry = remember(context) { com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry.getInstance(context) }
         val loadedRemoteDocs by remoteRegistry.loadedComponents.collectAsState()
 
-        val lsEntry = adjustedPositions.entries.firstOrNull { it.key.equals(com.sanket.tools.nexpad.category.ControlKey.LS.name, ignoreCase = true) }
-        val rsEntry = adjustedPositions.entries.firstOrNull { it.key.equals(com.sanket.tools.nexpad.category.ControlKey.RS.name, ignoreCase = true) }
-        val ltpEntry = adjustedPositions.entries.firstOrNull { it.key.equals(com.sanket.tools.nexpad.category.ControlKey.LTP.name, ignoreCase = true) }
-        val rtpEntry = adjustedPositions.entries.firstOrNull { it.key.equals(com.sanket.tools.nexpad.category.ControlKey.RTP.name, ignoreCase = true) }
+        val lsEntry = adjustedPositions.entries.firstOrNull { ControlKey.fromIdentifier(it.key) == ControlKey.LS || it.key.equals(ControlKey.LS.key, ignoreCase = true) }
+        val rsEntry = adjustedPositions.entries.firstOrNull { ControlKey.fromIdentifier(it.key) == ControlKey.RS || it.key.equals(ControlKey.RS.key, ignoreCase = true) }
+        val ltpEntry = adjustedPositions.entries.firstOrNull { ControlKey.fromIdentifier(it.key) == ControlKey.LTP || it.key.equals(ControlKey.LTP.key, ignoreCase = true) }
+        val rtpEntry = adjustedPositions.entries.firstOrNull { ControlKey.fromIdentifier(it.key) == ControlKey.RTP || it.key.equals(ControlKey.RTP.key, ignoreCase = true) }
 
         val touchpadEntries = remember(adjustedPositions, loadedRemoteDocs) {
             adjustedPositions.entries.filter { (key, pos) ->
-                val upperKey = key.uppercase()
-                upperKey == com.sanket.tools.nexpad.category.ControlKey.LTP.name ||
-                upperKey == com.sanket.tools.nexpad.category.ControlKey.RTP.name ||
-                upperKey.contains("TOUCHPAD") ||
+                ControllerTouchClassifier.isTouchpad(key, pos.customComponentId) ||
                 pos.customComponentId?.let { id ->
-                    id.contains("touchpad", ignoreCase = true) ||
-                    id.contains("inbuild_", ignoreCase = true) ||
-                    (id.startsWith("rc.") && (remoteRegistry.getComponent(id) ?: loadedRemoteDocs.firstOrNull { it.manifest.id == id })?.let { doc ->
-                        doc.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
-                        doc.manifest.id.contains("touchpad", ignoreCase = true) ||
-                        doc.manifest.defaultControl.contains("TOUCHPAD", ignoreCase = true) ||
-                        doc.manifest.defaultControl.equals("LTP", ignoreCase = true) ||
-                        doc.manifest.defaultControl.equals("RTP", ignoreCase = true)
-                    } == true)
+                    id.startsWith("rc.") && (remoteRegistry.getComponent(id) ?: loadedRemoteDocs.firstOrNull { it.manifest.id == id })?.let { doc ->
+                        doc.manifest.category.equals(ComponentType.TOUCHPAD.name, ignoreCase = true) ||
+                        doc.manifest.defaultControl.equals(ControlKey.LTP.key, ignoreCase = true) ||
+                        doc.manifest.defaultControl.equals(ControlKey.RTP.key, ignoreCase = true)
+                    } == true
                 } == true
             }
         }
@@ -601,19 +598,13 @@ fun GamepadScreenContent(
 
         val joystickEntries = remember(adjustedPositions, loadedRemoteDocs) {
             adjustedPositions.entries.filter { (key, pos) ->
-                val upperKey = key.uppercase()
-                upperKey == com.sanket.tools.nexpad.category.ControlKey.LS.name ||
-                upperKey == com.sanket.tools.nexpad.category.ControlKey.RS.name ||
-                upperKey.contains("JOYSTICK") ||
+                ControllerTouchClassifier.isJoystick(key, pos.customComponentId) ||
                 pos.customComponentId?.let { id ->
-                    id.contains("joystick", ignoreCase = true) ||
-                    (id.startsWith("rc.") && (remoteRegistry.getComponent(id) ?: loadedRemoteDocs.firstOrNull { it.manifest.id == id })?.let { doc ->
-                        doc.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
-                        doc.manifest.id.contains("joystick", ignoreCase = true) ||
-                        doc.manifest.defaultControl.contains("JOYSTICK", ignoreCase = true) ||
-                        doc.manifest.defaultControl.equals("LS", ignoreCase = true) ||
-                        doc.manifest.defaultControl.equals("RS", ignoreCase = true)
-                    } == true)
+                    id.startsWith("rc.") && (remoteRegistry.getComponent(id) ?: loadedRemoteDocs.firstOrNull { it.manifest.id == id })?.let { doc ->
+                        doc.manifest.category.equals(ComponentType.JOYSTICK.name, ignoreCase = true) ||
+                        doc.manifest.defaultControl.equals(ControlKey.LS.key, ignoreCase = true) ||
+                        doc.manifest.defaultControl.equals(ControlKey.RS.key, ignoreCase = true)
+                    } == true
                 } == true
             }
         }
@@ -647,8 +638,14 @@ fun GamepadScreenContent(
             list
         }
 
-        val interactiveButtonEntries = remember(adjustedPositions, joystickEntries, touchpadEntries) {
-            val nonButtonKeys = (joystickEntries.map { it.key } + touchpadEntries.map { it.key }).toSet()
+        val sliderTriggerEntries = remember(adjustedPositions) {
+            adjustedPositions.entries.filter { (_, pos) ->
+                ControllerTouchClassifier.isSliderTrigger(pos.customComponentId)
+            }
+        }
+
+        val interactiveButtonEntries = remember(adjustedPositions, joystickEntries, touchpadEntries, sliderTriggerEntries) {
+            val nonButtonKeys = (joystickEntries.map { it.key } + touchpadEntries.map { it.key } + sliderTriggerEntries.map { it.key }).toSet()
             adjustedPositions.entries.filter { (key, _) ->
                 !nonButtonKeys.contains(key)
             }
@@ -664,8 +661,8 @@ fun GamepadScreenContent(
         // Protected by 16.dp button exclusion buffer zone so interactive buttons have absolute priority.
         // NOTE: Only active for InbuildTouchpad ("builtin.inbuild_ltp" / "builtin.inbuild_rtp").
         // RealisticTouchPad (default), NXPRC, and custom skins render as discrete widgets at their placed positions.
-        val inbuildLtp = ltpEntry?.takeIf { it.value.customComponentId?.startsWith("builtin.inbuild_") == true }
-        val inbuildRtp = rtpEntry?.takeIf { it.value.customComponentId?.startsWith("builtin.inbuild_") == true }
+        val inbuildLtp = ltpEntry?.takeIf { BuiltinComponentIds.isInbuildTouchpad(it.value.customComponentId) }
+        val inbuildRtp = rtpEntry?.takeIf { BuiltinComponentIds.isInbuildTouchpad(it.value.customComponentId) }
         android.util.Log.d("NEXPAD_TOUCH", "GamepadScreenContent: inbuildLtp=${inbuildLtp != null} inbuildRtp=${inbuildRtp != null} rtpEntryKey=${rtpEntry?.key} rtpCustomId=${rtpEntry?.value?.customComponentId}")
 
         if (inbuildLtp != null) {
@@ -685,7 +682,7 @@ fun GamepadScreenContent(
                     isRgbEnabled = profile.isRgbEnabled,
                     viewModel = viewModel,
                     sensitivity = ltpPos.sensitivity,
-                    curve = com.sanket.tools.nexpad.model.TouchpadCurve.fromId(ltpPos.touchpadCurve),
+                    curve = TouchpadCurve.fromId(ltpPos.touchpadCurve),
                     visualState = ltpVisualState
                 )
             }
@@ -708,7 +705,7 @@ fun GamepadScreenContent(
                     isRgbEnabled = profile.isRgbEnabled,
                     viewModel = viewModel,
                     sensitivity = rtpPos.sensitivity,
-                    curve = com.sanket.tools.nexpad.model.TouchpadCurve.fromId(rtpPos.touchpadCurve),
+                    curve = TouchpadCurve.fromId(rtpPos.touchpadCurve),
                     visualState = rtpVisualState
                 )
             }
@@ -718,8 +715,7 @@ fun GamepadScreenContent(
         // Rendered for RealisticTouchPad (default), NXPRC, and custom skins (all non-inbuild touchpads).
         val discreteTouchpadEntries = remember(touchpadEntries) {
             touchpadEntries.filter { (_, pos) ->
-                val id = pos.customComponentId
-                id == null || !id.startsWith("builtin.inbuild_")
+                !BuiltinComponentIds.isInbuildTouchpad(pos.customComponentId)
             }
         }
 
@@ -771,7 +767,7 @@ fun GamepadScreenContent(
                         .scale(position.scale * responsiveScale)
                         .alpha(position.opacity)
                         .onGloballyPositioned { coordinates ->
-                            boundsRegistry.put(key, coordinates.boundsInParent())
+                            boundsRegistry.put(key, coordinates.boundsInParent(), isSlider = false)
                         }
                 ) {
                     renderElement(key, position)
@@ -798,8 +794,8 @@ fun GamepadScreenContent(
             rsFloatY = rsFloatY,
             inbuildLtp = inbuildLtp,
             inbuildRtp = inbuildRtp,
-            hasLeftTouchpad = touchpadEntries.any { it.key.equals("LTP", ignoreCase = true) || it.value.customComponentId?.contains("ltp", ignoreCase = true) == true },
-            hasRightTouchpad = touchpadEntries.any { it.key.equals("RTP", ignoreCase = true) || it.value.customComponentId?.contains("rtp", ignoreCase = true) == true },
+            hasLeftTouchpad = touchpadEntries.any { ControllerTouchClassifier.isLeftTouchpad(it.key, it.value.customComponentId) },
+            hasRightTouchpad = touchpadEntries.any { ControllerTouchClassifier.isRightTouchpad(it.key, it.value.customComponentId) },
             viewModel = viewModel,
             isSlideGuardEnabled = isSlideGuardEnabled,
             isEsportsMultitouchEnabled = isEsportsMultitouchEnabled,
@@ -821,8 +817,8 @@ fun GamepadScreenContent(
         // When unlocked (BOX or FULL), joystick widgets are 100% touch-transparent and float dynamically.
         // When locked (LOCKED mode), joystick widgets handle direct touches themselves.
         joystickEntries.forEach { (key, position) ->
-            val isLs = key.equals("LS", ignoreCase = true)
-            val isRs = key.equals("RS", ignoreCase = true)
+            val isLs = key.equals(ControlKey.LS.key, ignoreCase = true) || ControlKey.fromIdentifier(key) == ControlKey.LS
+            val isRs = key.equals(ControlKey.RS.key, ignoreCase = true) || ControlKey.fromIdentifier(key) == ControlKey.RS
 
             Box(
                 modifier = Modifier
@@ -840,6 +836,34 @@ fun GamepadScreenContent(
                     }
                     .scale(position.scale * responsiveScale)
                     .alpha(position.opacity)
+            ) {
+                renderElement(key, position)
+            }
+        }
+
+        // 6. Render Slider Trigger UI elements (LT, RT) — Rendered on top of UnifiedTouchSurface
+        // Continuous analog input (0..255) with sliding puck handles and damped spring return.
+        sliderTriggerEntries.forEach { (key, position) ->
+            DisposableEffect(key) {
+                onDispose { boundsRegistry.remove(key) }
+            }
+            Box(
+                modifier = Modifier
+                    .layout { measurable, childConstraints ->
+                        val placeable = measurable.measure(childConstraints)
+                        val safeX = if (position.xRatio.isFinite()) position.xRatio else 0f
+                        val safeY = if (position.yRatio.isFinite()) position.yRatio else 0f
+                        val x = (safeX * screenWidthPx - placeable.width / 2f).roundToInt()
+                        val y = (safeY * screenHeightPx - placeable.height / 2f).roundToInt()
+                        layout(placeable.width, placeable.height) {
+                            placeable.placeRelative(x, y)
+                        }
+                    }
+                    .scale(position.scale * responsiveScale)
+                    .alpha(position.opacity)
+                    .onGloballyPositioned { coordinates ->
+                        boundsRegistry.put(key, coordinates.boundsInParent(), isSlider = true)
+                    }
             ) {
                 renderElement(key, position)
             }
@@ -911,21 +935,21 @@ fun UnifiedTouchSurface(
     val ltpPosVal = inbuildLtp?.value ?: lsEntry?.value
     val ltpEffectiveSensitivity = remember(context, inbuildLtp) {
         val s = inbuildLtp?.value?.sensitivity
-        if (s != null && s > 0f) s else com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadSensitivity("LTP")
+        if (s != null && s > 0f) s else com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadSensitivity(ControlKey.LTP.key)
     }
     val ltpEffectiveCurve = remember(context, inbuildLtp) {
-        inbuildLtp?.value?.touchpadCurve?.let { com.sanket.tools.nexpad.model.TouchpadCurve.fromId(it) }
-            ?: com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadCurve("LTP")
+        inbuildLtp?.value?.touchpadCurve?.let { TouchpadCurve.fromId(it) }
+            ?: com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadCurve(ControlKey.LTP.key)
     }
 
     val rtpPosVal = inbuildRtp?.value ?: rsEntry?.value
     val rtpEffectiveSensitivity = remember(context, inbuildRtp) {
         val s = inbuildRtp?.value?.sensitivity
-        if (s != null && s > 0f) s else com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadSensitivity("RTP")
+        if (s != null && s > 0f) s else com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadSensitivity(ControlKey.RTP.key)
     }
     val rtpEffectiveCurve = remember(context, inbuildRtp) {
-        inbuildRtp?.value?.touchpadCurve?.let { com.sanket.tools.nexpad.model.TouchpadCurve.fromId(it) }
-            ?: com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadCurve("RTP")
+        inbuildRtp?.value?.touchpadCurve?.let { TouchpadCurve.fromId(it) }
+            ?: com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadCurve(ControlKey.RTP.key)
     }
 
     val maxThrowPx = remember(density) { with(density) { 60.dp.toPx() } }
@@ -1351,7 +1375,7 @@ fun UnifiedTouchSurface(
                                             )
                                             val initial = initialPointers[pid] ?: emptySet()
                                             val filteredHits = hits.filter { key ->
-                                                initial.contains(key) || !BoundsRegistry.NON_SWEEPABLE_KEYS.contains(key.uppercase())
+                                                initial.contains(key) || !ControllerTouchClassifier.isNonSweepable(key)
                                             }.toSet()
                                             change.consume()
                                             if (filteredHits.isNotEmpty()) {
