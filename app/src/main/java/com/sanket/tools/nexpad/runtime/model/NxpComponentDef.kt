@@ -26,7 +26,7 @@ data class NxpManifest(
 
 @Serializable
 data class NxpGeometry(
-    val type: String = "Polygon", // Polygon, Circle, RoundedRect, SvgPath
+    val type: String = "Polygon", // Polygon, Circle, RoundedRect
     val sides: Int = 6,
     val cornerRadius: Float = 8f,
     val pathData: String? = null

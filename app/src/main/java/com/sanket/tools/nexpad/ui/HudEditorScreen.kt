@@ -23,8 +23,10 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.sanket.tools.nexpad.ui.components.common.NexpadConfirmDialog
 import com.sanket.tools.nexpad.ui.hud.*
+import com.sanket.tools.nexpad.ui.studio.model.ButtonStudioMode
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import com.sanket.tools.nexpad.ui.AppNavigator
@@ -51,6 +54,7 @@ import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
 import com.sanket.tools.nexpad.ui.components.controller.ControllerElementRenderer
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.utils.LayoutManager
+import com.sanket.tools.nexpad.utils.ImmersiveSystemBars
 import com.sanket.tools.nexpad.utils.LockScreenOrientation
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import com.sanket.tools.nexpad.viewmodel.HudEditorViewModel
@@ -75,27 +79,35 @@ fun HudEditorScreen(
 ) {
     val context = LocalContext.current
     val profile by viewModel.currentProfile.collectAsState()
-    val elements by viewModel.elements.collectAsState()
+    val elements = viewModel.elements
     val selectedControl by viewModel.selectedControl.collectAsState()
     val compatibleSkins by viewModel.compatibleSkins.collectAsState()
     val hasUnsavedChanges by viewModel.hasUnsavedChanges.collectAsState()
 
+    val owner = LocalViewModelStoreOwner.current ?: error("No ViewModelStoreOwner")
     val effectiveGamepadViewModel: GamepadViewModel = gamepadViewModel ?: remember(context) {
         (context as? androidx.activity.ComponentActivity)?.let { activity ->
             androidx.lifecycle.ViewModelProvider(activity)[GamepadViewModel::class.java]
         }
-    } ?: viewModel<GamepadViewModel>(context as androidx.lifecycle.ViewModelStoreOwner)
-    var showAddDialog by remember { mutableStateOf(false) }
+    } ?: viewModel<GamepadViewModel>(owner)
+    var showAddDialog by rememberSaveable { mutableStateOf(false) }
 
     // Unsaved-changes guard: show dialog before leaving if edits exist
-    var showUnsavedDialog by remember { mutableStateOf(false) }
+    var showUnsavedDialog by rememberSaveable { mutableStateOf(false) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            com.sanket.tools.nexpad.runtime.engine.clearNxprcRenderCaches()
+        }
+    }
 
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
+    ImmersiveSystemBars()
 
     // Load the correct profile on entry.
     // If initialProfileName is provided (e.g. launched from VirtualController),
     // load that specific profile. Otherwise fall back to the current active profile.
-    LaunchedEffect(initialProfileName) {
+    LaunchedEffect(initialProfileName, initialControlKey) {
         if (!initialProfileName.isNullOrBlank()) {
             viewModel.loadProfileByName(initialProfileName)
         } else {
@@ -146,18 +158,21 @@ fun HudEditorScreen(
                 }
             }
     ) {
-        val screenWidthPx = maxOf(constraints.maxWidth, constraints.maxHeight).toFloat()
-        val screenHeightPx = minOf(constraints.maxWidth, constraints.maxHeight).toFloat()
+        val screenWidthPx = constraints.maxWidth.toFloat()
+        val screenHeightPx = constraints.maxHeight.toFloat()
         val density = LocalDensity.current
         val coroutineScope = rememberCoroutineScope()
+        val snackbarHostState = remember { SnackbarHostState() }
 
         // Auto-Dodge Coordinator for intelligent collision-avoidance overlay physics
         val defaultTopBarHeightPx = with(density) { 56.dp.toPx() }
         val defaultInspectorHeightPx = with(density) { 120.dp.toPx() }
-        val topBarAnimatable = remember { Animatable(0f) }
-        val inspectorAnimatable = remember { Animatable((screenHeightPx - defaultInspectorHeightPx).coerceAtLeast(0f)) }
+        val topBarAnimatable = remember(screenWidthPx, screenHeightPx) { Animatable(0f) }
+        val inspectorAnimatable = remember(screenWidthPx, screenHeightPx) {
+            Animatable((screenHeightPx - defaultInspectorHeightPx).coerceAtLeast(0f))
+        }
 
-        val autoDodgeCoordinator = remember {
+        val autoDodgeCoordinator = remember(screenWidthPx, screenHeightPx) {
             HudAutoDodgeCoordinator(
                 topBarAnimatable = topBarAnimatable,
                 inspectorAnimatable = inspectorAnimatable,
@@ -208,10 +223,19 @@ fun HudEditorScreen(
             onBack = handleBack,
             onOpenPalette = { showAddDialog = true },
             onSave = {
-                viewModel.saveProfile {
-                    Toast.makeText(context, "Layout '${profile.name}' saved!", Toast.LENGTH_SHORT).show()
-                    navController.popBackStack()
-                }
+                viewModel.saveProfile(
+                    onFailure = { error ->
+                        val msg = "Save failed: ${error.message ?: "Unknown error"}"
+                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar(msg)
+                        }
+                    },
+                    onSaved = {
+                        Toast.makeText(context, "Layout '${profile.name}' saved!", Toast.LENGTH_SHORT).show()
+                        navController.popBackStack()
+                    }
+                )
             },
             labelStyle = profile.controllerLabelStyle,
             onUpdateLabelStyle = { newStyle ->
@@ -228,6 +252,7 @@ fun HudEditorScreen(
             onToggleDock = { autoDodgeCoordinator.toggleTopBarDock() },
             modifier = Modifier
                 .align(Alignment.TopCenter)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top))
                 .offset { IntOffset(0, topBarAnimatable.value.roundToInt()) }
                 .onGloballyPositioned { coordinates ->
                     val h = coordinates.size.height.toFloat()
@@ -240,37 +265,45 @@ fun HudEditorScreen(
         // 3. Docked Control Panel for Selected Element (Draggable up/down with auto-dodge & snap-to-dock)
         if (selectedControl != null && elements.containsKey(selectedControl)) {
             val element = elements[selectedControl]!!
+            val activeKey = selectedControl ?: ""
             HudDockedInspector(
                 element = element,
                 compatibleSkins = compatibleSkins,
                 screenWidthPx = screenWidthPx,
                 screenHeightPx = screenHeightPx,
                 onClose = { viewModel.selectControl(null) },
-                onNudge = { dx, dy -> viewModel.nudge(selectedControl!!, dx, dy) },
-                onScaleChange = { viewModel.setScale(selectedControl!!, it) },
-                onOpacityChange = { viewModel.setOpacity(selectedControl!!, it) },
-                onSensitivityChange = { viewModel.setSensitivity(selectedControl!!, it) },
-                onHeightScaleChange = { viewModel.setHeightScale(selectedControl!!, it) },
-                onToggleFlip = { viewModel.toggleFlip(selectedControl!!) },
-                onCycleSkin = { viewModel.cycleNextSkin(selectedControl!!) },
+                onNudge = { dx, dy -> if (activeKey.isNotEmpty()) viewModel.nudge(activeKey, dx, dy) },
+                onScaleChange = { if (activeKey.isNotEmpty()) viewModel.setScale(activeKey, it) },
+                onOpacityChange = { if (activeKey.isNotEmpty()) viewModel.setOpacity(activeKey, it) },
+                onSensitivityChange = { if (activeKey.isNotEmpty()) viewModel.setSensitivity(activeKey, it) },
+                onTouchpadCurveChange = { if (activeKey.isNotEmpty()) viewModel.setTouchpadCurve(activeKey, it) },
+                onHeightScaleChange = { if (activeKey.isNotEmpty()) viewModel.setHeightScale(activeKey, it) },
+                onToggleFlip = { if (activeKey.isNotEmpty()) viewModel.toggleFlip(activeKey) },
+                onToggleLock = { if (activeKey.isNotEmpty()) viewModel.toggleLock(activeKey) },
+                onJoystickModeChange = { if (activeKey.isNotEmpty()) viewModel.setJoystickMode(activeKey, it) },
+                onHitboxScaleChange = { if (activeKey.isNotEmpty()) viewModel.setHitboxScale(activeKey, it) },
+                onCycleSkin = { if (activeKey.isNotEmpty()) viewModel.cycleNextSkin(activeKey) },
                 onOpenStudio = {
-                    navigationViewModel?.beginAssetSelection(
-                        profileName = profile.name,
-                        controlKey = selectedControl!!,
-                        currentAssetId = element.skinId,
-                        originScreen = OriginScreen.HUD_EDITOR
-                    )
-                    navController.navigate(
-                        Route.ButtonStudio(
-                            mode = "button_editor",
+                    if (activeKey.isNotEmpty()) {
+                        navigationViewModel?.beginAssetSelection(
                             profileName = profile.name,
-                            controlKey = selectedControl!!,
-                            currentAssetId = element.skinId
+                            controlKey = activeKey,
+                            currentAssetId = element.skinId,
+                            originScreen = OriginScreen.HUD_EDITOR
                         )
-                    )
+                        navController.navigate(
+                            Route.ButtonStudio(
+                                mode = ButtonStudioMode.BUTTON_EDITOR,
+                                profileName = profile.name,
+                                controlKey = activeKey,
+                                currentAssetId = element.skinId
+                            )
+                        )
+                    }
                 },
-                onResetPos = { viewModel.resetControlToDefault(selectedControl!!) },
-                onRemove = { viewModel.removeControl(selectedControl!!) },
+                onResetPos = { if (activeKey.isNotEmpty()) viewModel.resetControlToDefault(activeKey) },
+                onRemove = { if (activeKey.isNotEmpty()) viewModel.removeControl(activeKey) },
+                onSwapStickTouchpad = { if (activeKey.isNotEmpty()) viewModel.swapStickAndTouchpad(activeKey) },
                 isDragging = autoDodgeCoordinator.isDraggingInspector,
                 onDragStart = { autoDodgeCoordinator.isDraggingInspector = true },
                 onDragEnd = { autoDodgeCoordinator.onInspectorDragEnd() },
@@ -284,11 +317,13 @@ fun HudEditorScreen(
                 onToggleDock = { autoDodgeCoordinator.toggleInspectorDock() },
                 modifier = Modifier
                     .align(Alignment.TopCenter)
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
                     .offset { IntOffset(0, inspectorAnimatable.value.roundToInt()) }
                     .onGloballyPositioned { coordinates ->
                         val newHeight = coordinates.size.height.toFloat()
                         if (newHeight > 0f && autoDodgeCoordinator.inspectorHeightPx != newHeight) {
                             autoDodgeCoordinator.inspectorHeightPx = newHeight
+                            autoDodgeCoordinator.animateInspector()
                         }
                     }
             )
@@ -335,7 +370,7 @@ fun HudEditorScreen(
                 onOpenStudio = {
                     showAddDialog = false
                     // Palette dialog → Viewer Mode (no context — user is browsing assets)
-                    navController.navigate(Route.ButtonStudio(mode = "viewer"))
+                    navController.navigate(Route.ButtonStudio(mode = ButtonStudioMode.VIEWER))
                 },
                 onDismiss = { showAddDialog = false }
             )
@@ -361,11 +396,20 @@ fun HudEditorScreen(
                 confirmButton = {
                     Button(
                         onClick = {
-                            viewModel.saveProfile {
-                                Toast.makeText(context, "Layout '${profile.name}' saved!", Toast.LENGTH_SHORT).show()
-                                showUnsavedDialog = false
-                                navController.popBackStack()
-                            }
+                            viewModel.saveProfile(
+                                onFailure = { error ->
+                                    val msg = "Save failed: ${error.message ?: "Unknown error"}"
+                                    Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar(msg)
+                                    }
+                                },
+                                onSaved = {
+                                    Toast.makeText(context, "Layout '${profile.name}' saved!", Toast.LENGTH_SHORT).show()
+                                    showUnsavedDialog = false
+                                    navController.popBackStack()
+                                }
+                            )
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan)
                     ) {
@@ -380,7 +424,7 @@ fun HudEditorScreen(
                                 navController.popBackStack()
                             }
                         ) {
-                            Text("Discard", color = Color(0xFFFF5252))
+                            Text("Discard", color = NeonPalette.ErrorRed)
                         }
                         TextButton(onClick = { showUnsavedDialog = false }) {
                             Text("Cancel", color = Color.White)
@@ -390,5 +434,12 @@ fun HudEditorScreen(
                 containerColor = MaterialTheme.colorScheme.surface
             )
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp)
+        )
     }
 }

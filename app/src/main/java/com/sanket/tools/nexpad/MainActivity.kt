@@ -1,6 +1,7 @@
 package com.sanket.tools.nexpad
 
-import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
@@ -11,42 +12,36 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
-import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
-import com.sanket.tools.nexpad.sensors.MotionSensorManager
+import com.sanket.tools.nexpad.runtime.registry.ComponentReloadReceiver
+import com.sanket.tools.nexpad.sensors.MotionSensorCoordinator
+import com.sanket.tools.nexpad.share.ShareManager
 import com.sanket.tools.nexpad.ui.NavigationGraph
 import com.sanket.tools.nexpad.ui.theme.NEXPADTheme
+import com.sanket.tools.nexpad.utils.HapticFeedbackHelper
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
 class MainActivity : ComponentActivity() {
     
     private lateinit var viewModel: GamepadViewModel
-    private lateinit var motionSensorManager: MotionSensorManager
-    private lateinit var hapticFeedbackHelper: com.sanket.tools.nexpad.utils.HapticFeedbackHelper
+    private lateinit var motionSensorCoordinator: MotionSensorCoordinator
+    private lateinit var hapticFeedbackHelper: HapticFeedbackHelper
     private lateinit var layoutManager: LayoutManager
-    private var reloadReceiver: android.content.BroadcastReceiver? = null
+    private var componentReloadReceiver: ComponentReloadReceiver? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         
-        // Hide system bars (Navigation bar and Status bar)
-        val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
-        windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
-        
         // Draw across the camera cutout
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            window.attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-        }
+        window.attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         
         viewModel = ViewModelProvider(this)[GamepadViewModel::class.java]
         layoutManager = LayoutManager(this)
@@ -54,65 +49,20 @@ class MainActivity : ComponentActivity() {
         if (intent?.action == android.hardware.usb.UsbManager.ACTION_USB_ACCESSORY_ATTACHED) {
             viewModel.checkAoaAccessory()
         }
+        handleIncomingFileIntent(intent)
 
         // Register broadcast receiver for Desktop ADB push reload
-        val receiver = object : android.content.BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: android.content.Intent?) {
-                lifecycleScope.launch(Dispatchers.IO) {
-                    RemoteComponentRegistry.getInstance(this@MainActivity).reloadAll()
-                    ComponentRegistry.getInstance(this@MainActivity).reloadAll()
-                    withContext(Dispatchers.Main) {
-                        android.widget.Toast.makeText(this@MainActivity, "⚡ Components reloaded from Desktop!", android.widget.Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-        }
-        reloadReceiver = receiver
-        val filter = android.content.IntentFilter().apply {
-            addAction("com.sanket.tools.nexpad.RELOAD_COMPONENTS")
-            addAction("com.sanket.tools.nexpad.RELOAD_REMOTE_COMPONENTS")
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
-        } else {
-            registerReceiver(receiver, filter)
-        }
+        componentReloadReceiver = ComponentReloadReceiver.register(this, lifecycleScope)
 
-        val sharedPref = getSharedPreferences("nexpad_prefs", MODE_PRIVATE)
-        // Ensure Joystick RS defaults to true analog stick behavior, keeping Touchpads (RTP) dedicated
-        if (!sharedPref.getBoolean("RS_ANALOG_DEFAULT_MIGRATION_V1", false)) {
-            sharedPref.edit()
-                .putBoolean("RIGHT_STICK_CAMERA_MODE", false)
-                .putBoolean("RS_ANALOG_DEFAULT_MIGRATION_V1", true)
-                .apply()
-        }
-        
         // We no longer auto-connect on startup. 
         // The user must click the device from the Discovery list to connect.
 
-        // Initialize Sensors
-        motionSensorManager = MotionSensorManager(
-            context = this,
-            onMotionPacket = { packet ->
-                // Send filtered Gravity data when available, fallback to raw Accelerometer
-                if (packet.gravityX != 0f || packet.gravityY != 0f || packet.gravityZ != 0f) {
-                    viewModel.updateGravity(packet.gravityX, packet.gravityY, packet.gravityZ)
-                } else {
-                    viewModel.updateAccel(packet.accelX, packet.accelY, packet.accelZ)
-                }
-                
-                // Fallback to calibrated gyro if the device doesn't support uncalibrated gyro
-                val gX = if (packet.rawGyroX != 0f) packet.rawGyroX else packet.gyroX
-                val gY = if (packet.rawGyroY != 0f) packet.rawGyroY else packet.gyroY
-                val gZ = if (packet.rawGyroZ != 0f) packet.rawGyroZ else packet.gyroZ
-                viewModel.update6AxisGyro(gX, gY, gZ)
-            }
-        )
+        // Initialize Sensors via dedicated coordinator
+        motionSensorCoordinator = MotionSensorCoordinator(this, viewModel)
 
         // Setup HD Haptic Engine
-        hapticFeedbackHelper = com.sanket.tools.nexpad.utils.HapticFeedbackHelper(this)
+        hapticFeedbackHelper = HapticFeedbackHelper(this)
 
-        enableEdgeToEdge()
         setContent {
             NEXPADTheme {
                 Surface(
@@ -122,7 +72,6 @@ class MainActivity : ComponentActivity() {
                     NavigationGraph(
                         viewModel = viewModel,
                         layoutManager = layoutManager,
-                        context = this@MainActivity,
                         onVibrate = {
                             hapticFeedbackHelper.performButtonClick()
                         }
@@ -132,40 +81,99 @@ class MainActivity : ComponentActivity() {
         }
 
         lifecycleScope.launch {
-            viewModel.isConnected.collect { connected ->
-                if (connected) {
-                    motionSensorManager.start()
-                } else {
-                    motionSensorManager.stop()
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                combine(viewModel.isConnected, viewModel.isGamepadScreenActive) { connected, active ->
+                    Pair(connected, active)
+                }.collect { (connected, active) ->
+                    if (connected && active) {
+                        motionSensorCoordinator.start()
+                    } else {
+                        motionSensorCoordinator.stop()
+                    }
+                    if (connected) {
+                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    } else {
+                        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    }
                 }
+            }
+        }
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                viewModel.requestedSensorModeFlow.collect { mode ->
+                    motionSensorCoordinator.setMode(mode)
+                }
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.isGyroEnabled.collect { enabled ->
+                motionSensorCoordinator.isGyroMuted = !enabled
             }
         }
     }
 
     override fun onResume() {
         super.onResume()
+        viewModel.cancelScreenOffDisconnectTimer()
         viewModel.checkAoaAccessory()
-        if (viewModel.isConnected.value) {
-            motionSensorManager.start()
+        if (viewModel.isConnected.value && viewModel.isGamepadScreenActive.value) {
+            motionSensorCoordinator.start()
         }
     }
 
     override fun onPause() {
         super.onPause()
-        motionSensorManager.stop()
+        motionSensorCoordinator.stop()
     }
 
-    override fun onNewIntent(intent: android.content.Intent) {
+    override fun onStop() {
+        super.onStop()
+        viewModel.startScreenOffDisconnectTimer()
+    }
+
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         if (intent.action == android.hardware.usb.UsbManager.ACTION_USB_ACCESSORY_ATTACHED) {
             viewModel.checkAoaAccessory()
+        }
+        handleIncomingFileIntent(intent)
+    }
+
+    private fun handleIncomingFileIntent(intent: Intent?) {
+        if (intent == null) return
+        val uri: Uri? = try {
+            when (intent.action) {
+                Intent.ACTION_VIEW -> intent.data
+                Intent.ACTION_SEND -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        intent.getParcelableExtra(Intent.EXTRA_STREAM)
+                    }
+                }
+                else -> null
+            }
+        } catch (_: Exception) {
+            null
+        }
+        if (uri == null) return
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            ShareManager.handleIncomingFileUri(
+                context = this@MainActivity,
+                uri = uri,
+                layoutManager = layoutManager
+            )
         }
     }
 
     override fun onDestroy() {
+        com.sanket.tools.nexpad.runtime.engine.clearNxprcRenderCaches()
         super.onDestroy()
-        reloadReceiver?.let {
-            try { unregisterReceiver(it) } catch (_: Exception) {}
-        }
+        componentReloadReceiver?.unregister(this)
     }
 }

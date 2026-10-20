@@ -56,6 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.viewmodel.ConnectionType
 import com.sanket.tools.nexpad.network.DiscoveredServer
 import com.sanket.tools.nexpad.ui.components.card.GlassCard
@@ -100,9 +101,12 @@ fun DeviceHeroCard(
     onConnectAdb: () -> Unit,
     onDisconnectClick: () -> Unit,
     onOpenConnectionHub: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    layout: com.sanket.tools.nexpad.ui.layout.AdaptiveLayoutSpec? = null,
+    adbServerPort: Int = 9999,
+    aoaDeviceName: String? = null
 ) {
-    val state: DeviceCardState = remember(isConnected, servers, stats, isAoaAttached, isAdbAvailable, adbServerName) {
+    val state: DeviceCardState = remember(isConnected, servers, stats, isAoaAttached, isAdbAvailable, adbServerName, adbServerPort, aoaDeviceName) {
         when {
             isConnected -> {
                 val resolvedName = stats.serverDeviceName
@@ -119,11 +123,12 @@ fun DeviceHeroCard(
 
                 // 1. USB Direct AOA (Hardware kernel pipe)
                 if (isAoaAttached) {
+                    val displayName = aoaDeviceName ?: "NEXPAD PC (Direct USB)"
                     options.add(
                         HeroConnectionOption(
                             id = "usb_aoa",
-                            title = "NEXPAD PC (Direct USB)",
-                            subtitle = "Kernel Direct Pipe • AOA",
+                            title = displayName,
+                            subtitle = "Direct Hardware Pipe • USB AOA 2.0",
                             icon = Icons.Rounded.Usb,
                             buttonText = "Connect (AOA)",
                             onConnect = onConnectAoa
@@ -138,7 +143,7 @@ fun DeviceHeroCard(
                             HeroConnectionOption(
                                 id = "tether_${server.ipAddress}",
                                 title = server.name,
-                                subtitle = "${server.ipAddress} • USB Tethering",
+                                subtitle = "${server.ipAddress}:${server.port} • USB Tethering",
                                 icon = Icons.Rounded.Link,
                                 buttonText = "Connect (USB Tethering)",
                                 onConnect = { onConnectServer(server) }
@@ -149,7 +154,7 @@ fun DeviceHeroCard(
                             HeroConnectionOption(
                                 id = "wifi_${server.ipAddress}",
                                 title = server.name,
-                                subtitle = "${server.ipAddress} • Wi-Fi",
+                                subtitle = "${server.ipAddress}:${server.port} • Wi-Fi",
                                 icon = Icons.Rounded.Wifi,
                                 buttonText = "Connect (Wi-Fi)",
                                 onConnect = { onConnectServer(server) }
@@ -160,12 +165,12 @@ fun DeviceHeroCard(
 
                 // 3. USB ADB Port Forwarding (ONLY when physical USB connected and Desktop ADB handshake valid)
                 if (isAdbAvailable) {
-                    val displayName = adbServerName ?: "PC via USB ADB"
+                    val displayName = adbServerName ?: "Desktop PC"
                     options.add(
                         HeroConnectionOption(
                             id = "usb_adb",
                             title = displayName,
-                            subtitle = "Port Forwarding (127.0.0.1:9999) • USB ADB",
+                            subtitle = "Port Forwarding (127.0.0.1:$adbServerPort) • USB ADB",
                             icon = Icons.Rounded.Usb,
                             buttonText = "Connect (ADB)",
                             onConnect = onConnectAdb
@@ -199,50 +204,70 @@ fun DeviceHeroCard(
         ) { target ->
             when (target) {
                 is DeviceCardState.Searching ->
-                    SearchingContent(onOpenConnectionHub = onOpenConnectionHub)
+                    SearchingContent(onOpenConnectionHub = onOpenConnectionHub, layout = layout)
                 is DeviceCardState.Available ->
                     AvailableConnectionsContent(
                         options = target.options,
-                        onOpenConnectionHub = onOpenConnectionHub
+                        onOpenConnectionHub = onOpenConnectionHub,
+                        layout = layout
                     )
                 is DeviceCardState.Connected ->
-                    ConnectedContent(name = target.name, stats = target.stats, onDisconnectClick = onDisconnectClick)
+                    ConnectedContent(name = target.name, stats = target.stats, onDisconnectClick = onDisconnectClick, layout = layout)
             }
         }
     }
 }
 
 @Composable
-fun SearchingContent(onOpenConnectionHub: () -> Unit) {
+fun SearchingContent(
+    onOpenConnectionHub: () -> Unit,
+    layout: com.sanket.tools.nexpad.ui.layout.AdaptiveLayoutSpec? = null
+) {
+    val cardPadding = layout?.cardPadding ?: 28.dp
+    val spacing = layout?.cardSpacing ?: 16.dp
+    val buttonHeight = layout?.buttonHeight ?: 44.dp
+    val buttonFontSize = layout?.buttonFontSize ?: 13.sp
+
     Column(
-        modifier = Modifier.fillMaxWidth().padding(28.dp),
+        modifier = Modifier.fillMaxWidth().padding(cardPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(spacing)
     ) {
-        RadarScanner(size = 96.dp)
+        RadarScanner(size = if (layout?.isTablet == true) 120.dp else 96.dp)
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 "Searching for PC…",
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontSize = layout?.cardTitleFontSize ?: 16.sp
+                ),
                 color = MaterialTheme.colorScheme.onBackground
             )
             Text(
                 "Make sure NEXPAD is running on your computer",
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontSize = layout?.subtitleFontSize ?: 12.sp
+                ),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
         }
         OutlinedButton(
             onClick = onOpenConnectionHub,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().height(buttonHeight),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Cyan),
             border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f)),
             shape = RoundedCornerShape(12.dp)
         ) {
             Icon(Icons.Rounded.Hub, contentDescription = null, modifier = Modifier.size(18.dp), tint = NeonPalette.Cyan)
             Spacer(Modifier.width(8.dp))
-            Text("Connection Manager", style = MaterialTheme.typography.labelMedium, color = NeonPalette.Cyan, fontWeight = FontWeight.SemiBold)
+            Text(
+                "Connection Manager",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontSize = buttonFontSize
+                ),
+                color = NeonPalette.Cyan,
+                fontWeight = FontWeight.SemiBold
+            )
         }
     }
 }
@@ -250,7 +275,8 @@ fun SearchingContent(onOpenConnectionHub: () -> Unit) {
 @Composable
 fun AvailableConnectionsContent(
     options: List<HeroConnectionOption>,
-    onOpenConnectionHub: () -> Unit
+    onOpenConnectionHub: () -> Unit,
+    layout: com.sanket.tools.nexpad.ui.layout.AdaptiveLayoutSpec? = null
 ) {
     val infinite = rememberInfiniteTransition(label = "availablePulse")
     val glow by infinite.animateFloat(
@@ -259,9 +285,12 @@ fun AvailableConnectionsContent(
         label = "glow"
     )
 
+    val cardPadding = layout?.cardPadding ?: 20.dp
+    val spacing = layout?.cardSpacing ?: 14.dp
+
     Column(
-        modifier = Modifier.fillMaxWidth().padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        modifier = Modifier.fillMaxWidth().padding(cardPadding),
+        verticalArrangement = Arrangement.spacedBy(spacing)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -280,7 +309,9 @@ fun AvailableConnectionsContent(
                 )
                 Text(
                     "Ready to Connect",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = layout?.cardTitleFontSize ?: 16.sp
+                    ),
                     color = MaterialTheme.colorScheme.onBackground,
                     fontWeight = FontWeight.Bold
                 )
@@ -288,7 +319,9 @@ fun AvailableConnectionsContent(
             TextButton(onClick = onOpenConnectionHub) {
                 Text(
                     "Manage All",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = layout?.subtitleFontSize ?: 11.5.sp
+                    ),
                     color = NeonPalette.Cyan
                 )
             }
@@ -299,14 +332,25 @@ fun AvailableConnectionsContent(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             options.forEach { option ->
-                HeroOptionCard(option = option)
+                HeroOptionCard(option = option, layout = layout)
             }
         }
     }
 }
 
 @Composable
-fun HeroOptionCard(option: HeroConnectionOption) {
+fun HeroOptionCard(
+    option: HeroConnectionOption,
+    layout: com.sanket.tools.nexpad.ui.layout.AdaptiveLayoutSpec? = null
+) {
+    val cardPadding = layout?.cardPadding ?: 14.dp
+    val iconBoxSize = layout?.iconBoxSize ?: 44.dp
+    val iconSize = layout?.iconSize ?: 22.dp
+    val titleFontSize = layout?.cardTitleFontSize ?: 15.sp
+    val subtitleFontSize = layout?.subtitleFontSize ?: 11.5.sp
+    val buttonHeight = layout?.buttonHeight ?: 44.dp
+    val buttonFontSize = layout?.buttonFontSize ?: 13.sp
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
@@ -314,7 +358,7 @@ fun HeroOptionCard(option: HeroConnectionOption) {
         border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.3f))
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            modifier = Modifier.fillMaxWidth().padding(cardPadding),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(
@@ -323,18 +367,20 @@ fun HeroOptionCard(option: HeroConnectionOption) {
             ) {
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(iconBoxSize)
                         .clip(CircleShape)
                         .background(NeonPalette.Cyan.copy(alpha = 0.12f))
                         .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(option.icon, contentDescription = null, tint = NeonPalette.Cyan, modifier = Modifier.size(22.dp))
+                    Icon(option.icon, contentDescription = null, tint = NeonPalette.Cyan, modifier = Modifier.size(iconSize))
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         option.title,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontSize = titleFontSize
+                        ),
                         color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -342,7 +388,9 @@ fun HeroOptionCard(option: HeroConnectionOption) {
                     )
                     Text(
                         option.subtitle,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = subtitleFontSize
+                        ),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -350,7 +398,7 @@ fun HeroOptionCard(option: HeroConnectionOption) {
 
             OutlinedButton (
                 onClick = option.onConnect,
-                modifier = Modifier.fillMaxWidth().height(44.dp),
+                modifier = Modifier.fillMaxWidth().height(buttonHeight),
                 border = BorderStroke(
                     width = 1.dp,
                     color = NeonPalette.Cyan.copy(alpha = 0.5f)
@@ -362,6 +410,7 @@ fun HeroOptionCard(option: HeroConnectionOption) {
                 Text(
                     option.buttonText,
                     fontWeight = FontWeight.Bold,
+                    fontSize = buttonFontSize,
                     style = MaterialTheme.typography.labelLarge
                 )
             }
@@ -370,10 +419,20 @@ fun HeroOptionCard(option: HeroConnectionOption) {
 }
 
 @Composable
-fun ConnectedContent(name: String, stats: ConnectionStats, onDisconnectClick: () -> Unit) {
+fun ConnectedContent(
+    name: String,
+    stats: ConnectionStats,
+    onDisconnectClick: () -> Unit,
+    layout: com.sanket.tools.nexpad.ui.layout.AdaptiveLayoutSpec? = null
+) {
+    val cardPadding = layout?.cardPadding ?: 24.dp
+    val spacing = layout?.cardSpacing ?: 18.dp
+    val buttonHeight = layout?.buttonHeight ?: 44.dp
+    val buttonFontSize = layout?.buttonFontSize ?: 13.sp
+
     Column(
-        modifier = Modifier.fillMaxWidth().padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+        modifier = Modifier.fillMaxWidth().padding(cardPadding),
+        verticalArrangement = Arrangement.spacedBy(spacing)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -404,8 +463,8 @@ fun ConnectedContent(name: String, stats: ConnectionStats, onDisconnectClick: ()
                 val lossPct = (stats.packetLossPercent * 100).toInt()
                 val chipColor = when {
                     lossPct < 5 -> NeonPalette.Green
-                    lossPct < 15 -> Color(0xFFF59E0B) // Amber
-                    else -> Color(0xFFEF4444) // Red
+                    lossPct < 15 -> NeonPalette.AlertAmber
+                    else -> NeonPalette.AlertRed
                 }
                 Box(
                     modifier = Modifier
@@ -433,9 +492,9 @@ fun ConnectedContent(name: String, stats: ConnectionStats, onDisconnectClick: ()
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            LiveStat(modifier = Modifier.weight(1.1f), label = "Input Lag", value = stats.inputLagMs?.toString() ?: "--", unit = "ms")
+            LiveStat(modifier = Modifier.weight(1.1f), label = "Input Lag", value = stats.displayInputLag, unit = "ms")
             StatDivider()
-            LiveStat(modifier = Modifier.weight(0.9f), label = "Ping", value = stats.latencyMs?.toString() ?: "--", unit = "ms")
+            LiveStat(modifier = Modifier.weight(0.9f), label = "Ping", value = stats.displayPing, unit = "ms")
             StatDivider()
             LiveStat(modifier = Modifier.weight(1.0f), label = "Jitter", value = stats.oneWayJitterMs?.let { String.format(Locale.US, "±%.1f", it) } ?: "--", unit = "ms")
             StatDivider()
@@ -444,11 +503,16 @@ fun ConnectedContent(name: String, stats: ConnectionStats, onDisconnectClick: ()
 
         OutlinedButton(
             onClick = onDisconnectClick,
-            modifier = Modifier.fillMaxWidth().height(44.dp),
+            modifier = Modifier.fillMaxWidth().height(buttonHeight),
             shape = RoundedCornerShape(14.dp),
             border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
         ) {
-            Text("Disconnect", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                "Disconnect",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = buttonFontSize,
+                fontWeight = FontWeight.SemiBold
+            )
         }
     }
 }

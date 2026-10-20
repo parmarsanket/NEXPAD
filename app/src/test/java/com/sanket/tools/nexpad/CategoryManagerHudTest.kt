@@ -9,6 +9,7 @@ import com.sanket.tools.nexpad.model.LayoutProfile
 import com.sanket.tools.nexpad.model.LayoutSkin
 import com.sanket.tools.nexpad.model.LayoutTransform
 import com.sanket.tools.nexpad.model.Position
+import com.sanket.tools.nexpad.model.TouchpadCurve
 import com.sanket.tools.nexpad.model.getControlDefaultPosition
 import com.sanket.tools.nexpad.model.standardElitePositions
 import org.junit.Assert.*
@@ -17,11 +18,13 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 import kotlin.math.hypot
 import kotlin.math.pow
-import com.sanket.tools.nexpad.ui.components.controller.calculateGamingStickMagnitude
-import com.sanket.tools.nexpad.ui.components.controller.VelocityRingBuffer
-import com.sanket.tools.nexpad.ui.components.controller.PlayStationShape
-import com.sanket.tools.nexpad.ui.components.controller.getPlayStationShape
-import com.sanket.tools.nexpad.ui.components.controller.isPlayStationSymbol
+import com.sanket.tools.nexpad.ui.components.controller.special.calculateGamingStickMagnitude
+import com.sanket.tools.nexpad.ui.components.controller.special.VelocityRingBuffer
+import com.sanket.tools.nexpad.ui.components.controller.abxy.PlayStationShape
+import com.sanket.tools.nexpad.ui.components.controller.abxy.getPlayStationShape
+import com.sanket.tools.nexpad.ui.components.controller.abxy.isPlayStationSymbol
+import com.sanket.tools.nexpad.runtime.registry.NativeComponentRegistry
+import com.sanket.tools.nexpad.runtime.registry.DefaultComponents
 
 class CategoryManagerHudTest {
 
@@ -119,10 +122,10 @@ class CategoryManagerHudTest {
             return false
         }
 
-        // LB must match LB, L1, rc.bumper_lb, builtin.cyber_bumper_lb
+        // LB must match LB, L1, rc.bumper_lb, builtin.arc_lb
         assertTrue(isSkinCompatible("LB", "BUMPER", "rc.bumper_lb", "LB"))
         assertTrue(isSkinCompatible("L1", "BUMPER", "rc.my_custom_bumper", "LB"))
-        assertTrue(isSkinCompatible("", "BUMPER", "builtin.cyber_bumper_lb", "LB"))
+        assertTrue(isSkinCompatible("", "BUMPER", "builtin.arc_lb", "LB"))
         assertTrue(isSkinCompatible("Left Bumper", "BUMPER", "custom_123", "LB"))
 
         // Cross-button leakage must NEVER occur
@@ -140,10 +143,10 @@ class CategoryManagerHudTest {
         // Simulates the skins available for LB
         val dummySkins = listOf(
             TestSkin(null, "Default 3D"), // index 0 (id = null)
-            TestSkin("builtin.cyber_bumper_lb", "Tactical Bumper LB"),
-            TestSkin("builtin.neon_cyan_bumper_lb", "Neon Cyan Bumper LB"),
-            TestSkin("builtin.stealth_carbon_lb", "Stealth Carbon LB"),
-            TestSkin("builtin.crimson_mecha_lb", "Crimson Mecha LB"),
+            TestSkin("builtin.arc_lb", "Arc Bumper LB"),
+            TestSkin("builtin.led_lb", "LED Bar Bumper LB"),
+            TestSkin("builtin.peek_lb", "Peek Bumper LB"),
+            TestSkin("builtin.rib_lb", "Ribbed Bumper LB"),
             TestSkin("rc.bumper_lb", "Shoulder Bumper LB")
         )
 
@@ -164,21 +167,21 @@ class CategoryManagerHudTest {
 
         var skin: String? = null // Starts at Default 3D
 
-        // Cycle 1: 0 -> 1 (cyber_bumper_lb)
+        // Cycle 1: 0 -> 1 (arc_lb)
         skin = getNextSkinId(skin)
-        assertEquals("builtin.cyber_bumper_lb", skin)
+        assertEquals("builtin.arc_lb", skin)
 
-        // Cycle 2: 1 -> 2 (neon_cyan_bumper_lb)
+        // Cycle 2: 1 -> 2 (led_lb)
         skin = getNextSkinId(skin)
-        assertEquals("builtin.neon_cyan_bumper_lb", skin)
+        assertEquals("builtin.led_lb", skin)
 
-        // Cycle 3: 2 -> 3 (stealth_carbon_lb)
+        // Cycle 3: 2 -> 3 (peek_lb)
         skin = getNextSkinId(skin)
-        assertEquals("builtin.stealth_carbon_lb", skin)
+        assertEquals("builtin.peek_lb", skin)
 
-        // Cycle 4: 3 -> 4 (crimson_mecha_lb)
+        // Cycle 4: 3 -> 4 (rib_lb)
         skin = getNextSkinId(skin)
-        assertEquals("builtin.crimson_mecha_lb", skin)
+        assertEquals("builtin.rib_lb", skin)
 
         // Cycle 5: 4 -> 5 ("Shoulder Bumper LB")
         skin = getNextSkinId(skin)
@@ -190,11 +193,11 @@ class CategoryManagerHudTest {
 
         // Cycle 7: 0 -> 1 (CONTINUES LOOPING FOREVER, NEVER STUCK)
         skin = getNextSkinId(skin)
-        assertEquals("builtin.cyber_bumper_lb", skin)
+        assertEquals("builtin.arc_lb", skin)
 
         // Cycle 8: 1 -> 2
         skin = getNextSkinId(skin)
-        assertEquals("builtin.neon_cyan_bumper_lb", skin)
+        assertEquals("builtin.led_lb", skin)
 
         // Unknown or deleted skin cleanly resets to 0 (default)
         val resetSkin = getNextSkinId("deleted_unknown_skin_id")
@@ -782,6 +785,58 @@ class CategoryManagerHudTest {
     }
 
     @Test
+    fun testTouchpadLinearCurveVsPowerCurve() {
+        val sensitivity = 1.0f
+
+        // 1. Linear Curve: 1:1 proportional response
+        // Deadzone <= 0.5 dp/s
+        assertEquals(0f, calculateGamingStickMagnitude(0.4f, sensitivity, TouchpadCurve.LINEAR), 0.0001f)
+        // 60 dp/s -> 60 / 600 = 0.10f
+        assertEquals(0.10f, calculateGamingStickMagnitude(60f, sensitivity, TouchpadCurve.LINEAR), 0.001f)
+        // 300 dp/s -> 300 / 600 = 0.50f
+        assertEquals(0.50f, calculateGamingStickMagnitude(300f, sensitivity, TouchpadCurve.LINEAR), 0.001f)
+        // 600 dp/s -> 600 / 600 = 1.00f
+        assertEquals(1.00f, calculateGamingStickMagnitude(600f, sensitivity, TouchpadCurve.LINEAR), 0.001f)
+        // > 600 dp/s clamps to 1.00f
+        assertEquals(1.00f, calculateGamingStickMagnitude(900f, sensitivity, TouchpadCurve.LINEAR), 0.001f)
+
+        // 2. Power Curve: 5-zone ballistics
+        // < 8 dp/s noise gate
+        assertEquals(0f, calculateGamingStickMagnitude(5f, sensitivity, TouchpadCurve.POWER), 0.0001f)
+        // 8 dp/s anti-deadzone floor 0.16f
+        assertEquals(0.16f, calculateGamingStickMagnitude(8f, sensitivity, TouchpadCurve.POWER), 0.001f)
+        // 400 dp/s golden sweet spot 0.50f
+        assertEquals(0.50f, calculateGamingStickMagnitude(400f, sensitivity, TouchpadCurve.POWER), 0.001f)
+        // 1200 dp/s full deflection
+        assertEquals(1.00f, calculateGamingStickMagnitude(1200f, sensitivity, TouchpadCurve.POWER), 0.001f)
+    }
+
+    @Test
+    fun testTouchpadMicroDeltaAccumulationAt120Hz() {
+        // At 120Hz (~8.3ms per frame), creeping thumb movement at 4 dp/s produces ~0.033 dp per frame.
+        // Without accumulation, sub-0.15dp frames would be dropped forever.
+        // With micro-delta accumulation and threshold 0.04f dp, small deltas accumulate over 2 frames:
+        var accumulatedDeltaX = 0f
+        var accumulatedDeltaY = 0f
+        val perFrameDelta = 0.033f
+        val thresholdDp = 0.04f
+
+        var dispatchedFrames = 0
+        for (frame in 1..10) {
+            accumulatedDeltaX += perFrameDelta
+            val distDp = kotlin.math.hypot(accumulatedDeltaX, accumulatedDeltaY)
+            if (distDp >= thresholdDp) {
+                dispatchedFrames++
+                accumulatedDeltaX = 0f
+                accumulatedDeltaY = 0f
+            }
+        }
+
+        // 10 frames * 0.033 = 0.33 total dp. At 0.04f threshold, every 2 frames crosses threshold -> exactly 5 dispatches!
+        assertEquals("Slow speed creeping must accumulate and trigger regular events (5 dispatches for 10 frames)", 5, dispatchedFrames)
+    }
+
+    @Test
     fun testDirectionalAxisStabilization() {
         // Cross-talk suppression: when primary axis > 3x secondary axis, dampen off-axis by 50%
         fun stabilizeAxes(deltaX: Float, deltaY: Float): Pair<Float, Float> {
@@ -1309,7 +1364,262 @@ class CategoryManagerHudTest {
         assertEquals("Xbox Style", xboxLabel)
         assertEquals("PlayStation Style", psLabel)
     }
+
+    @Test
+    fun testStickTouchpadMutualExclusivityAndCenterPositionInheritance() {
+        // 1. Verify LayoutProfile.canonicalPositions() self-healing mutual exclusivity
+        val conflictingProfile = LayoutProfile(
+            name = "Test Conflict",
+            positions = mapOf(
+                ControlKey.LS.key to Position(xRatio = 0.18f, yRatio = 0.72f, scale = 1.2f, opacity = 0.9f),
+                ControlKey.LTP.key to Position(xRatio = 0.20f, yRatio = 0.70f, scale = 1.0f, opacity = 1.0f),
+                ControlKey.RS.key to Position(xRatio = 0.82f, yRatio = 0.75f, scale = 1.2f, opacity = 0.9f),
+                ControlKey.RTP.key to Position(xRatio = 0.80f, yRatio = 0.70f, scale = 1.0f, opacity = 1.0f),
+                ControlKey.A.key to Position(xRatio = 0.85f, yRatio = 0.65f, scale = 1.0f, opacity = 1.0f)
+            )
+        )
+
+        val healedPositions = conflictingProfile.canonicalPositions()
+        assertTrue("LS must be kept in healed profile", healedPositions.containsKey(ControlKey.LS.key))
+        assertFalse("LTP must be removed when LS is present", healedPositions.containsKey(ControlKey.LTP.key))
+        assertTrue("RS must be kept in healed profile", healedPositions.containsKey(ControlKey.RS.key))
+        assertFalse("RTP must be removed when RS is present", healedPositions.containsKey(ControlKey.RTP.key))
+        assertTrue("A must remain unaffected", healedPositions.containsKey(ControlKey.A.key))
+
+        // 2. Profile with only Touchpads retains both without removal
+        val touchpadOnlyProfile = LayoutProfile(
+            name = "Touchpad Layout",
+            positions = mapOf(
+                ControlKey.LTP.key to Position(xRatio = 0.18f, yRatio = 0.72f, scale = 1.1f, opacity = 0.95f),
+                ControlKey.RTP.key to Position(xRatio = 0.82f, yRatio = 0.75f, scale = 1.1f, opacity = 0.95f)
+            )
+        )
+        val touchpadHealed = touchpadOnlyProfile.canonicalPositions()
+        assertTrue("LTP is retained when LS is absent", touchpadHealed.containsKey(ControlKey.LTP.key))
+        assertTrue("RTP is retained when RS is absent", touchpadHealed.containsKey(ControlKey.RTP.key))
+
+        // 3. Test Position Inheritance Simulation
+        fun simulateAddControl(
+            currentMap: Map<String, LayoutTransform>,
+            newKey: String
+        ): Map<String, LayoutTransform> {
+            val canonicalKey = ControlKey.fromIdentifier(newKey)?.key ?: newKey.uppercase()
+            var elements = currentMap
+            var inheritedTransform: LayoutTransform? = null
+
+            if (canonicalKey == ControlKey.LTP.key) {
+                val lsEntry = elements.entries.firstOrNull { it.key == ControlKey.LS.key }
+                if (lsEntry != null) {
+                    inheritedTransform = lsEntry.value
+                    elements = elements - lsEntry.key
+                }
+            } else if (canonicalKey == ControlKey.LS.key) {
+                val ltpEntry = elements.entries.firstOrNull { it.key == ControlKey.LTP.key }
+                if (ltpEntry != null) {
+                    inheritedTransform = ltpEntry.value
+                    elements = elements - ltpEntry.key
+                }
+            } else if (canonicalKey == ControlKey.RTP.key) {
+                val rsEntry = elements.entries.firstOrNull { it.key == ControlKey.RS.key }
+                if (rsEntry != null) {
+                    inheritedTransform = rsEntry.value
+                    elements = elements - rsEntry.key
+                }
+            } else if (canonicalKey == ControlKey.RS.key) {
+                val rtpEntry = elements.entries.firstOrNull { it.key == ControlKey.RTP.key }
+                if (rtpEntry != null) {
+                    inheritedTransform = rtpEntry.value
+                    elements = elements - rtpEntry.key
+                }
+            }
+
+            val finalTransform = inheritedTransform?.copy() ?: LayoutTransform(0.5f, 0.5f, 1f, 1f)
+            return elements + (canonicalKey to finalTransform)
+        }
+
+        // LS replaced with LTP inherits exact position
+        val initialLayout = mapOf(
+            ControlKey.LS.key to LayoutTransform(xRatio = 0.165f, yRatio = 0.735f, scale = 1.25f, opacity = 0.88f),
+            ControlKey.RS.key to LayoutTransform(xRatio = 0.835f, yRatio = 0.735f, scale = 1.25f, opacity = 0.88f)
+        )
+
+        val afterAddingLtp = simulateAddControl(initialLayout, "LTP")
+        assertFalse("LS must be removed", afterAddingLtp.containsKey("LS"))
+        assertTrue("LTP must be present", afterAddingLtp.containsKey("LTP"))
+        val ltpTransform = afterAddingLtp["LTP"]!!
+        assertEquals(0.165f, ltpTransform.xRatio, 0.0001f)
+        assertEquals(0.735f, ltpTransform.yRatio, 0.0001f)
+        assertEquals(1.25f, ltpTransform.scale, 0.0001f)
+        assertEquals(0.88f, ltpTransform.opacity, 0.0001f)
+
+        // Switching back from LTP to LS inherits exact position
+        val afterSwitchingBackToLs = simulateAddControl(afterAddingLtp, "LS")
+        assertFalse("LTP must be removed", afterSwitchingBackToLs.containsKey("LTP"))
+        assertTrue("LS must be present", afterSwitchingBackToLs.containsKey("LS"))
+        val lsRestoredTransform = afterSwitchingBackToLs["LS"]!!
+        assertEquals(0.165f, lsRestoredTransform.xRatio, 0.0001f)
+        assertEquals(0.735f, lsRestoredTransform.yRatio, 0.0001f)
+        assertEquals(1.25f, lsRestoredTransform.scale, 0.0001f)
+        assertEquals(0.88f, lsRestoredTransform.opacity, 0.0001f)
+
+        // RS replaced with RTP inherits exact position
+        val afterAddingRtp = simulateAddControl(afterSwitchingBackToLs, "RTP")
+        assertFalse("RS must be removed", afterAddingRtp.containsKey("RS"))
+        assertTrue("RTP must be present", afterAddingRtp.containsKey("RTP"))
+        val rtpTransform = afterAddingRtp["RTP"]!!
+        assertEquals(0.835f, rtpTransform.xRatio, 0.0001f)
+        assertEquals(0.735f, rtpTransform.yRatio, 0.0001f)
+        assertEquals(1.25f, rtpTransform.scale, 0.0001f)
+        assertEquals(0.88f, rtpTransform.opacity, 0.0001f)
+    }
+
+    @Test
+    fun testInbuildTouchpadVariantsRegistration() {
+        val ltpVariant = NativeComponentRegistry.getVariant("builtin.inbuild_ltp")
+        assertNotNull("Inbuild LTP variant must be registered in NativeComponentRegistry", ltpVariant)
+        assertEquals(ControlKey.LTP, ltpVariant?.controlKey)
+        assertEquals("Inbuild Surface", ltpVariant?.variantName)
+        assertEquals(6003, ltpVariant?.seedCode)
+
+        val rtpVariant = NativeComponentRegistry.getVariant("builtin.inbuild_rtp")
+        assertNotNull("Inbuild RTP variant must be registered in NativeComponentRegistry", rtpVariant)
+        assertEquals(ControlKey.RTP, rtpVariant?.controlKey)
+        assertEquals("Inbuild Surface", rtpVariant?.variantName)
+        assertEquals(6004, rtpVariant?.seedCode)
+
+        // Verify presets exist in DefaultComponents.ALL_PRESETS for Button Studio
+        val ltpPreset = DefaultComponents.ALL_PRESETS.find { it.manifest.id == "builtin.inbuild_ltp" }
+        assertNotNull("Inbuild LTP preset must be in DefaultComponents.ALL_PRESETS for Button Studio", ltpPreset)
+        assertEquals(ControlKey.LTP.key, ltpPreset?.manifest?.defaultControl)
+
+        val rtpPreset = DefaultComponents.ALL_PRESETS.find { it.manifest.id == "builtin.inbuild_rtp" }
+        assertNotNull("Inbuild RTP preset must be in DefaultComponents.ALL_PRESETS for Button Studio", rtpPreset)
+        assertEquals(ControlKey.RTP.key, rtpPreset?.manifest?.defaultControl)
+
+        // Verify isNativeBuiltin recognizes inbuild prefix
+        assertTrue(NativeComponentRegistry.isNativeBuiltin("builtin.inbuild_ltp"))
+        assertTrue(NativeComponentRegistry.isNativeBuiltin("builtin.inbuild_rtp"))
+
+        // Verify resolution of intrinsic dimensions
+        val ltpDim = CategoryManager.resolveIntrinsicMaxDim(ControlKey.LTP.key)
+        assertTrue("Intrinsic max dim for LTP must be positive", ltpDim > 0f)
+
+        // Verify Button Studio category filtering:
+        // LTP belongs to STICKS category
+        val ltpSpec = CategoryManager.getControl("LTP")
+        assertNotNull("LTP spec must be present", ltpSpec)
+        val ltpCategory = CategoryManager.findCategoryForControl("LTP")
+        assertNotNull("Category for LTP must be found", ltpCategory)
+        assertEquals(ltpSpec?.categoryType?.id, ltpCategory?.id)
+
+        // When viewing the category containing LTP, inbuild_ltp must be matched
+        assertNotNull(ltpPreset)
+        val compCtrl = ControlKey.fromIdentifier(ltpPreset!!.manifest.defaultControl.uppercase())
+        assertNotNull(compCtrl)
+        assertTrue(
+            "Preset must match category ID or keys",
+            compCtrl?.categoryType?.id == ltpCategory?.id || ltpCategory?.keys?.contains("LTP") == true
+        )
+    }
+
+    @Test
+    fun testInbuildTouchpadButtonBufferZoneExclusion() {
+        // Universal 16.dp buffer zone Euclidean distance check
+        val marginPx = 16f
+        val marginSq = marginPx * marginPx
+
+        // Simulated button placed at (100, 200) with size 80x80 -> Center = (140, 240)
+        val buttonCenterX = 140f
+        val buttonCenterY = 240f
+        val buttonHalfW = 40f
+        val buttonHalfH = 40f
+
+        fun isNearButton(touchX: Float, touchY: Float): Boolean {
+            val dx = maxOf(kotlin.math.abs(touchX - buttonCenterX) - buttonHalfW, 0f)
+            val dy = maxOf(kotlin.math.abs(touchY - buttonCenterY) - buttonHalfH, 0f)
+            return (dx * dx + dy * dy) <= marginSq
+        }
+
+        // 1. Direct hit on the button (e.g. center) -> must be excluded (touchpad ignored)
+        assertTrue("Direct button tap must be excluded from touchpad", isNearButton(140f, 240f))
+
+        // 2. Touch 8px outside the right edge of button -> within 16px buffer -> must be excluded
+        assertTrue("Touch 8px right of button edge must be excluded", isNearButton(188f, 240f))
+
+        // 3. Touch 15px outside the bottom edge -> within 16px buffer -> must be excluded
+        assertTrue("Touch 15px below button edge must be excluded", isNearButton(140f, 295f))
+
+        // 4. Touch 10px right and 10px down from corner -> Euclidean dist = sqrt(200) = 14.14px <= 16px -> excluded
+        assertTrue("Touch 10px from corner is within Euclidean buffer zone", isNearButton(190f, 290f))
+
+        // 5. Touch 20px outside button edge -> outside 16px buffer -> NOT excluded (touchpad triggers!)
+        assertFalse("Touch 20px outside button is clear of buffer zone", isNearButton(200f, 240f))
+
+        // 6. Touch far away in empty space -> NOT excluded (touchpad triggers!)
+        assertFalse("Touch in empty space triggers touchpad smoothly", isNearButton(500f, 500f))
+    }
+
+    @Test
+    fun testInbuildTouchpadHalfScreenPartition() {
+        val screenWidthPx = 2400f
+        val halfWidthPx = screenWidthPx / 2f // 1200f
+
+        fun isTouchpadRegionLeft(touchX: Float): Boolean = touchX < halfWidthPx
+
+        // Left screen touches belong to LTP
+        assertTrue("X=100 is in left (LTP) region", isTouchpadRegionLeft(100f))
+        assertTrue("X=1199 is in left (LTP) region", isTouchpadRegionLeft(1199f))
+
+        // Right screen touches belong to RTP
+        assertFalse("X=1200 is in right (RTP) region", isTouchpadRegionLeft(1200f))
+        assertFalse("X=2200 is in right (RTP) region", isTouchpadRegionLeft(2200f))
+    }
+
+    @Test
+    fun testInbuildTouchpadExcludesDiscreteBoxWidget() {
+        // Layout positions with LTP and RTP using inbuild touchpads
+        val positions = mapOf(
+            "LTP" to Position(xRatio = 0.10f, yRatio = 0.75f, customComponentId = "builtin.inbuild_ltp"),
+            "RTP" to Position(xRatio = 0.90f, yRatio = 0.75f, customComponentId = "builtin.inbuild_rtp"),
+            "A" to Position(xRatio = 0.75f, yRatio = 0.75f)
+        )
+
+        val touchpadEntries = positions.entries.filter { (key, _) ->
+            key.equals("LTP", ignoreCase = true) || key.equals("RTP", ignoreCase = true)
+        }
+        assertEquals(2, touchpadEntries.size)
+
+        // Filter for discrete touchpad elements: ONLY inbuild touchpads are ambient full-surface layers,
+        // so no discrete box UI widget is rendered for inbuild touchpads
+        val discreteTouchpadEntries = touchpadEntries.filter { (_, pos) ->
+            val id = pos.customComponentId
+            id == null || !id.startsWith("builtin.inbuild_")
+        }
+        assertTrue("Discrete box UI must be empty for inbuild touchpads", discreteTouchpadEntries.isEmpty())
+    }
+
+    @Test
+    fun testRealisticAndNxprcTouchpadsRenderAsDiscreteBoxWidgets() {
+        // Layout positions with default RealisticTouchPad, explicit RealisticTouchPad, and NXPRC touchpad
+        val positions = mapOf(
+            "LTP" to Position(xRatio = 0.10f, yRatio = 0.75f, customComponentId = null),
+            "RTP" to Position(xRatio = 0.90f, yRatio = 0.75f, customComponentId = "builtin.default_rtp"),
+            "LTP_RC" to Position(xRatio = 0.15f, yRatio = 0.75f, customComponentId = "rc.my_touchpad")
+        )
+
+        val touchpadEntries = positions.entries.filter { (key, _) ->
+            key.startsWith("LTP", ignoreCase = true) || key.startsWith("RTP", ignoreCase = true)
+        }
+        assertEquals(3, touchpadEntries.size)
+
+        val discreteTouchpadEntries = touchpadEntries.filter { (_, pos) ->
+            val id = pos.customComponentId
+            id == null || !id.startsWith("builtin.inbuild_")
+        }
+        assertEquals("Realistic and NXPRC touchpads must be rendered as discrete widgets", 3, discreteTouchpadEntries.size)
+    }
 }
+
 
 
 

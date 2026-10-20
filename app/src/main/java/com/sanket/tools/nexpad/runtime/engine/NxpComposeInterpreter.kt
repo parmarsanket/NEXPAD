@@ -32,19 +32,21 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.model.NexpadKeys
+import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.model.ControllerTouchClassifier
 import com.sanket.tools.nexpad.runtime.model.NexPadControl
 import com.sanket.tools.nexpad.runtime.model.NexPadInputTarget
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
 import com.sanket.tools.nexpad.runtime.model.NxpGeometry
-import com.sanket.tools.nexpad.ui.components.controller.calculateGamingStickMagnitude
-import com.sanket.tools.nexpad.ui.components.controller.VelocityRingBuffer
+import com.sanket.tools.nexpad.ui.components.controller.special.calculateGamingStickMagnitude
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
+import com.sanket.tools.nexpad.ui.components.controller.special.VelocityRingBuffer
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -55,6 +57,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * High-performance Jetpack Compose interpreter for .nxpcomponent definitions.
@@ -68,7 +71,10 @@ fun NxpComposeInterpreter(
     inputTarget: NexPadInputTarget,
     modifier: Modifier = Modifier,
     isInteractive: Boolean = true,
-    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX
+    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
+    touchpadCurve: String? = null,
+    isLocked: Boolean = true,
+    viewModel: com.sanket.tools.nexpad.viewmodel.GamepadViewModel? = null
 ) {
     val isDpadCross = definition.manifest.defaultControl.equals(NexpadKeys.DPAD, ignoreCase = true) ||
             (definition.manifest.category.equals(NexpadKeys.DPAD, ignoreCase = true) && definition.size.widthDp >= 100) ||
@@ -77,7 +83,7 @@ fun NxpComposeInterpreter(
     if (definition.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
         definition.interaction.type.equals("Joystick", ignoreCase = true)
     ) {
-        RenderNxpJoystick(definition, assignedControl, isConnected, inputTarget, modifier, isInteractive)
+        RenderNxpJoystick(definition, assignedControl, isConnected, inputTarget, modifier, isInteractive, touchpadCurve, isLocked, viewModel)
     } else if (isDpadCross) {
         RenderNxpDPad(definition, isConnected, inputTarget, modifier, isInteractive)
     } else {
@@ -126,12 +132,12 @@ private fun RenderNxpButton(
 
     val fillColor = parseHexColor(
         if (isPressed && pressedState?.fillColor != null) pressedState.fillColor else def.visual.fillColor,
-        fallback = Color(0xFF0A192F)
+        fallback = NeonPalette.CyberNavy
     ).copy(alpha = def.visual.opacity)
 
     val borderColor = parseHexColor(
         if (isPressed && pressedState?.borderColor != null) pressedState.borderColor else def.visual.borderColor,
-        fallback = Color(0xFF00F0FF)
+        fallback = NeonPalette.ElectricCyan
     )
 
     val buttonControl = (control as? NexPadControl.Button)
@@ -179,7 +185,7 @@ private fun RenderNxpButton(
         if (label != null) {
             val labelColor = parseHexColor(
                 if (isPressed) label.pressedColor else label.color,
-                fallback = Color(0xFF00F0FF)
+                fallback = NeonPalette.ElectricCyan
             )
             val labelText = if (buttonControl.key.isNotBlank()) {
                 val upper = buttonControl.key.uppercase()
@@ -220,9 +226,9 @@ private fun RenderNxpDPad(
     var pressedDirections by remember { mutableStateOf<Set<String>>(emptySet()) }
     val currentInputTarget by rememberUpdatedState(inputTarget)
 
-    val baseBorderColor = parseHexColor(def.visual.borderColor, fallback = Color(0xFF2DD4BF))
-    val baseFillColor = parseHexColor(def.visual.fillColor, fallback = Color(0xFF0B1A24)).copy(alpha = def.visual.opacity)
-    val activeColor = parseHexColor(def.pressed?.fillColor ?: "#2DD4BF", fallback = Color(0xFF2DD4BF))
+    val baseBorderColor = parseHexColor(def.visual.borderColor, fallback = NeonPalette.Teal)
+    val baseFillColor = parseHexColor(def.visual.fillColor, fallback = NeonPalette.CyberDark).copy(alpha = def.visual.opacity)
+    val activeColor = parseHexColor(def.pressed?.fillColor ?: "#2DD4BF", fallback = NeonPalette.Teal)
 
     val sizeDp = def.size.widthDp.coerceAtLeast(140).dp
 
@@ -447,62 +453,83 @@ private fun RenderNxpJoystick(
     isConnected: Boolean,
     inputTarget: NexPadInputTarget,
     modifier: Modifier,
-    isInteractive: Boolean = true
+    isInteractive: Boolean = true,
+    touchpadCurve: String? = null,
+    isLocked: Boolean = true,
+    viewModel: com.sanket.tools.nexpad.viewmodel.GamepadViewModel? = null
 ) {
     var thumbOffset by remember { mutableStateOf(Offset.Zero) }
+    val currentInputTarget by rememberUpdatedState(inputTarget)
     val baseSizePx = remember(def.size.widthDp) { def.size.widthDp * 2.5f }
     val maxRadiusPx = remember(baseSizePx) { baseSizePx * 0.45f }
 
     val stickControl = (control as? NexPadControl.Stick)
         ?: NexPadControl.Stick(isLeft = def.manifest.defaultControl.contains("L", ignoreCase = true))
 
-    val baseColor = parseHexColor(def.visual.fillColor, Color(0xFF0A192F)).copy(alpha = 0.85f)
-    val ringColor = parseHexColor(def.visual.borderColor, Color(0xFF00F0FF))
-    val thumbColor = parseHexColor(def.pressed?.fillColor ?: def.visual.borderColor, Color(0xFF00F0FF))
+    fun getEffThumbOffset(): Offset {
+        return if (isLocked) thumbOffset else {
+            val curX = (if (stickControl.isLeft) viewModel?.leftStickX else viewModel?.rightStickX) ?: 0f
+            val curY = (if (stickControl.isLeft) viewModel?.leftStickY else viewModel?.rightStickY) ?: 0f
+            Offset(curX * maxRadiusPx, -curY * maxRadiusPx)
+        }
+    }
+
+    val baseColor = parseHexColor(def.visual.fillColor, NeonPalette.CyberNavy).copy(alpha = 0.85f)
+    val ringColor = parseHexColor(def.visual.borderColor, NeonPalette.ElectricCyan)
+    val thumbColor = parseHexColor(def.pressed?.fillColor ?: def.visual.borderColor, NeonPalette.ElectricCyan)
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val (isCameraMode, cameraSensitivity) = remember(context, stickControl.isLeft, def.manifest) {
-        val isTouchpad = def.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
-                def.manifest.defaultControl.contains("RTP", ignoreCase = true) ||
-                def.manifest.defaultControl.contains("LTP", ignoreCase = true)
+        val isTouchpad = ControllerTouchClassifier.isTouchpad(def.manifest.defaultControl, def.manifest.id)
+        val prefs = com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context)
         if (isTouchpad) {
-            val sp = context.getSharedPreferences("nexpad_prefs", android.content.Context.MODE_PRIVATE)
-            val padKey = if (stickControl.isLeft) "LTP" else "RTP"
-            val specificSens = sp.getFloat("TOUCHPAD_SENSITIVITY_$padKey", -1f)
-            val sens = if (specificSens > 0f) specificSens else {
-                val globalPadSens = sp.getFloat("TOUCHPAD_SENSITIVITY", -1f)
-                if (globalPadSens > 0f) globalPadSens else sp.getFloat("CAMERA_SENSITIVITY", 1.0f) * 2.0f
-            }
-            Pair(true, sens)
+            val padKey = if (stickControl.isLeft) ControlKey.LTP.key else ControlKey.RTP.key
+            Pair(true, prefs.getTouchpadSensitivity(padKey))
         } else if (!stickControl.isLeft) {
-            val sp = context.getSharedPreferences("nexpad_prefs", android.content.Context.MODE_PRIVATE)
-            Pair(
-                sp.getBoolean("RIGHT_STICK_CAMERA_MODE", false),
-                sp.getFloat("CAMERA_SENSITIVITY", 1.0f)
-            )
+            Pair(prefs.isRightStickCameraMode, prefs.cameraSensitivity)
         } else {
             Pair(false, 1.0f)
+        }
+    }
+    val effectiveTouchpadCurve = remember(context, stickControl.isLeft, def.manifest, touchpadCurve) {
+        val isTouchpad = ControllerTouchClassifier.isTouchpad(def.manifest.defaultControl, def.manifest.id)
+        if (isTouchpad) {
+            if (!touchpadCurve.isNullOrBlank()) {
+                com.sanket.tools.nexpad.model.TouchpadCurve.fromId(touchpadCurve)
+            } else {
+                val padKey = if (stickControl.isLeft) ControlKey.LTP.key else ControlKey.RTP.key
+                com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadCurve(padKey)
+            }
+        } else {
+            com.sanket.tools.nexpad.model.TouchpadCurve.DEFAULT
         }
     }
     val coroutineScope = rememberCoroutineScope()
     val density = androidx.compose.ui.platform.LocalDensity.current.density
 
-    val gestureModifier = if (!isInteractive) {
+    val isTouchpad = ControllerTouchClassifier.isTouchpad(def.manifest.defaultControl, def.manifest.id)
+
+    val gestureModifier = if (!isInteractive || (!isLocked && !isTouchpad)) {
         Modifier
     } else if (isCameraMode) {
-        Modifier.pointerInput(isConnected, stickControl, cameraSensitivity, density) {
+        Modifier.pointerInput(isConnected, stickControl, cameraSensitivity, effectiveTouchpadCurve, density) {
+            var coastJob: Job? = null
             awaitEachGesture {
                 val down = awaitFirstDown(requireUnconsumed = false)
+                if (isTouchpad && down.isConsumed) return@awaitEachGesture
+                coastJob?.cancel()
                 val startTime = System.currentTimeMillis()
                 var previousTouchX = down.position.x
                 var previousTouchY = down.position.y
                 var previousTimeMs = startTime
                 var currentStickX = 0f
                 var currentStickY = 0f
+                var accumulatedDeltaX = 0f
+                var accumulatedDeltaY = 0f
                 var lastSpeed = 0f
                 var decayJob: Job? = null
                 val velocityBuffer = VelocityRingBuffer(8)
-                inputTarget.onStickMove(stickControl, 0f, 0f)
+                currentInputTarget.onStickMove(stickControl, 0f, 0f)
 
                 while (true) {
                     val event = awaitPointerEvent()
@@ -517,20 +544,25 @@ private fun RenderNxpJoystick(
                     previousTouchX = currentTouchX
                     previousTouchY = currentTouchY
 
-                    var finalDeltaX = deltaX
-                    var finalDeltaY = deltaY
+                    var stepDeltaX = deltaX
+                    var stepDeltaY = deltaY
                     val absX = kotlin.math.abs(deltaX)
                     val absY = kotlin.math.abs(deltaY)
                     if (absX > 3.0f * absY) {
-                        finalDeltaY *= 0.5f // Suppress vertical wobble during horizontal turns
+                        stepDeltaY *= 0.5f // Suppress vertical wobble during horizontal turns
                     } else if (absY > 3.0f * absX) {
-                        finalDeltaX *= 0.5f // Suppress horizontal wobble during vertical looks
+                        stepDeltaX *= 0.5f // Suppress horizontal wobble during vertical looks
                     }
 
-                    val distPx = hypot(finalDeltaX, finalDeltaY)
+                    accumulatedDeltaX += stepDeltaX
+                    accumulatedDeltaY += stepDeltaY
+
+                    val distPx = hypot(accumulatedDeltaX, accumulatedDeltaY)
                     val distDp = distPx / density
 
-                    if (distDp > 0.15f) {
+                    // Micro-delta threshold: 0.04f dp ensures creeping thumb movements safely accumulate
+                    // across frames without being dropped, delivering smooth micro-aim at any framerate (60Hz, 120Hz).
+                    if (distDp >= 0.04f) {
                         val currentTimeMs = System.currentTimeMillis()
                         val dtSec = ((currentTimeMs - previousTimeMs).coerceAtLeast(1L)) / 1000f
                         previousTimeMs = currentTimeMs
@@ -540,11 +572,11 @@ private fun RenderNxpJoystick(
                         val smoothedSpeed = velocityBuffer.averageSpeed()
                         lastSpeed = smoothedSpeed
 
-                        val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, cameraSensitivity)
+                        val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, cameraSensitivity, effectiveTouchpadCurve)
 
                         if (stickMagnitude > 0f) {
-                            val dirX = finalDeltaX / distPx
-                            val dirY = finalDeltaY / distPx
+                            val dirX = accumulatedDeltaX / distPx
+                            val dirY = accumulatedDeltaY / distPx
 
                             val targetStickX = (dirX * stickMagnitude).coerceIn(-1f, 1f)
                             val targetStickY = (-dirY * stickMagnitude).coerceIn(-1f, 1f)
@@ -553,7 +585,7 @@ private fun RenderNxpJoystick(
                             currentStickX = 0.55f * targetStickX + 0.45f * currentStickX
                             currentStickY = 0.55f * targetStickY + 0.45f * currentStickY
 
-                            inputTarget.onStickMove(stickControl, currentStickX, currentStickY)
+                            currentInputTarget.onStickMove(stickControl, currentStickX, currentStickY)
 
                             thumbOffset = Offset(
                                 (currentStickX * maxRadiusPx).coerceIn(-maxRadiusPx, maxRadiusPx),
@@ -564,44 +596,47 @@ private fun RenderNxpJoystick(
                             val decayTimeoutMs = (120L - (smoothedSpeed / 20f).toLong()).coerceIn(50L, 120L)
                             decayJob?.cancel()
                             decayJob = coroutineScope.launch {
-                                delay(decayTimeoutMs)
+                                delay(decayTimeoutMs.milliseconds)
                                 // 3-stage gentle decay
                                 currentStickX *= 0.5f
                                 currentStickY *= 0.5f
-                                inputTarget.onStickMove(stickControl, currentStickX, currentStickY)
+                                currentInputTarget.onStickMove(stickControl, currentStickX, currentStickY)
                                 thumbOffset = Offset(
                                     currentStickX * maxRadiusPx,
                                     -currentStickY * maxRadiusPx
                                 )
-                                delay(30)
+                                delay(30.milliseconds)
                                 currentStickX *= 0.2f
                                 currentStickY *= 0.2f
-                                inputTarget.onStickMove(stickControl, currentStickX, currentStickY)
+                                currentInputTarget.onStickMove(stickControl, currentStickX, currentStickY)
                                 thumbOffset = Offset(
                                     currentStickX * maxRadiusPx,
                                     -currentStickY * maxRadiusPx
                                 )
-                                delay(25)
+                                delay(25.milliseconds)
                                 currentStickX = 0f
                                 currentStickY = 0f
-                                inputTarget.onStickMove(stickControl, 0f, 0f)
+                                currentInputTarget.onStickMove(stickControl, 0f, 0f)
                                 thumbOffset = Offset.Zero
                                 lastSpeed = 0f
                             }
                         }
+
+                        accumulatedDeltaX = 0f
+                        accumulatedDeltaY = 0f
                     }
                 }
                 decayJob?.cancel()
                 val releaseSpeed = velocityBuffer.peakSpeed()
                 if (releaseSpeed > 400f) {
                     val coastSteps = ((releaseSpeed / 200f).toInt()).coerceIn(3, 7)
-                    coroutineScope.launch {
+                    coastJob = coroutineScope.launch {
                         var coastX = currentStickX
                         var coastY = currentStickY
                         repeat(coastSteps) {
                             coastX *= 0.68f
                             coastY *= 0.68f
-                            inputTarget.onStickMove(stickControl, coastX, coastY)
+                            currentInputTarget.onStickMove(stickControl, coastX, coastY)
                             thumbOffset = Offset(
                                 coastX * maxRadiusPx,
                                 -coastY * maxRadiusPx
@@ -609,11 +644,11 @@ private fun RenderNxpJoystick(
                             delay(16)
                         }
                         thumbOffset = Offset.Zero
-                        inputTarget.onStickMove(stickControl, 0f, 0f)
+                        currentInputTarget.onStickMove(stickControl, 0f, 0f)
                     }
                 } else {
                     thumbOffset = Offset.Zero
-                    inputTarget.onStickMove(stickControl, 0f, 0f)
+                    currentInputTarget.onStickMove(stickControl, 0f, 0f)
                 }
             }
         }
@@ -630,17 +665,18 @@ private fun RenderNxpJoystick(
                         Offset(vecX / dist * maxRadiusPx, vecY / dist * maxRadiusPx)
                     } else Offset(vecX, vecY)
                     thumbOffset = clamped
-                    val normX = (clamped.x / maxRadiusPx).coerceIn(-1.0f, 1.0f)
-                    val normY = (-clamped.y / maxRadiusPx).coerceIn(-1.0f, 1.0f)
-                    inputTarget.onStickMove(stickControl, normX, normY)
+                    val safeRadius = maxRadiusPx.coerceAtLeast(1f)
+                    val normX = if (safeRadius > 0f) (clamped.x / safeRadius).coerceIn(-1.0f, 1.0f) else 0f
+                    val normY = if (safeRadius > 0f) (-clamped.y / safeRadius).coerceIn(-1.0f, 1.0f) else 0f
+                    currentInputTarget.onStickMove(stickControl, normX, normY)
                 },
                 onDragEnd = {
                     thumbOffset = Offset.Zero
-                    inputTarget.onStickMove(stickControl, 0f, 0f)
+                    currentInputTarget.onStickMove(stickControl, 0f, 0f)
                 },
                 onDragCancel = {
                     thumbOffset = Offset.Zero
-                    inputTarget.onStickMove(stickControl, 0f, 0f)
+                    currentInputTarget.onStickMove(stickControl, 0f, 0f)
                 },
                 onDrag = { change, _ ->
                     change.consume()
@@ -652,10 +688,11 @@ private fun RenderNxpJoystick(
                     } else Offset(vecX, vecY)
                     thumbOffset = clamped
 
-                    val normX = (clamped.x / maxRadiusPx).coerceIn(-1.0f, 1.0f)
-                    val normY = (-clamped.y / maxRadiusPx).coerceIn(-1.0f, 1.0f)
+                    val safeRadius = maxRadiusPx.coerceAtLeast(1f)
+                    val normX = if (safeRadius > 0f) (clamped.x / safeRadius).coerceIn(-1.0f, 1.0f) else 0f
+                    val normY = if (safeRadius > 0f) (-clamped.y / safeRadius).coerceIn(-1.0f, 1.0f) else 0f
 
-                    inputTarget.onStickMove(stickControl, normX, normY)
+                    currentInputTarget.onStickMove(stickControl, normX, normY)
                 }
             )
         }
@@ -678,7 +715,10 @@ private fun RenderNxpJoystick(
         // Floating thumbstick knob
         Box(
             modifier = Modifier
-                .offset { IntOffset(thumbOffset.x.roundToInt(), thumbOffset.y.roundToInt()) }
+                .offset {
+                    val off = getEffThumbOffset()
+                    IntOffset(off.x.roundToInt(), off.y.roundToInt())
+                }
                 .size((def.size.widthDp * 0.45f).dp)
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
@@ -695,7 +735,7 @@ private fun DrawScope.drawNxpGeometry(
     borderColor: Color,
     borderWidth: Float
 ) {
-    when (geometry.type.lowercase()) {
+    when (geometry.type.trim().lowercase()) {
         "polygon" -> {
             val sides = geometry.sides.coerceAtLeast(3)
             val radius = (size.minDimension / 2f) - (borderWidth / 2f) - 2f
@@ -716,25 +756,7 @@ private fun DrawScope.drawNxpGeometry(
                 drawPath(path, borderColor, style = Stroke(width = borderWidth))
             }
         }
-        "svgpath" -> {
-            val svgData = geometry.pathData
-            if (!svgData.isNullOrBlank()) {
-                try {
-                    val nodes = PathParser().parsePathString(svgData).toNodes()
-                    val path = Path()
-                    PathParser().addPathNodes(nodes).toPath(path)
-                    drawPath(path, fillColor)
-                    if (borderWidth > 0f) {
-                        drawPath(path, borderColor, style = Stroke(width = borderWidth))
-                    }
-                } catch (_: Exception) {
-                    drawCircle(fillColor)
-                }
-            } else {
-                drawCircle(fillColor)
-            }
-        }
-        "roundedrect" -> {
+        "roundedrect", "roundedrectangle", "roundrect", "rect", "rectangle" -> {
             val cr = CornerRadius(geometry.cornerRadius, geometry.cornerRadius)
             drawRoundRect(fillColor, cornerRadius = cr)
             if (borderWidth > 0f) {
@@ -742,10 +764,12 @@ private fun DrawScope.drawNxpGeometry(
             }
         }
         else -> { // "circle" default
-            val radius = (size.minDimension / 2f) - (borderWidth / 2f) - 2f
-            drawCircle(fillColor, radius = radius)
-            if (borderWidth > 0f) {
-                drawCircle(borderColor, radius = radius, style = Stroke(width = borderWidth))
+            val radius = ((size.minDimension / 2f) - (borderWidth / 2f) - 2f).coerceAtLeast(0f)
+            if (radius > 0f) {
+                drawCircle(fillColor, radius = radius)
+                if (borderWidth > 0f) {
+                    drawCircle(borderColor, radius = radius, style = Stroke(width = borderWidth))
+                }
             }
         }
     }
@@ -755,7 +779,7 @@ private fun DrawScope.drawNxpGeometry(
  * Safe hex color parser supporting #RGB, #ARGB, #RRGGBB, #AARRGGBB.
  * Never throws exceptions on malformed input.
  */
-fun parseHexColor(hex: String?, fallback: Color = Color(0xFF00F0FF)): Color {
+fun parseHexColor(hex: String?, fallback: Color = NeonPalette.ElectricCyan): Color {
     if (hex.isNullOrBlank()) return fallback
     return try {
         val clean = hex.trim().removePrefix("#")

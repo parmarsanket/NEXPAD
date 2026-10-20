@@ -1,7 +1,15 @@
 package com.sanket.tools.nexpad.ui
 
+import android.content.Context
 import android.content.pm.ActivityInfo
+import android.os.SystemClock
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -9,31 +17,212 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerId
+import androidx.compose.ui.input.pointer.pointerInput
+import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.category.ComponentType
+import com.sanket.tools.nexpad.model.BuiltinComponentIds
+import com.sanket.tools.nexpad.model.ControllerTouchClassifier
+import com.sanket.tools.nexpad.model.TouchpadType
+import com.sanket.tools.nexpad.model.TouchpadCurve
+import com.sanket.tools.nexpad.model.JoystickMode
+import com.sanket.tools.nexpad.model.NexpadKeys as K
+import com.sanket.tools.nexpad.ui.components.controller.LocalPressedControlKeys
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.layout
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import com.sanket.tools.nexpad.ui.components.badge.HeaderStatusPill
+import androidx.compose.ui.layout.onGloballyPositioned
+import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.hypot
 import kotlin.math.roundToInt
+import kotlin.math.sin
 import android.os.Build
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import android.os.VibrationEffect
-import com.sanket.tools.nexpad.ui.components.controller.RealisticBumper
-import com.sanket.tools.nexpad.ui.components.controller.RealisticButton
-import com.sanket.tools.nexpad.ui.components.controller.RealisticDPad
-import com.sanket.tools.nexpad.ui.components.controller.RealisticJoystick
-import com.sanket.tools.nexpad.ui.components.controller.RealisticMacroButton
-import com.sanket.tools.nexpad.ui.components.controller.RealisticSystemButton
-import com.sanket.tools.nexpad.ui.components.controller.RealisticTrigger
+import com.sanket.tools.nexpad.ui.components.controller.bumper.RealisticBumper
+import com.sanket.tools.nexpad.ui.components.controller.abxy.RealisticButton
+import com.sanket.tools.nexpad.ui.components.controller.dpad.RealisticDPad
+import com.sanket.tools.nexpad.ui.components.controller.sticks.RealisticJoystick
+import com.sanket.tools.nexpad.ui.components.controller.macros.RealisticMacroButton
+import com.sanket.tools.nexpad.ui.components.controller.system.RealisticSystemButton
+import com.sanket.tools.nexpad.ui.components.controller.trigger.RealisticTrigger
+import com.sanket.tools.nexpad.ui.components.controller.special.InbuildTouchpadHalf
+import com.sanket.tools.nexpad.ui.components.controller.special.InbuildTouchpadVisualState
+import com.sanket.tools.nexpad.ui.components.controller.special.VelocityRingBuffer
+import com.sanket.tools.nexpad.ui.components.controller.special.calculateGamingStickMagnitude
+import kotlin.time.Duration.Companion.milliseconds
+import com.sanket.tools.nexpad.utils.ImmersiveSystemBars
 import com.sanket.tools.nexpad.utils.LockScreenOrientation
 import kotlin.math.pow
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.isActive
+
+data class MotorProfile(
+    val tier: Int,        // 1, 2, or 3
+    val bandSize: Int,    // Amplitude quantization step
+    val minGapMs: Long,   // Minimum time between hardware calls
+    val name: String      // For logging
+)
+
+@Stable
+class BoundsRegistry {
+    private val bounds = java.util.concurrent.ConcurrentHashMap<String, Rect>()
+    private val sliderKeys = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    fun put(key: String, rect: Rect, isSlider: Boolean = false) {
+        bounds[key] = rect
+        if (isSlider) {
+            sliderKeys.add(key)
+        } else {
+            sliderKeys.remove(key)
+        }
+    }
+
+    fun remove(key: String) {
+        bounds.remove(key)
+        sliderKeys.remove(key)
+    }
+
+    fun clear() {
+        bounds.clear()
+        sliderKeys.clear()
+    }
+
+    companion object {
+        val EXCLUDED_NON_BUTTON_KEYS = ControllerTouchClassifier.EXCLUDED_NON_BUTTON_KEYS
+        val NON_SWEEPABLE_KEYS = ControllerTouchClassifier.NON_SWEEPABLE_KEYS
+
+        fun isNonButton(key: String): Boolean = ControllerTouchClassifier.isNonButton(key)
+    }
+
+    fun isNearAny(screenX: Float, screenY: Float, marginPx: Float): Boolean {
+        val marginSq = marginPx * marginPx
+        for ((key, rect) in bounds) {
+            // Sticks and touchpads are never buttons to avoid
+            if (isNonButton(key)) {
+                continue
+            }
+            val dx = maxOf(rect.left - screenX, 0f, screenX - rect.right)
+            val dy = maxOf(rect.top - screenY, 0f, screenY - rect.bottom)
+            if ((dx * dx + dy * dy) <= marginSq) {
+                return true
+            }
+        }
+        return false
+    }
+
+    fun getExclusionRects(isLeft: Boolean, screenWidthPx: Float): List<Rect> {
+        val midX = screenWidthPx / 2f
+        return bounds.entries
+            .filter { (key, rect) ->
+                !isNonButton(key) && (if (isLeft) rect.center.x < midX else rect.center.x >= midX)
+            }
+            .map { it.value }
+    }
+
+    fun isInsideDiscreteTouchpad(screenX: Float, screenY: Float): Boolean {
+        val pt = Offset(screenX, screenY)
+        for ((key, rect) in bounds) {
+            if (ControllerTouchClassifier.isTouchpad(key)) {
+                if (rect.contains(pt)) {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    /**
+     * Esports Hitbox Hit-Testing:
+     * Evaluates a circular contact patch (representing human thumb contact surface on capacitive glass)
+     * against all registered interactive buttons.
+     *
+     * Features:
+     * 1. Joystick Priority Gate: Touches inside excluded joystick circles return empty, preserving joysticks.
+     * 2. Slide / Roll Hitbox Detection: Touches within [thumbRadiusPx] of button perimeter register as hits.
+     * 3. Fat-Thumb Multi-Button Bridging: If the thumb patch bridges multiple buttons, returns all bridged keys.
+     * 4. Integrated 4-Way D-Pad Directional Resolution: Angles resolve to UP, DOWN, LEFT, RIGHT, or diagonals.
+     */
+    fun hitTestTouchDisk(
+        screenX: Float,
+        screenY: Float,
+        thumbRadiusPx: Float,
+        excludedJoystickCenters: List<Pair<Offset, Float>> = emptyList()
+    ): Set<String> {
+        for ((center, radius) in excludedJoystickCenters) {
+            if (hypot(screenX - center.x, screenY - center.y) <= radius) {
+                return emptySet()
+            }
+        }
+
+        val hits = mutableSetOf<String>()
+        val thumbRadiusSq = thumbRadiusPx * thumbRadiusPx
+
+        for ((key, rect) in bounds) {
+            // Exclude sticks, stick clicks, touchpads, and analog slider triggers from button hit detection
+            if (isNonButton(key) || sliderKeys.contains(key)) {
+                continue
+            }
+
+            val isCompositeDpad = key.equals(ControlKey.DPAD.key, ignoreCase = true) ||
+                    ControlKey.fromIdentifier(key) == ControlKey.DPAD
+            val isSymmetricCircle = abs(rect.width - rect.height) < 4f
+
+            if (isCompositeDpad) {
+                val cx = rect.center.x
+                val cy = rect.center.y
+                val distToCenter = hypot(screenX - cx, screenY - cy)
+                val dpadRadius = minOf(rect.width, rect.height) / 2f
+
+                if (distToCenter <= dpadRadius + thumbRadiusPx) {
+                    val deadzone = dpadRadius * 0.15f
+                    if (distToCenter >= deadzone) {
+                        val dx = screenX - cx
+                        val dy = screenY - cy
+                        val angle = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble()))
+                        if (angle in -157.5..-22.5) hits.add(ControlKey.UP.key)
+                        if (angle in -67.5..67.5) hits.add(ControlKey.RIGHT.key)
+                        if (angle in 22.5..157.5) hits.add(ControlKey.DOWN.key)
+                        if (angle >= 112.5 || angle <= -112.5) hits.add(ControlKey.LEFT.key)
+                    }
+                }
+            } else if (isSymmetricCircle) {
+                val cx = rect.center.x
+                val cy = rect.center.y
+                val radius = minOf(rect.width, rect.height) / 2f
+                val distToCenter = hypot(screenX - cx, screenY - cy)
+                val distToPerimeter = maxOf(distToCenter - radius, 0f)
+                if (distToPerimeter <= thumbRadiusPx) {
+                    hits.add(key)
+                }
+            } else {
+                val dx = maxOf(rect.left - screenX, 0f, screenX - rect.right)
+                val dy = maxOf(rect.top - screenY, 0f, screenY - rect.bottom)
+                if ((dx * dx + dy * dy) <= thumbRadiusSq) {
+                    hits.add(key)
+                }
+            }
+        }
+        return hits
+    }
+}
 
 @Composable
 fun GamepadScreen(
@@ -41,9 +230,51 @@ fun GamepadScreen(
     layoutManager: LayoutManager,
     navigationViewModel: NavigationViewModel? = null,
     overrideProfileName: String? = null,
-    onBack: () -> Unit,
-    onVibrate: () -> Unit
+    onBack: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val nexpadPrefs = remember(context) {
+        com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context)
+    }
+    val doubleTapExitEnabled = remember(nexpadPrefs) {
+        nexpadPrefs.isDoubleTapExitEnabled
+    }
+    var lastBackPressTime by remember { mutableLongStateOf(0L) }
+    var backToast by remember { mutableStateOf<Toast?>(null) }
+
+    DisposableEffect(Unit) {
+        viewModel.onGamepadScreenActive(true)
+        onDispose {
+            viewModel.releaseAllInputs()
+            viewModel.onGamepadScreenActive(false)
+            viewModel.updateLeftStick(0f, 0f)
+            viewModel.updateRightStick(0f, 0f)
+            backToast?.cancel()
+            com.sanket.tools.nexpad.runtime.engine.clearNxprcRenderCaches()
+        }
+    }
+
+    BackHandler {
+        if (!doubleTapExitEnabled) {
+            navigationViewModel?.clearGamepadSession()
+            onBack()
+        } else {
+            val now = SystemClock.uptimeMillis()
+            if (now - lastBackPressTime < 2000L) {
+                backToast?.cancel()
+                lastBackPressTime = 0L
+                navigationViewModel?.clearGamepadSession()
+                onBack()
+            } else {
+                lastBackPressTime = now
+                backToast?.cancel()
+                backToast = Toast.makeText(context, "Press back again to exit", Toast.LENGTH_SHORT).apply {
+                    show()
+                }
+            }
+        }
+    }
+
     val activeProfileName by layoutManager.activeProfileNameFlow.collectAsState()
     val profiles by layoutManager.profilesFlow.collectAsState()
     val sessionProfileName by (navigationViewModel?.sessionProfileName ?: remember { kotlinx.coroutines.flow.MutableStateFlow(null) }).collectAsState()
@@ -59,19 +290,21 @@ fun GamepadScreen(
         }
     }
     val isConnected by viewModel.isConnected.collectAsState()
+    val isSlideGuardEnabled by nexpadPrefs.isJoystickSlideGuardEnabledFlow.collectAsState()
+    val isEsportsMultitouchEnabled by nexpadPrefs.isEsportsMultitouchEnabledFlow.collectAsState()
     
-    val context = androidx.compose.ui.platform.LocalContext.current
     LockScreenOrientation(
         ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
     )
+    ImmersiveSystemBars()
 
-    // Initialize vibrator ONCE
-    val vibrator = remember {
+    // Initialize vibrator ONCE safely
+    val vibrator: android.os.Vibrator? = remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibratorManager = context.getSystemService(android.os.VibratorManager::class.java)
-            vibratorManager?.defaultVibrator ?: context.getSystemService(android.os.Vibrator::class.java)!!
+            vibratorManager?.defaultVibrator ?: context.getSystemService(android.os.Vibrator::class.java)
         } else {
-            context.getSystemService(android.os.Vibrator::class.java)!!
+            context.getSystemService(android.os.Vibrator::class.java)
         }
     }
 
@@ -87,25 +320,15 @@ fun GamepadScreen(
     // Tier 3 "LRA"     : Has amplitude control AND haptic primitives.
     //                     Linear actuator, 5-20ms response time.
     //                     (Samsung S/Note/Z, Pixel, OnePlus flagships)
-    // ────────────────────────────────────────────────────────────────────
-    data class MotorProfile(
-        val tier: Int,        // 1, 2, or 3
-        val bandSize: Int,    // Amplitude quantization step
-        val minGapMs: Long,   // Minimum time between hardware calls
-        val name: String      // For logging
-    )
-    
     val motorProfile = remember {
-        val hasAmplitude = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.hasAmplitudeControl()
-        } else false
+        val hasAmplitude = vibrator?.hasAmplitudeControl() == true
         
         val hasPrimitives = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             // PRIMITIVE_CLICK is universally supported on LRA phones
             try {
-                vibrator.arePrimitivesSupported(
+                vibrator?.arePrimitivesSupported(
                     android.os.VibrationEffect.Composition.PRIMITIVE_CLICK
-                )[0]
+                )?.getOrNull(0) == true
             } catch (e: Exception) { false }
         } else false
         
@@ -114,221 +337,1116 @@ fun GamepadScreen(
             hasPrimitives -> MotorProfile(3, 10, 30L, "LRA (premium)")
             else          -> MotorProfile(2, 32, 100L, "ERM (mid-range)")
         }
-        // android.util.Log.d("NEXPAD_RUMBLE", "Motor detected: ${profile.name} | Tier ${profile.tier} | Band ${profile.bandSize} | MinGap ${profile.minGapMs}ms")
         profile
     }
 
-    var isRumbling by remember { mutableStateOf(false) }
-    var rumbleResetJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    val isRumblingRef = remember { java.util.concurrent.atomic.AtomicBoolean(false) }
+    val rumbleJobRef = remember { java.util.concurrent.atomic.AtomicReference<kotlinx.coroutines.Job?>(null) }
     val hapticHelper = remember(context) { com.sanket.tools.nexpad.utils.HapticFeedbackHelper(context) }
-    
-    val safeOnVibrate: () -> Unit = {
-        val connected = viewModel.isConnected.value
-        if (hapticHelper.canVibrate(connected, isRumbling)) {
-            hapticHelper.performButtonClick()
+    val currentViewModel by rememberUpdatedState(viewModel)
+
+    val safeOnVibrate: () -> Unit = remember(hapticHelper) {
+        {
+            val connected = currentViewModel.isConnected.value
+            if (hapticHelper.canVibrate(connected, isRumblingRef.get())) {
+                hapticHelper.performButtonClick()
+            }
         }
     }
 
     LaunchedEffect(Unit) {
-        val sharedPref = context.getSharedPreferences("nexpad_prefs", android.content.Context.MODE_PRIVATE)
-        
-        // ── Haptic Streaming Engine ──────────────────────────────────────────
-        // Android has NO streaming amplitude API. Every vibrate() call forces
-        // the motor to physically brake → stop → spin up again.
-        //
-        // Solution: Quantize 0-255 into perceptual "bands" sized to match the
-        // detected motor's physical capabilities. The motor holds its current
-        // band via an infinite waveform. Band transitions are rate-limited to
-        // match the motor's spin-up time.
-        //
-        // Tier 1 (Legacy):  Binary on/off, no amplitude. bandSize=255.
-        // Tier 2 (ERM):     8 bands, 100ms gap.  Smooth on mid-range phones.
-        // Tier 3 (LRA):     25 bands, 30ms gap.   Near-HD on flagships.
-        // ─────────────────────────────────────────────────────────────────────
+        val nexpadPrefs = com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context)
         
         val bandSize = motorProfile.bandSize
         val minGapMs = motorProfile.minGapMs
         
-        var lastAppliedBand = -1
-        var lastUpdateTimeMs = 0L
-        
-        viewModel.feedbackFlow.collect { feedback ->
-            val intensityScalar = sharedPref.getFloat("RUMBLE_INTENSITY", 1.0f)
-            val rumbleMode = sharedPref.getString("RUMBLE_MODE", "min") ?: "min"
-            
-            // ── Stage 1: Stereo-to-Mono Downmix ─────────────────────────
-            // Controller has 2 motors (heavy left, light right).
-            // Phone has 1 motor. Combine intelligently.
-            val left = feedback.leftMotorSpeed
-            val right = feedback.rightMotorSpeed
-            
-            val combinedSpeed = when (rumbleMode) {
-                "min"   -> minOf(left, right)
-                "max"   -> maxOf(left, right)
-                "avg"   -> (left + right) / 2
-                else    -> {
-                    // "smart": Weighted downmix — dominant motor drives feel,
-                    // weaker motor adds texture. Preserves game designer intent.
-                    ((0.7f * maxOf(left, right) + 0.3f * minOf(left, right))).roundToInt()
-                }
-            }
-            
-            val scaledSpeed = (combinedSpeed * intensityScalar).roundToInt().coerceIn(0, 255)
-            
-            // ── Stage 2: Hardware Dead Zone ──────────────────────────────
-            // Phone motors can't physically produce vibration below a threshold.
-            // Instead of sending inaudible amplitude, snap to the minimum or zero.
-            val motorDeadZone = when (motorProfile.tier) {
-                1 -> 0     // Binary, no amplitude control
-                3 -> 8     // LRA: precise, low threshold
-                else -> 20 // ERM: spinning weight needs minimum voltage
-            }
-            
-            val afterDeadZone = when {
-                scaledSpeed == 0 -> 0
-                scaledSpeed < motorDeadZone -> motorDeadZone
-                else -> scaledSpeed
-            }
-            
-            // ── Stage 3: Perceptual Gamma Curve (Weber-Fechner) ──────────
-            // Human vibration perception is logarithmic. A linear 0-255 mapping
-            // wastes the bottom range (feels dead) and the top range (feels flat).
-            // Gamma 0.55 = square-root-ish curve that expands the low end and
-            // compresses the top end for even perceptual distribution.
-            val gamma = 0.55
-            val totalSpeed = if (afterDeadZone == 0) 0
-                             else (255.0 * (afterDeadZone / 255.0).pow(gamma)).roundToInt().coerceIn(1, 255)
-            
-            // ── Stage 4: Band Quantization ───────────────────────────────
-            val band = when {
-                totalSpeed == 0 -> 0
-                bandSize >= 255 -> totalSpeed.coerceIn(1, 255) // Tier 1: no quantization
-                else -> ((totalSpeed + bandSize / 2) / bandSize * bandSize).coerceIn(bandSize, 255)
-            }
-            
-            val now = System.currentTimeMillis()
-            val gap = now - lastUpdateTimeMs
-            
-            val shouldUpdate = when {
-                band == 0 && lastAppliedBand != 0 -> true  // OFF: always instant
-                band != 0 && lastAppliedBand == 0 -> true  // ON: always instant
-                band != lastAppliedBand && gap >= minGapMs -> true  // Band changed + motor ready
-                else -> false
-            }
-            
-            if (shouldUpdate) {
-                // android.util.Log.d("NEXPAD_RUMBLE", 
-                //     if (band > 0) "T${motorProfile.tier} APPLY -> band=$band (raw=$totalSpeed) gap=${gap}ms"
-                //     else "T${motorProfile.tier} OFF")
-                
-                lastAppliedBand = band
-                lastUpdateTimeMs = now
-                
-                if (band > 0) {
-                    isRumbling = true
-                    when (motorProfile.tier) {
-                        1 -> {
-                            // Tier 1: No amplitude control. Binary vibration only.
-                            vibrator.vibrate(
-                                VibrationEffect.createWaveform(longArrayOf(0, 10000), 0)
-                            )
-                        }
-                        else -> {
-                            // Tier 2 & 3: Full amplitude waveform
-                            vibrator.vibrate(
-                                VibrationEffect.createWaveform(
-                                    longArrayOf(0, 10000), intArrayOf(0, band), 0
-                                )
-                            )
-                        }
-                    }
-                } else {
-                    isRumbling = false
-                    vibrator.cancel()
-                }
-            }
+        val lastAppliedBand = AtomicInteger(0)
+        val lastUpdateTimeMs = AtomicLong(0L)
+        val motorOnStartTimeMs = AtomicLong(0L)
+        val lastPacketTimeMs = AtomicLong(0L)
 
-            // Safety watchdog: kill infinite vibration if packets stop arriving
-            if (totalSpeed > 0) {
-                rumbleResetJob?.cancel()
-                rumbleResetJob = launch {
-                    delay(250)
-                    if (lastAppliedBand != 0) {
-                        // android.util.Log.d("NEXPAD_RUMBLE", "WATCHDOG -> No packets for 250ms, motor killed")
-                        lastAppliedBand = 0
-                        isRumbling = false
-                        vibrator.cancel()
+        // Single standing watchdog loop checking every 50ms instead of per-packet coroutine launches
+        launch(kotlinx.coroutines.Dispatchers.Default) {
+            while (isActive) {
+                delay(50)
+                val now = SystemClock.elapsedRealtime()
+                val currentBand = lastAppliedBand.get()
+                if (currentBand > 0 && (now - lastPacketTimeMs.get()) > 250) {
+                    if (lastAppliedBand.compareAndSet(currentBand, 0)) {
+                        rumbleJobRef.getAndSet(null)?.cancel()
+                        isRumblingRef.set(false)
+                        vibrator?.cancel()
                     }
                 }
             }
+        }
+        
+        launch(kotlinx.coroutines.Dispatchers.Default) {
+            viewModel.feedbackFlow
+                .collect { feedback ->
+                    val now = SystemClock.elapsedRealtime()
+                    lastPacketTimeMs.set(now)
+                    val rumbleMode = nexpadPrefs.rumbleMode
+                    
+                    // ── Stage 1: Stereo-to-Mono Downmix ─────────────────────────
+                    val left = feedback.leftMotorSpeed
+                    val right = feedback.rightMotorSpeed
+                    
+                    val combinedSpeed = when (rumbleMode) {
+                        com.sanket.tools.nexpad.model.RumbleMode.MAX   -> maxOf(left, right)
+                        com.sanket.tools.nexpad.model.RumbleMode.SMART -> {
+                            if (left == 0 || right == 0) maxOf(left, right)
+                            else (0.7f * maxOf(left, right) + 0.3f * minOf(left, right)).roundToInt()
+                        }
+                        com.sanket.tools.nexpad.model.RumbleMode.AVG   -> (left + right) / 2
+                        com.sanket.tools.nexpad.model.RumbleMode.MIN   -> minOf(left, right)
+                    }
+                    
+                    val scaledSpeed = combinedSpeed.coerceIn(0, 255)
+                    
+                    // ── Stage 2: Hardware Dead Zone ──────────────────────────────
+                    val motorDeadZone = when (motorProfile.tier) {
+                        1 -> 0     // Binary, no amplitude control
+                        3 -> 8     // LRA: precise, low threshold
+                        else -> 20 // ERM: spinning weight needs minimum voltage
+                    }
+                    
+                    val afterDeadZone = when {
+                        scaledSpeed == 0 -> 0
+                        scaledSpeed < motorDeadZone -> motorDeadZone
+                        else -> scaledSpeed
+                    }
+                    
+                    // ── Stage 3: Perceptual Gamma Curve (Weber-Fechner) ──────────
+                    val gamma = 0.55
+                    val totalSpeed = if (afterDeadZone == 0) 0
+                                     else (255.0 * (afterDeadZone / 255.0).pow(gamma)).roundToInt().coerceIn(1, 255)
+                    
+                    // ── Stage 4: Band Quantization ───────────────────────────────
+                    val band = when {
+                        totalSpeed == 0 -> 0
+                        bandSize >= 255 -> totalSpeed.coerceIn(1, 255)
+                        else -> ((totalSpeed + bandSize / 2) / bandSize * bandSize).coerceIn(bandSize, 255)
+                    }
+                    
+                    val gap = now - lastUpdateTimeMs.get()
+                    
+                    if (band > 0) {
+                        rumbleJobRef.getAndSet(null)?.cancel()
+                        val prevBand = lastAppliedBand.get()
+                        val shouldUpdate = when {
+                            prevBand <= 0 -> true // ON: always instant
+                            band != prevBand && gap >= minGapMs -> true // Band changed + motor ready
+                            else -> false
+                        }
+                        
+                        if (shouldUpdate) {
+                            if (prevBand <= 0) {
+                                motorOnStartTimeMs.set(now)
+                            }
+                            lastAppliedBand.set(band)
+                            lastUpdateTimeMs.set(now)
+                            isRumblingRef.set(true)
+                            
+                            when (motorProfile.tier) {
+                                1 -> {
+                                    vibrator?.vibrate(
+                                        VibrationEffect.createWaveform(longArrayOf(0, 10000), 0)
+                                    )
+                                }
+                                else -> {
+                                    vibrator?.vibrate(
+                                        VibrationEffect.createWaveform(
+                                            longArrayOf(0, 10000), intArrayOf(0, band), 0
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        val prevBand = lastAppliedBand.get()
+                        if (prevBand > 0) {
+                            val minBurstMs = if (motorProfile.tier == 3) 35L else 50L
+                            val elapsed = now - motorOnStartTimeMs.get()
+                            if (elapsed < minBurstMs) {
+                                rumbleJobRef.getAndSet(null)?.cancel()
+                                val job = launch(kotlinx.coroutines.Dispatchers.Default) {
+                                    delay(minBurstMs - elapsed)
+                                    lastAppliedBand.set(0)
+                                    isRumblingRef.set(false)
+                                    vibrator?.cancel()
+                                }
+                                rumbleJobRef.set(job)
+                            } else {
+                                rumbleJobRef.getAndSet(null)?.cancel()
+                                lastAppliedBand.set(0)
+                                isRumblingRef.set(false)
+                                vibrator?.cancel()
+                            }
+                        }
+                    }
+                }
         }
     }
 
     DisposableEffect(Unit) {
         onDispose {
-            rumbleResetJob?.cancel()
-            vibrator.cancel()
-            navigationViewModel?.clearGamepadSession()
+            rumbleJobRef.getAndSet(null)?.cancel()
+            vibrator?.cancel()
         }
     }
     
+    GamepadScreenContent(
+        profile = profile,
+        isConnected = isConnected,
+        viewModel = viewModel,
+        onBack = onBack,
+        onVibrate = safeOnVibrate,
+        isSlideGuardEnabled = isSlideGuardEnabled,
+        isEsportsMultitouchEnabled = isEsportsMultitouchEnabled,
+        renderElement = { key, position ->
+            val isStick = key.equals(com.sanket.tools.nexpad.category.ControlKey.LS.name, ignoreCase = true) ||
+                          key.equals(com.sanket.tools.nexpad.category.ControlKey.RS.name, ignoreCase = true)
+            val resolvedMode = if (isStick) {
+                com.sanket.tools.nexpad.model.JoystickMode.fromId(
+                    position.joystickMode ?: if (position.isLocked == false) com.sanket.tools.nexpad.model.JoystickMode.FULL.id else com.sanket.tools.nexpad.model.JoystickMode.LOCKED.id
+                )
+            } else null
+            val isLocked = if (isStick) (resolvedMode == com.sanket.tools.nexpad.model.JoystickMode.LOCKED) else (position.isLocked ?: true)
+            com.sanket.tools.nexpad.ui.components.controller.ControllerElementRenderer(
+                key = key,
+                isConnected = isConnected,
+                isRgbEnabled = profile.isRgbEnabled,
+                viewModel = viewModel,
+                onVibrate = safeOnVibrate,
+                customComponentId = position.customComponentId,
+                sensitivity = position.sensitivity,
+                heightScale = position.heightScale ?: 1.0f,
+                isFlipped = position.isFlipped ?: false,
+                isLocked = isLocked,
+                labelStyle = profile.controllerLabelStyle,
+                touchpadCurve = position.touchpadCurve
+            )
+        }
+    )
+}
+
+@Composable
+fun GamepadScreenContent(
+    profile: com.sanket.tools.nexpad.model.LayoutProfile,
+    isConnected: Boolean = false,
+    viewModel: GamepadViewModel? = null,
+    onBack: () -> Unit = {},
+    onVibrate: () -> Unit = {},
+    isSlideGuardEnabled: Boolean = true,
+    isEsportsMultitouchEnabled: Boolean = true,
+    renderElement: @Composable (key: String, position: com.sanket.tools.nexpad.model.Position) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val lsFloatX = remember { Animatable(0f) }
+    val lsFloatY = remember { Animatable(0f) }
+    val rsFloatX = remember { Animatable(0f) }
+    val rsFloatY = remember { Animatable(0f) }
+
+    val ltpVisualState = remember { InbuildTouchpadVisualState() }
+    val rtpVisualState = remember { InbuildTouchpadVisualState() }
+
     BoxWithConstraints(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        val screenWidthPx = maxOf(constraints.maxWidth, constraints.maxHeight).toFloat()
-        val screenHeightPx = minOf(constraints.maxWidth, constraints.maxHeight).toFloat()
+        val screenWidthPx = constraints.maxWidth.toFloat()
+        val screenHeightPx = constraints.maxHeight.toFloat()
+        val density = LocalDensity.current
+        val widthDp = screenWidthPx / density.density
+        val heightDp = screenHeightPx / density.density
+        val responsiveScale = com.sanket.tools.nexpad.model.LayoutMetrics.calculateResponsiveScale(widthDp, heightDp)
 
-        // Back Button & Connection Status
-        Row(
-            modifier = Modifier.align(Alignment.TopStart).padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = "Back",
-                    tint = MaterialTheme.colorScheme.onBackground
-                )
-            }
-            HeaderStatusPill(
-                isConnected = isConnected
+        val adjustedPositions = remember(profile.positions, screenWidthPx, screenHeightPx) {
+            com.sanket.tools.nexpad.model.LayoutMetrics.adjustClusterPositionsForAspectRatio(
+                positions = profile.positions,
+                screenWidthPx = screenWidthPx,
+                screenHeightPx = screenHeightPx
             )
         }
 
-        // Render mapped components with center-based placement
-        profile.positions.forEach { (key, position) ->
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val remoteRegistry = remember(context) { com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry.getInstance(context) }
+        val loadedRemoteDocs by remoteRegistry.loadedComponents.collectAsState()
+
+        val lsEntry = adjustedPositions.entries.firstOrNull { ControlKey.fromIdentifier(it.key) == ControlKey.LS || it.key.equals(ControlKey.LS.key, ignoreCase = true) }
+        val rsEntry = adjustedPositions.entries.firstOrNull { ControlKey.fromIdentifier(it.key) == ControlKey.RS || it.key.equals(ControlKey.RS.key, ignoreCase = true) }
+        val ltpEntry = adjustedPositions.entries.firstOrNull { ControlKey.fromIdentifier(it.key) == ControlKey.LTP || it.key.equals(ControlKey.LTP.key, ignoreCase = true) }
+        val rtpEntry = adjustedPositions.entries.firstOrNull { ControlKey.fromIdentifier(it.key) == ControlKey.RTP || it.key.equals(ControlKey.RTP.key, ignoreCase = true) }
+
+        val touchpadEntries = remember(adjustedPositions, loadedRemoteDocs) {
+            adjustedPositions.entries.filter { (key, pos) ->
+                ControllerTouchClassifier.isTouchpad(key, pos.customComponentId) ||
+                pos.customComponentId?.let { id ->
+                    id.startsWith("rc.") && (remoteRegistry.getComponent(id) ?: loadedRemoteDocs.firstOrNull { it.manifest.id == id })?.let { doc ->
+                        doc.manifest.category.equals(ComponentType.TOUCHPAD.name, ignoreCase = true) ||
+                        doc.manifest.defaultControl.equals(ControlKey.LTP.key, ignoreCase = true) ||
+                        doc.manifest.defaultControl.equals(ControlKey.RTP.key, ignoreCase = true)
+                    } == true
+                } == true
+            }
+        }
+        val hasTouchpad = remember(touchpadEntries) { touchpadEntries.isNotEmpty() }
+        val isEsportsSurfaceActive = !hasTouchpad && isEsportsMultitouchEnabled
+        val pressedButtonKeysState = remember { mutableStateOf(emptySet<String>()) }
+
+        val joystickEntries = remember(adjustedPositions, loadedRemoteDocs) {
+            adjustedPositions.entries.filter { (key, pos) ->
+                ControllerTouchClassifier.isJoystick(key, pos.customComponentId) ||
+                pos.customComponentId?.let { id ->
+                    id.startsWith("rc.") && (remoteRegistry.getComponent(id) ?: loadedRemoteDocs.firstOrNull { it.manifest.id == id })?.let { doc ->
+                        doc.manifest.category.equals(ComponentType.JOYSTICK.name, ignoreCase = true) ||
+                        doc.manifest.defaultControl.equals(ControlKey.LS.key, ignoreCase = true) ||
+                        doc.manifest.defaultControl.equals(ControlKey.RS.key, ignoreCase = true)
+                    } == true
+                } == true
+            }
+        }
+
+        var isLeftStickTouching by remember { mutableStateOf(false) }
+        var isRightStickTouching by remember { mutableStateOf(false) }
+
+        val isLeftStickActive by remember(joystickEntries, isLeftStickTouching) {
+            derivedStateOf {
+                isLeftStickTouching ||
+                hypot(viewModel?.leftStickX ?: 0f, viewModel?.leftStickY ?: 0f) > 0.05f
+            }
+        }
+        val isRightStickActive by remember(joystickEntries, isRightStickTouching) {
+            derivedStateOf {
+                isRightStickTouching ||
+                hypot(viewModel?.rightStickX ?: 0f, viewModel?.rightStickY ?: 0f) > 0.05f
+            }
+        }
+
+        val excludedJoystickCenters = remember(joystickEntries, screenWidthPx, screenHeightPx, responsiveScale, density) {
+            val list = mutableListOf<Pair<Offset, Float>>()
+            val defaultRadius = with(density) { 75.dp.toPx() }
+            val bufferPx = with(density) { 24.dp.toPx() } // Safe buffer area around joysticks
+            joystickEntries.forEach { (_, pos) ->
+                val cx = pos.xRatio * screenWidthPx
+                val cy = pos.yRatio * screenHeightPx
+                val r = (defaultRadius * pos.scale * responsiveScale) + bufferPx
+                list.add(Pair(Offset(cx, cy), r))
+            }
+            list
+        }
+
+        val sliderTriggerEntries = remember(adjustedPositions) {
+            adjustedPositions.entries.filter { (_, pos) ->
+                ControllerTouchClassifier.isSliderTrigger(pos.customComponentId)
+            }
+        }
+
+        val interactiveButtonEntries = remember(adjustedPositions, joystickEntries, touchpadEntries, sliderTriggerEntries) {
+            val nonButtonKeys = (joystickEntries.map { it.key } + touchpadEntries.map { it.key } + sliderTriggerEntries.map { it.key }).toSet()
+            adjustedPositions.entries.filter { (key, _) ->
+                !nonButtonKeys.contains(key)
+            }
+        }
+
+        // Dynamically track exact runtime bounding boxes of all interactive buttons in container coords
+        val boundsRegistry = remember(profile) { BoundsRegistry() }
+
+        val halfWidthDp = with(density) { (screenWidthPx / 2f).toDp() }
+
+        // 1. INBUILD TOUCHPAD FULL-SURFACE AMBIENT LAYER (LOWEST Z-INDEX)
+        // Consumes all empty space: Center-to-Left for LTP, Center-to-Right for RTP.
+        // Protected by 16.dp button exclusion buffer zone so interactive buttons have absolute priority.
+        // NOTE: Only active for InbuildTouchpad ("builtin.inbuild_ltp" / "builtin.inbuild_rtp").
+        // RealisticTouchPad (default), NXPRC, and custom skins render as discrete widgets at their placed positions.
+        val inbuildLtp = ltpEntry?.takeIf { BuiltinComponentIds.isInbuildTouchpad(it.value.customComponentId) }
+        val inbuildRtp = rtpEntry?.takeIf { BuiltinComponentIds.isInbuildTouchpad(it.value.customComponentId) }
+        android.util.Log.d("NEXPAD_TOUCH", "GamepadScreenContent: inbuildLtp=${inbuildLtp != null} inbuildRtp=${inbuildRtp != null} rtpEntryKey=${rtpEntry?.key} rtpCustomId=${rtpEntry?.value?.customComponentId}")
+
+        if (inbuildLtp != null) {
+            val ltpPos = inbuildLtp.value
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(halfWidthDp)
+                    .align(Alignment.CenterStart)
+            ) {
+                InbuildTouchpadHalf(
+                    isLeft = true,
+                    screenWidthPx = screenWidthPx,
+                    screenHeightPx = screenHeightPx,
+                    boundsProvider = { boundsRegistry.getExclusionRects(isLeft = true, screenWidthPx = screenWidthPx) },
+                    isConnected = isConnected,
+                    isRgbEnabled = profile.isRgbEnabled,
+                    viewModel = viewModel,
+                    sensitivity = ltpPos.sensitivity,
+                    curve = TouchpadCurve.fromId(ltpPos.touchpadCurve),
+                    visualState = ltpVisualState
+                )
+            }
+        }
+
+        if (inbuildRtp != null) {
+            val rtpPos = inbuildRtp.value
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(halfWidthDp)
+                    .align(Alignment.CenterEnd)
+            ) {
+                InbuildTouchpadHalf(
+                    isLeft = false,
+                    screenWidthPx = screenWidthPx,
+                    screenHeightPx = screenHeightPx,
+                    boundsProvider = { boundsRegistry.getExclusionRects(isLeft = false, screenWidthPx = screenWidthPx) },
+                    isConnected = isConnected,
+                    isRgbEnabled = profile.isRgbEnabled,
+                    viewModel = viewModel,
+                    sensitivity = rtpPos.sensitivity,
+                    curve = TouchpadCurve.fromId(rtpPos.touchpadCurve),
+                    visualState = rtpVisualState
+                )
+            }
+        }
+
+        // Discrete Touchpad UI elements (LTP, RTP) — Placed at lowest Z-order so user can place buttons over them.
+        // Rendered for RealisticTouchPad (default), NXPRC, and custom skins (all non-inbuild touchpads).
+        val discreteTouchpadEntries = remember(touchpadEntries) {
+            touchpadEntries.filter { (_, pos) ->
+                !BuiltinComponentIds.isInbuildTouchpad(pos.customComponentId)
+            }
+        }
+
+        discreteTouchpadEntries.forEach { (key, position) ->
+            DisposableEffect(key) {
+                onDispose { boundsRegistry.remove(key) }
+            }
             Box(
                 modifier = Modifier
                     .layout { measurable, childConstraints ->
                         val placeable = measurable.measure(childConstraints)
-                        val x = (position.xRatio * screenWidthPx - placeable.width / 2f).roundToInt()
-                        val y = (position.yRatio * screenHeightPx - placeable.height / 2f).roundToInt()
+                        val safeX = if (position.xRatio.isFinite()) position.xRatio else 0f
+                        val safeY = if (position.yRatio.isFinite()) position.yRatio else 0f
+                        val x = (safeX * screenWidthPx - placeable.width / 2f).roundToInt()
+                        val y = (safeY * screenHeightPx - placeable.height / 2f).roundToInt()
                         layout(placeable.width, placeable.height) {
                             placeable.placeRelative(x, y)
                         }
                     }
-                    .scale(position.scale)
+                    .scale(position.scale * responsiveScale)
+                    .alpha(position.opacity)
+                    .onGloballyPositioned { coordinates ->
+                        boundsRegistry.put(key, coordinates.boundsInParent())
+                    }
+            ) {
+                renderElement(key, position)
+            }
+        }
+
+
+        // 3. Render all interactive buttons, D-pad, triggers, bumpers, menu buttons
+        CompositionLocalProvider(LocalPressedControlKeys provides pressedButtonKeysState.value) {
+            interactiveButtonEntries.forEach { (key, position) ->
+                DisposableEffect(key) {
+                    onDispose { boundsRegistry.remove(key) }
+                }
+                Box(
+                    modifier = Modifier
+                        .layout { measurable, childConstraints ->
+                            val placeable = measurable.measure(childConstraints)
+                            val safeX = if (position.xRatio.isFinite()) position.xRatio else 0f
+                            val safeY = if (position.yRatio.isFinite()) position.yRatio else 0f
+                            val x = (safeX * screenWidthPx - placeable.width / 2f).roundToInt()
+                            val y = (safeY * screenHeightPx - placeable.height / 2f).roundToInt()
+                            layout(placeable.width, placeable.height) {
+                                placeable.placeRelative(x, y)
+                            }
+                        }
+                        .scale(position.scale * responsiveScale)
+                        .alpha(position.opacity)
+                        .onGloballyPositioned { coordinates ->
+                            boundsRegistry.put(key, coordinates.boundsInParent(), isSlider = false)
+                        }
+                ) {
+                    renderElement(key, position)
+                }
+            }
+        }
+
+        // 4. Unified Touch Surface Coordinator (Top Z-Order Touch Interceptor)
+        // Master coordinator for all interactive buttons and floating joysticks (BOX & FULL modes).
+        val thumbRadiusPx = with(density) { 20.dp.toPx() }
+        UnifiedTouchSurface(
+            boundsRegistry = boundsRegistry,
+            excludedJoystickCenters = excludedJoystickCenters,
+            thumbRadiusPx = thumbRadiusPx,
+            screenWidthPx = screenWidthPx,
+            screenHeightPx = screenHeightPx,
+            responsiveScale = responsiveScale,
+            density = density,
+            lsEntry = lsEntry,
+            rsEntry = rsEntry,
+            lsFloatX = lsFloatX,
+            lsFloatY = lsFloatY,
+            rsFloatX = rsFloatX,
+            rsFloatY = rsFloatY,
+            inbuildLtp = inbuildLtp,
+            inbuildRtp = inbuildRtp,
+            hasLeftTouchpad = touchpadEntries.any { ControllerTouchClassifier.isLeftTouchpad(it.key, it.value.customComponentId) },
+            hasRightTouchpad = touchpadEntries.any { ControllerTouchClassifier.isRightTouchpad(it.key, it.value.customComponentId) },
+            viewModel = viewModel,
+            isSlideGuardEnabled = isSlideGuardEnabled,
+            isEsportsMultitouchEnabled = isEsportsMultitouchEnabled,
+            onVibrate = onVibrate,
+            onLeftStickTouching = { isLeftStickTouching = it },
+            onRightStickTouching = { isRightStickTouching = it },
+            onLtpTouch = { x, y, touching ->
+                ltpVisualState.update(x, y, touching)
+            },
+            onRtpTouch = { x, y, touching ->
+                rtpVisualState.update(x, y, touching)
+            },
+            onPressedKeysChanged = { keys ->
+                pressedButtonKeysState.value = keys
+            }
+        )
+
+        // 5. Render joystick UI elements (LS, RS) — Rendered on top of UnifiedTouchSurface
+        // When unlocked (BOX or FULL), joystick widgets are 100% touch-transparent and float dynamically.
+        // When locked (LOCKED mode), joystick widgets handle direct touches themselves.
+        joystickEntries.forEach { (key, position) ->
+            val isLs = key.equals(ControlKey.LS.key, ignoreCase = true) || ControlKey.fromIdentifier(key) == ControlKey.LS
+            val isRs = key.equals(ControlKey.RS.key, ignoreCase = true) || ControlKey.fromIdentifier(key) == ControlKey.RS
+
+            Box(
+                modifier = Modifier
+                    .layout { measurable, childConstraints ->
+                        val placeable = measurable.measure(childConstraints)
+                        val safeX = if (position.xRatio.isFinite()) position.xRatio else 0f
+                        val safeY = if (position.yRatio.isFinite()) position.yRatio else 0f
+                        val baseX = (safeX * screenWidthPx - placeable.width / 2f).roundToInt()
+                        val baseY = (safeY * screenHeightPx - placeable.height / 2f).roundToInt()
+                        layout(placeable.width, placeable.height) {
+                            val extraX = if (isLs) lsFloatX.value else if (isRs) rsFloatX.value else 0f
+                            val extraY = if (isLs) lsFloatY.value else if (isRs) rsFloatY.value else 0f
+                            placeable.placeRelative(baseX + extraX.roundToInt(), baseY + extraY.roundToInt())
+                        }
+                    }
+                    .scale(position.scale * responsiveScale)
                     .alpha(position.opacity)
             ) {
-                com.sanket.tools.nexpad.ui.components.controller.ControllerElementRenderer(
-                    key = key,
-                    isConnected = isConnected,
-                    isRgbEnabled = profile.isRgbEnabled,
-                    viewModel = viewModel,
-                    onVibrate = safeOnVibrate,
-                    customComponentId = position.customComponentId,
-                    sensitivity = position.sensitivity,
-                    heightScale = position.heightScale ?: 1.0f,
-                    isFlipped = position.isFlipped ?: false,
-                    labelStyle = profile.controllerLabelStyle
-                )
+                renderElement(key, position)
+            }
+        }
+
+        // 6. Render Slider Trigger UI elements (LT, RT) — Rendered on top of UnifiedTouchSurface
+        // Continuous analog input (0..255) with sliding puck handles and damped spring return.
+        sliderTriggerEntries.forEach { (key, position) ->
+            DisposableEffect(key) {
+                onDispose { boundsRegistry.remove(key) }
+            }
+            Box(
+                modifier = Modifier
+                    .layout { measurable, childConstraints ->
+                        val placeable = measurable.measure(childConstraints)
+                        val safeX = if (position.xRatio.isFinite()) position.xRatio else 0f
+                        val safeY = if (position.yRatio.isFinite()) position.yRatio else 0f
+                        val x = (safeX * screenWidthPx - placeable.width / 2f).roundToInt()
+                        val y = (safeY * screenHeightPx - placeable.height / 2f).roundToInt()
+                        layout(placeable.width, placeable.height) {
+                            placeable.placeRelative(x, y)
+                        }
+                    }
+                    .scale(position.scale * responsiveScale)
+                    .alpha(position.opacity)
+                    .onGloballyPositioned { coordinates ->
+                        boundsRegistry.put(key, coordinates.boundsInParent(), isSlider = true)
+                    }
+            ) {
+                renderElement(key, position)
             }
         }
     }
+}
+
+/**
+ * Unified Multi-Touch Surface Coordinator.
+ *
+ * Master touch dispatcher for all interactive buttons and floating joysticks (BOX & FULL modes).
+ * 
+ * Features:
+ * 1. Buttons: Fast, zero-latency chord taps and fat-thumb bridging. Fluid button sliding when Esports toggle is ON.
+ * 2. Floating Joysticks: Zero-conflict, full-half-screen (FULL) or bounded-box (BOX) touch dragging.
+ * 3. Mutual Isolation: Pointers assigned to floating joysticks cannot sweep into buttons; button sweeps cannot hijack joysticks.
+ * 4. Locked Mode Bypass: In FIXED/LOCKED mode, touches pass transparently to native joystick components.
+ */
+@Composable
+fun UnifiedTouchSurface(
+    boundsRegistry: BoundsRegistry,
+    excludedJoystickCenters: List<Pair<Offset, Float>>,
+    thumbRadiusPx: Float,
+    screenWidthPx: Float,
+    screenHeightPx: Float,
+    responsiveScale: Float,
+    density: androidx.compose.ui.unit.Density,
+    lsEntry: Map.Entry<String, com.sanket.tools.nexpad.model.Position>?,
+    rsEntry: Map.Entry<String, com.sanket.tools.nexpad.model.Position>?,
+    lsFloatX: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>,
+    lsFloatY: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>,
+    rsFloatX: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>,
+    rsFloatY: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>,
+    inbuildLtp: Map.Entry<String, com.sanket.tools.nexpad.model.Position>? = null,
+    inbuildRtp: Map.Entry<String, com.sanket.tools.nexpad.model.Position>? = null,
+    hasLeftTouchpad: Boolean = false,
+    hasRightTouchpad: Boolean = false,
+    viewModel: GamepadViewModel?,
+    isSlideGuardEnabled: Boolean = true,
+    isEsportsMultitouchEnabled: Boolean = true,
+    onVibrate: () -> Unit,
+    onLeftStickTouching: (Boolean) -> Unit,
+    onRightStickTouching: (Boolean) -> Unit,
+    onLtpTouch: (x: Float, y: Float, isTouching: Boolean) -> Unit = { _, _, _ -> },
+    onRtpTouch: (x: Float, y: Float, isTouching: Boolean) -> Unit = { _, _, _ -> },
+    onPressedKeysChanged: (Set<String>) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val coroutineScope = rememberCoroutineScope()
+    val currentBoundsRegistry by rememberUpdatedState(boundsRegistry)
+    val currentExcludedJoysticks by rememberUpdatedState(excludedJoystickCenters)
+    val currentThumbRadius by rememberUpdatedState(thumbRadiusPx)
+    val currentScreenWidthPx by rememberUpdatedState(screenWidthPx)
+    val currentIsSlideGuardEnabled by rememberUpdatedState(isSlideGuardEnabled)
+    val currentIsEsportsMultitouchEnabled by rememberUpdatedState(isEsportsMultitouchEnabled)
+    val currentInbuildLtp by rememberUpdatedState(inbuildLtp)
+    val currentInbuildRtp by rememberUpdatedState(inbuildRtp)
+    val currentHasLeftTouchpad by rememberUpdatedState(hasLeftTouchpad)
+    val currentHasRightTouchpad by rememberUpdatedState(hasRightTouchpad)
+    val currentViewModel by rememberUpdatedState(viewModel)
+    val currentOnVibrate by rememberUpdatedState(onVibrate)
+    val currentOnLeftStickTouching by rememberUpdatedState(onLeftStickTouching)
+    val currentOnRightStickTouching by rememberUpdatedState(onRightStickTouching)
+    val currentOnLtpTouch by rememberUpdatedState(onLtpTouch)
+    val currentOnRtpTouch by rememberUpdatedState(onRtpTouch)
+    val currentOnPressedKeysChanged by rememberUpdatedState(onPressedKeysChanged)
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val ltpPosVal = inbuildLtp?.value ?: lsEntry?.value
+    val ltpEffectiveSensitivity = remember(context, inbuildLtp) {
+        val s = inbuildLtp?.value?.sensitivity
+        if (s != null && s > 0f) s else com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadSensitivity(ControlKey.LTP.key)
+    }
+    val ltpEffectiveCurve = remember(context, inbuildLtp) {
+        inbuildLtp?.value?.touchpadCurve?.let { TouchpadCurve.fromId(it) }
+            ?: com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadCurve(ControlKey.LTP.key)
+    }
+
+    val rtpPosVal = inbuildRtp?.value ?: rsEntry?.value
+    val rtpEffectiveSensitivity = remember(context, inbuildRtp) {
+        val s = inbuildRtp?.value?.sensitivity
+        if (s != null && s > 0f) s else com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadSensitivity(ControlKey.RTP.key)
+    }
+    val rtpEffectiveCurve = remember(context, inbuildRtp) {
+        inbuildRtp?.value?.touchpadCurve?.let { TouchpadCurve.fromId(it) }
+            ?: com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadCurve(ControlKey.RTP.key)
+    }
+
+    val maxThrowPx = remember(density) { with(density) { 60.dp.toPx() } }
+    val marginPx = remember(density) { with(density) { 32.dp.toPx() } }
+
+    val lsPos = lsEntry?.value
+    val lsMode = remember(lsPos) {
+        if (lsPos == null) JoystickMode.LOCKED
+        else JoystickMode.fromId(
+            lsPos.joystickMode ?: if (lsPos.isLocked == false) JoystickMode.FULL.id else JoystickMode.LOCKED.id
+        )
+    }
+    val lsHomeX = remember(lsPos, screenWidthPx) { (lsPos?.xRatio ?: 0.11f) * screenWidthPx }
+    val lsHomeY = remember(lsPos, screenHeightPx) { (lsPos?.yRatio ?: 0.74f) * screenHeightPx }
+    val lsBoxHalfPx = remember(lsMode, lsPos, density, responsiveScale) {
+        if (lsMode == JoystickMode.BOX && lsPos != null) {
+            val joystickDiamPx = with(density) { 150.dp.toPx() } * lsPos.scale * responsiveScale
+            val hitboxScale = lsPos.hitboxScale ?: 1.5f
+            (joystickDiamPx * hitboxScale) / 2f
+        } else 0f
+    }
+
+    val rsPos = rsEntry?.value
+    val rsMode = remember(rsPos) {
+        if (rsPos == null) JoystickMode.LOCKED
+        else JoystickMode.fromId(
+            rsPos.joystickMode ?: if (rsPos.isLocked == false) JoystickMode.FULL.id else JoystickMode.LOCKED.id
+        )
+    }
+    val rsHomeX = remember(rsPos, screenWidthPx) { (rsPos?.xRatio ?: 0.895f) * screenWidthPx }
+    val rsHomeY = remember(rsPos, screenHeightPx) { (rsPos?.yRatio ?: 0.74f) * screenHeightPx }
+    val rsBoxHalfPx = remember(rsMode, rsPos, density, responsiveScale) {
+        if (rsMode == JoystickMode.BOX && rsPos != null) {
+            val joystickDiamPx = with(density) { 150.dp.toPx() } * rsPos.scale * responsiveScale
+            val hitboxScale = rsPos.hitboxScale ?: 1.5f
+            (joystickDiamPx * hitboxScale) / 2f
+        } else 0f
+    }
+
+    var currentGlobalPressed by remember { mutableStateOf(emptySet<String>()) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            currentViewModel?.updateLeftStick(0f, 0f)
+            currentViewModel?.updateRightStick(0f, 0f)
+            currentOnLeftStickTouching(false)
+            currentOnRightStickTouching(false)
+            currentOnLtpTouch(-1f, -1f, false)
+            currentOnRtpTouch(-1f, -1f, false)
+            for (key in currentGlobalPressed) {
+                currentViewModel?.updateButton(key, false)
+            }
+            currentGlobalPressed = emptySet()
+            currentOnPressedKeysChanged(emptySet())
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                var leftStickPointerId: PointerId? = null
+                var leftBaseX = 0f
+                var leftBaseY = 0f
+
+                var rightStickPointerId: PointerId? = null
+                var rightBaseX = 0f
+                var rightBaseY = 0f
+
+                var leftTouchpadPointerId: PointerId? = null
+                var ltpAnchorX = 0f
+                var ltpAnchorY = 0f
+
+                var rightTouchpadPointerId: PointerId? = null
+                var rtpPreviousX = 0f
+                var rtpPreviousY = 0f
+                var rtpPreviousTimeMs = 0L
+                var rtpAccumulatedDeltaX = 0f
+                var rtpAccumulatedDeltaY = 0f
+                var rtpCurrentStickX = 0f
+                var rtpCurrentStickY = 0f
+                val rtpVelocityBuffer = VelocityRingBuffer(8)
+                var rtpDecayJob: Job? = null
+
+                val activePointers = mutableMapOf<PointerId, Set<String>>()
+                val initialPointers = mutableMapOf<PointerId, Set<String>>()
+
+                fun syncButtons() {
+                    val newGlobal = mutableSetOf<String>()
+                    for (set in activePointers.values) {
+                        newGlobal.addAll(set)
+                    }
+
+                    val added = newGlobal - currentGlobalPressed
+                    val removed = currentGlobalPressed - newGlobal
+
+                    if (added.isNotEmpty() || removed.isNotEmpty()) {
+                        currentGlobalPressed = newGlobal
+                        currentOnPressedKeysChanged(newGlobal)
+
+                        for (key in added) {
+                            currentOnVibrate()
+                            currentViewModel?.updateButton(key, true)
+                        }
+                        for (key in removed) {
+                            currentViewModel?.updateButton(key, false)
+                        }
+                    }
+                }
+
+                fun resetLeftStick() {
+                    if (leftStickPointerId != null) {
+                        leftStickPointerId = null
+                        currentOnLeftStickTouching(false)
+                        currentViewModel?.updateLeftStick(0f, 0f)
+                        coroutineScope.launch {
+                            launch { lsFloatX.animateTo(0f, spring(dampingRatio = 0.70f, stiffness = 400f)) }
+                            launch { lsFloatY.animateTo(0f, spring(dampingRatio = 0.70f, stiffness = 400f)) }
+                        }
+                    }
+                }
+
+                fun resetRightStick() {
+                    if (rightStickPointerId != null) {
+                        rightStickPointerId = null
+                        currentOnRightStickTouching(false)
+                        currentViewModel?.updateRightStick(0f, 0f)
+                        coroutineScope.launch {
+                            launch { rsFloatX.animateTo(0f, spring(dampingRatio = 0.70f, stiffness = 400f)) }
+                            launch { rsFloatY.animateTo(0f, spring(dampingRatio = 0.70f, stiffness = 400f)) }
+                        }
+                    }
+                }
+
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+
+                        for (change in event.changes) {
+                            val pid = change.id
+                            val px = change.position.x
+                            val py = change.position.y
+                            val isDown = !change.previousPressed && change.pressed
+                            val isUp = change.previousPressed && !change.pressed
+
+                            if (isDown) {
+                                // 1. Check Button Hit-Testing first (0ms priority for buttons)
+                                val hits = currentBoundsRegistry.hitTestTouchDisk(
+                                    screenX = px,
+                                    screenY = py,
+                                    thumbRadiusPx = currentThumbRadius,
+                                    excludedJoystickCenters = currentExcludedJoysticks
+                                )
+
+                                android.util.Log.d("NEXPAD_TOUCH", "Unified: isDown pid=" + pid + " pos=(" + px + "," + py + ") hits=" + hits + " inbuildRtp=" + (currentInbuildRtp != null))
+                                if (hits.isNotEmpty()) {
+                                    change.consume()
+                                    activePointers[pid] = hits
+                                    initialPointers[pid] = hits
+                                    syncButtons()
+                                } else {
+                                    // 2. Check if touching near any button (32dp buffer zone prevents miss-clicks)
+                                    val nearButton = currentBoundsRegistry.isNearAny(px, py, marginPx)
+                                    if (!nearButton) {
+                                        val midX = currentScreenWidthPx / 2f
+                                        val isInsideDiscrete = currentBoundsRegistry.isInsideDiscreteTouchpad(px, py)
+                                        val isInbuildLtpZone = currentInbuildLtp != null && px < midX
+                                        val isInbuildRtpZone = currentInbuildRtp != null && px >= midX
+
+                                        // A. Right Touchpad (Inbuild half-screen or discrete on right half)
+                                        if ((isInbuildRtpZone || (isInsideDiscrete && px >= midX)) && rightTouchpadPointerId == null) {
+                                            rightTouchpadPointerId = pid
+                                            rtpPreviousX = px
+                                            rtpPreviousY = py
+                                            rtpPreviousTimeMs = System.currentTimeMillis()
+                                            rtpAccumulatedDeltaX = 0f
+                                            rtpAccumulatedDeltaY = 0f
+                                            rtpCurrentStickX = 0f
+                                            rtpCurrentStickY = 0f
+                                            rtpVelocityBuffer.clear()
+                                            rtpDecayJob?.cancel()
+                                            change.consume()
+                                            currentOnVibrate()
+                                            currentOnRtpTouch(px - midX, py, true)
+                                            android.util.Log.d("NEXPAD_TOUCH", "Unified: RTP claimed pid=$pid at ($px, $py)")
+                                        }
+                                        // B. Left Touchpad (Inbuild half-screen or discrete on left half)
+                                        else if ((isInbuildLtpZone || (isInsideDiscrete && px < midX)) && leftTouchpadPointerId == null) {
+                                            leftTouchpadPointerId = pid
+                                            ltpAnchorX = px
+                                            ltpAnchorY = py
+                                            change.consume()
+                                            currentOnVibrate()
+                                            currentOnLtpTouch(px, py, true)
+                                            currentViewModel?.updateLeftStick(0f, 0f)
+                                            android.util.Log.d("NEXPAD_TOUCH", "Unified: LTP claimed pid=$pid at ($px, $py)")
+                                        }
+                                        // C. Left Floating Stick (BOX or FULL mode)
+                                        else if (px < midX && leftStickPointerId == null && lsMode != JoystickMode.LOCKED && currentInbuildLtp == null) {
+                                            val inZone = when (lsMode) {
+                                                JoystickMode.FULL -> !isInsideDiscrete
+                                                JoystickMode.BOX ->
+                                                    abs(px - lsHomeX) <= lsBoxHalfPx &&
+                                                    abs(py - lsHomeY) <= lsBoxHalfPx
+                                                JoystickMode.LOCKED -> false
+                                            }
+                                            if (inZone) {
+                                                leftStickPointerId = pid
+                                                leftBaseX = px
+                                                leftBaseY = py
+                                                change.consume()
+                                                currentOnLeftStickTouching(true)
+                                                coroutineScope.launch {
+                                                    lsFloatX.stop()
+                                                    lsFloatY.stop()
+                                                    lsFloatX.snapTo(leftBaseX - lsHomeX)
+                                                    lsFloatY.snapTo(leftBaseY - lsHomeY)
+                                                }
+                                                currentViewModel?.updateLeftStick(0f, 0f)
+                                            }
+                                        }
+                                        // D. Right Floating Stick (BOX or FULL mode)
+                                        else if (px >= midX && rightStickPointerId == null && rsMode != JoystickMode.LOCKED && currentInbuildRtp == null) {
+                                            val inZone = when (rsMode) {
+                                                JoystickMode.FULL -> !isInsideDiscrete
+                                                JoystickMode.BOX ->
+                                                    abs(px - rsHomeX) <= rsBoxHalfPx &&
+                                                    abs(py - rsHomeY) <= rsBoxHalfPx
+                                                JoystickMode.LOCKED -> false
+                                            }
+                                            if (inZone) {
+                                                rightStickPointerId = pid
+                                                rightBaseX = px
+                                                rightBaseY = py
+                                                change.consume()
+                                                currentOnRightStickTouching(true)
+                                                coroutineScope.launch {
+                                                    rsFloatX.stop()
+                                                    rsFloatY.stop()
+                                                    rsFloatX.snapTo(rightBaseX - rsHomeX)
+                                                    rsFloatY.snapTo(rightBaseY - rsHomeY)
+                                                }
+                                                currentViewModel?.updateRightStick(0f, 0f)
+                                            }
+                                        }
+                                    }
+                                }
+                            } else if (change.pressed) {
+                                // MOVE Events
+                                if (pid == rightTouchpadPointerId) {
+                                    change.consume()
+                                    val midX = currentScreenWidthPx / 2f
+                                    currentOnRtpTouch(px - midX, py, true)
+
+                                    val deltaX = px - rtpPreviousX
+                                    val deltaY = py - rtpPreviousY
+                                    rtpPreviousX = px
+                                    rtpPreviousY = py
+
+                                    // Directional axis stabilization: suppress minor diagonal cross-talk
+                                    var stepDeltaX = deltaX
+                                    var stepDeltaY = deltaY
+                                    val absX = abs(deltaX)
+                                    val absY = abs(deltaY)
+                                    if (absX > 3.0f * absY) {
+                                        stepDeltaY *= 0.5f
+                                    } else if (absY > 3.0f * absX) {
+                                        stepDeltaX *= 0.5f
+                                    }
+
+                                    rtpAccumulatedDeltaX += stepDeltaX
+                                    rtpAccumulatedDeltaY += stepDeltaY
+
+                                    val distPx = hypot(rtpAccumulatedDeltaX, rtpAccumulatedDeltaY)
+                                    val densityVal = density.density
+                                    val distDp = distPx / densityVal
+
+                                    // Micro-delta threshold: 0.04f dp ensures creeping thumb movements safely accumulate
+                                    if (distDp >= 0.04f) {
+                                        val currentTimeMs = System.currentTimeMillis()
+                                        val dtSec = ((currentTimeMs - rtpPreviousTimeMs).coerceAtLeast(1L)) / 1000f
+                                        rtpPreviousTimeMs = currentTimeMs
+
+                                        rtpVelocityBuffer.push(distDp, dtSec)
+                                        val smoothedSpeed = rtpVelocityBuffer.averageSpeed()
+
+                                        // 100% sensitivity boost: 2x factor enables reaching 1.0f with moderate swipe speeds
+                                        val boostSensitivity = rtpEffectiveSensitivity * 2.0f
+                                        val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, boostSensitivity, rtpEffectiveCurve)
+
+                                        if (stickMagnitude > 0f) {
+                                            val dirX = rtpAccumulatedDeltaX / distPx
+                                            val dirY = rtpAccumulatedDeltaY / distPx
+
+                                            val targetStickX = (dirX * stickMagnitude).coerceIn(-1f, 1f)
+                                            val targetStickY = (-dirY * stickMagnitude).coerceIn(-1f, 1f) // Up is positive Y
+
+                                            // Snappy 75/25 responsiveness
+                                            rtpCurrentStickX = 0.75f * targetStickX + 0.25f * rtpCurrentStickX
+                                            rtpCurrentStickY = 0.75f * targetStickY + 0.25f * rtpCurrentStickY
+
+                                            currentViewModel?.updateRightStick(rtpCurrentStickX, rtpCurrentStickY)
+                                            android.util.Log.d("NEXPAD_TOUCH", "Unified: RTP output stick=($rtpCurrentStickX, $rtpCurrentStickY) speed=$smoothedSpeed")
+
+                                            val decayTimeoutMs = (120L - (smoothedSpeed / 20f).toLong()).coerceIn(50L, 120L)
+                                            rtpDecayJob?.cancel()
+                                            rtpDecayJob = coroutineScope.launch {
+                                                delay(decayTimeoutMs)
+                                                rtpCurrentStickX *= 0.5f
+                                                rtpCurrentStickY *= 0.5f
+                                                currentViewModel?.updateRightStick(rtpCurrentStickX, rtpCurrentStickY)
+                                            android.util.Log.d("NEXPAD_TOUCH", "Unified: RTP output stick=($rtpCurrentStickX, $rtpCurrentStickY) speed=$smoothedSpeed")
+                                                delay(30.milliseconds)
+                                                rtpCurrentStickX *= 0.2f
+                                                rtpCurrentStickY *= 0.2f
+                                                currentViewModel?.updateRightStick(rtpCurrentStickX, rtpCurrentStickY)
+                                            android.util.Log.d("NEXPAD_TOUCH", "Unified: RTP output stick=($rtpCurrentStickX, $rtpCurrentStickY) speed=$smoothedSpeed")
+                                                delay(25.milliseconds)
+                                                rtpCurrentStickX = 0f
+                                                rtpCurrentStickY = 0f
+                                                currentViewModel?.updateRightStick(0f, 0f)
+                                            }
+                                        }
+
+                                        rtpAccumulatedDeltaX = 0f
+                                        rtpAccumulatedDeltaY = 0f
+                                    }
+                                } else if (pid == leftTouchpadPointerId) {
+                                    change.consume()
+                                    currentOnLtpTouch(px, py, true)
+                                    val dx = px - ltpAnchorX
+                                    val dy = py - ltpAnchorY
+                                    val baseRadiusDp = 24.dp
+                                    val maxRadiusPx = with(density) { baseRadiusDp.toPx() }
+                                    val dist = hypot(dx, dy)
+                                    if (dist > 0f) {
+                                        val sens = ltpEffectiveSensitivity.coerceAtLeast(1.0f)
+                                        val scaledDist = dist * sens
+                                        val clampedDist = scaledDist.coerceAtMost(maxRadiusPx)
+                                        val norm = (clampedDist / maxRadiusPx).coerceIn(0f, 1f)
+                                        val normX = (dx / dist * norm).coerceIn(-1f, 1f)
+                                        val normY = (-dy / dist * norm).coerceIn(-1f, 1f)
+                                        currentViewModel?.updateLeftStick(normX, normY)
+                                        android.util.Log.d("NEXPAD_TOUCH", "Unified: LTP output stick=($normX, $normY)")
+                                        val maxTravelPx = maxRadiusPx / sens
+                                        if (dist > maxTravelPx) {
+                                            ltpAnchorX = px - (dx / dist * maxTravelPx)
+                                            ltpAnchorY = py - (dy / dist * maxTravelPx)
+                                        }
+                                    }
+                                } else if (pid == leftStickPointerId) {
+                                    change.consume()
+                                    val deltaX = px - leftBaseX
+                                    val deltaY = py - leftBaseY
+                                    val dist = hypot(deltaX, deltaY)
+                                    val clampedDist = dist.coerceAtMost(maxThrowPx)
+                                    val knobX = if (dist < 0.001f) 0f else deltaX / dist * clampedDist
+                                    val knobY = if (dist < 0.001f) 0f else deltaY / dist * clampedDist
+                                    val deadPx = maxThrowPx * 0.05f
+                                    val normX = if (dist < deadPx) 0f else (knobX / maxThrowPx).coerceIn(-1f, 1f)
+                                    val normY = if (dist < deadPx) 0f else (-knobY / maxThrowPx).coerceIn(-1f, 1f)
+                                    currentViewModel?.updateLeftStick(normX, normY)
+                                } else if (pid == rightStickPointerId) {
+                                    change.consume()
+                                    val deltaX = px - rightBaseX
+                                    val deltaY = py - rightBaseY
+                                    val dist = hypot(deltaX, deltaY)
+                                    val clampedDist = dist.coerceAtMost(maxThrowPx)
+                                    val knobX = if (dist < 0.001f) 0f else deltaX / dist * clampedDist
+                                    val knobY = if (dist < 0.001f) 0f else deltaY / dist * clampedDist
+                                    val deadPx = maxThrowPx * 0.05f
+                                    val normX = if (dist < deadPx) 0f else (knobX / maxThrowPx).coerceIn(-1f, 1f)
+                                    val normY = if (dist < deadPx) 0f else (-knobY / maxThrowPx).coerceIn(-1f, 1f)
+                                    currentViewModel?.updateRightStick(normX, normY)
+                                } else if (initialPointers.containsKey(pid)) {
+                                    // Button Provenance: Pointer started on a button
+                                    if (!currentIsEsportsMultitouchEnabled) {
+                                        // Discrete mode: Only keep initial buttons, no sweeping
+                                        val hits = currentBoundsRegistry.hitTestTouchDisk(
+                                            screenX = px,
+                                            screenY = py,
+                                            thumbRadiusPx = currentThumbRadius,
+                                            excludedJoystickCenters = currentExcludedJoysticks
+                                        )
+                                        val initial = initialPointers[pid] ?: emptySet()
+                                        val preserved = hits.filter { initial.contains(it) }.toSet()
+                                        change.consume()
+                                        if (preserved.isNotEmpty()) {
+                                            activePointers[pid] = preserved
+                                        } else {
+                                            activePointers.remove(pid)
+                                        }
+                                        syncButtons()
+                                    } else {
+                                        val isRightSide = px >= currentScreenWidthPx / 2f
+                                        val isSideGuarded = currentIsSlideGuardEnabled &&
+                                            (if (isRightSide) (rightStickPointerId != null || rightTouchpadPointerId != null) else (leftStickPointerId != null || leftTouchpadPointerId != null))
+
+                                        if (isSideGuarded) {
+                                            // Side Guard active: stick/touchpad is actively touching on this side, suppress acquiring new buttons
+                                            val initial = initialPointers[pid] ?: emptySet()
+                                            val hits = currentBoundsRegistry.hitTestTouchDisk(
+                                                screenX = px,
+                                                screenY = py,
+                                                thumbRadiusPx = currentThumbRadius,
+                                                excludedJoystickCenters = currentExcludedJoysticks
+                                            )
+                                            val preserved = hits.filter { initial.contains(it) }.toSet()
+                                            change.consume()
+                                            if (preserved.isNotEmpty()) {
+                                                activePointers[pid] = preserved
+                                            } else {
+                                                activePointers.remove(pid)
+                                            }
+                                            syncButtons()
+                                        } else {
+                                            // Full rolling sweep
+                                            val hits = currentBoundsRegistry.hitTestTouchDisk(
+                                                screenX = px,
+                                                screenY = py,
+                                                thumbRadiusPx = currentThumbRadius,
+                                                excludedJoystickCenters = currentExcludedJoysticks
+                                            )
+                                            val initial = initialPointers[pid] ?: emptySet()
+                                            val filteredHits = hits.filter { key ->
+                                                initial.contains(key) || !ControllerTouchClassifier.isNonSweepable(key)
+                                            }.toSet()
+                                            change.consume()
+                                            if (filteredHits.isNotEmpty()) {
+                                                activePointers[pid] = filteredHits
+                                            } else {
+                                                activePointers.remove(pid)
+                                            }
+                                            syncButtons()
+                                        }
+                                    }
+                                }
+                            } else if (isUp || !change.pressed) {
+                                if (pid == rightTouchpadPointerId) {
+                                    rightTouchpadPointerId = null
+                                    rtpAccumulatedDeltaX = 0f
+                                    rtpAccumulatedDeltaY = 0f
+                                    currentOnRtpTouch(-1f, -1f, false)
+                                    if (rtpDecayJob?.isActive != true) {
+                                        currentViewModel?.updateRightStick(0f, 0f)
+                                    }
+                                } else if (pid == leftTouchpadPointerId) {
+                                    leftTouchpadPointerId = null
+                                    currentOnLtpTouch(-1f, -1f, false)
+                                    currentViewModel?.updateLeftStick(0f, 0f)
+                                } else if (pid == leftStickPointerId) {
+                                    resetLeftStick()
+                                } else if (pid == rightStickPointerId) {
+                                    resetRightStick()
+                                } else {
+                                    initialPointers.remove(pid)
+                                    if (activePointers.containsKey(pid)) {
+                                        activePointers.remove(pid)
+                                        syncButtons()
+                                    }
+                                }
+                            }
+                        }
+
+                        // Clean up any stale pointers that are no longer pressed
+                        if (rightTouchpadPointerId != null && event.changes.any { it.id == rightTouchpadPointerId && !it.pressed }) {
+                            rightTouchpadPointerId = null
+                            rtpAccumulatedDeltaX = 0f
+                            rtpAccumulatedDeltaY = 0f
+                            currentOnRtpTouch(-1f, -1f, false)
+                            if (rtpDecayJob?.isActive != true) {
+                                currentViewModel?.updateRightStick(0f, 0f)
+                            }
+                        }
+                        if (leftTouchpadPointerId != null && event.changes.any { it.id == leftTouchpadPointerId && !it.pressed }) {
+                            leftTouchpadPointerId = null
+                            currentOnLtpTouch(-1f, -1f, false)
+                            currentViewModel?.updateLeftStick(0f, 0f)
+                        }
+                        if (leftStickPointerId != null && event.changes.any { it.id == leftStickPointerId && !it.pressed }) {
+                            resetLeftStick()
+                        }
+                        if (rightStickPointerId != null && event.changes.any { it.id == rightStickPointerId && !it.pressed }) {
+                            resetRightStick()
+                        }
+                        val unpressedIds = activePointers.keys.filter { id ->
+                            event.changes.any { it.id == id && !it.pressed }
+                        }
+                        if (unpressedIds.isNotEmpty()) {
+                            for (id in unpressedIds) {
+                                activePointers.remove(id)
+                                initialPointers.remove(id)
+                            }
+                            syncButtons()
+                        }
+                    }
+                }
+            }
+    )
 }

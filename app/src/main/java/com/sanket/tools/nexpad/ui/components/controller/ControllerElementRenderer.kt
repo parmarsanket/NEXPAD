@@ -10,6 +10,7 @@ import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.runtime.engine.NxprcCanvasRenderer
 import com.sanket.tools.nexpad.runtime.engine.NxpComposeInterpreter
 import com.sanket.tools.nexpad.runtime.model.NexPadControl
+import com.sanket.tools.nexpad.runtime.model.NoOpInputTarget
 import com.sanket.tools.nexpad.runtime.model.asInputTarget
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
@@ -31,25 +32,19 @@ fun ControllerElementRenderer(
     key: String,
     isConnected: Boolean,
     isRgbEnabled: Boolean,
-    viewModel: GamepadViewModel,
+    viewModel: GamepadViewModel? = null,
     onVibrate: () -> Unit = {},
     customComponentId: String? = null,
     sensitivity: Float? = null,
     heightScale: Float = 1.0f,
     isFlipped: Boolean = false,
+    isLocked: Boolean = true,
     labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    touchpadCurve: String? = null
 ) {
     val context = LocalContext.current
-    val isNative = NativeComponentRegistry.isNativeBuiltin(customComponentId)
-
-    val feedback by viewModel.feedbackFlow.collectAsState(initial = null)
-    val rumbleIntensity = remember(feedback) {
-        val fb = feedback
-        if (fb != null && (fb.leftMotorSpeed > 0 || fb.rightMotorSpeed > 0)) {
-            maxOf(fb.leftMotorSpeed, fb.rightMotorSpeed) / 255f
-        } else 0f
-    }
+    val isNative = remember(customComponentId) { NativeComponentRegistry.isNativeBuiltin(customComponentId) }
 
     // 1. Remote Compose (.nxprc) Document
     if (customComponentId != null && customComponentId.startsWith("rc.")) {
@@ -58,26 +53,39 @@ fun ControllerElementRenderer(
         val remoteDoc = remember(customComponentId, loadedDocs) { remoteRegistry.getComponent(customComponentId) }
         val K = com.sanket.tools.nexpad.model.NexpadKeys
         if (remoteDoc != null) {
-            val targetControl = when {
-                key.equals(K.LSB, ignoreCase = true) || key.equals(K.RSB, ignoreCase = true) || key.equals("L3", ignoreCase = true) || key.equals("R3", ignoreCase = true) -> NexPadControl.Button(key)
-                key.equals(K.LS, ignoreCase = true) || key.equals(K.LTP, ignoreCase = true) -> NexPadControl.Stick(isLeft = true)
-                key.equals(K.RS, ignoreCase = true) || key.equals(K.RTP, ignoreCase = true) -> NexPadControl.Stick(isLeft = false)
-                key.equals(K.LT, ignoreCase = true) || key.equals(K.RT, ignoreCase = true) -> NexPadControl.Trigger(key.uppercase())
-                key.uppercase() in listOf(K.UP, K.DOWN, K.LEFT, K.RIGHT) -> NexPadControl.DPad(key.uppercase())
-                remoteDoc.manifest.category.equals("JOYSTICK", ignoreCase = true) || remoteDoc.manifest.category.equals("TOUCHPAD", ignoreCase = true) -> {
-                    val defCtrl = remoteDoc.manifest.defaultControl.uppercase()
-                    val isRight = defCtrl == K.RS || defCtrl == "R3" || defCtrl == K.RSB || defCtrl == K.RTP || defCtrl.contains("RIGHT") || remoteDoc.manifest.id.contains("rtp", ignoreCase = true)
-                    NexPadControl.Stick(isLeft = !isRight)
+            val feedback = viewModel?.feedbackFlow?.collectAsState(initial = null)?.value
+            val rumbleIntensity = remember(feedback) {
+                val fb = feedback
+                if (fb != null && (fb.leftMotorSpeed > 0 || fb.rightMotorSpeed > 0)) {
+                    maxOf(fb.leftMotorSpeed, fb.rightMotorSpeed) / 255f
+                } else 0f
+            }
+            val targetControl = remember(key, remoteDoc) {
+                when {
+                    key.equals(K.LSB, ignoreCase = true) || key.equals(K.RSB, ignoreCase = true) || key.equals("L3", ignoreCase = true) || key.equals("R3", ignoreCase = true) -> NexPadControl.Button(key)
+                    key.equals(K.LS, ignoreCase = true) || key.equals(K.LTP, ignoreCase = true) -> NexPadControl.Stick(isLeft = true)
+                    key.equals(K.RS, ignoreCase = true) || key.equals(K.RTP, ignoreCase = true) -> NexPadControl.Stick(isLeft = false)
+                    key.equals(K.LT, ignoreCase = true) || key.equals(K.RT, ignoreCase = true) -> NexPadControl.Trigger(key.uppercase())
+                    key.uppercase() in listOf(K.UP, K.DOWN, K.LEFT, K.RIGHT) -> NexPadControl.DPad(key.uppercase())
+                    remoteDoc.manifest.category.equals("JOYSTICK", ignoreCase = true) || remoteDoc.manifest.category.equals("TOUCHPAD", ignoreCase = true) -> {
+                        val defCtrl = remoteDoc.manifest.defaultControl.uppercase()
+                        val isRight = defCtrl == K.RS || defCtrl == "R3" || defCtrl == K.RSB || defCtrl == K.RTP || defCtrl.contains("RIGHT") || remoteDoc.manifest.id.contains("rtp", ignoreCase = true)
+                        NexPadControl.Stick(isLeft = !isRight)
+                    }
+                    else -> NexPadControl.Button(key)
                 }
-                else -> NexPadControl.Button(key)
             }
             NxprcCanvasRenderer(
                 document = remoteDoc,
                 assignedControl = targetControl,
                 isConnected = isConnected,
-                inputTarget = viewModel.asInputTarget(onVibrate),
+                inputTarget = viewModel?.asInputTarget(onVibrate) ?: NoOpInputTarget,
                 rumbleIntensity = rumbleIntensity,
-                labelStyle = labelStyle
+                labelStyle = labelStyle,
+                sizingPolicy = com.sanket.tools.nexpad.runtime.engine.NxprcSizingPolicy.GamepadHud,
+                touchpadCurve = touchpadCurve,
+                isLocked = isLocked,
+                viewModel = viewModel
             )
             return
         }
@@ -95,8 +103,10 @@ fun ControllerElementRenderer(
             sensitivity = sensitivity,
             heightScale = heightScale,
             isFlipped = isFlipped,
+            isLocked = isLocked,
             labelStyle = labelStyle,
-            modifier = modifier
+            modifier = modifier,
+            touchpadCurve = touchpadCurve
         )
         return
     }
@@ -110,19 +120,24 @@ fun ControllerElementRenderer(
 
     val K = com.sanket.tools.nexpad.model.NexpadKeys
     if (customDef != null) {
-        val targetControl = when {
-            key == K.LSB || key == K.RSB -> NexPadControl.Button(key)
-            key == K.LS || key == K.LTP -> NexPadControl.Stick(isLeft = true)
-            key == K.RS || key == K.RTP -> NexPadControl.Stick(isLeft = false)
-            key == K.LT || key == K.RT -> NexPadControl.Trigger(key)
-            key in listOf(K.UP, K.DOWN, K.LEFT, K.RIGHT) -> NexPadControl.DPad(key)
-            else -> NexPadControl.Button(key)
+        val targetControl = remember(key, customDef) {
+            when {
+                key == K.LSB || key == K.RSB -> NexPadControl.Button(key)
+                key == K.LS || key == K.LTP -> NexPadControl.Stick(isLeft = true)
+                key == K.RS || key == K.RTP -> NexPadControl.Stick(isLeft = false)
+                key == K.LT || key == K.RT -> NexPadControl.Trigger(key)
+                key in listOf(K.UP, K.DOWN, K.LEFT, K.RIGHT) -> NexPadControl.DPad(key)
+                else -> NexPadControl.Button(key)
+            }
         }
         NxpComposeInterpreter(
             definition = customDef,
             assignedControl = targetControl,
             isConnected = isConnected,
-            inputTarget = viewModel.asInputTarget(onVibrate)
+            inputTarget = viewModel?.asInputTarget(onVibrate) ?: NoOpInputTarget,
+            touchpadCurve = touchpadCurve,
+            isLocked = isLocked,
+            viewModel = viewModel
         )
         return
     }
@@ -136,7 +151,9 @@ fun ControllerElementRenderer(
         viewModel = viewModel,
         onVibrate = onVibrate,
         sensitivity = sensitivity,
+        isLocked = isLocked,
         labelStyle = labelStyle,
-        modifier = modifier
+        modifier = modifier,
+        touchpadCurve = touchpadCurve
     )
 }

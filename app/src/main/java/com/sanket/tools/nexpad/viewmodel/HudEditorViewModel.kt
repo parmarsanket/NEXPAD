@@ -1,10 +1,13 @@
 package com.sanket.tools.nexpad.viewmodel
 
+import com.sanket.tools.nexpad.utils.AppLog as Log
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
+import com.sanket.tools.nexpad.category.SubCategoryDefinition
 import com.sanket.tools.nexpad.model.HudElement
 import com.sanket.tools.nexpad.model.LayoutProfile
 import com.sanket.tools.nexpad.model.LayoutSkin
@@ -16,13 +19,29 @@ import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import com.sanket.tools.nexpad.runtime.registry.ComponentRegistry
 import com.sanket.tools.nexpad.utils.LayoutManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.withContext
+import java.util.Locale
+
+/**
+ * Observable lifecycle state for HUD layout saving operations.
+ */
+sealed class HudSaveState {
+    object Idle : HudSaveState()
+    object Saving : HudSaveState()
+    object Success : HudSaveState()
+    data class Error(val message: String) : HudSaveState()
+}
 
 /**
  * Single source of truth for HUD Layout Editing sessions.
@@ -37,11 +56,15 @@ class HudEditorViewModel(
     private val remoteComponentRegistry: RemoteComponentRegistry? = null
 ) : ViewModel() {
 
+    private val saveMutex = Mutex()
+
+    private val _saveState = MutableStateFlow<HudSaveState>(HudSaveState.Idle)
+    val saveState: StateFlow<HudSaveState> = _saveState.asStateFlow()
+
     private val _currentProfile = MutableStateFlow(layoutManager.getActiveProfile())
     val currentProfile: StateFlow<LayoutProfile> = _currentProfile.asStateFlow()
 
-    private val _elements = MutableStateFlow<Map<String, HudElement>>(emptyMap())
-    val elements: StateFlow<Map<String, HudElement>> = _elements.asStateFlow()
+    val elements = mutableStateMapOf<String, HudElement>()
 
     private val _selectedControl = MutableStateFlow<String?>(null)
     val selectedControl: StateFlow<String?> = _selectedControl.asStateFlow()
@@ -58,10 +81,8 @@ class HudEditorViewModel(
         componentDefaultControl: String,
         componentCategory: String,
         componentId: String,
-        targetControlKey: String
+        targetSpec: SubCategoryDefinition
     ): Boolean {
-        val targetSpec = CategoryManager.getControl(targetControlKey) ?: return false
-
         // 1. Primary: Match via component defaultControl (resolves keys, aliases, and labels)
         if (componentDefaultControl.isNotBlank()) {
             val resolved = CategoryManager.resolveControl(componentDefaultControl)
@@ -99,6 +120,21 @@ class HudEditorViewModel(
      * - Each custom/remote skin appears exactly once.
      */
     fun getCompatibleSkins(controlKey: String): List<LayoutSkin> {
+        val targetSpec = CategoryManager.getControl(controlKey)
+        if (targetSpec == null) {
+            val skins = mutableListOf<LayoutSkin>(LayoutSkin.NativeDefault)
+            val seenIds = mutableSetOf<String>()
+            val allComponents = componentRegistry.installedComponents.value
+            allComponents.forEach { def ->
+                if (def.manifest.defaultControl.equals(controlKey, ignoreCase = true) ||
+                    def.manifest.category.equals("SPECIAL", ignoreCase = true)) {
+                    if (seenIds.add(def.manifest.id)) {
+                        skins.add(LayoutSkin.CustomComponent(def))
+                    }
+                }
+            }
+            return skins
+        }
         val skins = mutableListOf<LayoutSkin>(LayoutSkin.NativeDefault)
         val seenIds = mutableSetOf<String>()
 
@@ -107,7 +143,7 @@ class HudEditorViewModel(
 
         // 1. Tier 2: User-imported or remote .nxprc skins
         remoteDocs.forEach { doc ->
-            if (isSkinCompatible(doc.manifest.defaultControl, doc.manifest.category, doc.manifest.id, controlKey)) {
+            if (isSkinCompatible(doc.manifest.defaultControl, doc.manifest.category, doc.manifest.id, targetSpec)) {
                 if (seenIds.add(doc.manifest.id)) {
                     skins.add(LayoutSkin.RemoteComponent(doc))
                 }
@@ -118,10 +154,10 @@ class HudEditorViewModel(
         allComponents.forEach { def ->
             val id = def.manifest.id
             // Builtin defaults (e.g. builtin.default_lb) are unified under LayoutSkin.NativeDefault (index 0)
-            if (id.startsWith("builtin.default_")) return@forEach
+            if (id.startsWith(PREFIX_BUILTIN_DEFAULT)) return@forEach
             if (seenIds.contains(id)) return@forEach
 
-            if (isSkinCompatible(def.manifest.defaultControl, def.manifest.category, id, controlKey)) {
+            if (isSkinCompatible(def.manifest.defaultControl, def.manifest.category, id, targetSpec)) {
                 if (seenIds.add(id)) {
                     skins.add(LayoutSkin.CustomComponent(def))
                 }
@@ -131,13 +167,18 @@ class HudEditorViewModel(
         return skins
     }
 
-    val compatibleSkins: StateFlow<List<LayoutSkin>> = combine(
-        _selectedControl,
-        componentRegistry.installedComponents,
-        remoteComponentRegistry?.loadedComponents ?: MutableStateFlow(emptyList())
-    ) { selected, _, _ ->
-        if (selected == null) emptyList()
-        else getCompatibleSkins(selected)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val compatibleSkins: StateFlow<List<LayoutSkin>> = _selectedControl.flatMapLatest { selected ->
+        if (selected == null) {
+            flowOf(emptyList())
+        } else {
+            combine(
+                componentRegistry.installedComponents,
+                remoteComponentRegistry?.loadedComponents ?: MutableStateFlow(emptyList())
+            ) { _, _ ->
+                getCompatibleSkins(selected)
+            }
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
@@ -171,8 +212,18 @@ class HudEditorViewModel(
                 elementMap[canonicalKey] = HudElement.fromPosition(canonicalKey, pos)
             }
         }
-        _elements.value = elementMap
+        elements.clear()
+        elements.putAll(elementMap)
         _hasUnsavedChanges.value = false
+    }
+
+    fun resolveElementKey(controlKey: String): String {
+        val upper = controlKey.uppercase()
+        if (elements.containsKey(upper)) return upper
+        val targetCtrl = ControlKey.fromIdentifier(controlKey)
+        return elements.keys.firstOrNull {
+            it.equals(upper, ignoreCase = true) || (targetCtrl != null && ControlKey.fromIdentifier(it) == targetCtrl)
+        } ?: upper
     }
 
     fun selectControl(controlKey: String?) {
@@ -182,11 +233,12 @@ class HudEditorViewModel(
         }
         val targetCtrl = ControlKey.fromIdentifier(controlKey)
         val canonical = targetCtrl?.key ?: controlKey.uppercase()
-        val matchingKey = _elements.value.keys.firstOrNull {
+        val matchingKey = elements.keys.firstOrNull {
             if (targetCtrl != null) ControlKey.fromIdentifier(it) == targetCtrl
             else it.equals(canonical, ignoreCase = true)
         }
-        _selectedControl.value = matchingKey ?: canonical
+        val resolved = matchingKey ?: canonical
+        _selectedControl.value = resolved
     }
 
     fun updateTransform(
@@ -196,88 +248,157 @@ class HudEditorViewModel(
         scale: Float? = null,
         opacity: Float? = null
     ) {
-        val key = controlKey.uppercase()
-        val current = _elements.value[key] ?: return
+        val safeX = (if (xRatio.isFinite()) xRatio else 0.5f).coerceIn(0.0f, 1.0f)
+        val safeY = (if (yRatio.isFinite()) yRatio else 0.5f).coerceIn(0.0f, 1.0f)
+        val safeScale = scale?.let { (if (it.isFinite()) it else 1.0f).coerceIn(0.4f, 3.5f) }
+        val safeOpacity = opacity?.let { (if (it.isFinite()) it else 1.0f).coerceIn(0.1f, 1.0f) }
+
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
         val updated = current.copy(
             transform = current.transform.copy(
-                xRatio = xRatio.coerceIn(0.0f, 1.0f),
-                yRatio = yRatio.coerceIn(0.0f, 1.0f),
-                scale = scale?.coerceIn(0.4f, 3.5f) ?: current.transform.scale,
-                opacity = opacity?.coerceIn(0.1f, 1.0f) ?: current.transform.opacity
+                xRatio = safeX,
+                yRatio = safeY,
+                scale = safeScale ?: current.transform.scale,
+                opacity = safeOpacity ?: current.transform.opacity
             )
         )
-        _elements.value = _elements.value + (key to updated)
+        elements[targetKey] = updated
         _hasUnsavedChanges.value = true
     }
 
     fun nudge(controlKey: String, dxRatio: Float, dyRatio: Float) {
-        val key = controlKey.uppercase()
-        val current = _elements.value[key] ?: return
-        val newX = (current.transform.xRatio + dxRatio).coerceIn(0.0f, 1.0f)
-        val newY = (current.transform.yRatio + dyRatio).coerceIn(0.0f, 1.0f)
-        updateTransform(key, newX, newY)
+        if (!dxRatio.isFinite() || !dyRatio.isFinite()) return
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
+        val newX = current.transform.xRatio + dxRatio
+        val newY = current.transform.yRatio + dyRatio
+        updateTransform(targetKey, newX, newY)
     }
 
     fun setScale(controlKey: String, newScale: Float) {
-        val key = controlKey.uppercase()
-        val current = _elements.value[key] ?: return
-        updateTransform(key, current.transform.xRatio, current.transform.yRatio, scale = newScale)
+        if (!newScale.isFinite()) return
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
+        val clampedScale = newScale.coerceIn(0.4f, 3.0f)
+        updateTransform(targetKey, current.transform.xRatio, current.transform.yRatio, scale = clampedScale)
     }
 
     fun setOpacity(controlKey: String, newOpacity: Float) {
-        val key = controlKey.uppercase()
-        val current = _elements.value[key] ?: return
-        updateTransform(key, current.transform.xRatio, current.transform.yRatio, opacity = newOpacity)
+        if (!newOpacity.isFinite()) return
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
+        updateTransform(targetKey, current.transform.xRatio, current.transform.yRatio, opacity = newOpacity)
     }
 
     fun setSensitivity(controlKey: String, newSensitivity: Float) {
-        val key = controlKey.uppercase()
-        val current = _elements.value[key] ?: return
-        val clamped = newSensitivity.coerceIn(0.5f, 4.0f)
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
+        val clamped = (if (newSensitivity.isFinite()) newSensitivity else 1.0f).coerceIn(0.5f, 4.0f)
         val updated = current.copy(
             transform = current.transform.copy(sensitivity = clamped)
         )
-        _elements.value = _elements.value + (key to updated)
+        elements[targetKey] = updated
         _hasUnsavedChanges.value = true
-        layoutManager.updateTouchpadSensitivity(key, clamped)
+    }
+
+    fun setTouchpadCurve(controlKey: String, newCurve: String) {
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
+        val updated = current.copy(
+            transform = current.transform.copy(touchpadCurve = newCurve)
+        )
+        elements[targetKey] = updated
+        _hasUnsavedChanges.value = true
     }
 
     fun setHeightScale(controlKey: String, newHeightScale: Float) {
-        val key = controlKey.uppercase()
-        val current = _elements.value[key] ?: return
-        val clamped = newHeightScale.coerceIn(0.5f, 2.5f)
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
+        val clamped = (if (newHeightScale.isFinite()) newHeightScale else 1.0f).coerceIn(0.5f, 2.5f)
         val updated = current.copy(
             transform = current.transform.copy(heightScale = clamped)
         )
-        _elements.value = _elements.value + (key to updated)
+        elements[targetKey] = updated
         _hasUnsavedChanges.value = true
     }
 
     fun toggleFlip(controlKey: String) {
-        val key = controlKey.uppercase()
-        val current = _elements.value[key] ?: return
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
         val updated = current.copy(
             transform = current.transform.copy(isFlipped = !current.transform.isFlipped)
         )
-        _elements.value = _elements.value + (key to updated)
+        elements[targetKey] = updated
+        _hasUnsavedChanges.value = true
+    }
+
+    fun toggleLock(controlKey: String) {
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
+        val newLocked = !current.transform.isLocked
+        // Preserve existing joystickMode — only change isLocked flag
+        elements[targetKey] = current.copy(
+            transform = current.transform.copy(
+                isLocked = newLocked
+                // Do NOT change joystickMode here
+            )
+        )
+        _hasUnsavedChanges.value = true
+    }
+
+    fun setLock(controlKey: String, isLocked: Boolean) {
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
+        elements[targetKey] = current.copy(
+            transform = current.transform.copy(
+                isLocked = isLocked
+            )
+        )
+        _hasUnsavedChanges.value = true
+    }
+
+    fun setJoystickMode(controlKey: String, mode: String) {
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
+        val resolvedMode = com.sanket.tools.nexpad.model.JoystickMode.fromId(mode)
+        val isLocked = (resolvedMode == com.sanket.tools.nexpad.model.JoystickMode.LOCKED)
+        val updated = current.copy(
+            transform = current.transform.copy(
+                joystickMode = resolvedMode.id,
+                isLocked = isLocked
+            )
+        )
+        elements[targetKey] = updated
+        _hasUnsavedChanges.value = true
+    }
+
+    fun setHitboxScale(controlKey: String, scale: Float) {
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
+        val clamped = (if (scale.isFinite()) scale else 1.2f).coerceIn(1.2f, 3.0f)
+        val updated = current.copy(
+            transform = current.transform.copy(hitboxScale = clamped)
+        )
+        elements[targetKey] = updated
         _hasUnsavedChanges.value = true
     }
 
     fun setSkin(controlKey: String, skinId: String?) {
-        val key = controlKey.uppercase()
-        val current = _elements.value[key] ?: return
+        val targetKey = resolveElementKey(controlKey)
+        val current = elements[targetKey] ?: return
         val updated = current.copy(skinId = skinId)
-        _elements.value = _elements.value + (key to updated)
+        elements[targetKey] = updated
         _hasUnsavedChanges.value = true
     }
 
     fun cycleNextSkin(controlKey: String) {
-        val key = controlKey.uppercase()
-        val available = getCompatibleSkins(key)
+        val targetKey = resolveElementKey(controlKey)
+        val available = getCompatibleSkins(targetKey)
         if (available.isEmpty()) return
 
-        val currentSkinId = _elements.value[key]?.skinId?.takeIf { it.isNotBlank() }
-        val isCurrentDefault = currentSkinId == null || currentSkinId.startsWith("builtin.default_")
+        val currentSkinId = elements[targetKey]?.skinId?.takeIf { it.isNotBlank() }
+        val isCurrentDefault = currentSkinId == null || currentSkinId.startsWith(PREFIX_BUILTIN_DEFAULT)
 
         val currentIndex = if (isCurrentDefault) {
             0
@@ -293,7 +414,7 @@ class HudEditorViewModel(
         }
 
         val nextSkin = available[nextIndex]
-        setSkin(key, nextSkin.id)
+        setSkin(targetKey, nextSkin.id)
     }
 
     fun addControl(controlKey: String, skinId: String? = null) {
@@ -301,7 +422,7 @@ class HudEditorViewModel(
         val canonicalKey = targetCtrl?.key ?: controlKey.uppercase()
 
         // Check if an element for this canonical control already exists
-        val existingEntry = _elements.value.entries.firstOrNull { (k, _) ->
+        val existingEntry = elements.entries.firstOrNull { (k, _) ->
             if (targetCtrl != null) ControlKey.fromIdentifier(k) == targetCtrl
             else k.equals(canonicalKey, ignoreCase = true)
         }
@@ -316,43 +437,110 @@ class HudEditorViewModel(
         }
 
         // Industry-standard mutual exclusivity:
-        // Integrated 4-Way D-Pad (DPAD) and discrete directional buttons (UP, DOWN, LEFT, RIGHT)
+        // 1. Integrated 4-Way D-Pad (DPAD) and discrete directional buttons (UP, DOWN, LEFT, RIGHT)
         // cannot coexist on the same gamepad HUD layout.
-        var updatedElements = _elements.value
+        var inheritedTransform: LayoutTransform? = null
+
         if (targetCtrl?.isDpadComposite == true) {
             // Adding composite 4-way D-Pad cross removes any discrete directional buttons
-            updatedElements = updatedElements.filterKeys { k ->
-                ControlKey.fromIdentifier(k)?.isDpadDiscrete != true
+            val toRemove = elements.keys.filter { k ->
+                ControlKey.fromIdentifier(k)?.isDpadDiscrete == true
             }
+            toRemove.forEach { elements.remove(it) }
         } else if (targetCtrl?.isDpadDiscrete == true) {
             // Adding a discrete directional button removes any composite 4-way D-Pad cross
-            updatedElements = updatedElements.filterKeys { k ->
-                ControlKey.fromIdentifier(k)?.isDpadComposite != true
+            val toRemove = elements.keys.filter { k ->
+                ControlKey.fromIdentifier(k)?.isDpadComposite == true
+            }
+            toRemove.forEach { elements.remove(it) }
+        }
+
+        // 2. Left Stick (LS) & Left Touchpad (LTP) Mutual Exclusivity:
+        // When replacing LS with LTP (or vice-versa), inherit the exact center position, scale,
+        // and opacity so the user does not have to manually reposition it.
+        if (canonicalKey == ControlKey.LTP.key || targetCtrl == ControlKey.LTP) {
+            val lsEntry = elements.entries.firstOrNull {
+                ControlKey.fromIdentifier(it.key) == ControlKey.LS || it.key.equals(ControlKey.LS.key, ignoreCase = true)
+            }
+            if (lsEntry != null) {
+                inheritedTransform = lsEntry.value.transform
+                elements.remove(lsEntry.key)
+            }
+        } else if (canonicalKey == ControlKey.LS.key || targetCtrl == ControlKey.LS) {
+            val ltpEntry = elements.entries.firstOrNull {
+                ControlKey.fromIdentifier(it.key) == ControlKey.LTP || it.key.equals(ControlKey.LTP.key, ignoreCase = true)
+            }
+            if (ltpEntry != null) {
+                inheritedTransform = ltpEntry.value.transform
+                elements.remove(ltpEntry.key)
             }
         }
 
-        val defPos = getControlDefaultPosition(canonicalKey) ?: defaultPositions()[controlKey]
-        val transform = LayoutTransform(
-            xRatio = defPos?.xRatio ?: 0.5f,
-            yRatio = defPos?.yRatio ?: 0.5f,
-            scale = defPos?.scale ?: 1.0f,
-            opacity = defPos?.opacity ?: 1.0f
-        )
+        // 3. Right Stick (RS) & Right Touchpad (RTP) Mutual Exclusivity:
+        // When replacing RS with RTP (or vice-versa), inherit the exact center position, scale,
+        // and opacity so the user does not have to manually reposition it.
+        if (canonicalKey == ControlKey.RTP.key || targetCtrl == ControlKey.RTP) {
+            val rsEntry = elements.entries.firstOrNull {
+                ControlKey.fromIdentifier(it.key) == ControlKey.RS || it.key.equals(ControlKey.RS.key, ignoreCase = true)
+            }
+            if (rsEntry != null) {
+                inheritedTransform = rsEntry.value.transform
+                elements.remove(rsEntry.key)
+            }
+        } else if (canonicalKey == ControlKey.RS.key || targetCtrl == ControlKey.RS) {
+            val rtpEntry = elements.entries.firstOrNull {
+                ControlKey.fromIdentifier(it.key) == ControlKey.RTP || it.key.equals(ControlKey.RTP.key, ignoreCase = true)
+            }
+            if (rtpEntry != null) {
+                inheritedTransform = rtpEntry.value.transform
+                elements.remove(rtpEntry.key)
+            }
+        }
+
+        val transform = if (inheritedTransform != null) {
+            inheritedTransform.copy()
+        } else {
+            val defPos = getControlDefaultPosition(canonicalKey) ?: defaultPositions()[controlKey]
+            LayoutTransform(
+                xRatio = defPos?.xRatio ?: 0.5f,
+                yRatio = defPos?.yRatio ?: 0.5f,
+                scale = defPos?.scale ?: 1.0f,
+                opacity = defPos?.opacity ?: 1.0f
+            )
+        }
+
         val element = HudElement(controlKey = canonicalKey, transform = transform, skinId = skinId)
-        _elements.value = updatedElements + (canonicalKey to element)
+        elements[canonicalKey] = element
         _selectedControl.value = canonicalKey
         _hasUnsavedChanges.value = true
+    }
+
+    /**
+     * Swaps Left Stick (LS) with Left Touchpad (LTP), or Right Stick (RS) with Right Touchpad (RTP),
+     * preserving the exact center position, scale, and opacity without manual repositioning.
+     */
+    fun swapStickAndTouchpad(controlKey: String) {
+        val targetCtrl = ControlKey.fromIdentifier(controlKey)
+        val canonicalKey = targetCtrl?.key ?: controlKey.uppercase()
+        val targetSwapKey = when (canonicalKey) {
+            ControlKey.LS.key -> ControlKey.LTP.key
+            ControlKey.LTP.key -> ControlKey.LS.key
+            ControlKey.RS.key -> ControlKey.RTP.key
+            ControlKey.RTP.key -> ControlKey.RS.key
+            else -> return
+        }
+        addControl(targetSwapKey)
     }
 
     fun removeControl(controlKey: String) {
         val targetCtrl = ControlKey.fromIdentifier(controlKey)
         val canonicalKey = targetCtrl?.key ?: controlKey.uppercase()
-        val matchingKeys = _elements.value.keys.filter {
+        val matchingKeys = elements.keys.filter {
             if (targetCtrl != null) ControlKey.fromIdentifier(it) == targetCtrl
             else it.equals(canonicalKey, ignoreCase = true)
         }
         if (matchingKeys.isNotEmpty()) {
-            _elements.value = _elements.value - matchingKeys.toSet()
+            matchingKeys.forEach { elements.remove(it) }
             if (_selectedControl.value in matchingKeys) {
                 _selectedControl.value = null
             }
@@ -364,7 +552,7 @@ class HudEditorViewModel(
         val targetCtrl = ControlKey.fromIdentifier(controlKey)
         val canonicalKey = targetCtrl?.key ?: controlKey.uppercase()
         val defPos = getControlDefaultPosition(canonicalKey) ?: defaultPositions()[controlKey] ?: return
-        val currentEntry = _elements.value.entries.firstOrNull { (k, _) ->
+        val currentEntry = elements.entries.firstOrNull { (k, _) ->
             if (targetCtrl != null) ControlKey.fromIdentifier(k) == targetCtrl
             else k.equals(canonicalKey, ignoreCase = true)
         }
@@ -379,7 +567,7 @@ class HudEditorViewModel(
             ),
             skinId = currentEntry?.value?.skinId
         )
-        _elements.value = _elements.value + (targetKey to updated)
+        elements[targetKey] = updated
         _hasUnsavedChanges.value = true
     }
 
@@ -396,10 +584,11 @@ class HudEditorViewModel(
                     scale = pos.scale,
                     opacity = pos.opacity
                 ),
-                skinId = _elements.value[canonicalKey]?.skinId
+                skinId = elements[canonicalKey]?.skinId
             )
         }
-        _elements.value = elementMap
+        elements.clear()
+        elements.putAll(elementMap)
         _hasUnsavedChanges.value = true
     }
 
@@ -411,12 +600,18 @@ class HudEditorViewModel(
 
     /**
      * Persists layout changes asynchronously to SharedPreferences on Dispatchers.IO.
+     * Protected by [saveMutex] against concurrent save races.
+     * Emits observable updates through [saveState].
      */
-    fun saveProfile(onSaved: () -> Unit = {}) {
+    fun saveProfile(
+        onFailure: (Throwable) -> Unit = {},
+        onSaved: () -> Unit = {}
+    ) {
         val profile = _currentProfile.value
+        val elementsSnapshot = elements.values.toList()
         val positionMap = mutableMapOf<String, Position>()
-        _elements.value.values.forEach { element ->
-            val canonical = ControlKey.fromIdentifier(element.controlKey)?.key ?: element.controlKey.uppercase()
+        elementsSnapshot.forEach { element ->
+            val canonical = ControlKey.fromIdentifier(element.controlKey)?.key ?: element.controlKey.uppercase(Locale.ROOT)
             if (!positionMap.containsKey(canonical)) {
                 positionMap[canonical] = element.toPosition()
             }
@@ -424,14 +619,46 @@ class HudEditorViewModel(
         val updatedProfile = profile.copy(positions = positionMap)
 
         viewModelScope.launch(Dispatchers.IO) {
-            val wasActive = layoutManager.getActiveProfile().name.equals(updatedProfile.name, ignoreCase = true)
-            layoutManager.saveProfile(updatedProfile, activate = wasActive)
-            _currentProfile.value = updatedProfile
-            _hasUnsavedChanges.value = false
-            launch(Dispatchers.Main) {
-                onSaved()
+            if (!saveMutex.tryLock()) {
+                Log.w(TAG, "Layout save already in progress, skipping concurrent request.")
+                return@launch
+            }
+            try {
+                _saveState.value = HudSaveState.Saving
+                val wasActive = layoutManager.getActiveProfile().name.equals(updatedProfile.name, ignoreCase = true)
+                val success = layoutManager.saveProfile(updatedProfile, activate = wasActive)
+                if (!success) {
+                    throw IllegalStateException("Failed to save layout profile '${updatedProfile.name}'. Name may be invalid or reserved.")
+                }
+                // Persist any updated touchpad sensitivities and curves
+                elementsSnapshot.forEach { element ->
+                    val key = element.controlKey
+                    if (key.equals(ControlKey.LTP.key, ignoreCase = true) || key.equals(ControlKey.RTP.key, ignoreCase = true)) {
+                        layoutManager.updateTouchpadSensitivity(key, element.transform.sensitivity)
+                        layoutManager.updateTouchpadCurve(key, element.transform.touchpadCurve)
+                    }
+                }
+                withContext(Dispatchers.Main) {
+                    _currentProfile.value = updatedProfile
+                    _hasUnsavedChanges.value = false
+                    _saveState.value = HudSaveState.Success
+                    onSaved()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to save profile: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    _saveState.value = HudSaveState.Error(e.message ?: "Failed to save layout profile")
+                    onFailure(e)
+                }
+            } finally {
+                saveMutex.unlock()
             }
         }
+    }
+
+    companion object {
+        private const val TAG = "NexpadHudEditorVM"
+        const val PREFIX_BUILTIN_DEFAULT = "builtin.default_"
     }
 }
 

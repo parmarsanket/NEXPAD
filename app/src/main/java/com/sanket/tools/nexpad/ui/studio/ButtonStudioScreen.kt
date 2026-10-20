@@ -17,10 +17,13 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -34,6 +37,7 @@ import com.sanket.tools.nexpad.category.CategoryType
 import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.model.Position
+import com.sanket.tools.nexpad.model.shortDisplayName
 import com.sanket.tools.nexpad.model.defaultPositions
 import com.sanket.tools.nexpad.runtime.model.NxpComponentDef
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
@@ -71,12 +75,11 @@ fun ButtonStudioScreen(
     gamepadViewModel: GamepadViewModel? = null
 ) {
     val context = LocalContext.current
-    val clipboard = LocalClipboard.current
     val registry = remember { ComponentRegistry.getInstance(context) }
     val components by registry.installedComponents.collectAsState()
 
     // Current Studio Mode (VIEWER vs EDITOR)
-    var currentMode by remember { mutableStateOf(initialMode) }
+    var currentMode by remember(initialMode) { mutableStateOf(initialMode) }
 
     // Whether we are in a contextual selection session (launched from HUD Editor or Virtual Controller)
     val isContextual = (initialMode == ButtonStudioMode.EDITOR || initialMode == ButtonStudioMode.BUTTON_EDITOR) && targetControlKey != null
@@ -120,10 +123,11 @@ fun ButtonStudioScreen(
         } else null
     }
 
-    var selectedCategory by remember { mutableStateOf(initialCategory) }
-    var selectedSubFilter by remember { mutableStateOf<StudioSubFilter?>(initialSubFilter) }
-    var showImportMenu by remember { mutableStateOf(false) }
-    var showImportDialog by remember { mutableStateOf(false) }
+    var selectedCategory by remember(initialCategory) { mutableStateOf(initialCategory) }
+    var selectedSubFilter by remember(initialSubFilter) { mutableStateOf<StudioSubFilter?>(initialSubFilter) }
+    var lastNavTime by remember { mutableStateOf(0L) }
+    var showImportMenu by rememberSaveable { mutableStateOf(false) }
+    var showImportDialog by rememberSaveable { mutableStateOf(false) }
     var previewTarget by remember { mutableStateOf<NxpComponentDef?>(null) }
 
     // Map of active controls (controlKey -> Boolean) in Builder mode
@@ -184,7 +188,7 @@ fun ButtonStudioScreen(
                     compCtrl.categoryType.id == selectedCategory.id || selectedCategory.keys.contains(control)
                 } else {
                     val resolvedCat = CategoryType.fromIdentifier(category)
-                    resolvedCat?.id == selectedCategory.id || selectedCategory.keys.contains(control)
+                    resolvedCat?.id == selectedCategory.id || selectedCategory.keys.contains(control) || category.equals(selectedCategory.id, ignoreCase = true)
                 }
 
                 if (!matchesCategory) return@filter false
@@ -310,8 +314,11 @@ fun ButtonStudioScreen(
                                     )
                                 }
                             } else {
+                                val windowInfo = LocalWindowInfo.current
+                                val density = LocalDensity.current
+                                val screenWidthDp = with(density) { windowInfo.containerSize.width.toDp().value }
                                 Text(
-                                    text = "Button Catalog • Browse, test & add buttons",
+                                    text = if (screenWidthDp < 380) "Button Catalog" else "Button Catalog • Browse, test & add buttons",
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontSize = 10.sp
@@ -324,7 +331,13 @@ fun ButtonStudioScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = {
+                        val now = System.currentTimeMillis()
+                        if (now - lastNavTime >= 500L) {
+                            lastNavTime = now
+                            navController.popBackStack()
+                        }
+                    }) {
                         Icon(
                             Icons.AutoMirrored.Rounded.ArrowBack,
                             contentDescription = "Back",
@@ -336,7 +349,13 @@ fun ButtonStudioScreen(
                     // Contextual Done / Selected Outlined Button on the right
                     if (isContextual || currentMode == ButtonStudioMode.BUTTON_EDITOR) {
                         OutlinedButton(
-                            onClick = { navController.popBackStack() },
+                            onClick = {
+                                val now = System.currentTimeMillis()
+                                if (now - lastNavTime >= 500L) {
+                                    lastNavTime = now
+                                    navController.popBackStack()
+                                }
+                            },
                             shape = RoundedCornerShape(8.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 contentColor = NeonPalette.Cyan
@@ -382,7 +401,7 @@ fun ButtonStudioScreen(
                             ) {
                                 val isXbox = studioLabelStyle == ControllerLabelStyle.XBOX
                                 Text(
-                                    if (isXbox) "Xbox" else "PS",
+                                    studioLabelStyle.shortDisplayName,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = if (isXbox) NeonPalette.Green else NeonPalette.Cyan
@@ -446,7 +465,7 @@ fun ButtonStudioScreen(
                                 Icon(
                                     Icons.Rounded.FileUpload,
                                     contentDescription = "Import",
-                                    tint = Color(0xFFFF9100),
+                                    tint = NeonPalette.OrangeAccent,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -454,7 +473,7 @@ fun ButtonStudioScreen(
                             DropdownMenu(
                                 expanded = showImportMenu,
                                 onDismissRequest = { showImportMenu = false },
-                                modifier = Modifier.background(Color(0xFF0F172A))
+                                modifier = Modifier.background(NeonPalette.SlateBg)
                             ) {
                                 DropdownMenuItem(
                                     text = { Text("⚡ Import .nxprc (Remote)", color = Color.White, fontSize = 12.sp) },
@@ -463,7 +482,7 @@ fun ButtonStudioScreen(
                                         filePickerLauncher.launch(arrayOf("*/*"))
                                     },
                                     leadingIcon = {
-                                        Icon(Icons.Rounded.FlashOn, contentDescription = null, tint = Color(0xFFFF9100), modifier = Modifier.size(16.dp))
+                                        Icon(Icons.Rounded.FlashOn, contentDescription = null, tint = NeonPalette.OrangeAccent, modifier = Modifier.size(16.dp))
                                     }
                                 )
                                 DropdownMenuItem(
@@ -690,7 +709,7 @@ fun ButtonStudioScreen(
             componentDef = target,
             isAppliedToActiveProfile = false,
             applyButtonLabel = null, // Viewer mode: test & preview only
-            gamepadViewModel = gamepadViewModel,
+            gamepadViewModel = null,
             labelStyle = studioLabelStyle,
             onDismiss = { previewTarget = null },
             onApplyToProfile = {},
@@ -698,7 +717,9 @@ fun ButtonStudioScreen(
             onExportJson = {
                 val json = registry.exportToJson(target.manifest.id)
                 if (json != null) {
-                    clipboard.nativeClipboard.setPrimaryClip(android.content.ClipData.newPlainText("NXP JSON", json))
+                    context.getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(
+                        android.content.ClipData.newPlainText("NXP JSON", json)
+                    )
                     Toast.makeText(context, "JSON copied to clipboard!", Toast.LENGTH_SHORT).show()
                 }
             },

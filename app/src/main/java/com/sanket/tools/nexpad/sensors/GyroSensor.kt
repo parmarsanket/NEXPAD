@@ -6,8 +6,10 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.view.Surface
+import androidx.compose.runtime.Stable
 import kotlin.math.abs
 
+@Stable
 data class MotionPacket(
     var timestamp: Long = 0L,
 
@@ -37,6 +39,11 @@ data class MotionPacket(
     var gyroY: Float = 0f,
     var gyroZ: Float = 0f,
 
+    // Linear Acceleration (excluding gravity)
+    var linearAccelX: Float = 0f,
+    var linearAccelY: Float = 0f,
+    var linearAccelZ: Float = 0f,
+
     // Raw Gyro
     var rawGyroX: Float = 0f,
     var rawGyroY: Float = 0f,
@@ -49,7 +56,7 @@ data class MotionPacket(
 )
 
 class MotionSensorManager(
-    private val context: Context,
+    context: Context,
     private val onMotionPacket: (MotionPacket) -> Unit
 ) : SensorEventListener {
 
@@ -58,22 +65,56 @@ class MotionSensorManager(
         private const val SENSOR_DELAY_MICROS = 5000
     }
 
-    private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+    private val sensorManager = context.applicationContext.getSystemService(Context.SENSOR_SERVICE) as SensorManager
 
     private val gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY)
     private val accelSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
     private val gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
     private val uncalibratedGyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE_UNCALIBRATED)
+    private val linearAccelSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
     private val gameRotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR)
-
-    // Reused arrays (zero allocations during sensor updates)
-    private val rotationMatrix = FloatArray(9)
-    private val remappedMatrix = FloatArray(9)
-    private val orientation = FloatArray(3)
-    private val quaternion = FloatArray(4)
 
     // Single synchronized packet
     private val motion = MotionPacket()
+
+    private val registeredSensors = mutableSetOf<Sensor>()
+    private var isRunning = false
+    private var currentMode: Byte = com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_IMU_6AXIS
+
+    @Volatile
+    var isGyroMuted: Boolean = false
+        set(value) {
+            field = value
+            if (value) {
+                motion.gyroX = 0f
+                motion.gyroY = 0f
+                motion.gyroZ = 0f
+                motion.rawGyroX = 0f
+                motion.rawGyroY = 0f
+                motion.rawGyroZ = 0f
+                motion.accelX = 0f
+                motion.accelY = 0f
+                motion.accelZ = 0f
+                motion.gravityX = 0f
+                motion.gravityY = 0f
+                motion.gravityZ = 0f
+                motion.linearAccelX = 0f
+                motion.linearAccelY = 0f
+                motion.linearAccelZ = 0f
+                motion.qX = 0f
+                motion.qY = 0f
+                motion.qZ = 0f
+                motion.qW = 1f
+                motion.biasX = 0f
+                motion.biasY = 0f
+                motion.biasZ = 0f
+            }
+            synchronized(this) {
+                if (isRunning) {
+                    updateActiveSensors()
+                }
+            }
+        }
     
     /**
      * NEXPAD always runs in locked landscape. We hardcode ROTATION_90 because:
@@ -98,41 +139,95 @@ class MotionSensorManager(
 
     private var lastSentTimestamp = 0L
 
-    fun start() {
-        if (sensorThread == null) {
-            sensorThread = android.os.HandlerThread("NexpadSensorThread", android.os.Process.THREAD_PRIORITY_URGENT_DISPLAY)
-            sensorThread?.start()
-            sensorHandler = android.os.Handler(sensorThread!!.looper)
-        }
-        
-        listOf(
-            gravitySensor,
-            accelSensor,
-            gyroSensor,
-            uncalibratedGyroSensor
-            // gameRotationSensor // UNUSED: Heavy CPU calculation, disabled for now
-        ).forEach { sensor ->
-            sensor?.let { 
-                sensorManager.registerListener(this, it, SENSOR_DELAY_MICROS, sensorHandler) 
-                
-                // Hardware Ceiling Diagnostic
-                if (it.type == android.hardware.Sensor.TYPE_GYROSCOPE || it.type == android.hardware.Sensor.TYPE_GYROSCOPE_UNCALIBRATED) {
-                    val maxHz = if (it.minDelay > 0) 1_000_000 / it.minDelay else "Unknown"
-                    android.util.Log.d("NEXPAD", "📡 HARDWARE CEILING: ${it.name} supports Max $maxHz Hz (minDelay: ${it.minDelay}µs)")
+    fun setMode(mode: Byte) {
+        synchronized(this) {
+            if (currentMode != mode) {
+                currentMode = mode
+                if (isRunning) {
+                    updateActiveSensors()
                 }
             }
         }
     }
 
+    fun start() {
+        synchronized(this) {
+            isRunning = true
+            if (sensorThread == null) {
+                sensorThread = android.os.HandlerThread("NexpadSensorThread", android.os.Process.THREAD_PRIORITY_URGENT_DISPLAY)
+                sensorThread?.start()
+                sensorHandler = android.os.Handler(sensorThread!!.looper)
+            }
+            updateActiveSensors()
+        }
+    }
+
     fun stop() {
-        sensorManager.unregisterListener(this)
-        sensorThread?.quitSafely()
-        sensorThread = null
-        sensorHandler = null
+        synchronized(this) {
+            isRunning = false
+            sensorManager.unregisterListener(this)
+            registeredSensors.clear()
+            sensorThread?.quitSafely()
+            sensorThread = null
+            sensorHandler = null
+        }
+    }
+
+    @Synchronized
+    private fun updateActiveSensors() {
+        if (!isRunning || isGyroMuted) {
+            if (registeredSensors.isNotEmpty()) {
+                sensorManager.unregisterListener(this)
+                registeredSensors.clear()
+            }
+            return
+        }
+
+        val handler = sensorHandler ?: return
+
+        val targetSensors = when (currentMode) {
+            com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_GRAVITY -> {
+                listOfNotNull(gravitySensor ?: accelSensor)
+            }
+            com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_GAME_ROTATION -> {
+                if (gameRotationSensor != null) listOf(gameRotationSensor)
+                else listOfNotNull(gyroSensor, accelSensor)
+            }
+            com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_LINEAR_GESTURE -> {
+                listOfNotNull(linearAccelSensor, gravitySensor ?: accelSensor)
+            }
+            com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_RAW_UNCALIBRATED -> {
+                listOfNotNull(uncalibratedGyroSensor ?: gyroSensor)
+            }
+            else -> { // SENSOR_MODE_IMU_6AXIS (0x00)
+                listOfNotNull(gyroSensor, accelSensor)
+            }
+        }.toSet()
+
+        if (registeredSensors == targetSensors) return
+
+        // Unregister sensors that are no longer needed
+        val toRemove = registeredSensors - targetSensors
+        for (s in toRemove) {
+            sensorManager.unregisterListener(this, s)
+        }
+
+        // Register newly needed sensors
+        val toAdd = targetSensors - registeredSensors
+        for (s in toAdd) {
+            sensorManager.registerListener(this, s, SENSOR_DELAY_MICROS, handler)
+        }
+
+        registeredSensors.clear()
+        registeredSensors.addAll(targetSensors)
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
         event ?: return
+
+        if (isGyroMuted) {
+            return
+        }
 
         motion.timestamp = event.timestamp
 
@@ -167,6 +262,11 @@ class MotionSensorManager(
                 motion.accelY = y
                 motion.accelZ = hwZ
             }
+            Sensor.TYPE_LINEAR_ACCELERATION -> {
+                motion.linearAccelX = x
+                motion.linearAccelY = y
+                motion.linearAccelZ = hwZ
+            }
             Sensor.TYPE_GYROSCOPE -> {
                 motion.gyroX = -x
                 motion.gyroY = -y
@@ -178,57 +278,40 @@ class MotionSensorManager(
                 motion.rawGyroZ = -hwZ
 
                 if (event.values.size >= 6) {
-                    // Bias values are also in portrait coordinate space — remap to landscape
+                    // Bias values are in portrait space — remap to landscape with matching signs:
+                    // rawGyroX = -hwY  ==> biasX = -hwBiasY  ==> cleanX = rawGyroX - biasX = -(hwY - hwBiasY) = gyroX
+                    // rawGyroY =  hwX  ==> biasY =  hwBiasX  ==> cleanY = rawGyroY - biasY =  (hwX - hwBiasX) = gyroY
+                    // rawGyroZ = -hwZ  ==> biasZ = -hwBiasZ  ==> cleanZ = rawGyroZ - biasZ = -(hwZ - hwBiasZ) = gyroZ
                     val hwBiasX = event.values[3]
                     val hwBiasY = event.values[4]
-                    motion.biasX = hwBiasY        // X' = Y  (landscape remap)
-                    motion.biasY = -hwBiasX       // Y' = -X (landscape remap)
-                    motion.biasZ = event.values[5] // Z unchanged
+                    motion.biasX = -hwBiasY
+                    motion.biasY = hwBiasX
+                    motion.biasZ = -event.values[5]
                 }
             }
             Sensor.TYPE_GAME_ROTATION_VECTOR -> {
-                SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
-
-                // The correct way to handle display rotation for Rotation Vectors
-                when (displayRotation) {
-                    Surface.ROTATION_90 -> SensorManager.remapCoordinateSystem(
-                        rotationMatrix,
-                        SensorManager.AXIS_Y,
-                        SensorManager.AXIS_MINUS_X,
-                        remappedMatrix
-                    )
-                    Surface.ROTATION_270 -> SensorManager.remapCoordinateSystem(
-                        rotationMatrix,
-                        SensorManager.AXIS_MINUS_Y,
-                        SensorManager.AXIS_X,
-                        remappedMatrix
-                    )
-                    Surface.ROTATION_180 -> SensorManager.remapCoordinateSystem(
-                        rotationMatrix,
-                        SensorManager.AXIS_MINUS_X,
-                        SensorManager.AXIS_MINUS_Y,
-                        remappedMatrix
-                    )
-                    else -> System.arraycopy(rotationMatrix, 0, remappedMatrix, 0, 9)
+                val qRawX = event.values[0]
+                val qRawY = event.values[1]
+                val qRawZ = event.values[2]
+                val qRawW = if (event.values.size >= 4) event.values[3] else {
+                    val sumSq = qRawX * qRawX + qRawY * qRawY + qRawZ * qRawZ
+                    if (sumSq < 1f) kotlin.math.sqrt(1f - sumSq) else 0f
                 }
-
-                SensorManager.getOrientation(remappedMatrix, orientation)
-
-                motion.yaw = Math.toDegrees(orientation[0].toDouble()).toFloat()
-                motion.pitch = Math.toDegrees(orientation[1].toDouble()).toFloat()
-                motion.roll = Math.toDegrees(orientation[2].toDouble()).toFloat()
-                
-                SensorManager.getQuaternionFromVector(quaternion, event.values)
-                motion.qW = quaternion[0]
-                motion.qX = quaternion[1]
-                motion.qY = quaternion[2]
-                motion.qZ = quaternion[3]
+                // ROTATION_90 remap: q' = q * q_rotZ(-90 deg)
+                val k = 0.70710678f
+                motion.qX = k * (qRawX - qRawY)
+                motion.qY = k * (qRawX + qRawY)
+                motion.qZ = k * (qRawZ - qRawW)
+                motion.qW = k * (qRawW + qRawZ)
             }
         }
 
-        // Emit the synchronized packet on Gyro updates since Game Rotation Vector is disabled.
-        // We use timestamp debouncing to prevent sending 2x packets if both Calibrated and Uncalibrated gyros fire.
-        if (event.sensor.type == Sensor.TYPE_GYROSCOPE || event.sensor.type == Sensor.TYPE_GYROSCOPE_UNCALIBRATED) {
+        // Emit the synchronized packet on updates from whichever sensor is currently driving the mode
+        if (event.sensor.type == Sensor.TYPE_GYROSCOPE || 
+            event.sensor.type == Sensor.TYPE_GYROSCOPE_UNCALIBRATED ||
+            event.sensor.type == Sensor.TYPE_GRAVITY ||
+            event.sensor.type == Sensor.TYPE_GAME_ROTATION_VECTOR ||
+            event.sensor.type == Sensor.TYPE_LINEAR_ACCELERATION) {
             if (event.timestamp != lastSentTimestamp) {
                 lastSentTimestamp = event.timestamp
                 onMotionPacket(motion)

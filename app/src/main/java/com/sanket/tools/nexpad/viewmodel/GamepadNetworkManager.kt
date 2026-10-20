@@ -1,16 +1,20 @@
 package com.sanket.tools.nexpad.viewmodel
 
 import android.content.Context
+import com.sanket.tools.nexpad.utils.AppLog as Log
 import com.sanket.tools.nexpad.model.GamepadFeedback
 import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpad.network.IGamepadConnection
 import com.sanket.tools.nexpad.network.NetworkClient
 import com.sanket.tools.nexpad.network.AoaAccessoryConnection
 import com.sanket.tools.nexpad.network.NxprcSyncServer
+import java.util.concurrent.RejectedExecutionException
 import kotlinx.coroutines.CoroutineScope
 import android.net.wifi.WifiManager
 import android.os.PowerManager
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +24,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.asCoroutineDispatcher
 enum class ConnectionType(val displayName: String) {
     WIFI("Wi-Fi"),
     USB_TETHERING("USB Tethering"),
@@ -37,6 +40,7 @@ data class ConnectionStats(
     val rxLinkSpeedMbps: Int? = null,
     val txLinkSpeedMbps: Int? = null,
     val latencyMs: Long? = null,
+    val latencyFloatMs: Float? = null,
     val jitterMs: Float? = null,
     val packetLossPercent: Float? = null
 ) {
@@ -46,8 +50,25 @@ data class ConnectionStats(
      * Approximated as half of Round-Trip Ping (RTT).
      */
     val inputLagMs: Long?
-        get() = latencyMs?.let { rtt ->
-            if (rtt <= 0L) 1L else ((rtt + 1) / 2).coerceAtLeast(1L)
+        get() {
+            val rtt = latencyFloatMs ?: latencyMs?.toFloat() ?: return null
+            val oneWay = rtt / 2f
+            return if (oneWay < 1.0f) 0L else kotlin.math.round(oneWay).toLong().coerceAtLeast(1L)
+        }
+
+    val displayPing: String
+        get() {
+            val rtt = latencyFloatMs ?: latencyMs?.toFloat() ?: return "--"
+            return if (rtt < 1.0f) String.format(java.util.Locale.US, "%.1f", rtt)
+            else String.format(java.util.Locale.US, "%.0f", rtt)
+        }
+
+    val displayInputLag: String
+        get() {
+            val rtt = latencyFloatMs ?: latencyMs?.toFloat() ?: return "--"
+            val oneWay = rtt / 2f
+            return if (oneWay < 1.0f) String.format(java.util.Locale.US, "%.1f", oneWay)
+            else String.format(java.util.Locale.US, "%.0f", oneWay)
         }
 
     /**
@@ -67,7 +88,12 @@ class GamepadNetworkManager(
     private val context: Context,
     private val inputState: GamepadInput
 ) {
-    private var connection: IGamepadConnection = NetworkClient()
+    @Volatile
+    private var isClosed = false
+    @Volatile
+    private var connection: IGamepadConnection = NetworkClient(context)
+    @Volatile
+    private var transmitThread: Thread? = null
     private val syncServer = NxprcSyncServer(context)
 
     init {
@@ -86,12 +112,13 @@ class GamepadNetworkManager(
         }
     }
 
-    fun switchToAoaConnection() {
+    fun switchToAoaConnection(serverName: String? = null) {
+        val resolvedName = serverName ?: "NEXPAD PC (Direct USB)"
         disconnect()
         connection.close()
         connection = AoaAccessoryConnection(context)
-        _connectedServerName.value = "NEXPAD PC (Direct USB)"
-        _connectionStats.value = _connectionStats.value.copy(transport = ConnectionType.USB, serverDeviceName = "NEXPAD PC (Direct USB)")
+        _connectedServerName.value = resolvedName
+        _connectionStats.value = _connectionStats.value.copy(transport = ConnectionType.USB, serverDeviceName = resolvedName)
         setupConnectionCallbacks()
         scope.launch { connection.connect("aoa", 0) }
     }
@@ -99,7 +126,7 @@ class GamepadNetworkManager(
     fun switchToAdbConnection(serverName: String? = null) {
         val resolvedName = serverName ?: "PC via USB ADB"
         if (!isUsbDebuggingEnabled()) {
-            android.util.Log.w("NEXPAD", "Refusing ADB switch: USB Debugging is OFF.")
+            Log.w("NEXPAD", "Refusing ADB switch: USB Debugging is OFF.")
             _connectionStatus.value = "USB Debugging is OFF"
             return
         }
@@ -115,15 +142,22 @@ class GamepadNetworkManager(
     fun switchToUdpConnection() {
         disconnect()
         connection.close()
-        connection = NetworkClient()
+        connection = NetworkClient(context)
         _connectionStats.value = _connectionStats.value.copy(transport = ConnectionType.WIFI)
         setupConnectionCallbacks()
     }
 
-    @android.annotation.SuppressLint("MissingPermission")
     fun getPairedBluetoothDevices(): List<android.bluetooth.BluetoothDevice> {
-        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? android.bluetooth.BluetoothManager
-        val adapter = bluetoothManager?.adapter ?: android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+        val permission = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            android.Manifest.permission.BLUETOOTH_CONNECT
+        } else {
+            android.Manifest.permission.BLUETOOTH
+        }
+        if (androidx.core.content.ContextCompat.checkSelfPermission(context, permission) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            return emptyList()
+        }
+        val bluetoothManager = context.getSystemService(android.bluetooth.BluetoothManager::class.java)
+        val adapter = bluetoothManager?.adapter
         return if (adapter != null && adapter.isEnabled) {
             adapter.bondedDevices?.toList() ?: emptyList()
         } else {
@@ -141,7 +175,7 @@ class GamepadNetworkManager(
         scope.launch { connection.connect(deviceAddress, 0) }
     }
     
-    private val _feedbackFlow = MutableSharedFlow<GamepadFeedback>()
+    private val _feedbackFlow = MutableSharedFlow<GamepadFeedback>(extraBufferCapacity = 64, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     val feedbackFlow: SharedFlow<GamepadFeedback> = _feedbackFlow.asSharedFlow()
 
     private var transmitJob: Job? = null
@@ -167,9 +201,7 @@ class GamepadNetworkManager(
 
     private fun setupConnectionCallbacks() {
         connection.onFeedbackReceived = { feedback: GamepadFeedback ->
-            scope.launch {
-                _feedbackFlow.emit(feedback)
-            }
+            _feedbackFlow.tryEmit(feedback)
         }
         connection.onConnectionStateChanged = { connected: Boolean ->
             scope.launch {
@@ -189,6 +221,8 @@ class GamepadNetworkManager(
                     signalPollJob?.cancel()
                     _connectedServerName.value = null
                     _connectionStats.value = ConnectionStats()
+                    _connectionStatus.value = "Disconnected"
+                    resetInputState()
                 }
             }
         }
@@ -204,7 +238,8 @@ class GamepadNetworkManager(
         }
         connection.onNetworkPerformanceUpdated = { latencyMs, jitterMs, packetLoss ->
             _connectionStats.value = _connectionStats.value.copy(
-                latencyMs = latencyMs,
+                latencyMs = kotlin.math.round(latencyMs).toLong().coerceAtLeast(0L),
+                latencyFloatMs = latencyMs,
                 jitterMs = jitterMs,
                 packetLossPercent = packetLoss
             )
@@ -233,15 +268,12 @@ class GamepadNetworkManager(
     }
 
     fun connect(address: String, port: Int, serverName: String? = null) {
-        val t0 = android.os.SystemClock.elapsedRealtime()
-        android.util.Log.d("NEXPAD", "⏱️ [BENCHMARK] Step 0: GamepadNetworkManager.connect CALLED for $address:$port ($serverName) on thread ${Thread.currentThread().name}")
         if (serverName != null) {
             _connectedServerName.value = serverName
         }
 
         // IMMEDIATELY acquire WifiLock & WakeLock so the Wi-Fi radio does not enter 802.11 power-save sleep
         acquireWifiLock()
-        android.util.Log.d("NEXPAD", "⏱️ [BENCHMARK] WifiLock & WakeLock acquired immediately at t=${android.os.SystemClock.elapsedRealtime() - t0}ms")
 
         val isTethering = com.sanket.tools.nexpad.network.NetworkInterfaceHelper.isUsbTetheringAddress(address)
         val initialType = if (isTethering) ConnectionType.USB_TETHERING else ConnectionType.WIFI
@@ -249,18 +281,14 @@ class GamepadNetworkManager(
         if (connection !is NetworkClient) {
             disconnect()
             connection.close()
-            connection = NetworkClient()
+            connection = NetworkClient(context)
             setupConnectionCallbacks()
         }
         detectNetworkType(address)
 
-        (connection as? NetworkClient)?.benchmarkStartTimeMs = t0
-
         scope.launch {
             try {
-                android.util.Log.d("NEXPAD", "⏱️ [BENCHMARK] Calling connection.connect($address, $port) at t=${android.os.SystemClock.elapsedRealtime() - t0}ms")
                 connection.connect(address, port)
-                android.util.Log.d("NEXPAD", "⏱️ [BENCHMARK] connection.connect($address, $port) returned at t=${android.os.SystemClock.elapsedRealtime() - t0}ms")
             } catch (e: Exception) {
                 e.printStackTrace()
                 releaseWifiLock()
@@ -273,6 +301,7 @@ class GamepadNetworkManager(
     fun disconnect() {
         transmitJob?.cancel()
         transmitJob = null
+        transmitThread = null
         signalPollJob?.cancel()
         signalPollJob = null
         releaseWifiLock()
@@ -280,30 +309,97 @@ class GamepadNetworkManager(
         _isConnected.value = false
         _connectionStats.value = ConnectionStats()
         _connectionStatus.value = "Disconnected"
+        resetInputState()
     }
 
     fun close() {
+        isClosed = true
         transmitJob?.cancel()
         transmitJob = null
+        transmitThread = null
         signalPollJob?.cancel()
         signalPollJob = null
         releaseWifiLock()
         connection.close()
         syncServer.stop()
         _isConnected.value = false
+        resetInputState()
         gamepadDispatcher.close()
     }
 
     fun sendImmediate() {
-        if (_isConnected.value) {
-            scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                try {
-                    connection.sendInput(inputState)
-                } catch (e: Exception) {
-                    // Ignore silent drops
+        if (isClosed || !_isConnected.value) return
+        val thread = transmitThread
+        if (thread != null) {
+            java.util.concurrent.locks.LockSupport.unpark(thread)
+        } else {
+            try {
+                scope.launch(gamepadDispatcher) {
+                    try {
+                        connection.sendInput(inputState)
+                    } catch (_: Exception) {
+                        // Ignore silent drops
+                    }
                 }
+            } catch (e: RejectedExecutionException) {
+                return
             }
         }
+    }
+
+    private fun resetInputState() {
+        inputState.btnA = false
+        inputState.btnB = false
+        inputState.btnX = false
+        inputState.btnY = false
+        inputState.dpadUp = false
+        inputState.dpadDown = false
+        inputState.dpadLeft = false
+        inputState.dpadRight = false
+        inputState.btnL1 = false
+        inputState.btnR1 = false
+        inputState.btnL3 = false
+        inputState.btnR3 = false
+        inputState.btnStart = false
+        inputState.btnSelect = false
+        inputState.btnGuide = false
+        inputState.btnShare = false
+        inputState.btnScreenshot = false
+        inputState.btnM1 = false
+        inputState.btnM2 = false
+        inputState.btnM3 = false
+        inputState.btnM4 = false
+        inputState.btnProfile = false
+        inputState.btnTurbo = false
+        inputState.triggerL2 = 0f
+        inputState.triggerR2 = 0f
+        inputState.leftStickX = 0f
+        inputState.leftStickY = 0f
+        inputState.rightStickX = 0f
+        inputState.rightStickY = 0f
+        inputState.gyroX = 0f
+        inputState.gyroY = 0f
+        inputState.gyroZ = 0f
+        inputState.accelX = 0f
+        inputState.accelY = 0f
+        inputState.accelZ = 0f
+        inputState.gravityX = 0f
+        inputState.gravityY = 0f
+        inputState.gravityZ = 0f
+        inputState.quatX = 0f
+        inputState.quatY = 0f
+        inputState.quatZ = 0f
+        inputState.quatW = 1f
+        inputState.linearAccelX = 0f
+        inputState.linearAccelY = 0f
+        inputState.linearAccelZ = 0f
+        inputState.rawGyroX = 0f
+        inputState.rawGyroY = 0f
+        inputState.rawGyroZ = 0f
+        inputState.gyroBiasX = 0f
+        inputState.gyroBiasY = 0f
+        inputState.gyroBiasZ = 0f
+        inputState.sensorFlags = 0
     }
     
     private val gamepadDispatcher = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
@@ -318,8 +414,10 @@ class GamepadNetworkManager(
             while (isActive) {
                 if (_connectionStats.value.transport == ConnectionType.WIFI) {
                     try {
-                        val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
-                        val wifiInfo = wifiManager?.connectionInfo
+                        val cm = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+                        val activeNet = cm?.activeNetwork
+                        val caps = activeNet?.let { cm.getNetworkCapabilities(it) }
+                        val wifiInfo = caps?.transportInfo as? android.net.wifi.WifiInfo
                         val rssi = wifiInfo?.rssi ?: -127
                         
                         if (rssi > -100 && rssi != -127) { // Valid hardware RSSI
@@ -331,15 +429,9 @@ class GamepadNetworkManager(
                                 else -> 0
                             }
                             
-                            var rxSpeed: Int? = null
-                            var txSpeed: Int? = null
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                                rxSpeed = wifiInfo?.rxLinkSpeedMbps
-                                txSpeed = wifiInfo?.txLinkSpeedMbps
-                                if (rxSpeed == -1) rxSpeed = null
-                                if (txSpeed == -1) txSpeed = null
-                            }
-                            // Fallback for older devices or if Q API fails
+                            var rxSpeed: Int? = wifiInfo?.rxLinkSpeedMbps?.takeIf { it != -1 }
+                            var txSpeed: Int? = wifiInfo?.txLinkSpeedMbps?.takeIf { it != -1 }
+                            // Fallback if link speed is reported via legacy field
                             if (rxSpeed == null && wifiInfo?.linkSpeed != -1) {
                                 rxSpeed = wifiInfo?.linkSpeed
                                 txSpeed = wifiInfo?.linkSpeed
@@ -384,24 +476,26 @@ class GamepadNetworkManager(
     private fun startTransmitting() {
         transmitJob?.cancel()
         transmitJob = scope.launch(gamepadDispatcher) {
-            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO)
-            
-            // Bluetooth Classic ACL 6-slot timing aligns optimally at 125 Hz (8ms).
-            // USB (ADB/AOA) and Wi-Fi run at full 200 Hz (5ms).
-            val intervalNanos = if (connection is com.sanket.tools.nexpad.network.BluetoothRfcommConnection) 8_000_000L else 5_000_000L
-            var nextTick = System.nanoTime()
-            
-            while (isActive) {
-                connection.sendInput(inputState)
+            transmitThread = Thread.currentThread()
+            try {
+                android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO)
                 
-                nextTick += intervalNanos
-                val sleepNanos = nextTick - System.nanoTime()
+                // Bluetooth Classic ACL 6-slot timing aligns optimally at 125 Hz (8ms).
+                // USB (ADB/AOA) and Wi-Fi run at full 200 Hz (5ms).
+                val intervalNanos = if (connection is com.sanket.tools.nexpad.network.BluetoothRfcommConnection) 8_000_000L else 5_000_000L
                 
-                if (sleepNanos > 0) {
-                    java.util.concurrent.locks.LockSupport.parkNanos(sleepNanos)
-                } else {
-                    nextTick = System.nanoTime() // fell behind — resync, don't stack debt
+                while (isActive) {
+                    connection.sendInput(inputState)
+                    
+                    val nextTick = System.nanoTime() + intervalNanos
+                    val sleepNanos = nextTick - System.nanoTime()
+                    
+                    if (sleepNanos > 0) {
+                        java.util.concurrent.locks.LockSupport.parkNanos(sleepNanos)
+                    }
                 }
+            } finally {
+                transmitThread = null
             }
         }
     }
@@ -420,18 +514,34 @@ class GamepadNetworkManager(
                 setReferenceCounted(false)
                 acquire()
             }
-            android.util.Log.d("NEXPAD", "🔒 WifiLock Acquired: WIFI_MODE_FULL_LOW_LATENCY")
+            Log.d("NEXPAD", "🔒 WifiLock Acquired: WIFI_MODE_FULL_LOW_LATENCY")
             
             if (wakeLock?.isHeld != true) {
                 val powerManager = context.applicationContext.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
                 wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "Nexpad:WakeLock").apply {
                     setReferenceCounted(false)
-                    acquire()
+                    acquire(10 * 60 * 1000L)
                 }
-                android.util.Log.d("NEXPAD", "🔒 WakeLock Acquired (Partial)")
+                Log.d("NEXPAD", "🔒 WakeLock Acquired (Partial, 10-min safety timeout)")
             }
         } catch (e: Exception) {
-            android.util.Log.e("NEXPAD", "❌ Failed to acquire locks: ${e.message}")
+            Log.e("NEXPAD", "❌ Failed to acquire locks: ${e.message}")
+        }
+    }
+
+    fun refreshWakeLock(timeoutMs: Long = 10 * 60 * 1000L) {
+        try {
+            if (wakeLock?.isHeld == true) {
+                wakeLock?.release()
+            }
+            val powerManager = context.applicationContext.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+            wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "Nexpad:WakeLock").apply {
+                setReferenceCounted(false)
+                acquire(timeoutMs)
+            }
+            Log.d("NEXPAD", "🔒 WakeLock Refreshed (Partial, ${timeoutMs / 60000}m timeout)")
+        } catch (e: Exception) {
+            Log.e("NEXPAD", "❌ Failed to refresh WakeLock: ${e.message}")
         }
     }
 
@@ -439,11 +549,11 @@ class GamepadNetworkManager(
         try {
             if (wifiLock?.isHeld == true) {
                 wifiLock?.release()
-                android.util.Log.d("NEXPAD", "🔓 WifiLock Released")
+                Log.d("NEXPAD", "🔓 WifiLock Released")
             }
             if (wakeLock?.isHeld == true) {
                 wakeLock?.release()
-                android.util.Log.d("NEXPAD", "🔓 WakeLock Released")
+                Log.d("NEXPAD", "🔓 WakeLock Released")
             }
         } catch (e: Exception) {
             e.printStackTrace()

@@ -15,7 +15,11 @@ data class LayoutTransform(
     val opacity: Float = 1.0f,
     val sensitivity: Float = 2.0f,
     val heightScale: Float = 1.0f,
-    val isFlipped: Boolean = false
+    val isFlipped: Boolean = false,
+    val isLocked: Boolean = true,
+    val joystickMode: String = com.sanket.tools.nexpad.model.JoystickMode.DEFAULT.id,
+    val hitboxScale: Float = 1.5f,
+    val touchpadCurve: String = com.sanket.tools.nexpad.model.TouchpadCurve.DEFAULT.id
 )
 
 /**
@@ -31,7 +35,7 @@ sealed interface LayoutSkin {
         override val name: String = "Default 3D"
     }
 
-    /** Vector, SVG, or dynamic Compose plugin loaded from ComponentRegistry */
+    /** Dynamic JSON plugin loaded from ComponentRegistry */
     data class CustomComponent(val def: NxpComponentDef) : LayoutSkin {
         override val id: String = def.manifest.id
         override val name: String = def.manifest.name
@@ -58,13 +62,13 @@ data class HudElement(
         get() = CategoryManager.getControl(controlKey)
 
     val displayName: String
-        get() = spec?.label ?: controlKey
+        get() = spec?.label ?: if (controlKey.equals("GYRO", ignoreCase = true)) "Gyro Toggle" else controlKey
 
     val categoryTitle: String
-        get() = spec?.categoryType?.title ?: "Control"
+        get() = spec?.categoryType?.title ?: if (controlKey.equals("GYRO", ignoreCase = true)) "Special" else "Control"
 
     val emoji: String
-        get() = spec?.emoji ?: ""
+        get() = spec?.emoji ?: if (controlKey.equals("GYRO", ignoreCase = true)) "🎯" else ""
 
     fun toPosition(): Position = Position(
         xRatio = transform.xRatio,
@@ -74,22 +78,34 @@ data class HudElement(
         customComponentId = skinId,
         sensitivity = transform.sensitivity,
         heightScale = transform.heightScale,
-        isFlipped = transform.isFlipped
+        isFlipped = transform.isFlipped,
+        isLocked = transform.isLocked,
+        joystickMode = transform.joystickMode,
+        hitboxScale = transform.hitboxScale,
+        touchpadCurve = transform.touchpadCurve
     )
 
     companion object {
-        fun fromPosition(key: String, position: Position): HudElement = HudElement(
-            controlKey = key.uppercase(),
-            transform = LayoutTransform(
-                xRatio = position.xRatio,
-                yRatio = position.yRatio,
-                scale = position.scale,
-                opacity = position.opacity,
-                sensitivity = position.sensitivity ?: 2.0f,
-                heightScale = position.heightScale ?: 1.0f,
-                isFlipped = position.isFlipped ?: false
-            ),
-            skinId = position.customComponentId
-        )
+        fun fromPosition(key: String, position: Position): HudElement {
+            val resolvedMode = position.joystickMode ?: if (position.isLocked == false) com.sanket.tools.nexpad.model.JoystickMode.BOX.id else com.sanket.tools.nexpad.model.JoystickMode.LOCKED.id
+            val resolvedLocked = (resolvedMode == com.sanket.tools.nexpad.model.JoystickMode.LOCKED.id)
+            return HudElement(
+                controlKey = key.uppercase(),
+                transform = LayoutTransform(
+                    xRatio = position.xRatio,
+                    yRatio = position.yRatio,
+                    scale = position.scale,
+                    opacity = position.opacity,
+                    sensitivity = position.sensitivity ?: 2.0f,
+                    heightScale = position.heightScale ?: 1.0f,
+                    isFlipped = position.isFlipped ?: false,
+                    isLocked = resolvedLocked,
+                    joystickMode = resolvedMode,
+                    hitboxScale = position.hitboxScale ?: 1.5f,
+                    touchpadCurve = position.touchpadCurve ?: com.sanket.tools.nexpad.model.TouchpadCurve.DEFAULT.id
+                ),
+                skinId = position.customComponentId
+            )
+        }
     }
 }

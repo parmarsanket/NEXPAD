@@ -1,0 +1,279 @@
+package com.sanket.tools.nexpad.ui.components.controller.macros
+
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
+import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
+import kotlin.math.roundToInt
+
+/**
+ * Tactile Elite rear macro paddle / programmable shortcut button (M1 - M4).
+ * Features spring depression kinematics, metallic chamfer rim, specular sheen, and RGB accent underglow.
+ */
+@Composable
+fun RealisticMacroButton(
+    key: String,
+    isConnected: Boolean = true,
+    onVibrate: () -> Unit = {},
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
+    modifier: Modifier = Modifier,
+    displayLabel: String? = null,
+    isInteractive: Boolean = true
+) {
+    var isPressedLocally by remember { mutableStateOf(false) }
+    val isPressedExternally = com.sanket.tools.nexpad.ui.components.controller.isControlPressed(key)
+    val isPressed = isPressedLocally || isPressedExternally
+
+    val scaleAnim = animateFloatAsState(
+        targetValue = if (isPressed) 0.91f else 1.0f,
+        animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
+        label = "macro_btn_scale"
+    )
+    val pressOffsetYAnim = animateFloatAsState(
+        targetValue = if (isPressed) 2.5f else 0f,
+        animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
+        label = "macro_btn_offset"
+    )
+
+    val currentOnVibrate by rememberUpdatedState(onVibrate)
+    val currentViewModel by rememberUpdatedState(viewModel)
+
+    val shape = remember { RoundedCornerShape(16.dp) }
+
+    val rgbBloomAlpha = animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 0.40f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "macro_btn_rgb_bloom"
+    )
+
+    val auraColor = remember(key) {
+        if (key.contains("3") || key.contains("4")) NeonPalette.Cyan else NeonPalette.CyberYellow
+    }
+
+    val baseGradientPressed = remember {
+        Brush.verticalGradient(
+            colors = listOf(NeonPalette.CarbonMidnight, NeonPalette.CarbonChassis)
+        )
+    }
+    val baseGradientNormal = remember {
+        Brush.verticalGradient(
+            colors = listOf(NeonPalette.CarbonHighlight, NeonPalette.CarbonPlate, NeonPalette.CarbonNavy)
+        )
+    }
+
+    val borderTopColor = remember(isRgbEnabled, auraColor) {
+        if (isRgbEnabled) auraColor else NeonPalette.CarbonMuted
+    }
+    val borderBrushPressed = remember(borderTopColor) {
+        Brush.verticalGradient(
+            colors = listOf(borderTopColor.copy(alpha = 0.40f), NeonPalette.CarbonRim)
+        )
+    }
+    val borderBrushNormal = remember(borderTopColor) {
+        Brush.verticalGradient(
+            colors = listOf(borderTopColor.copy(alpha = 0.70f), NeonPalette.CarbonRim)
+        )
+    }
+
+    val highlightColorsPressed = remember {
+        listOf(Color.White.copy(alpha = 0.10f), Color.Transparent)
+    }
+    val highlightColorsNormal = remember {
+        listOf(Color.White.copy(alpha = 0.35f), Color.Transparent)
+    }
+
+    val bloomColorsList = remember(auraColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val slitColorsList = remember(auraColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+
+    Box(
+        modifier = modifier
+            .graphicsLayer {
+                // Root RenderNode isolation
+            }
+            .size(80.dp, 40.dp)
+            .drawBehind {
+                if (isRgbEnabled) {
+                    val padX = 12.dp.toPx()
+                    val padY = 8.dp.toPx()
+                    val bloomAlpha = rgbBloomAlpha.value
+
+                    // 1. Stadium Macro Toggle Switch Aura
+                    bloomColorsList[0] = auraColor.copy(alpha = bloomAlpha * (if (isPressed) 0.55f else 0.32f))
+                    bloomColorsList[1] = auraColor.copy(alpha = bloomAlpha * 0.12f)
+                    bloomColorsList[2] = Color.Transparent
+                    drawRoundRect(
+                        brush = Brush.radialGradient(
+                            colors = bloomColorsList,
+                            center = center,
+                            radius = size.width * 0.55f
+                        ),
+                        topLeft = Offset(-padX, -padY),
+                        size = Size(size.width + padX * 2f, size.height + padY * 2f),
+                        cornerRadius = CornerRadius(20.dp.toPx(), 20.dp.toPx())
+                    )
+
+                    // 2. 4 Corner Tactical Bracket Pips
+                    val bracketAlpha = bloomAlpha * (if (isPressed) 0.90f else 0.45f)
+                    val bracketLen = (if (isPressed) 8.dp else 5.dp).toPx()
+                    val insetX = 4.dp.toPx()
+                    val insetY = 3.dp.toPx()
+
+                    // Top-Left corner bracket
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(-insetX, -insetY), Offset(-insetX + bracketLen, -insetY), 2f)
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(-insetX, -insetY), Offset(-insetX, -insetY + bracketLen), 2f)
+
+                    // Top-Right corner bracket
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(size.width + insetX, -insetY), Offset(size.width + insetX - bracketLen, -insetY), 2f)
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(size.width + insetX, -insetY), Offset(size.width + insetX, -insetY + bracketLen), 2f)
+
+                    // Bottom-Left corner bracket
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(-insetX, size.height + insetY), Offset(-insetX + bracketLen, size.height + insetY), 2f)
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(-insetX, size.height + insetY), Offset(-insetX, size.height + insetY - bracketLen), 2f)
+
+                    // Bottom-Right corner bracket
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(size.width + insetX, size.height + insetY), Offset(size.width + insetX - bracketLen, size.height + insetY), 2f)
+                    drawLine(auraColor.copy(alpha = bracketAlpha), Offset(size.width + insetX, size.height + insetY), Offset(size.width + insetX, size.height + insetY - bracketLen), 2f)
+
+                    // 3. Central Electric Pulse Slit on press
+                    if (isPressed) {
+                        val slitW = size.width * 0.75f
+                        val slitLeft = center.x - slitW / 2f
+                        slitColorsList[0] = Color.Transparent
+                        slitColorsList[1] = auraColor.copy(alpha = bloomAlpha * 0.85f)
+                        slitColorsList[2] = Color.White.copy(alpha = bloomAlpha * 0.95f)
+                        slitColorsList[3] = auraColor.copy(alpha = bloomAlpha * 0.85f)
+                        slitColorsList[4] = Color.Transparent
+                        drawLine(
+                            brush = Brush.horizontalGradient(
+                                colors = slitColorsList,
+                                startX = slitLeft,
+                                endX = slitLeft + slitW
+                            ),
+                            start = Offset(slitLeft, center.y),
+                            end = Offset(slitLeft + slitW, center.y),
+                            strokeWidth = 3.dp.toPx()
+                        )
+                    }
+                }
+            }
+            .shadow(
+                elevation = if (isPressed) 1.dp else 4.dp,
+                shape = shape,
+                ambientColor = if (isRgbEnabled) auraColor else Color.Black,
+                spotColor = if (isRgbEnabled) auraColor else Color.Black
+            )
+            .offset { IntOffset(0, (pressOffsetYAnim.value * density).roundToInt()) }
+            .graphicsLayer {
+                scaleX = scaleAnim.value
+                scaleY = scaleAnim.value
+            }
+            .clip(shape)
+            .background(if (isPressed) baseGradientPressed else baseGradientNormal)
+            .border(
+                width = 1.2.dp,
+                brush = if (isPressed) borderBrushPressed else borderBrushNormal,
+                shape = shape
+            )
+            .then(
+                if (isInteractive) {
+                    Modifier.pointerInput(key) {
+                        detectTapGestures(
+                            onPress = {
+                                currentOnVibrate()
+                                isPressedLocally = true
+                                currentViewModel?.updateButton(key, true)
+                                tryAwaitRelease()
+                                isPressedLocally = false
+                                currentViewModel?.updateButton(key, false)
+                            }
+                        )
+                    }
+                } else Modifier
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        // Specular top highlight bevel
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawLine(
+                brush = Brush.horizontalGradient(
+                    colors = if (isPressed) highlightColorsPressed else highlightColorsNormal
+                ),
+                start = Offset(12f, 4f),
+                end = Offset(size.width - 12f, 4f),
+                strokeWidth = 1.5f
+            )
+        }
+
+        Text(
+            text = displayLabel ?: key,
+            color = if (isPressed) Color.White else if (isRgbEnabled) auraColor else Color.White.copy(alpha = 0.85f),
+            fontWeight = FontWeight.Black,
+            fontSize = 13.sp,
+            letterSpacing = 0.5.sp,
+            style = androidx.compose.ui.text.TextStyle(
+                shadow = androidx.compose.ui.graphics.Shadow(
+                    color = if (isRgbEnabled) auraColor.copy(alpha = rgbBloomAlpha.value * 0.85f) else Color.Black.copy(alpha = 0.8f),
+                    offset = Offset(0f, 1.5f),
+                    blurRadius = 4f
+                )
+            )
+        )
+    }
+}
+
+/**
+ * Static preview delegate for RealisticMacroButton with zero touch overhead.
+ */
+@Composable
+fun StaticRealisticMacroButton(
+    key: String,
+    modifier: Modifier = Modifier,
+    displayLabel: String? = null,
+    isRgbEnabled: Boolean = true
+) {
+    RealisticMacroButton(
+        key = key,
+        isConnected = true,
+        onVibrate = {},
+        viewModel = null,
+        isRgbEnabled = isRgbEnabled,
+        modifier = modifier,
+        displayLabel = displayLabel,
+        isInteractive = false
+    )
+}
+

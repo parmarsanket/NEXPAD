@@ -5,8 +5,8 @@ import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.model.NexpadKeys as K
 import com.sanket.tools.nexpad.runtime.registry.DefaultNativeFamily
 import com.sanket.tools.nexpad.runtime.registry.NativeComponentRegistry
-import com.sanket.tools.nexpad.ui.components.controller.calculateCapsulesTilt
-import com.sanket.tools.nexpad.ui.components.controller.resolveCapsulesTouch
+import com.sanket.tools.nexpad.ui.components.controller.dpad.calculateCapsulesTilt
+import com.sanket.tools.nexpad.ui.components.controller.dpad.resolveCapsulesTouch
 import com.sanket.tools.nexpad.ui.studio.model.ButtonStudioType
 import com.sanket.tools.nexpad.ui.studio.model.resolveButtonSourceType
 import org.junit.Assert.assertEquals

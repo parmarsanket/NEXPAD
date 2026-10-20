@@ -28,18 +28,7 @@ object LayoutMetrics {
      * Position: index 0 = top (Y), 1 = left (X), 2 = right (B), 3 = bottom (A).
      * This matches the physical Xbox diamond layout: Y top, X left, B right, A bottom.
      */
-    private val abxyKeys: List<String>
-        get() {
-            val controls = CategoryManager.getControlsForCategory("ABXY")
-            // CategoryManager ABXY order: A(0), B(1), X(2), Y(3)
-            // Diamond order: Y=top, X=left, B=right, A=bottom
-            return listOf(
-                controls.firstOrNull { it.key == "Y" }?.key ?: "Y",
-                controls.firstOrNull { it.key == "X" }?.key ?: "X",
-                controls.firstOrNull { it.key == "B" }?.key ?: "B",
-                controls.firstOrNull { it.key == "A" }?.key ?: "A"
-            )
-        }
+    private val abxyKeys: List<String> = listOf("Y", "X", "B", "A")
 
     /**
      * Converts a physical distance in DP to normalized (xRatio, yRatio) offsets.
@@ -152,5 +141,186 @@ object LayoutMetrics {
 
         val dist = distanceDp(pos1, pos2)
         return dist - (r1 + r2)
+    }
+
+    /**
+     * Calculates the responsive ergonomic scale factor for virtual controller elements
+     * based on available screen width and height in DP.
+     *
+     * - Reference phones (width ≥ 800dp and height 375dp - 430dp): exactly 1.0f (exact baseline design).
+     * - Narrow / compact phone displays (width < 800dp or height < 375dp, such as 16:9 phones):
+     *   smoothly scales down (down to 0.78f) so that the 4 side-by-side controls (LS, DPAD, ABXY, RS)
+     *   fit horizontally with clean clearance and zero collision.
+     * - Large foldables / tablets (height > 430dp): smoothly scales up (up to 1.12f) to match
+     *   larger finger contact areas while keeping proportional spacing.
+     */
+    fun calculateResponsiveScale(widthDp: Float, heightDp: Float): Float {
+        // Landscape virtual controller metrics (games and HUD run in landscape)
+        val shortDim = minOf(widthDp, heightDp)
+        val longDim = maxOf(widthDp, heightDp)
+
+        return when {
+            // Tablet (large screen: smallest dimension >= 600dp)
+            shortDim >= 600f -> {
+                (shortDim / 450f).coerceIn(1.15f, 1.32f)
+            }
+            // Foldable / Phablet unfolded (short dimension >= 460dp)
+            shortDim >= 460f -> {
+                (1.0f + (shortDim - 400f) * 0.0012f).coerceIn(1.05f, 1.18f)
+            }
+            // Standard / Mid Phone (short dimension 375..459dp)
+            shortDim >= 375f -> {
+                if (longDim < 780f) {
+                    (longDim / 780f).coerceIn(0.92f, 1.0f)
+                } else {
+                    1.0f
+                }
+            }
+            // Small Phone / Narrow Phone (short dimension < 375dp)
+            else -> {
+                (shortDim / 375f).coerceIn(0.80f, 0.95f)
+            }
+        }
+    }
+
+    /** Overload for callers providing only heightDp (delegates to reference width). */
+    fun calculateResponsiveScale(heightDp: Float): Float =
+        calculateResponsiveScale(REFERENCE_WIDTH_DP, heightDp)
+
+    /**
+     * Resolves aspect-ratio-corrected positions for elements on a screen of given dimensions.
+     *
+     * In canonical layouts, diamond face button clusters (Y, A, X, B sharing a common center)
+     * are defined with static aspect ratio (dx = r / 872.73, dy = r / 392.73).
+     * On non-20:9 displays (such as 16:10 tablets and 4:3 foldables), rendering dy * screenHeightPx
+     * causes vertical stretching into an egg shape (up to +67% taller on foldables).
+     *
+     * This function dynamically corrects the vertical offset so that:
+     *   deltaY_px == deltaX_px
+     * ensuring 100% circular isotropy for face button clusters on any screen aspect ratio,
+     * while preserving exact pixel-perfect positions on the reference 20:9 phone.
+     */
+    fun adjustClusterPositionsForAspectRatio(
+        positions: Map<String, Position>,
+        screenWidthPx: Float,
+        screenHeightPx: Float
+    ): Map<String, Position> {
+        if (screenWidthPx <= 0f || screenHeightPx <= 0f) return positions
+
+        val yEntry = positions.entries.firstOrNull { it.key.equals("Y", ignoreCase = true) }
+        val xEntry = positions.entries.firstOrNull { it.key.equals("X", ignoreCase = true) }
+        val bEntry = positions.entries.firstOrNull { it.key.equals("B", ignoreCase = true) }
+        val aEntry = positions.entries.firstOrNull { it.key.equals("A", ignoreCase = true) }
+
+        if (yEntry == null || xEntry == null || bEntry == null || aEntry == null) {
+            return positions
+        }
+
+        val posY = yEntry.value
+        val posX = xEntry.value
+        val posB = bEntry.value
+        val posA = aEntry.value
+
+        val isHorizontalSymmetric = kotlin.math.abs(posX.yRatio - posB.yRatio) < 0.02f
+        val isVerticalSymmetric = kotlin.math.abs(posY.xRatio - posA.xRatio) < 0.02f
+        val isOriented = posX.xRatio < posB.xRatio && posY.yRatio < posA.yRatio
+
+        if (!isHorizontalSymmetric || !isVerticalSymmetric || !isOriented) {
+            return positions
+        }
+
+        val centerX_XB = (posX.xRatio + posB.xRatio) / 2f
+        val centerY_XB = (posX.yRatio + posB.yRatio) / 2f
+        val centerX_YA = (posY.xRatio + posA.xRatio) / 2f
+        val centerY_YA = (posY.yRatio + posA.yRatio) / 2f
+
+        if (kotlin.math.abs(centerX_XB - centerX_YA) >= 0.02f ||
+            kotlin.math.abs(centerY_XB - centerY_YA) >= 0.02f
+        ) {
+            return positions
+        }
+
+        val centerX = (centerX_XB + centerX_YA) / 2f
+        val centerY = (centerY_XB + centerY_YA) / 2f
+
+        val deltaXRatio = (posB.xRatio - posX.xRatio) / 2f
+        val radiusPx = deltaXRatio * screenWidthPx
+        val effectiveDyRatio = radiusPx / screenHeightPx
+
+        val adjusted = positions.toMutableMap()
+        adjusted[yEntry.key] = posY.copy(xRatio = centerX, yRatio = centerY - effectiveDyRatio)
+        adjusted[aEntry.key] = posA.copy(xRatio = centerX, yRatio = centerY + effectiveDyRatio)
+        adjusted[xEntry.key] = posX.copy(xRatio = centerX - deltaXRatio, yRatio = centerY)
+        adjusted[bEntry.key] = posB.copy(xRatio = centerX + deltaXRatio, yRatio = centerY)
+
+        return adjusted
+    }
+
+    /**
+     * Resolves aspect-ratio-corrected positions for [HudElement]s on a screen of given dimensions.
+     * Mirrors [adjustClusterPositionsForAspectRatio] for HUD Editor elements.
+     */
+    fun adjustHudElementsForAspectRatio(
+        elements: Map<String, HudElement>,
+        screenWidthPx: Float,
+        screenHeightPx: Float
+    ): Map<String, HudElement> {
+        if (screenWidthPx <= 0f || screenHeightPx <= 0f) return elements
+
+        val yEntry = elements.entries.firstOrNull { it.key.equals("Y", ignoreCase = true) }
+        val xEntry = elements.entries.firstOrNull { it.key.equals("X", ignoreCase = true) }
+        val bEntry = elements.entries.firstOrNull { it.key.equals("B", ignoreCase = true) }
+        val aEntry = elements.entries.firstOrNull { it.key.equals("A", ignoreCase = true) }
+
+        if (yEntry == null || xEntry == null || bEntry == null || aEntry == null) {
+            return elements
+        }
+
+        val posY = yEntry.value.transform
+        val posX = xEntry.value.transform
+        val posB = bEntry.value.transform
+        val posA = aEntry.value.transform
+
+        val isHorizontalSymmetric = kotlin.math.abs(posX.yRatio - posB.yRatio) < 0.02f
+        val isVerticalSymmetric = kotlin.math.abs(posY.xRatio - posA.xRatio) < 0.02f
+        val isOriented = posX.xRatio < posB.xRatio && posY.yRatio < posA.yRatio
+
+        if (!isHorizontalSymmetric || !isVerticalSymmetric || !isOriented) {
+            return elements
+        }
+
+        val centerX_XB = (posX.xRatio + posB.xRatio) / 2f
+        val centerY_XB = (posX.yRatio + posB.yRatio) / 2f
+        val centerX_YA = (posY.xRatio + posA.xRatio) / 2f
+        val centerY_YA = (posY.yRatio + posA.yRatio) / 2f
+
+        if (kotlin.math.abs(centerX_XB - centerX_YA) >= 0.02f ||
+            kotlin.math.abs(centerY_XB - centerY_YA) >= 0.02f
+        ) {
+            return elements
+        }
+
+        val centerX = (centerX_XB + centerX_YA) / 2f
+        val centerY = (centerY_XB + centerY_YA) / 2f
+
+        val deltaXRatio = (posB.xRatio - posX.xRatio) / 2f
+        val radiusPx = deltaXRatio * screenWidthPx
+        val effectiveDyRatio = radiusPx / screenHeightPx
+
+        val adjusted = elements.toMutableMap()
+        adjusted[yEntry.key] = yEntry.value.copy(
+            transform = posY.copy(xRatio = centerX, yRatio = centerY - effectiveDyRatio)
+        )
+        adjusted[aEntry.key] = aEntry.value.copy(
+            transform = posA.copy(xRatio = centerX, yRatio = centerY + effectiveDyRatio)
+        )
+        adjusted[xEntry.key] = xEntry.value.copy(
+            transform = posX.copy(xRatio = centerX - deltaXRatio, yRatio = centerY)
+        )
+        adjusted[bEntry.key] = bEntry.value.copy(
+            transform = posB.copy(xRatio = centerX + deltaXRatio, yRatio = centerY)
+        )
+
+        return adjusted
     }
 }

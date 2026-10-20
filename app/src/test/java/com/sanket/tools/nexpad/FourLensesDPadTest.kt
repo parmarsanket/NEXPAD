@@ -2,8 +2,8 @@ package com.sanket.tools.nexpad
 
 import androidx.compose.ui.geometry.Offset
 import com.sanket.tools.nexpad.model.NexpadKeys as K
-import com.sanket.tools.nexpad.ui.components.controller.calculateFourLensesTilt
-import com.sanket.tools.nexpad.ui.components.controller.resolveFourLensesTouch
+import com.sanket.tools.nexpad.ui.components.controller.dpad.calculateFourLensesTilt
+import com.sanket.tools.nexpad.ui.components.controller.dpad.resolveFourLensesTouch
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

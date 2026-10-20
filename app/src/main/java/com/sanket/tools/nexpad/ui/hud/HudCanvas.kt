@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,26 +55,108 @@ fun HudCanvas(
     val remoteRegistry = remember { RemoteComponentRegistry.getInstance(context) }
     val installedComponents by registry.installedComponents.collectAsState()
     val remoteDocs by remoteRegistry.loadedComponents.collectAsState()
+    val density = LocalDensity.current.density
+    val widthDp = screenWidthPx / density
+    val heightDp = screenHeightPx / density
+    val responsiveScale = com.sanket.tools.nexpad.model.LayoutMetrics.calculateResponsiveScale(widthDp, heightDp)
+
+    val currentOnSelect by rememberUpdatedState(onSelect)
+    val currentOnDragDelta by rememberUpdatedState(onDragDelta)
 
     Box(modifier = modifier) {
         elements.forEach { (controlKey, element) ->
             key(controlKey) {
                 val isSelected = selectedControl == controlKey
+                val isJoystick = controlKey.equals(com.sanket.tools.nexpad.category.ControlKey.LS.name, ignoreCase = true) ||
+                        controlKey.equals(com.sanket.tools.nexpad.category.ControlKey.RS.name, ignoreCase = true) ||
+                        element.categoryTitle.equals("JOYSTICK", ignoreCase = true)
+                val jsMode = com.sanket.tools.nexpad.model.JoystickMode.fromId(element.transform.joystickMode)
+
+                // 1. Hitbox Box for BOX mode (white border 50% alpha, visible in HUD screen for setting joystick)
+                if (isJoystick && jsMode == com.sanket.tools.nexpad.model.JoystickMode.BOX) {
+                    val boxSizeDp = 150.dp * element.transform.hitboxScale * element.transform.scale * responsiveScale
+                    Box(
+                        modifier = Modifier
+                            .layout { measurable, childConstraints ->
+                                val placeable = measurable.measure(childConstraints)
+                                val safeX = if (element.transform.xRatio.isFinite()) element.transform.xRatio else 0f
+                                val safeY = if (element.transform.yRatio.isFinite()) element.transform.yRatio else 0f
+                                val x = (safeX * screenWidthPx - placeable.width / 2f).roundToInt()
+                                val y = (safeY * screenHeightPx - placeable.height / 2f).roundToInt()
+                                layout(placeable.width, placeable.height) {
+                                    placeable.placeRelative(x, y)
+                                }
+                            }
+                            .size(boxSizeDp)
+                            .border(
+                                width = 1.5.dp,
+                                color = Color.White.copy(alpha = 0.50f),
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            .background(Color.White.copy(alpha = 0.04f))
+                    ) {
+                        Text(
+                            text = "HITBOX ${(element.transform.hitboxScale * 100).roundToInt()}%",
+                            color = Color.White.copy(alpha = 0.50f),
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = 6.dp)
+                        )
+                    }
+                }
+
+                // 2. Full-Screen Zone Indicator for FULL mode (visible when selected in HUD editor)
+                if (isJoystick && jsMode == com.sanket.tools.nexpad.model.JoystickMode.FULL && isSelected) {
+                    val isLeftStick = controlKey.equals(com.sanket.tools.nexpad.category.ControlKey.LS.name, ignoreCase = true)
+                    val density = LocalDensity.current.density
+                    val halfWidthDp = (screenWidthPx / 2f / density).dp
+                    val fullHeightDp = (screenHeightPx / density).dp
+                    Box(
+                        modifier = Modifier
+                            .layout { measurable, childConstraints ->
+                                val placeable = measurable.measure(childConstraints)
+                                val x = if (isLeftStick) 0 else (screenWidthPx / 2f).roundToInt()
+                                layout(placeable.width, placeable.height) {
+                                    placeable.placeRelative(x, 0)
+                                }
+                            }
+                            .size(width = halfWidthDp, height = fullHeightDp)
+                            .border(
+                                width = 1.dp,
+                                color = NeonPalette.Purple.copy(alpha = 0.45f)
+                            )
+                            .background(NeonPalette.Purple.copy(alpha = 0.05f))
+                    ) {
+                        Text(
+                            text = if (isLeftStick) "◄ FULL SCREEN LEFT ZONE" else "FULL SCREEN RIGHT ZONE ►",
+                            color = NeonPalette.Purple.copy(alpha = 0.70f),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(top = 16.dp)
+                        )
+                    }
+                }
 
                 Box(
                     modifier = Modifier
                         .layout { measurable, childConstraints ->
                             val placeable = measurable.measure(childConstraints)
-                            val x = (element.transform.xRatio * screenWidthPx - placeable.width / 2f).roundToInt()
-                            val y = (element.transform.yRatio * screenHeightPx - placeable.height / 2f).roundToInt()
+                            val safeX = if (element.transform.xRatio.isFinite()) element.transform.xRatio else 0f
+                            val safeY = if (element.transform.yRatio.isFinite()) element.transform.yRatio else 0f
+                            val x = (safeX * screenWidthPx - placeable.width / 2f).roundToInt()
+                            val y = (safeY * screenHeightPx - placeable.height / 2f).roundToInt()
                             layout(placeable.width, placeable.height) {
                                 placeable.placeRelative(x, y)
                             }
                         }
                         // GPU Layer: Zero recomposition during scaling, opacity changes, and rotation
                         .graphicsLayer {
-                            scaleX = element.transform.scale
-                            scaleY = element.transform.scale
+                            scaleX = element.transform.scale * responsiveScale
+                            scaleY = element.transform.scale * responsiveScale
                             alpha = element.transform.opacity
                         }
                 ) {
@@ -88,7 +171,9 @@ fun HudCanvas(
                         sensitivity = element.transform.sensitivity,
                         heightScale = element.transform.heightScale,
                         isFlipped = element.transform.isFlipped,
-                        labelStyle = labelStyle
+                        isLocked = element.transform.isLocked,
+                        labelStyle = labelStyle,
+                        touchpadCurve = element.transform.touchpadCurve
                     )
 
                     // Broken asset warning badge when custom component is missing
@@ -103,7 +188,7 @@ fun HudCanvas(
                     if (isMissingSkin) {
                         Surface(
                             shape = CircleShape,
-                            color = Color(0xFFE65100),
+                            color = NeonPalette.DeepOrange,
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(2.dp)
@@ -138,19 +223,19 @@ fun HudCanvas(
                             .matchParentSize()
                             .pointerInput(controlKey, screenWidthPx, screenHeightPx) {
                                 detectTapGestures(
-                                    onTap = { onSelect(controlKey) }
+                                    onTap = { currentOnSelect(controlKey) }
                                 )
                             }
                             .pointerInput(controlKey, screenWidthPx, screenHeightPx) {
                                 detectDragGestures(
-                                    onDragStart = { onSelect(controlKey) },
+                                    onDragStart = { currentOnSelect(controlKey) },
                                     onDragEnd = {},
                                     onDragCancel = {}
                                 ) { change, dragAmount ->
                                     change.consume()
                                     val dx = dragAmount.x / screenWidthPx
                                     val dy = dragAmount.y / screenHeightPx
-                                    onDragDelta(controlKey, dx, dy)
+                                    currentOnDragDelta(controlKey, dx, dy)
                                 }
                             }
                     )

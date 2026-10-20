@@ -1,0 +1,507 @@
+package com.sanket.tools.nexpad.ui.components.controller.abxy
+
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.category.CategoryManager
+import com.sanket.tools.nexpad.category.ControllerLabelStyle
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
+import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.roundToInt
+
+/**
+ * Orbit Rings ABXY button variant.
+ * Faithful reproduction of HTML/CSS #9 Orbit:
+ * Two concentric SVG arc rings that rotate in opposite directions around the letter:
+ * - Orbit 1 (outer, r=30.8dp, width=3.5dp): 3 large arcs (dash 26, gap 7.33) rotating +120° on press.
+ * - Orbit 2 (inner, r=24.6dp, width=2dp): fine dotted pips (dash 1.2, gap 4.8) rotating -120° on press.
+ * Damped harmonic spring kinematics.
+ */
+@Composable
+fun OrbitButton(
+    key: String,
+    buttonColor: Color,
+    isConnected: Boolean = true,
+    onVibrate: () -> Unit = {},
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
+    modifier: Modifier = Modifier,
+    displayLabel: String? = null,
+    isInteractive: Boolean = true
+) {
+    var isPressedLocally by remember { mutableStateOf(false) }
+    val isPressed = isPressedLocally || com.sanket.tools.nexpad.ui.components.controller.isControlPressed(key)
+
+    val scaleAnimState = animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 1.0f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "orbit_scale"
+    )
+    val pressOffsetYAnimState = animateFloatAsState(
+        targetValue = if (isPressed) 2f else 0f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "orbit_depth"
+    )
+    // Counter-rotating angles with elastic spring rebound (cubic-bezier .3, 1.5, .5, 1)
+    val rotation1State = animateFloatAsState(
+        targetValue = if (isPressed) 120f else 0f,
+        animationSpec = spring(dampingRatio = 0.55f, stiffness = 320f),
+        label = "orbit_rot1"
+    )
+    val rotation2State = animateFloatAsState(
+        targetValue = if (isPressed) -120f else 0f,
+        animationSpec = spring(dampingRatio = 0.55f, stiffness = 320f),
+        label = "orbit_rot2"
+    )
+    val orbit1AlphaState = animateFloatAsState(
+        targetValue = if (isPressed) 1.0f else 0.75f,
+        animationSpec = tween(durationMillis = 150),
+        label = "orbit_o1_alpha"
+    )
+    val orbit2AlphaState = animateFloatAsState(
+        targetValue = if (isPressed) 0.90f else 0.45f,
+        animationSpec = tween(durationMillis = 150),
+        label = "orbit_o2_alpha"
+    )
+    val rgbBloomAlphaState = animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "orbit_rgb_bloom"
+    )
+
+    val currentOnVibrate by rememberUpdatedState(onVibrate)
+    val currentViewModel by rememberUpdatedState(viewModel)
+    val activeLabel = displayLabel ?: key
+    val psShape = getPlayStationShape(activeLabel)
+    val effectiveColor = if (psShape != null) getPlayStationColor(psShape) else buttonColor
+
+    val baseDomeGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                NeonPalette.MetalBase,
+                NeonPalette.MetalShadow,
+                NeonPalette.PureBlack
+            ),
+            center = Offset(0.50f, 0.55f),
+            radius = 240f
+        )
+    }
+
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val borderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.50f),
+                Color.Black.copy(alpha = 0.85f)
+            )
+        )
+    }
+    val stroke1dp = remember(density) { Stroke(width = 1f * density) }
+    val stroke2dp = remember(density) { Stroke(width = 2f * density) }
+    val stroke4dp = remember(density) { Stroke(width = 4f * density) }
+    val outerOrbitAuraStroke = remember {
+        Stroke(
+            width = 2.5f,
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f), 0f)
+        )
+    }
+    val innerOrbitAuraStroke = remember {
+        Stroke(
+            width = 1.8f,
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 7f), 0f)
+        )
+    }
+    val orbit1Stroke = remember(density) {
+        val maxR = 40f * density
+        val r1 = (30f / 39f) * maxR
+        val c1 = (2f * Math.PI.toFloat() * r1)
+        val stroke1Px = (3.5f / 39f) * maxR
+        val dash1 = (0.26f * c1 - stroke1Px).coerceAtLeast(1f)
+        val gap1 = 0.0733f * c1 + stroke1Px
+        Stroke(
+            width = stroke1Px,
+            cap = StrokeCap.Round,
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash1, gap1), 0f)
+        )
+    }
+    val orbit2Stroke = remember(density) {
+        val maxR = 40f * density
+        val r2 = (24f / 39f) * maxR
+        val c2 = (2f * Math.PI.toFloat() * r2)
+        val stroke2Px = (2f / 39f) * maxR
+        val pipGap = (c2 / 16.67f) - 0.1f
+        Stroke(
+            width = stroke2Px,
+            cap = StrokeCap.Round,
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(0.1f, pipGap), 0f)
+        )
+    }
+    val insetShadowColorsPressed = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)) }
+    val insetShadowColorsNormal = remember { listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)) }
+    val lensColorsPressed = remember {
+        listOf(
+            Color.White.copy(alpha = 0.06f),
+            Color.White.copy(alpha = 0.02f),
+            Color.Transparent
+        )
+    }
+    val lensColorsNormal = remember {
+        listOf(
+            Color.White.copy(alpha = 0.14f),
+            Color.White.copy(alpha = 0.05f),
+            Color.Transparent
+        )
+    }
+    val specularSheenColors = remember {
+        listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)
+    }
+
+    val insetShadowBrushPressed = remember(density) {
+        val btnSizePx = 80f * density
+        val insetH = btnSizePx * 0.32f
+        Brush.verticalGradient(
+            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)),
+            startY = btnSizePx - insetH,
+            endY = btnSizePx
+        )
+    }
+    val insetShadowBrushNormal = remember(density) {
+        val btnSizePx = 80f * density
+        val insetH = btnSizePx * 0.32f
+        Brush.verticalGradient(
+            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
+            startY = btnSizePx - insetH,
+            endY = btnSizePx
+        )
+    }
+    val lensBrushPressed = remember(density) {
+        val btnSizePx = 80f * density
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.06f),
+                Color.White.copy(alpha = 0.02f),
+                Color.Transparent
+            ),
+            startY = 0f,
+            endY = btnSizePx * 0.40f
+        )
+    }
+    val lensBrushNormal = remember(density) {
+        val btnSizePx = 80f * density
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.14f),
+                Color.White.copy(alpha = 0.05f),
+                Color.Transparent
+            ),
+            startY = 0f,
+            endY = btnSizePx * 0.40f
+        )
+    }
+    val specularSheenBrush = remember(density) {
+        val btnSizePx = 80f * density
+        Brush.radialGradient(
+            colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+            center = Offset(btnSizePx * 0.70f, btnSizePx * 0.78f),
+            radius = btnSizePx * 0.25f
+        )
+    }
+
+    val bloomColorsList = remember(effectiveColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
+    Box(
+        modifier = modifier
+            .size(92.dp)
+            .graphicsLayer {
+                // Root RenderNode isolation
+            }
+            .drawBehind {
+                if (isRgbEnabled) {
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
+                    val rotation1 = rotation1State.value
+                    val rotation2 = rotation2State.value
+                    // 1. Ambient planetary core bloom
+                    val coreRadius = size.minDimension * 0.95f
+                    bloomColorsList[0] = effectiveColor.copy(alpha = rgbBloomAlpha * 0.50f)
+                    bloomColorsList[1] = effectiveColor.copy(alpha = rgbBloomAlpha * 0.18f)
+                    bloomColorsList[2] = Color.Transparent
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = bloomColorsList,
+                            center = center,
+                            radius = coreRadius
+                        ),
+                        radius = coreRadius,
+                        center = center
+                    )
+
+                    // 2. Outer planetary dashed orbit ring 1 (rotated by rotation1)
+                    val r1 = size.minDimension * 0.48f
+                    rotate(degrees = rotation1, pivot = center) {
+                        drawCircle(
+                            color = effectiveColor.copy(alpha = if (isPressed) 0.85f else 0.40f),
+                            radius = r1,
+                            center = center,
+                            style = outerOrbitAuraStroke
+                        )
+                    }
+                    // Orbiting photon spark pip 1 at leading tip
+                    val rad1 = Math.toRadians(rotation1.toDouble())
+                    val pip1 = Offset(
+                        center.x + r1 * cos(rad1).toFloat(),
+                        center.y + r1 * sin(rad1).toFloat()
+                    )
+                    drawCircle(
+                        color = Color.White,
+                        radius = if (isPressed) 4.5f else 2.5f,
+                        center = pip1
+                    )
+                    drawCircle(
+                        color = effectiveColor.copy(alpha = 0.6f),
+                        radius = if (isPressed) 8f else 5f,
+                        center = pip1
+                    )
+
+                    // 3. Counter-rotating inner orbit ring 2 (rotated by rotation2)
+                    val r2 = size.minDimension * 0.40f
+                    rotate(degrees = rotation2, pivot = center) {
+                        drawCircle(
+                            color = effectiveColor.copy(alpha = if (isPressed) 0.70f else 0.30f),
+                            radius = r2,
+                            center = center,
+                            style = innerOrbitAuraStroke
+                        )
+                    }
+                    // Counter-orbiting photon spark pip 2
+                    val rad2 = Math.toRadians(rotation2.toDouble() + 180.0)
+                    val pip2 = Offset(
+                        center.x + r2 * cos(rad2).toFloat(),
+                        center.y + r2 * sin(rad2).toFloat()
+                    )
+                    drawCircle(
+                        color = Color.White.copy(alpha = 0.9f),
+                        radius = if (isPressed) 3.5f else 2f,
+                        center = pip2
+                    )
+                }
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .shadow(
+                    elevation = if (isPressed) 1.dp else 4.dp,
+                    shape = CircleShape,
+                    ambientColor = if (isRgbEnabled) effectiveColor else Color.Black,
+                    spotColor = if (isRgbEnabled) effectiveColor else Color.Black
+                )
+                .graphicsLayer {
+                    scaleX = scaleAnimState.value
+                    scaleY = scaleAnimState.value
+                    translationY = pressOffsetYAnimState.value * density
+                }
+                .clip(CircleShape)
+                .background(baseDomeGradient)
+                .border(
+                    width = 1.dp,
+                    brush = borderBrush,
+                    shape = CircleShape
+                )
+                .then(
+                    if (isInteractive) {
+                        Modifier.pointerInput(key) {
+                            detectTapGestures(
+                                onPress = {
+                                    currentOnVibrate()
+                                    isPressedLocally = true
+                                    currentViewModel?.updateButton(key, true)
+                                    tryAwaitRelease()
+                                    isPressedLocally = false
+                                    currentViewModel?.updateButton(key, false)
+                                }
+                            )
+                        }
+                    } else Modifier
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            // ── 1. ORBIT SVG RINGS & UNDERCUT SHADOW ──
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val rotation1 = rotation1State.value
+                val rotation2 = rotation2State.value
+                val orbit1Alpha = orbit1AlphaState.value
+                val orbit2Alpha = orbit2AlphaState.value
+                val w = size.width
+                val h = size.height
+                val cx = w / 2f
+                val cy = h / 2f
+                val maxR = size.minDimension / 2f
+
+                // Undercut bottom shadow
+                val insetH = h * 0.32f
+                drawRect(
+                    brush = if (isPressed) insetShadowBrushPressed else insetShadowBrushNormal,
+                    topLeft = Offset(0f, h - insetH),
+                    size = Size(w, insetH)
+                )
+
+                // Outer Orbit 1: r = 30 / 39 * maxR, stroke-width = 3.5, dasharray = 26 7.33 (3 arcs)
+                val r1 = (30f / 39f) * maxR
+                val c1 = (2f * PI * r1).toFloat()
+                val stroke1Px = (3.5f / 39f) * maxR
+                val dash1 = (0.26f * c1 - stroke1Px).coerceAtLeast(1f)
+                val gap1 = 0.0733f * c1 + stroke1Px
+
+                rotate(degrees = rotation1, pivot = Offset(cx, cy)) {
+                    drawCircle(
+                        color = effectiveColor.copy(alpha = orbit1Alpha),
+                        radius = r1,
+                        center = Offset(cx, cy),
+                        style = orbit1Stroke
+                    )
+                }
+
+                // Inner Orbit 2: r = 24 / 39 * maxR, stroke-width = 2, dasharray = 1.2 4.8 (dotted pips)
+                val r2 = (24f / 39f) * maxR
+
+                rotate(degrees = rotation2, pivot = Offset(cx, cy)) {
+                    drawCircle(
+                        color = effectiveColor.copy(alpha = orbit2Alpha),
+                        radius = r2,
+                        center = Offset(cx, cy),
+                        style = orbit2Stroke
+                    )
+                }
+            }
+
+            // ── 2. CENTER GLYPH (font-size: 34px) ──
+            if (psShape != null) {
+                PlayStationSymbol(
+                    shape = psShape,
+                    color = effectiveColor,
+                    size = 34.dp
+                )
+            } else {
+                Text(
+                    text = activeLabel,
+                    color = effectiveColor,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 34.sp
+                )
+            }
+
+            // ── 3. SHELL OVERLAY (.lx-ring + .lx-lens) ──
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val w = size.width
+                val h = size.height
+                val r = size.minDimension / 2f
+
+                // Cap outline
+                drawCircle(
+                    color = Color.Black.copy(alpha = 0.50f),
+                    radius = r - 0.5.dp.toPx(),
+                    style = stroke1dp
+                )
+
+                // Neon ring (.lx-ring)
+                val ringRadius = r - 3.dp.toPx()
+                drawCircle(
+                    color = effectiveColor.copy(alpha = if (isPressed) 0.55f else 0.25f),
+                    radius = ringRadius,
+                    style = stroke4dp
+                )
+                drawCircle(
+                    color = effectiveColor.copy(alpha = if (isPressed) 1.0f else 0.70f),
+                    radius = ringRadius,
+                    style = stroke2dp
+                )
+
+                // Glass lens (.lx-lens)
+                val lensInset = 1.dp.toPx()
+                drawArc(
+                    brush = if (isPressed) lensBrushPressed else lensBrushNormal,
+                    startAngle = 180f,
+                    sweepAngle = 180f,
+                    useCenter = false,
+                    topLeft = Offset(lensInset, lensInset),
+                    size = Size(w - lensInset * 2f, h - lensInset * 2f),
+                    style = stroke1dp
+                )
+
+                // Specular sheen
+                drawCircle(
+                    brush = specularSheenBrush,
+                    center = Offset(w * 0.70f, h * 0.78f),
+                    radius = w * 0.25f
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Static non-interactive preview delegate for OrbitButton with zero touch overhead.
+ */
+@Composable
+fun StaticOrbitButton(
+    controlKey: String,
+    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
+    modifier: Modifier = Modifier
+) {
+    val displayLabel = CategoryManager.getLabelForStyle(controlKey, labelStyle)
+    val buttonColor = resolveButtonColor(controlKey, labelStyle, displayLabel)
+    OrbitButton(
+        key = controlKey,
+        buttonColor = buttonColor,
+        isConnected = false,
+        onVibrate = {},
+        viewModel = null,
+        isRgbEnabled = true,
+        modifier = modifier,
+        displayLabel = displayLabel,
+        isInteractive = false
+    )
+}
+
+

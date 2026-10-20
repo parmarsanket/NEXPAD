@@ -17,14 +17,19 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sanket.tools.nexpad.category.CategoryManager
+import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.category.ComponentType
+import com.sanket.tools.nexpad.model.ControllerTouchClassifier
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.runtime.engine.NxprcCanvasRenderer
 import com.sanket.tools.nexpad.runtime.engine.NxpComposeInterpreter
@@ -34,6 +39,8 @@ import com.sanket.tools.nexpad.runtime.model.SandboxInputTarget
 import com.sanket.tools.nexpad.runtime.plugin.RemoteComponentRegistry
 import com.sanket.tools.nexpad.runtime.registry.NativeComponentRegistry
 import com.sanket.tools.nexpad.ui.components.controller.ControllerElementRenderer
+import com.sanket.tools.nexpad.share.ShareManager
+import com.sanket.tools.nexpad.ui.studio.model.ButtonStudioType
 import com.sanket.tools.nexpad.ui.studio.model.resolveButtonSourceType
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
@@ -58,6 +65,12 @@ fun SandboxPreviewModal(
     var eventCount by remember { mutableIntStateOf(0) }
 
     val context = LocalContext.current
+    val isRemote = remember(componentDef.manifest.id) {
+        componentDef.manifest.id.startsWith("rc.") || resolveButtonSourceType(componentDef) == ButtonStudioType.REMOTE_COMPOSE
+    }
+    val remoteDoc = remember(componentDef.manifest.id, isRemote) {
+        if (isRemote) RemoteComponentRegistry.getInstance(context).getComponent(componentDef.manifest.id) else null
+    }
     val hapticHelper = remember(context) { com.sanket.tools.nexpad.utils.HapticFeedbackHelper(context) }
 
     val sandboxTarget = remember(hapticHelper) {
@@ -75,6 +88,10 @@ fun SandboxPreviewModal(
         )
     }
 
+    val configuration = LocalConfiguration.current
+    val screenHeightDp = configuration.screenHeightDp
+    val arenaHeight = if (screenHeightDp < 660) 175.dp else if (screenHeightDp < 760) 195.dp else 220.dp
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -82,18 +99,19 @@ fun SandboxPreviewModal(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xEE050B14))
+                .background(NeonPalette.DialogBg)
                 .padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth(0.95f)
+                    .widthIn(max = 480.dp)
+                    .fillMaxWidth()
                     .clip(RoundedCornerShape(24.dp))
                     .border(1.5.dp, NeonPalette.Cyan.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
                     .background(
                         Brush.verticalGradient(
-                            listOf(Color(0xFF0F1A2E), Color(0xFF070D18))
+                            listOf(NeonPalette.SurfaceNavy, NeonPalette.SurfaceDark)
                         )
                     )
                     .padding(20.dp)
@@ -113,14 +131,18 @@ fun SandboxPreviewModal(
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
                                 text = componentDef.manifest.name,
                                 style = MaterialTheme.typography.titleLarge.copy(
                                     fontWeight = FontWeight.Black,
                                     color = NeonPalette.Cyan
-                                )
+                                ),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
                             )
 
                             val type = remember(componentDef.manifest.id) { resolveButtonSourceType(componentDef) }
@@ -135,7 +157,8 @@ fun SandboxPreviewModal(
                                     text = type.label,
                                     color = type.badgeColor,
                                     fontSize = 10.sp,
-                                    fontWeight = FontWeight.Black
+                                    fontWeight = FontWeight.Black,
+                                    maxLines = 1
                                 )
                             }
                         }
@@ -148,7 +171,9 @@ fun SandboxPreviewModal(
                             style = MaterialTheme.typography.labelMedium.copy(
                                 color = Color.White.copy(alpha = 0.7f),
                                 fontSize = 12.sp
-                            )
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
 
@@ -161,24 +186,13 @@ fun SandboxPreviewModal(
                 BoxWithConstraints(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(220.dp)
+                        .height(arenaHeight)
                         .clip(RoundedCornerShape(16.dp))
                         .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
-                        .background(Color(0xFF040810)),
+                        .background(NeonPalette.FieldBg),
                     contentAlignment = Alignment.Center
                 ) {
-                    val context = LocalContext.current
-                    val testViewModel: GamepadViewModel = gamepadViewModel ?: remember(context) {
-                        (context as? androidx.activity.ComponentActivity)?.let { activity ->
-                            androidx.lifecycle.ViewModelProvider(activity)[GamepadViewModel::class.java]
-                        }
-                    } ?: viewModel<GamepadViewModel>(context as androidx.lifecycle.ViewModelStoreOwner)
                     val isNative = NativeComponentRegistry.isNativeBuiltin(componentDef.manifest.id)
-                    val isRemote = componentDef.manifest.id.startsWith("rc.")
-                    val remoteDoc = remember(componentDef.manifest.id) {
-                        if (isRemote) RemoteComponentRegistry.getInstance(context).getComponent(componentDef.manifest.id) else null
-                    }
-
                     val controlKey = componentDef.manifest.defaultControl.uppercase()
 
                     // High-Performance Dynamic Sizing & Scaling (0.0f to 1.0f)
@@ -194,30 +208,6 @@ fun SandboxPreviewModal(
 
                     val previewScale = targetDim / intrinsicMaxDim
 
-                    LaunchedEffect(componentDef.manifest.id) {
-                        while (true) {
-                            kotlinx.coroutines.delay(60)
-                            val K = com.sanket.tools.nexpad.model.NexpadKeys
-                            if (controlKey == K.LS || controlKey == "L3") {
-                                val x = testViewModel.inputState.leftStickX / 32767f
-                                val y = testViewModel.inputState.leftStickY / 32767f
-                                if (kotlin.math.abs(x - axisValues.first) > 0.05f || kotlin.math.abs(y - axisValues.second) > 0.05f) {
-                                    axisValues = Pair(x, y)
-                                    telemetryAction = "STICK DEFLECTION (X=%.2f, Y=%.2f)".format(x, y)
-                                    eventCount++
-                                }
-                            } else if (controlKey == K.RS || controlKey == "R3") {
-                                val x = testViewModel.inputState.rightStickX / 32767f
-                                val y = testViewModel.inputState.rightStickY / 32767f
-                                if (kotlin.math.abs(x - axisValues.first) > 0.05f || kotlin.math.abs(y - axisValues.second) > 0.05f) {
-                                    axisValues = Pair(x, y)
-                                    telemetryAction = "STICK DEFLECTION (X=%.2f, Y=%.2f)".format(x, y)
-                                    eventCount++
-                                }
-                            }
-                        }
-                    }
-
                     Box(
                         modifier = Modifier.graphicsLayer {
                             scaleX = previewScale
@@ -230,7 +220,7 @@ fun SandboxPreviewModal(
                                 key = controlKey,
                                 isConnected = true,
                                 isRgbEnabled = true,
-                                viewModel = testViewModel,
+                                viewModel = null,
                                 onVibrate = {
                                     telemetryAction = "TAP • $controlKey (Haptic)"
                                     eventCount++
@@ -240,17 +230,14 @@ fun SandboxPreviewModal(
                                 labelStyle = labelStyle
                             )
                         } else if (remoteDoc != null) {
-                            val isStickCategory = componentDef.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
-                                    componentDef.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
-                                    controlKey.equals("LS", ignoreCase = true) ||
-                                    controlKey.equals("RS", ignoreCase = true) ||
-                                    controlKey.equals("LTP", ignoreCase = true) ||
-                                    controlKey.equals("RTP", ignoreCase = true)
-                            val isRightStick = controlKey.equals("RS", ignoreCase = true) ||
-                                    controlKey.equals("RTP", ignoreCase = true) ||
-                                    componentDef.manifest.defaultControl.equals("RS", ignoreCase = true) ||
-                                    componentDef.manifest.defaultControl.equals("RTP", ignoreCase = true) ||
-                                    componentDef.manifest.id.contains("rtp", ignoreCase = true)
+                            val isStickCategory = ControllerTouchClassifier.isJoystick(controlKey) ||
+                                    ControllerTouchClassifier.isTouchpad(controlKey) ||
+                                    componentDef.manifest.category.equals(ComponentType.JOYSTICK.name, ignoreCase = true) ||
+                                    componentDef.manifest.category.equals(ComponentType.TOUCHPAD.name, ignoreCase = true)
+                            val isRightStick = ControllerTouchClassifier.isRightTouchpad(controlKey, componentDef.manifest.id) ||
+                                    controlKey.equals(ControlKey.RS.key, ignoreCase = true) ||
+                                    componentDef.manifest.defaultControl.equals(ControlKey.RS.key, ignoreCase = true) ||
+                                    componentDef.manifest.defaultControl.equals(ControlKey.RTP.key, ignoreCase = true)
                             val control = when {
                                 isStickCategory ->
                                     NexPadControl.Stick(isLeft = !isRightStick)
@@ -264,21 +251,18 @@ fun SandboxPreviewModal(
                                 assignedControl = control,
                                 isConnected = true,
                                 inputTarget = sandboxTarget,
-                                overrideSizeDp = 140,
-                                labelStyle = labelStyle
+                                labelStyle = labelStyle,
+                                sizingPolicy = com.sanket.tools.nexpad.runtime.engine.NxprcSizingPolicy.StudioModal(targetSizeDp = 115, scale = 0.85f)
                             )
                         } else {
-                            val isStickCategory = componentDef.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
-                                    componentDef.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
-                                    controlKey.equals("LS", ignoreCase = true) ||
-                                    controlKey.equals("RS", ignoreCase = true) ||
-                                    controlKey.equals("LTP", ignoreCase = true) ||
-                                    controlKey.equals("RTP", ignoreCase = true)
-                            val isRightStick = controlKey.equals("RS", ignoreCase = true) ||
-                                    controlKey.equals("RTP", ignoreCase = true) ||
-                                    componentDef.manifest.defaultControl.equals("RS", ignoreCase = true) ||
-                                    componentDef.manifest.defaultControl.equals("RTP", ignoreCase = true) ||
-                                    componentDef.manifest.id.contains("rtp", ignoreCase = true)
+                            val isStickCategory = ControllerTouchClassifier.isJoystick(controlKey) ||
+                                    ControllerTouchClassifier.isTouchpad(controlKey) ||
+                                    componentDef.manifest.category.equals(ComponentType.JOYSTICK.name, ignoreCase = true) ||
+                                    componentDef.manifest.category.equals(ComponentType.TOUCHPAD.name, ignoreCase = true)
+                            val isRightStick = ControllerTouchClassifier.isRightTouchpad(controlKey, componentDef.manifest.id) ||
+                                    controlKey.equals(ControlKey.RS.key, ignoreCase = true) ||
+                                    componentDef.manifest.defaultControl.equals(ControlKey.RS.key, ignoreCase = true) ||
+                                    componentDef.manifest.defaultControl.equals(ControlKey.RTP.key, ignoreCase = true)
                             val control = when {
                                 isStickCategory ->
                                     NexPadControl.Stick(isLeft = !isRightStick)
@@ -300,24 +284,46 @@ fun SandboxPreviewModal(
                 // Telemetry Card
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF081220)),
+                    colors = CardDefaults.cardColors(containerColor = NeonPalette.ModalBg),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("STATUS: $telemetryAction", color = NeonPalette.Cyan, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                            Text("EVENTS: $eventCount", color = Color.LightGray, fontSize = 12.sp)
+                            Text(
+                                text = "STATUS: $telemetryAction",
+                                color = NeonPalette.Cyan,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .weight(1f, fill = false)
+                                    .padding(end = 8.dp)
+                            )
+                            Text(
+                                text = "EVENTS: $eventCount",
+                                color = Color.LightGray,
+                                fontSize = 11.sp,
+                                maxLines = 1
+                            )
                         }
                         if (componentDef.manifest.category.equals("JOYSTICK", ignoreCase = true)) {
-                            Text("AXIS: X=%.2f, Y=%.2f".format(axisValues.first, axisValues.second), color = Color.Yellow, fontSize = 12.sp)
+                            Text("AXIS: X=%.2f, Y=%.2f".format(axisValues.first, axisValues.second), color = Color.Yellow, fontSize = 11.sp)
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Rounded.Speed, contentDescription = null, tint = Color.Green, modifier = Modifier.size(15.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("Latency: <0.2ms (Zero-alloc UI thread path)", color = Color.Green, fontSize = 11.sp)
+                            Text(
+                                text = "Latency: <0.2ms (Zero-alloc UI thread path)",
+                                color = Color.Green,
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                     }
                 }
@@ -364,7 +370,7 @@ fun SandboxPreviewModal(
                         if (!isContextualPick) {
                             Button(
                                 onClick = onAddToHud,
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A2639)),
+                                colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.ButtonBgDark),
                                 border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
                                 shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier
@@ -407,12 +413,40 @@ fun SandboxPreviewModal(
                             Text("Copy JSON", fontSize = 11.sp)
                         }
 
+                        // Share button ONLY for NXPRC type buttons per spec
+                        if (isRemote) {
+                            OutlinedButton(
+                                onClick = {
+                                    ShareManager.shareNxprcComponent(
+                                        context = context,
+                                        componentId = componentDef.manifest.id,
+                                        componentName = componentDef.manifest.name,
+                                        document = remoteDoc
+                                    )
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Amber),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Amber.copy(alpha = 0.5f)),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                                modifier = Modifier.height(34.dp)
+                            ) {
+                                Icon(
+                                    Icons.Rounded.Share,
+                                    contentDescription = "Share .nxprc button",
+                                    tint = NeonPalette.Amber,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text("Share", color = NeonPalette.Amber, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+
                         if (!componentDef.manifest.id.startsWith("builtin.")) {
                             OutlinedButton(
                                 onClick = onDelete,
                                 shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFF5252)),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF5252).copy(alpha = 0.35f)),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.ErrorRed),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.ErrorRed.copy(alpha = 0.35f)),
                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
                                 modifier = Modifier.height(34.dp)
                             ) {
@@ -430,6 +464,8 @@ fun SandboxPreviewModal(
                         Text("Back", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
                     }
                 }
+
+                Spacer(Modifier.height(4.dp))
             }
         }
     }

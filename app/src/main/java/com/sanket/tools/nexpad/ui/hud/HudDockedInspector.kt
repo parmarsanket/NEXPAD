@@ -2,6 +2,7 @@ package com.sanket.tools.nexpad.ui.hud
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
@@ -18,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
@@ -25,6 +27,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.model.HudElement
 import com.sanket.tools.nexpad.model.LayoutSkin
+import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.model.ControllerTouchClassifier
+import com.sanket.tools.nexpad.model.BuiltinComponentIds
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import kotlin.math.roundToInt
 
@@ -44,12 +49,17 @@ fun HudDockedInspector(
     onScaleChange: (Float) -> Unit,
     onOpacityChange: (Float) -> Unit,
     onSensitivityChange: ((Float) -> Unit)? = null,
+    onTouchpadCurveChange: ((String) -> Unit)? = null,
     onHeightScaleChange: ((Float) -> Unit)? = null,
     onToggleFlip: (() -> Unit)? = null,
+    onToggleLock: (() -> Unit)? = null,
+    onJoystickModeChange: ((String) -> Unit)? = null,
+    onHitboxScaleChange: ((Float) -> Unit)? = null,
     onCycleSkin: () -> Unit,
     onOpenStudio: () -> Unit,
     onResetPos: () -> Unit,
     onRemove: () -> Unit,
+    onSwapStickTouchpad: (() -> Unit)? = null,
     isDragging: Boolean = false,
     onDragStart: () -> Unit = {},
     onDragEnd: () -> Unit = {},
@@ -58,14 +68,9 @@ fun HudDockedInspector(
     modifier: Modifier = Modifier
 ) {
     val transform = element.transform
-    val isTouchpad = element.controlKey.equals("LTP", ignoreCase = true) ||
-            element.controlKey.equals("RTP", ignoreCase = true) ||
-            element.categoryTitle.equals("TOUCHPAD", ignoreCase = true) ||
-            element.spec?.componentType == com.sanket.tools.nexpad.category.ComponentType.TOUCHPAD
-
-    val isSliderTrigger = element.skinId?.contains("slider", ignoreCase = true) == true ||
-            element.skinId == "builtin.slider_lt" ||
-            element.skinId == "builtin.slider_rt"
+    val isTouchpad = ControllerTouchClassifier.isTouchpad(element.controlKey, element.skinId)
+    val isJoystick = ControllerTouchClassifier.isJoystick(element.controlKey, element.skinId)
+    val isSliderTrigger = ControllerTouchClassifier.isSliderTrigger(element.skinId)
 
     val borderColor = if (isDragging) NeonPalette.Cyan else NeonPalette.Cyan.copy(alpha = 0.5f)
     val borderWidth = if (isDragging) 1.5.dp else 1.dp
@@ -76,7 +81,7 @@ fun HudDockedInspector(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp),
         shape = RoundedCornerShape(14.dp),
-        color = Color(0xFF0F172A).copy(alpha = if (isDragging) 0.98f else 0.95f),
+        color = NeonPalette.SlateBg.copy(alpha = if (isDragging) 0.98f else 0.95f),
         border = androidx.compose.foundation.BorderStroke(borderWidth, borderColor),
         shadowElevation = shadowElevation
     ) {
@@ -179,18 +184,55 @@ fun HudDockedInspector(
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
+
+                        val padCurve = com.sanket.tools.nexpad.model.TouchpadCurve.fromId(transform.touchpadCurve)
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = if (padCurve == com.sanket.tools.nexpad.model.TouchpadCurve.LINEAR) NeonPalette.Cyan.copy(alpha = 0.18f) else NeonPalette.Purple.copy(alpha = 0.18f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (padCurve == com.sanket.tools.nexpad.model.TouchpadCurve.LINEAR) NeonPalette.Cyan.copy(alpha = 0.5f) else NeonPalette.Purple.copy(alpha = 0.5f))
+                        ) {
+                            Text(
+                                text = "Curve: ${padCurve.displayName}",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (padCurve == com.sanket.tools.nexpad.model.TouchpadCurve.LINEAR) NeonPalette.Cyan else NeonPalette.Purple,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    if (isJoystick) {
+                        val jsMode = com.sanket.tools.nexpad.model.JoystickMode.fromId(transform.joystickMode)
+                        val (modeBadgeText, modeBadgeColor) = when (jsMode) {
+                            com.sanket.tools.nexpad.model.JoystickMode.FULL -> "Mode: Full Screen" to NeonPalette.Purple
+                            com.sanket.tools.nexpad.model.JoystickMode.BOX -> "Mode: Box (${(transform.hitboxScale * 100).roundToInt()}%)" to NeonPalette.AmberHighlight
+                            com.sanket.tools.nexpad.model.JoystickMode.LOCKED -> "Mode: Locked" to NeonPalette.Cyan
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = modeBadgeColor.copy(alpha = 0.18f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, modeBadgeColor.copy(alpha = 0.5f))
+                        ) {
+                            Text(
+                                text = modeBadgeText,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = modeBadgeColor,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
                     }
 
                     if (isMissingAsset) {
                         Surface(
                             shape = RoundedCornerShape(4.dp),
-                            color = Color(0xFFE65100).copy(alpha = 0.2f),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE65100))
+                            color = NeonPalette.DeepOrange.copy(alpha = 0.2f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.DeepOrange)
                         ) {
                             Text(
                                 text = "⚠ Missing asset — using fallback",
                                 fontSize = 10.sp,
-                                color = Color(0xFFFFB703),
+                                color = NeonPalette.WarningAmber,
                                 fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
@@ -270,25 +312,25 @@ fun HudDockedInspector(
                     horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     IconButton(
-                        onClick = { onNudge(-1f / screenWidthPx, 0f) },
+                        onClick = { if (screenWidthPx > 0f) onNudge(-1f / screenWidthPx, 0f) },
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Nudge Left", tint = Color.White, modifier = Modifier.size(16.dp))
                     }
                     IconButton(
-                        onClick = { onNudge(0f, -1f / screenHeightPx) },
+                        onClick = { if (screenHeightPx > 0f) onNudge(0f, -1f / screenHeightPx) },
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(Icons.Rounded.ArrowUpward, contentDescription = "Nudge Up", tint = Color.White, modifier = Modifier.size(16.dp))
                     }
                     IconButton(
-                        onClick = { onNudge(0f, 1f / screenHeightPx) },
+                        onClick = { if (screenHeightPx > 0f) onNudge(0f, 1f / screenHeightPx) },
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(Icons.Rounded.ArrowDownward, contentDescription = "Nudge Down", tint = Color.White, modifier = Modifier.size(16.dp))
                     }
                     IconButton(
-                        onClick = { onNudge(1f / screenWidthPx, 0f) },
+                        onClick = { if (screenWidthPx > 0f) onNudge(1f / screenWidthPx, 0f) },
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = "Nudge Right", tint = Color.White, modifier = Modifier.size(16.dp))
@@ -304,7 +346,7 @@ fun HudDockedInspector(
                 ) {
                     Text("Scale: ${(transform.scale * 100).roundToInt()}%", fontSize = 11.sp, color = Color.White)
                     IconButton(
-                        onClick = { onScaleChange(transform.scale - 0.05f) },
+                        onClick = { onScaleChange((transform.scale - 0.05f).coerceIn(0.4f, 3.0f)) },
                         modifier = Modifier.size(28.dp)
                     ) {
                         Icon(Icons.Rounded.Remove, contentDescription = "Decrease Scale", tint = Color.White, modifier = Modifier.size(16.dp))
@@ -317,7 +359,7 @@ fun HudDockedInspector(
                         colors = SliderDefaults.colors(thumbColor = NeonPalette.Cyan, activeTrackColor = NeonPalette.Cyan)
                     )
                     IconButton(
-                        onClick = { onScaleChange(transform.scale + 0.05f) },
+                        onClick = { onScaleChange((transform.scale + 0.05f).coerceIn(0.4f, 3.0f)) },
                         modifier = Modifier.size(28.dp)
                     ) {
                         Icon(Icons.Rounded.Add, contentDescription = "Increase Scale", tint = Color.White, modifier = Modifier.size(16.dp))
@@ -383,6 +425,54 @@ fun HudDockedInspector(
                     }
                 }
 
+                // 3.5b. Touchpad Response Curve Controls (Linear vs Power Curve)
+                if (isTouchpad && onTouchpadCurveChange != null) {
+                    VerticalDivider(modifier = Modifier.height(28.dp), color = Color.White.copy(alpha = 0.1f))
+
+                    val activeCurve = com.sanket.tools.nexpad.model.TouchpadCurve.fromId(transform.touchpadCurve)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "Curve:",
+                            fontSize = 11.sp,
+                            color = Color.White.copy(alpha = 0.7f),
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        // Power Curve Button
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = if (activeCurve == com.sanket.tools.nexpad.model.TouchpadCurve.POWER) NeonPalette.Purple.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.06f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (activeCurve == com.sanket.tools.nexpad.model.TouchpadCurve.POWER) NeonPalette.Purple else Color.White.copy(alpha = 0.15f)),
+                            modifier = Modifier.clickable { onTouchpadCurveChange(com.sanket.tools.nexpad.model.TouchpadCurve.POWER.id) }
+                        ) {
+                            Text(
+                                text = "Power",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (activeCurve == com.sanket.tools.nexpad.model.TouchpadCurve.POWER) NeonPalette.Purple else Color.White.copy(alpha = 0.6f),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                        // Linear Curve Button
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = if (activeCurve == com.sanket.tools.nexpad.model.TouchpadCurve.LINEAR) NeonPalette.Cyan.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.06f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (activeCurve == com.sanket.tools.nexpad.model.TouchpadCurve.LINEAR) NeonPalette.Cyan else Color.White.copy(alpha = 0.15f)),
+                            modifier = Modifier.clickable { onTouchpadCurveChange(com.sanket.tools.nexpad.model.TouchpadCurve.LINEAR.id) }
+                        ) {
+                            Text(
+                                text = "Linear",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (activeCurve == com.sanket.tools.nexpad.model.TouchpadCurve.LINEAR) NeonPalette.Cyan else Color.White.copy(alpha = 0.6f),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+
                 // 3.6. Trigger Height & Direction Controls (EXCLUSIVELY for Analog Slider Trigger)
                 if (isSliderTrigger && onHeightScaleChange != null) {
                     VerticalDivider(modifier = Modifier.height(28.dp), color = Color.White.copy(alpha = 0.1f))
@@ -394,7 +484,7 @@ fun HudDockedInspector(
                         Text(
                             text = "Height: ${(transform.heightScale * 100).roundToInt()}%",
                             fontSize = 11.sp,
-                            color = Color(0xFFFFB13F),
+                            color = NeonPalette.AmberHighlight,
                             fontWeight = FontWeight.Bold
                         )
                         IconButton(
@@ -411,7 +501,7 @@ fun HudDockedInspector(
                             onValueChange = { onHeightScaleChange(it) },
                             valueRange = 0.6f..2.2f,
                             modifier = Modifier.width(90.dp),
-                            colors = SliderDefaults.colors(thumbColor = Color(0xFFFFB13F), activeTrackColor = Color(0xFFFFB13F))
+                            colors = SliderDefaults.colors(thumbColor = NeonPalette.AmberHighlight, activeTrackColor = NeonPalette.AmberHighlight)
                         )
                         IconButton(
                             onClick = {
@@ -428,11 +518,11 @@ fun HudDockedInspector(
                                 onClick = onToggleFlip,
                                 shape = RoundedCornerShape(6.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (transform.isFlipped) Color(0xFFFFB13F).copy(alpha = 0.25f) else Color.White.copy(alpha = 0.08f)
+                                    containerColor = if (transform.isFlipped) NeonPalette.AmberHighlight.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.08f)
                                 ),
                                 border = androidx.compose.foundation.BorderStroke(
                                     1.dp,
-                                    if (transform.isFlipped) Color(0xFFFFB13F) else Color.White.copy(alpha = 0.2f)
+                                    if (transform.isFlipped) NeonPalette.AmberHighlight else Color.White.copy(alpha = 0.2f)
                                 ),
                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                                 modifier = Modifier.height(28.dp)
@@ -441,8 +531,119 @@ fun HudDockedInspector(
                                     text = if (transform.isFlipped) "⇅ Bottom→Top" else "⇅ Top→Down",
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (transform.isFlipped) Color(0xFFFFB13F) else Color.White
+                                    color = if (transform.isFlipped) NeonPalette.AmberHighlight else Color.White
                                 )
+                            }
+                        }
+                    }
+                }
+
+                // 3.7. Joystick Control Mode (3 Modes: LOCKED, BOX, FULL)
+                if (isJoystick && (onJoystickModeChange != null || onToggleLock != null)) {
+                    VerticalDivider(modifier = Modifier.height(28.dp), color = Color.White.copy(alpha = 0.1f))
+
+                    val resolvedCurrentMode = com.sanket.tools.nexpad.model.JoystickMode.fromId(transform.joystickMode)
+                    val activeColor = when (resolvedCurrentMode) {
+                        com.sanket.tools.nexpad.model.JoystickMode.FULL -> NeonPalette.Purple
+                        com.sanket.tools.nexpad.model.JoystickMode.BOX -> NeonPalette.AmberHighlight
+                        com.sanket.tools.nexpad.model.JoystickMode.LOCKED -> NeonPalette.Cyan
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Stick Mode:",
+                            fontSize = 11.sp,
+                            color = activeColor,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        val modes = listOf(
+                            Triple(com.sanket.tools.nexpad.model.JoystickMode.LOCKED, com.sanket.tools.nexpad.model.JoystickMode.LOCKED.displayName, Icons.Rounded.Lock),
+                            Triple(com.sanket.tools.nexpad.model.JoystickMode.BOX, com.sanket.tools.nexpad.model.JoystickMode.BOX.displayName, Icons.Rounded.CropSquare),
+                            Triple(com.sanket.tools.nexpad.model.JoystickMode.FULL, com.sanket.tools.nexpad.model.JoystickMode.FULL.displayName, Icons.Rounded.Fullscreen)
+                        )
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            modes.forEach { (modeEntry, modeTitle, modeIcon) ->
+                                val isSelected = resolvedCurrentMode == modeEntry
+                                val buttonColor = when (modeEntry) {
+                                    com.sanket.tools.nexpad.model.JoystickMode.FULL -> NeonPalette.Purple
+                                    com.sanket.tools.nexpad.model.JoystickMode.BOX -> NeonPalette.AmberHighlight
+                                    com.sanket.tools.nexpad.model.JoystickMode.LOCKED -> NeonPalette.Cyan
+                                }
+
+                                Button(
+                                    onClick = {
+                                        onJoystickModeChange?.invoke(modeEntry.id)
+                                            ?: onToggleLock?.invoke()
+                                    },
+                                    shape = RoundedCornerShape(6.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (isSelected) buttonColor.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.06f)
+                                    ),
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.dp,
+                                        if (isSelected) buttonColor else Color.White.copy(alpha = 0.15f)
+                                    ),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                    modifier = Modifier.height(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = modeIcon,
+                                        contentDescription = modeTitle,
+                                        tint = if (isSelected) buttonColor else Color.White.copy(alpha = 0.6f),
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        text = modeTitle,
+                                        fontSize = 10.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isSelected) buttonColor else Color.White.copy(alpha = 0.8f)
+                                    )
+                                }
+                            }
+                        }
+
+                        // If BOX mode is active, provide Hitbox Size slider & buttons
+                        if (resolvedCurrentMode == com.sanket.tools.nexpad.model.JoystickMode.BOX && onHitboxScaleChange != null) {
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = "Hitbox: ${(transform.hitboxScale * 100).roundToInt()}%",
+                                fontSize = 11.sp,
+                                color = NeonPalette.AmberHighlight,
+                                fontWeight = FontWeight.Bold
+                            )
+                            IconButton(
+                                onClick = {
+                                    val newScale = ((transform.hitboxScale - 0.1f) * 10f).roundToInt() / 10f
+                                    onHitboxScaleChange(newScale.coerceIn(1.2f, 3.0f))
+                                },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(Icons.Rounded.Remove, contentDescription = "Decrease Hitbox", tint = Color.White, modifier = Modifier.size(16.dp))
+                            }
+                            Slider(
+                                value = transform.hitboxScale,
+                                onValueChange = { onHitboxScaleChange(it) },
+                                valueRange = 1.2f..3.0f,
+                                modifier = Modifier.width(80.dp),
+                                colors = SliderDefaults.colors(thumbColor = NeonPalette.AmberHighlight, activeTrackColor = NeonPalette.AmberHighlight)
+                            )
+                            IconButton(
+                                onClick = {
+                                    val newScale = ((transform.hitboxScale + 0.1f) * 10f).roundToInt() / 10f
+                                    onHitboxScaleChange(newScale.coerceIn(1.2f, 3.0f))
+                                },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(Icons.Rounded.Add, contentDescription = "Increase Hitbox", tint = Color.White, modifier = Modifier.size(16.dp))
                             }
                         }
                     }
@@ -463,11 +664,11 @@ fun HudDockedInspector(
                         onClick = onCycleSkin,
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = if (isMissingAsset) Color(0xFFFFB703) else Color.White
+                            contentColor = if (isMissingAsset) NeonPalette.WarningAmber else Color.White
                         ),
                         border = androidx.compose.foundation.BorderStroke(
                             1.dp,
-                            if (isMissingAsset) Color(0xFFFFB703) else NeonPalette.Purple.copy(alpha = 0.6f)
+                            if (isMissingAsset) NeonPalette.WarningAmber else NeonPalette.Purple.copy(alpha = 0.6f)
                         ),
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                         modifier = Modifier.height(30.dp)
@@ -475,7 +676,7 @@ fun HudDockedInspector(
                         Icon(
                             if (isMissingAsset) Icons.Rounded.Warning else Icons.Rounded.AutoAwesome,
                             contentDescription = null,
-                            tint = if (isMissingAsset) Color(0xFFFFB703) else NeonPalette.Purple,
+                            tint = if (isMissingAsset) NeonPalette.WarningAmber else NeonPalette.Purple,
                             modifier = Modifier.size(12.dp)
                         )
                         Spacer(Modifier.width(4.dp))
@@ -486,11 +687,11 @@ fun HudDockedInspector(
                         onClick = onOpenStudio,
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = if (isMissingAsset) Color(0xFFFFB703) else Color.White
+                            contentColor = if (isMissingAsset) NeonPalette.WarningAmber else Color.White
                         ),
                         border = androidx.compose.foundation.BorderStroke(
                             1.dp,
-                            if (isMissingAsset) Color(0xFFFFB703) else NeonPalette.Purple.copy(alpha = 0.6f)
+                            if (isMissingAsset) NeonPalette.WarningAmber else NeonPalette.Purple.copy(alpha = 0.6f)
                         ),
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                         modifier = Modifier.height(30.dp)
@@ -501,6 +702,39 @@ fun HudDockedInspector(
 
                         Text("Studio",fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
 
+                    }
+
+                    // Stick / Touchpad Mutual Exclusivity Quick-Switch
+                    val swapTargetLabel = when (element.controlKey.uppercase()) {
+                        ControlKey.LS.key -> "Switch to Touchpad (${ControlKey.LTP.key})"
+                        ControlKey.LTP.key -> "Switch to Stick (${ControlKey.LS.key})"
+                        ControlKey.RS.key -> "Switch to Touchpad (${ControlKey.RTP.key})"
+                        ControlKey.RTP.key -> "Switch to Stick (${ControlKey.RS.key})"
+                        else -> null
+                    }
+                    if (swapTargetLabel != null && onSwapStickTouchpad != null) {
+                        OutlinedButton(
+                            onClick = onSwapStickTouchpad,
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = NeonPalette.Cyan
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                NeonPalette.Cyan.copy(alpha = 0.6f)
+                            ),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            modifier = Modifier.height(30.dp)
+                        ) {
+                            Icon(
+                                Icons.Rounded.SwapHoriz,
+                                contentDescription = swapTargetLabel,
+                                tint = NeonPalette.Cyan,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(swapTargetLabel, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                        }
                     }
                 }
 

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * Graph-scoped ViewModel that carries the editing context between screens.
@@ -39,13 +40,17 @@ class NavigationViewModel : ViewModel() {
         currentAssetId: String?,
         originScreen: OriginScreen
     ) {
-        _editingContext.value = AppEditingContext(
-            profileName = profileName,
-            controlKey = controlKey,
-            currentAssetId = currentAssetId,
-            originScreen = originScreen,
-            pendingAssetResult = null
-        )
+        val trimmedProfile = profileName.trim()
+        val trimmedKey = controlKey.trim()
+        _editingContext.update {
+            AppEditingContext(
+                profileName = trimmedProfile,
+                controlKey = trimmedKey,
+                currentAssetId = currentAssetId?.trim(),
+                originScreen = originScreen,
+                pendingAssetResult = null
+            )
+        }
     }
 
     /**
@@ -55,19 +60,23 @@ class NavigationViewModel : ViewModel() {
      * this result.
      */
     fun commitAssetSelection(assetId: String) {
-        _editingContext.value = _editingContext.value?.copy(
-            pendingAssetResult = assetId
-        )
+        val trimmed = assetId.trim()
+        _editingContext.update { current ->
+            current?.copy(pendingAssetResult = trimmed)
+        }
     }
 
     /**
-     * Read and clear the pending asset result.
+     * Read and clear the pending asset result atomically.
      * Call this from the originating screen after applying the skin change.
      * Returns null if the user cancelled (Back without selecting).
      */
     fun consumeAssetResult(): String? {
-        val result = _editingContext.value?.pendingAssetResult
-        _editingContext.value = null
+        var result: String? = null
+        _editingContext.update { current ->
+            result = current?.pendingAssetResult
+            null
+        }
         return result
     }
 
@@ -76,7 +85,7 @@ class NavigationViewModel : ViewModel() {
      * Called when Button Studio pops with no selection.
      */
     fun cancelAssetSelection() {
-        _editingContext.value = null
+        _editingContext.update { null }
     }
 
     // ── Transient Gamepad Session (Industry ViewModel Approach) ───────────
@@ -93,13 +102,13 @@ class NavigationViewModel : ViewModel() {
      * Start a temporary gameplay session for [profileName].
      */
     fun startGamepadSession(profileName: String?) {
-        _sessionProfileName.value = profileName
+        _sessionProfileName.update { profileName?.trim() }
     }
 
     /**
      * Clear the session once the Gamepad screen is exited.
      */
     fun clearGamepadSession() {
-        _sessionProfileName.value = null
+        _sessionProfileName.update { null }
     }
 }

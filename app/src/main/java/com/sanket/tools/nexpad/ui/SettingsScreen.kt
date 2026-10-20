@@ -1,18 +1,79 @@
 package com.sanket.tools.nexpad.ui
 
-import android.content.SharedPreferences
-import androidx.compose.foundation.layout.*
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.DesktopWindows
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.SmartDisplay
+import androidx.compose.material.icons.rounded.Vibration
+import androidx.compose.material.icons.rounded.Lan
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.sanket.tools.nexpad.ui.AppNavigator
 import com.sanket.tools.nexpad.ui.components.common.NexpadTopAppBar
 import com.sanket.tools.nexpad.ui.components.effects.CyberGrid
 import com.sanket.tools.nexpad.ui.components.effects.ScanLine
@@ -21,31 +82,181 @@ import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.utils.HapticFeedbackHelper
 import com.sanket.tools.nexpad.utils.LayoutManager
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
+import com.sanket.tools.nexpad.model.DefaultProfileType
+import com.sanket.tools.nexpad.model.HapticStyle
+import com.sanket.tools.nexpad.model.RumbleMode
+import com.sanket.tools.nexpad.utils.NexpadPreferenceKeys
+import androidx.core.net.toUri
+
+const val PREF_DOUBLE_TAP_BACK_EXIT = NexpadPreferenceKeys.KEY_DOUBLE_TAP_BACK_EXIT
+const val NEXPAD_DESKTOP_GITHUB_URL = "https://github.com/parmarsanket/NEXPAD-Desktop"
+const val DEV_LINKEDIN_URL = "https://www.linkedin.com/in/sanket-parmar-571b00323"
+const val DEV_YOUTUBE_URL = "https://www.youtube.com/channel/UCwZYa5I4rn7I5LmCZmx9RdQ"
 
 @Composable
 fun SettingsScreen(
     navController: AppNavigator,
     layoutManager: LayoutManager,
-    viewModel: GamepadViewModel,
-    sharedPref: SharedPreferences
+    viewModel: GamepadViewModel
 ) {
+    val context = LocalContext.current
+    val nexpadPrefs = remember(context) {
+        com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context)
+    }
     val isConnected by viewModel.isConnected.collectAsState()
-    val diagnosticLog by viewModel.diagnosticLog.collectAsState()
     val profiles by layoutManager.profilesFlow.collectAsState()
     val activeProfileName by layoutManager.activeProfileNameFlow.collectAsState()
     val currentProfile = remember(profiles, activeProfileName) {
         profiles.find { it.name.equals(activeProfileName, ignoreCase = true) } ?: layoutManager.getActiveProfile()
     }
 
-    var ipAddress by remember { mutableStateOf(sharedPref.getString("LAST_IP", "") ?: "") }
+    var buttonHapticsEnabled by remember {
+        mutableStateOf(nexpadPrefs.isButtonHapticsEnabled)
+    }
+    var vibrateOfflineEnabled by remember {
+        mutableStateOf(nexpadPrefs.isHapticsOfflineEnabled)
+    }
+    var hapticClickStrength by remember {
+        mutableFloatStateOf(nexpadPrefs.hapticClickStrength)
+    }
+    var hapticStyle by remember {
+        mutableStateOf(nexpadPrefs.hapticStyle)
+    }
+    var rumbleMode by remember {
+        mutableStateOf(nexpadPrefs.rumbleMode)
+    }
+    var doubleTapBackExitEnabled by remember {
+        mutableStateOf(nexpadPrefs.isDoubleTapExitEnabled)
+    }
+    var joystickSlideGuardEnabled by remember {
+        mutableStateOf(nexpadPrefs.isJoystickSlideGuardEnabled)
+    }
+    var esportsMultitouchEnabled by remember {
+        mutableStateOf(nexpadPrefs.isEsportsMultitouchEnabled)
+    }
+    var communicationPort by remember {
+        mutableIntStateOf(nexpadPrefs.defaultCommunicationPort)
+    }
+
+    val hapticHelper = remember(context) { HapticFeedbackHelper(context) }
+
+    SettingsScreenContent(
+        isConnected = isConnected,
+        activeProfileName = currentProfile.name,
+        isRgbEnabled = currentProfile.isRgbEnabled,
+        buttonHapticsEnabled = buttonHapticsEnabled,
+        vibrateOfflineEnabled = vibrateOfflineEnabled,
+        hapticClickStrength = hapticClickStrength,
+        hapticStyle = hapticStyle,
+        rumbleMode = rumbleMode,
+        doubleTapBackExitEnabled = doubleTapBackExitEnabled,
+        joystickSlideGuardEnabled = joystickSlideGuardEnabled,
+        esportsMultitouchEnabled = esportsMultitouchEnabled,
+        communicationPort = communicationPort,
+        onCommunicationPortChange = { newPort ->
+            communicationPort = newPort
+            nexpadPrefs.defaultCommunicationPort = newPort
+            Toast.makeText(context, "Network port updated to $newPort", Toast.LENGTH_SHORT).show()
+        },
+        onRgbChange = {
+            layoutManager.saveProfile(currentProfile.copy(isRgbEnabled = it), activate = true)
+        },
+        onButtonHapticsChange = {
+            buttonHapticsEnabled = it
+            nexpadPrefs.isButtonHapticsEnabled = it
+            if (it) {
+                hapticHelper.performPreviewClick(style = hapticStyle, strength = hapticClickStrength)
+            }
+        },
+        onVibrateOfflineChange = {
+            vibrateOfflineEnabled = it
+            nexpadPrefs.isHapticsOfflineEnabled = it
+            hapticHelper.performPreviewClick(style = hapticStyle, strength = hapticClickStrength)
+        },
+        onHapticClickStrengthChange = {
+            hapticClickStrength = it
+        },
+        onHapticClickStrengthFinished = {
+            nexpadPrefs.hapticClickStrength = hapticClickStrength
+            hapticHelper.performPreviewClick(style = hapticStyle, strength = hapticClickStrength)
+        },
+        onHapticStyleChange = {
+            hapticStyle = it
+            nexpadPrefs.hapticStyle = it
+            hapticHelper.performPreviewClick(style = it, strength = hapticClickStrength)
+        },
+        onRumbleModeChange = {
+            rumbleMode = it
+            nexpadPrefs.rumbleMode = it
+        },
+        onDoubleTapBackExitChange = {
+            doubleTapBackExitEnabled = it
+            nexpadPrefs.isDoubleTapExitEnabled = it
+        },
+        onJoystickSlideGuardChange = {
+            joystickSlideGuardEnabled = it
+            nexpadPrefs.isJoystickSlideGuardEnabled = it
+        },
+        onEsportsMultitouchChange = {
+            esportsMultitouchEnabled = it
+            nexpadPrefs.isEsportsMultitouchEnabled = it
+        },
+        onOpenUrl = { url ->
+            if (url.isNullOrBlank()) {
+                Toast.makeText(context, "YouTube channel link coming soon!", Toast.LENGTH_SHORT).show()
+            } else {
+                try {
+                    val intent = Intent(Intent.ACTION_VIEW, url.toUri()).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                } catch (_: Exception) {
+                    Toast.makeText(context, "Could not open link", Toast.LENGTH_SHORT).show()
+                }
+            }
+        },
+        onBack = { navController.popBackStack() }
+    )
+}
+
+@Composable
+fun SettingsScreenContent(
+    isConnected: Boolean = false,
+    activeProfileName: String = DefaultProfileType.DEFAULT.profileName,
+    isRgbEnabled: Boolean = true,
+    buttonHapticsEnabled: Boolean = true,
+    vibrateOfflineEnabled: Boolean = false,
+    hapticClickStrength: Float = NexpadPreferenceKeys.DEFAULT_HAPTICS_CLICK_STRENGTH,
+    hapticStyle: HapticStyle = HapticStyle.DEFAULT,
+    rumbleMode: RumbleMode = RumbleMode.DEFAULT,
+    doubleTapBackExitEnabled: Boolean = true,
+    joystickSlideGuardEnabled: Boolean = true,
+    esportsMultitouchEnabled: Boolean = true,
+    communicationPort: Int = 9999,
+    onCommunicationPortChange: (Int) -> Unit = {},
+    onRgbChange: (Boolean) -> Unit = {},
+    onButtonHapticsChange: (Boolean) -> Unit = {},
+    onVibrateOfflineChange: (Boolean) -> Unit = {},
+    onHapticClickStrengthChange: (Float) -> Unit = {},
+    onHapticClickStrengthFinished: () -> Unit = {},
+    onHapticStyleChange: (HapticStyle) -> Unit = {},
+    onRumbleModeChange: (RumbleMode) -> Unit = {},
+    onDoubleTapBackExitChange: (Boolean) -> Unit = {},
+    onJoystickSlideGuardChange: (Boolean) -> Unit = {},
+    onEsportsMultitouchChange: (Boolean) -> Unit = {},
+    onOpenUrl: (String?) -> Unit = {},
+    onBack: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
     val scrollState = rememberScrollState()
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             NexpadTopAppBar(
-                title = "Settings",
-                subtitle = "App & Controller Configuration",
-                onBack = { navController.popBackStack() }
+                title = "SETTINGS",
+                subtitle = "Controller & Engine Configuration",
+                onBack = onBack
             )
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -65,330 +276,846 @@ fun SettingsScreen(
                 modifier = Modifier
                     .widthIn(max = layout.formMaxWidth)
                     .fillMaxWidth()
+                    .imePadding()
                     .padding(horizontal = layout.horizontalPadding, vertical = layout.verticalPadding)
-                    .verticalScroll(scrollState)
+                    .verticalScroll(scrollState),
+                verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
-                // PC Connection
-                Text("Manual PC Connection (Fallback)", color = Color.LightGray)
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                // ── Card 1: Visual & Controller Aesthetics ────────────────────────
+                SettingsSectionCard(
+                    accentColor = NeonPalette.Cyan,
+                    title = "VISUAL & CONTROLLER LIGHTING",
+                    subtitle = "RGB aura bloom & dynamic illumination",
+                    icon = Icons.Rounded.Palette
                 ) {
-                    OutlinedTextField(
-                        value = ipAddress,
-                        onValueChange = { ipAddress = it },
-                        label = { Text("IP Address", color = Color.Gray) },
-                        modifier = Modifier.weight(1f),
-                        enabled = !isConnected,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedBorderColor = NeonPalette.Green,
-                            unfocusedBorderColor = Color.DarkGray
-                        )
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Button(
-                        onClick = {
-                            if (isConnected) {
-                                viewModel.disconnect()
-                            } else {
-                                if (ipAddress.isNotBlank()) {
-                                    sharedPref.edit().putString("LAST_IP", ipAddress).apply()
-                                    viewModel.connect(ipAddress, 9999)
-                                }
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isConnected) NeonPalette.Red else Color(0xFF00C853)
-                        )
-                    ) {
-                        Text(if (isConnected) "Disconnect" else "Connect")
-                    }
-                }
-
-                if (diagnosticLog.isNotEmpty()) {
-                    Text("Network Diagnostics", color = Color.LightGray, fontSize = 13.sp, modifier = Modifier.padding(top = 12.dp))
-                    Text(
-                        diagnosticLog.takeLast(8).joinToString("\n"),
-                        color = Color(0xFF9E9E9E),
-                        fontSize = 10.sp,
-                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                    SettingsToggleRow(
+                        title = "RGB Aura & Glow",
+                        description = "Dynamic neon bloom and outer lighting radiating behind controller buttons, d-pads, and joysticks",
+                        checked = isRgbEnabled,
+                        onCheckedChange = onRgbChange,
+                        accentColor = NeonPalette.Cyan
                     )
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // Elite Customization Options
-                Text("Elite Controller Settings", color = Color.LightGray)
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                // ── Card 2: Touch Haptic Engine ───────────────────────────────────
+                SettingsSectionCard(
+                    accentColor = NeonPalette.Green,
+                    title = "TOUCH HAPTIC ENGINE",
+                    subtitle = "Linear Resonant Actuator (LRA) mechanical click emulation",
+                    icon = Icons.Rounded.Vibration
                 ) {
-                    Text("RGB Lighting", color = Color.White)
-                    Spacer(modifier = Modifier.weight(1f))
-                    Switch(
-                        checked = currentProfile.isRgbEnabled,
-                        onCheckedChange = {
-                            layoutManager.saveProfile(currentProfile.copy(isRgbEnabled = it), activate = true)
-                        },
-                        colors = SwitchDefaults.colors(checkedThumbColor = NeonPalette.Green, checkedTrackColor = Color.DarkGray)
-                    )
-                }
-
-                var rightStickCameraMode by remember {
-                    mutableStateOf(sharedPref.getBoolean("RIGHT_STICK_CAMERA_MODE", false))
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Right Stick Free-Look Camera Mode", color = Color.White)
-                        Text(
-                            "Relative swipe touchpad (Genshin / FPS style) instead of fixed anchor stick",
-                            color = Color.Gray,
-                            fontSize = 11.sp
-                        )
-                    }
-                    Switch(
-                        checked = rightStickCameraMode,
-                        onCheckedChange = {
-                            rightStickCameraMode = it
-                            sharedPref.edit().putBoolean("RIGHT_STICK_CAMERA_MODE", it).apply()
-                        },
-                        colors = SwitchDefaults.colors(checkedThumbColor = NeonPalette.Green, checkedTrackColor = Color.DarkGray)
-                    )
-                }
-
-                var cameraSensitivity by remember {
-                    mutableFloatStateOf(sharedPref.getFloat("CAMERA_SENSITIVITY", 1.0f))
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "Camera Look Sensitivity: ${String.format(java.util.Locale.US, "%.1fx", cameraSensitivity)}",
-                        color = Color.White
-                    )
-                }
-                Slider(
-                    value = cameraSensitivity,
-                    onValueChange = {
-                        cameraSensitivity = it
-                        sharedPref.edit().putFloat("CAMERA_SENSITIVITY", it).apply()
-                    },
-                    valueRange = 0.2f..3.0f,
-                    steps = 27,
-                    colors = SliderDefaults.colors(thumbColor = NeonPalette.Green, activeTrackColor = NeonPalette.Green)
-                )
-
-                // ── Controller Touch Haptics ──────────────────────────────────────────
-                val context = LocalContext.current
-                val hapticHelper = remember(context) { HapticFeedbackHelper(context) }
-
-                var buttonHapticsEnabled by remember {
-                    mutableStateOf(sharedPref.getBoolean(HapticFeedbackHelper.PREF_BUTTON_HAPTICS_ENABLED, true))
-                }
-                var vibrateOfflineEnabled by remember {
-                    mutableStateOf(sharedPref.getBoolean(HapticFeedbackHelper.PREF_HAPTICS_OFFLINE_ENABLED, false))
-                }
-                var hapticClickStrength by remember {
-                    mutableFloatStateOf(sharedPref.getFloat(HapticFeedbackHelper.PREF_HAPTICS_CLICK_STRENGTH, 0.1f))
-                }
-                var hapticStyle by remember {
-                    mutableStateOf(
-                        sharedPref.getString(HapticFeedbackHelper.PREF_HAPTICS_STYLE, HapticFeedbackHelper.STYLE_SOFT)
-                            ?: HapticFeedbackHelper.STYLE_SOFT
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                Text("Controller Touch Haptics", color = Color.LightGray)
-
-                // Master Toggle: Button Haptic Feedback
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Button Haptic Feedback", color = Color.White)
-                        Text(
-                            "Tactile mechanical click on controller button press",
-                            color = Color.Gray,
-                            fontSize = 11.sp
-                        )
-                    }
-                    Switch(
+                    SettingsToggleRow(
+                        title = "Tactile Button Haptics",
+                        description = "Instant tactile click impulse delivered on every physical controller button and trigger press",
                         checked = buttonHapticsEnabled,
-                        onCheckedChange = {
-                            buttonHapticsEnabled = it
-                            sharedPref.edit().putBoolean(HapticFeedbackHelper.PREF_BUTTON_HAPTICS_ENABLED, it).apply()
-                            if (it) {
-                                hapticHelper.performPreviewClick(style = hapticStyle, strength = hapticClickStrength)
-                            }
-                        },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = NeonPalette.Green,
-                            checkedTrackColor = Color(0xFF1E3A2B)
-                        )
+                        onCheckedChange = onButtonHapticsChange,
+                        accentColor = NeonPalette.Green
                     )
-                }
 
-                // Sub-Toggle: Vibrate While Disconnected
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            "Vibrate While Disconnected",
-                            color = if (buttonHapticsEnabled) Color.White else Color.Gray
-                        )
-                        Text(
-                            "Enable button clicks even when not connected to laptop",
-                            color = Color.Gray,
-                            fontSize = 11.sp
-                        )
-                    }
-                    Switch(
+                    SettingsToggleRow(
+                        title = "Offline Haptic Feedback",
+                        description = "Keep mechanical clicks active during offline sandbox and practice sessions",
                         checked = vibrateOfflineEnabled,
                         enabled = buttonHapticsEnabled,
-                        onCheckedChange = {
-                            vibrateOfflineEnabled = it
-                            sharedPref.edit().putBoolean(HapticFeedbackHelper.PREF_HAPTICS_OFFLINE_ENABLED, it).apply()
-                            hapticHelper.performPreviewClick(style = hapticStyle, strength = hapticClickStrength)
+                        onCheckedChange = onVibrateOfflineChange,
+                        accentColor = NeonPalette.Green
+                    )
+
+                    SettingsSliderRow(
+                        title = "Haptic Click Strength",
+                        description = "Linear Resonant Actuator impulse power on button contact",
+                        value = hapticClickStrength,
+                        valueText = "${(hapticClickStrength * 100).toInt()}%",
+                        valueRange = 0.1f..1.0f,
+                        enabled = buttonHapticsEnabled,
+                        onValueChange = onHapticClickStrengthChange,
+                        onValueChangeFinished = onHapticClickStrengthFinished,
+                        accentColor = NeonPalette.Green
+                    )
+
+                    SettingsSegmentedSelector(
+                        title = "Mechanical Click Profile",
+                        description = "Acoustic and tactile impulse waveform tuning",
+                        options = HapticStyle.entries.map {
+                            Triple(it, it.title, it.subtitle)
                         },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = NeonPalette.Green,
-                            checkedTrackColor = Color(0xFF1E3A2B)
+                        selectedValue = hapticStyle,
+                        onSelect = onHapticStyleChange,
+                        accentColor = NeonPalette.Green,
+                        enabled = buttonHapticsEnabled
+                    )
+                }
+
+                // ── Card 3: Controller Rumble Feedback ────────────────────────────
+                SettingsSectionCard(
+                    accentColor = NeonPalette.Magenta,
+                    title = "PC GAME RUMBLE FEEDBACK",
+                    subtitle = "Dual-motor force telemetry streaming from PC game engine",
+                    icon = Icons.Rounded.Vibration
+                ) {
+                    SettingsSegmentedSelector(
+                        title = "Stereo Mix Routing",
+                        description = "Blends Left (low frequency / heavy) and Right (high frequency / sharp) motor channels",
+                        options = RumbleMode.entries.map {
+                            Triple(it, it.title, it.subtitle)
+                        },
+                        selectedValue = rumbleMode,
+                        onSelect = onRumbleModeChange,
+                        accentColor = NeonPalette.Magenta
+                    )
+
+                    SettingsInfoRow(
+                        label = "In-Game Rumble Volume",
+                        value = "PC Game Controlled (0–255)",
+                        accentColor = NeonPalette.Magenta
+                    )
+                }
+
+                // ── Card 4: Gameplay Safety & Navigation ──────────────────────────
+                SettingsSectionCard(
+                    accentColor = NeonPalette.Amber,
+                    title = "GAMEPLAY & ACCIDENTAL EXIT PROTECTION",
+                    subtitle = "Accidental interruption, slide sweeps, and back navigation guards",
+                    icon = Icons.Rounded.Shield
+                ) {
+                    SettingsToggleRow(
+                        title = "Double-Tap Back to Exit",
+                        description = "Requires pressing the back gesture or button twice within 2 seconds to exit the gamepad, preventing accidental game quits while playing",
+                        checked = doubleTapBackExitEnabled,
+                        onCheckedChange = onDoubleTapBackExitChange,
+                        accentColor = NeonPalette.Amber
+                    )
+
+                    SettingsToggleRow(
+                        title = "Esports Multi-Touch",
+                        description = "ON: Enables rolling thumb sweeps (A->B) and fat-thumb multi-button chord presses. OFF: Reverts to classic discrete button taps only",
+                        checked = esportsMultitouchEnabled,
+                        onCheckedChange = onEsportsMultitouchChange,
+                        accentColor = NeonPalette.Amber
+                    )
+
+                    SettingsToggleRow(
+                        title = "Active Joystick Slide Guard",
+                        description = "Suppresses continuous slide/sweep button activation on the half of the screen where a joystick is actively in motion, preventing accidental button presses during intense movement or camera aiming",
+                        checked = joystickSlideGuardEnabled,
+                        onCheckedChange = onJoystickSlideGuardChange,
+                        accentColor = NeonPalette.Amber,
+                        enabled = esportsMultitouchEnabled
+                    )
+                }
+
+
+                // ── Card: Network Communication Port ──────────────────────────────
+                SettingsSectionCard(
+                    accentColor = NeonPalette.Cyan,
+                    title = "NETWORK COMMUNICATION PORT",
+                    subtitle = "Centralized connection port for Wi-Fi UDP streaming, Direct IP, and USB ADB",
+                    icon = Icons.Rounded.Lan
+                ) {
+                    SettingsPortCardContent(
+                        currentPort = communicationPort,
+                        onPortSave = onCommunicationPortChange
+                    )
+                }
+
+                // ── Card 5: Engine Architecture & Hardware ────────────────────────
+                SettingsSectionCard(
+                    accentColor = NeonPalette.Purple,
+                    title = "ENGINE ARCHITECTURE & HARDWARE",
+                    subtitle = "Ultra-low latency streaming protocol and pipeline",
+                    icon = Icons.Rounded.Shield
+                ) {
+                    SettingsInfoRow(label = "Active Layout Profile", value = activeProfileName, accentColor = NeonPalette.Cyan)
+                    SettingsInfoRow(label = "Input Polling Rate", value = "200 Hz Sync • Event-Driven", accentColor = NeonPalette.Green)
+                    SettingsInfoRow(label = "Transports Supported", value = "USB AOA 2.0 • ADB • Wi-Fi UDP", accentColor = NeonPalette.Purple)
+                    SettingsInfoRow(label = "Haptic Pipeline", value = "Direct LRA Primitive Composition", accentColor = NeonPalette.Amber)
+                    SettingsInfoRow(label = "Touch Surface", value = "Dedicated Multitouch Trackpad Engine", accentColor = NeonPalette.Magenta)
+                }
+
+                // ── Card 6: Developer & Links ─────────────────────────────────────
+                SettingsSectionCard(
+                    accentColor = NeonPalette.Cyan,
+                    title = "DEVELOPER & COMMUNITY",
+                    subtitle = "Project repository, creator links & official channels",
+                    icon = Icons.Rounded.Code
+                ) {
+                    // Developer Profile Banner
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(NeonPalette.PanelBgBottom.copy(alpha = 0.8f))
+                            .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    Brush.linearGradient(
+                                        listOf(
+                                            NeonPalette.TricolorSaffron.copy(alpha = 0.35f),
+                                            NeonPalette.Cyan.copy(alpha = 0.35f)
+                                        )
+                                    )
+                                )
+                                .border(
+                                    1.dp,
+                                    Brush.linearGradient(
+                                        listOf(NeonPalette.TricolorSaffron, NeonPalette.Cyan)
+                                    ),
+                                    RoundedCornerShape(12.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Person,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Sanket Parmar",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.5.sp
+                                )
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Independent Developer & Creator of NEXPAD",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = NeonPalette.SlateText,
+                                    fontSize = 11.5.sp
+                                )
+                            )
+                        }
+                    }
+
+                    // 1. NEXPAD Desktop Link
+                    SettingsLinkRow(
+                        title = "NEXPAD Desktop Server",
+                        subtitle = "github.com/parmarsanket/NEXPAD-Desktop",
+                        description = "Windows companion server, low-latency driver & input bridge",
+                        icon = Icons.Rounded.DesktopWindows,
+                        accentColor = NeonPalette.Cyan,
+                        badgeText = "GitHub",
+                        url = NEXPAD_DESKTOP_GITHUB_URL,
+                        onOpenUrl = onOpenUrl
+                    )
+
+                    // 2. Developer LinkedIn
+                    SettingsLinkRow(
+                        title = "Developer LinkedIn",
+                        subtitle = "linkedin.com/in/sanket-parmar-571b00323",
+                        description = "Connect with Sanket Parmar for professional networking",
+                        icon = Icons.AutoMirrored.Rounded.OpenInNew,
+                        accentColor = NeonPalette.Blue,
+                        badgeText = "LinkedIn",
+                        url = DEV_LINKEDIN_URL,
+                        onOpenUrl = onOpenUrl
+                    )
+
+                    // 3. YouTube Channel
+                    SettingsLinkRow(
+                        title = "YouTube Channel",
+                        subtitle = "youtube.com/channel/UCwZYa5I4rn7I5LmCZmx9RdQ",
+                        description = "Official setup walkthroughs & gameplay demos",
+                        icon = Icons.Rounded.SmartDisplay,
+                        accentColor = NeonPalette.Red,
+                        badgeText = "YouTube",
+                        url = DEV_YOUTUBE_URL,
+                        onOpenUrl = onOpenUrl
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsSectionCard(
+    accentColor: Color,
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = NeonPalette.CardSurface.copy(alpha = 0.85f),
+        border = BorderStroke(
+            1.dp,
+            Brush.horizontalGradient(
+                listOf(
+                    accentColor.copy(alpha = 0.45f),
+                    accentColor.copy(alpha = 0.15f),
+                    Color.White.copy(alpha = 0.04f)
+                )
+            )
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(accentColor.copy(alpha = 0.12f))
+                        .border(1.dp, accentColor.copy(alpha = 0.35f), RoundedCornerShape(10.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            color = Color.White,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.2.sp
+                        )
+                    )
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 11.5.sp
                         )
                     )
                 }
+            }
 
-                // Slider: Haptic Click Strength
-                Spacer(modifier = Modifier.height(14.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "Haptic Click Strength: ${(hapticClickStrength * 100).toInt()}%",
-                        color = if (buttonHapticsEnabled) Color.White else Color.Gray
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                accentColor.copy(alpha = 0.35f),
+                                accentColor.copy(alpha = 0.08f),
+                                Color.Transparent
+                            )
+                        )
                     )
-                }
-                Slider(
-                    value = hapticClickStrength,
-                    enabled = buttonHapticsEnabled,
-                    onValueChange = {
-                        hapticClickStrength = it
-                        sharedPref.edit().putFloat(HapticFeedbackHelper.PREF_HAPTICS_CLICK_STRENGTH, it).apply()
-                    },
-                    onValueChangeFinished = {
-                        hapticHelper.performPreviewClick(style = hapticStyle, strength = hapticClickStrength)
-                    },
-                    valueRange = 0.1f..1.0f,
-                    colors = SliderDefaults.colors(
-                        thumbColor = NeonPalette.Green,
-                        activeTrackColor = NeonPalette.Green
-                    )
+            )
+
+            content()
+        }
+    }
+}
+
+@Composable
+private fun SettingsToggleRow(
+    title: String,
+    description: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    accentColor: Color,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (enabled) Color.White else Color.Gray
                 )
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = if (enabled) NeonPalette.SlateText else NeonPalette.SlateDark,
+                    fontSize = 11.5.sp,
+                    lineHeight = 16.sp
+                )
+            )
+        }
+        Switch(
+            checked = checked,
+            enabled = enabled,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = accentColor,
+                checkedTrackColor = accentColor.copy(alpha = 0.25f),
+                checkedBorderColor = accentColor.copy(alpha = 0.6f),
+                uncheckedThumbColor = NeonPalette.SlateMuted,
+                uncheckedTrackColor = NeonPalette.SlateCard,
+                uncheckedBorderColor = NeonPalette.SlateBorder,
+                disabledCheckedThumbColor = accentColor.copy(alpha = 0.5f),
+                disabledCheckedTrackColor = accentColor.copy(alpha = 0.12f)
+            )
+        )
+    }
+}
 
-                // Buttons: Haptic Style
-                Spacer(modifier = Modifier.height(10.dp))
+@Composable
+private fun SettingsSliderRow(
+    title: String,
+    description: String,
+    value: Float,
+    valueText: String,
+    valueRange: ClosedFloatingPointRange<Float>,
+    onValueChange: (Float) -> Unit,
+    accentColor: Color,
+    steps: Int = 0,
+    enabled: Boolean = true,
+    onValueChangeFinished: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (enabled) Color.White else Color.Gray
+                )
+            )
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = if (enabled) accentColor.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.05f),
+                border = BorderStroke(
+                    1.dp,
+                    if (enabled) accentColor.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.1f)
+                )
+            ) {
                 Text(
-                    "Mechanical Click Profile",
-                    color = if (buttonHapticsEnabled) Color.LightGray else Color.Gray,
-                    fontSize = 12.sp
+                    text = valueText,
+                    color = if (enabled) accentColor else Color.Gray,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.5.sp,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    val styles = listOf(
-                        HapticFeedbackHelper.STYLE_CRISP to "Crisp Click",
-                        HapticFeedbackHelper.STYLE_HEAVY to "Heavy Snap",
-                        HapticFeedbackHelper.STYLE_SOFT to "Soft Tick"
-                    )
-                    styles.forEach { (id, label) ->
-                        val isSelected = hapticStyle == id
-                        Button(
-                            onClick = {
-                                hapticStyle = id
-                                sharedPref.edit().putString(HapticFeedbackHelper.PREF_HAPTICS_STYLE, id).apply()
-                                hapticHelper.performPreviewClick(style = id, strength = hapticClickStrength)
-                            },
-                            enabled = buttonHapticsEnabled,
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isSelected) NeonPalette.Green else Color.DarkGray,
-                                contentColor = if (isSelected) Color.Black else Color.White
-                            )
-                        ) {
-                            Text(label, fontSize = 11.5.sp)
-                        }
-                    }
-                }
+            }
+        }
+        if (description.isNotBlank()) {
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = if (enabled) NeonPalette.SlateText else NeonPalette.SlateDark,
+                    fontSize = 11.5.sp,
+                    lineHeight = 16.sp
+                )
+            )
+        }
+        Slider(
+            value = value,
+            onValueChange = onValueChange,
+            onValueChangeFinished = onValueChangeFinished,
+            valueRange = valueRange,
+            steps = steps,
+            enabled = enabled,
+            colors = SliderDefaults.colors(
+                thumbColor = accentColor,
+                activeTrackColor = accentColor,
+                inactiveTrackColor = NeonPalette.SlateCard,
+                disabledThumbColor = accentColor.copy(alpha = 0.4f),
+                disabledActiveTrackColor = accentColor.copy(alpha = 0.2f),
+                disabledInactiveTrackColor = NeonPalette.SlateCard.copy(alpha = 0.5f)
+            )
+        )
+    }
+}
 
-                // ── PC Game Rumble ────────────────────────────────────────────────────
-                var rumbleIntensity by remember { mutableFloatStateOf(sharedPref.getFloat("RUMBLE_INTENSITY", 1.0f)) }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                Text("PC Game Rumble (Motor Stream)", color = Color.LightGray)
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Rumble Intensity Master Volume: ${(rumbleIntensity * 100).toInt()}%", color = Color.White)
-                }
-                Slider(
-                    value = rumbleIntensity,
-                    onValueChange = {
-                        rumbleIntensity = it
-                        sharedPref.edit().putFloat("RUMBLE_INTENSITY", it).apply()
+@Composable
+private fun <T> SettingsSegmentedSelector(
+    title: String,
+    description: String,
+    options: List<Triple<T, String, String?>>,
+    selectedValue: T,
+    onSelect: (T) -> Unit,
+    accentColor: Color,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontWeight = FontWeight.SemiBold,
+                color = if (enabled) Color.White else Color.Gray
+            )
+        )
+        if (description.isNotBlank()) {
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = if (enabled) NeonPalette.SlateText else NeonPalette.SlateDark,
+                    fontSize = 11.5.sp
+                )
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            options.forEach { (value, label, sub) ->
+                val isSelected = value == selectedValue
+                Surface(
+                    onClick = { if (enabled) onSelect(value) },
+                    enabled = enabled,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    color = when {
+                        !enabled -> NeonPalette.DisabledBg
+                        isSelected -> accentColor.copy(alpha = 0.18f)
+                        else -> NeonPalette.SlateBg.copy(alpha = 0.6f)
                     },
-                    valueRange = 0f..1.0f,
-                    colors = SliderDefaults.colors(thumbColor = NeonPalette.Green, activeTrackColor = NeonPalette.Green)
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                var rumbleMode by remember { mutableStateOf(sharedPref.getString("RUMBLE_MODE", "min") ?: "min") }
-
-                Text("Rumble Mode (Stereo Mix)", color = Color.LightGray)
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    val modes = listOf(
-                        "smart" to "Smart",
-                        "max" to "Max",
-                        "avg" to "Avg",
-                        "min" to "Min"
+                    border = BorderStroke(
+                        width = if (isSelected) 1.5.dp else 1.dp,
+                        color = when {
+                            !enabled -> Color.White.copy(alpha = 0.05f)
+                            isSelected -> accentColor
+                            else -> Color.White.copy(alpha = 0.1f)
+                        }
                     )
-
-                    modes.forEach { (id, label) ->
-                        val isSelected = rumbleMode == id
-                        Button(
-                            onClick = {
-                                rumbleMode = id
-                                sharedPref.edit().putString("RUMBLE_MODE", id).apply()
-                            },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isSelected) NeonPalette.Green else Color.DarkGray,
-                                contentColor = if (isSelected) Color.Black else Color.White
+                ) {
+                    Column(
+                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = if (isSelected) FontWeight.Black else FontWeight.Medium,
+                                color = when {
+                                    !enabled -> Color.Gray
+                                    isSelected -> accentColor
+                                    else -> Color.White
+                                },
+                                fontSize = 12.sp,
+                                textAlign = TextAlign.Center
                             )
-                        ) {
-                            Text(label)
+                        )
+                        if (sub != null) {
+                            Text(
+                                text = sub,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = if (isSelected) accentColor.copy(alpha = 0.8f) else NeonPalette.SlateMuted,
+                                    fontSize = 9.5.sp,
+                                    textAlign = TextAlign.Center
+                                )
+                            )
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SettingsInfoRow(
+    label: String,
+    value: String,
+    accentColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(NeonPalette.CardRecessed.copy(alpha = 0.6f))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall.copy(
+                color = NeonPalette.SlateText,
+                fontSize = 11.5.sp
+            ),
+            modifier = Modifier.weight(1f, fill = false)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = value,
+            textAlign = TextAlign.End,
+            style = MaterialTheme.typography.bodySmall.copy(
+                color = accentColor,
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.5.sp
+            ),
+            modifier = Modifier.weight(1f, fill = false)
+        )
+    }
+}
+
+@Composable
+private fun SettingsLinkRow(
+    title: String,
+    subtitle: String,
+    description: String,
+    icon: ImageVector,
+    accentColor: Color,
+    badgeText: String,
+    url: String?,
+    onOpenUrl: (String?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = { onOpenUrl(url) },
+        shape = RoundedCornerShape(12.dp),
+        color = NeonPalette.PanelBgBottom.copy(alpha = 0.65f),
+        border = BorderStroke(1.dp, accentColor.copy(alpha = 0.22f)),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(accentColor.copy(alpha = 0.12f))
+                    .border(1.dp, accentColor.copy(alpha = 0.35f), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = accentColor.copy(alpha = 0.14f),
+                        border = BorderStroke(1.dp, accentColor.copy(alpha = 0.35f))
+                    ) {
+                        Text(
+                            text = badgeText,
+                            color = accentColor,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = accentColor.copy(alpha = 0.85f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                )
+                if (description.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(1.dp))
+                    Text(
+                        text = description,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = NeonPalette.SlateText,
+                            fontSize = 10.5.sp,
+                            lineHeight = 14.sp
+                        )
+                    )
+                }
+            }
+
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+                contentDescription = "Open Link",
+                tint = if (url.isNullOrBlank()) NeonPalette.SlateDisabled else accentColor,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}
+
+
+
+@Composable
+private fun SettingsPortCardContent(
+    currentPort: Int,
+    onPortSave: (Int) -> Unit
+) {
+    var portText by remember(currentPort) { mutableStateOf(currentPort.toString()) }
+    val parsedPort = portText.toIntOrNull()
+    val isValid = parsedPort != null && parsedPort in 1024..65535
+    val isChanged = isValid && parsedPort != currentPort
+    val isDefault = currentPort == 9999
+    val focusManager = LocalFocusManager.current
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text(
+            text = "Configures the default port for Wi-Fi UDP streaming, Direct IP, and ADB reverse bridge. Change this if port 9999 is blocked or occupied by another service on your PC.",
+            style = MaterialTheme.typography.bodySmall.copy(
+                color = NeonPalette.SlateText,
+                fontSize = 12.sp,
+                lineHeight = 16.sp
+            )
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            OutlinedTextField(
+                value = portText,
+                onValueChange = { input ->
+                    if (input.length <= 5 && input.all { it.isDigit() }) {
+                        portText = input
+                    }
+                },
+                label = { Text("Port Number", color = NeonPalette.SlateText) },
+                placeholder = { Text("9999", color = NeonPalette.SlateMuted) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        focusManager.clearFocus()
+                        if (isChanged && parsedPort != null) {
+                            onPortSave(parsedPort)
+                        }
+                    }
+                ),
+                isError = portText.isNotBlank() && !isValid,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.weight(1.3f),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = NeonPalette.Cyan,
+                    unfocusedBorderColor = NeonPalette.SlateBorder,
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedContainerColor = NeonPalette.FieldBg,
+                    unfocusedContainerColor = NeonPalette.FieldBg
+                )
+            )
+
+            Button(
+                onClick = {
+                    focusManager.clearFocus()
+                    if (parsedPort != null) {
+                        onPortSave(parsedPort)
+                    }
+                },
+                enabled = isChanged,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(52.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = NeonPalette.Cyan,
+                    contentColor = Color.Black,
+                    disabledContainerColor = NeonPalette.DisabledBg,
+                    disabledContentColor = NeonPalette.SlateDisabled
+                )
+            ) {
+                Text(
+                    text = "SAVE",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp
+                )
+            }
+
+            if (!isDefault || isChanged) {
+                OutlinedButton(
+                    onClick = {
+                        focusManager.clearFocus()
+                        portText = "9999"
+                        onPortSave(9999)
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, NeonPalette.Purple.copy(alpha = 0.6f)),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = NeonPalette.Purple
+                    )
+                ) {
+                    Text(
+                        text = "RESET",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 11.sp
+                    )
+                }
+            }
+        }
+
+        // Status indicator
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(if (isValid) NeonPalette.Green else Color.Red)
+            )
+            Text(
+                text = if (isValid) "Active System Port: $currentPort (Valid range: 1024 - 65535)" else "Invalid port! Must be between 1024 and 65535",
+                color = if (isValid) NeonPalette.Green else Color.Red,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium
+            )
         }
     }
 }

@@ -18,9 +18,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
+import com.sanket.tools.nexpad.model.shortDisplayName
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 /**
@@ -68,24 +70,27 @@ fun HudTopBar(
                 // Left: Back button + Profile Name
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.weight(1f, fill = false)
                 ) {
                     IconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
 
                     Column(
-                        modifier = Modifier.pointerInput(Unit) {
-                            detectVerticalDragGestures(
-                                onDragStart = { onDragStart() },
-                                onDragEnd = { onDragEnd() },
-                                onDragCancel = { onDragEnd() },
-                                onVerticalDrag = { change, dragAmount ->
-                                    change.consume()
-                                    onDragY(dragAmount)
-                                }
-                            )
-                        }
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .pointerInput(Unit) {
+                                detectVerticalDragGestures(
+                                    onDragStart = { onDragStart() },
+                                    onDragEnd = { onDragEnd() },
+                                    onDragCancel = { onDragEnd() },
+                                    onVerticalDrag = { change, dragAmount ->
+                                        change.consume()
+                                        onDragY(dragAmount)
+                                    }
+                                )
+                            }
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -93,7 +98,10 @@ fun HudTopBar(
                         ) {
                             Text(
                                 text = profileName,
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = Color.White)
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = Color.White),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
                             )
                             if (isDefault) {
                                 Surface(
@@ -106,6 +114,8 @@ fun HudTopBar(
                                         fontSize = 9.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = NeonPalette.Cyan,
+                                        maxLines = 1,
+                                        softWrap = false,
                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                     )
                                 }
@@ -115,7 +125,9 @@ fun HudTopBar(
                         Text(
                             text = if (hasUnsavedChanges) "• Unsaved changes" else "Touch button to customize",
                             fontSize = 10.sp,
-                            color = if (hasUnsavedChanges) Color(0xFFFFB703) else MaterialTheme.colorScheme.onSurfaceVariant
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = if (hasUnsavedChanges) NeonPalette.WarningAmber else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -168,7 +180,7 @@ fun HudTopBar(
                 // Right: Actions (Label Style, Buttons Palette, Save)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     var showStyleMenu by remember { mutableStateOf(false) }
                     Box {
@@ -182,10 +194,12 @@ fun HudTopBar(
                         ) {
                             val isXbox = labelStyle == ControllerLabelStyle.XBOX
                             Text(
-                                if (isXbox) "Xbox" else "PS",
+                                labelStyle.shortDisplayName,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (isXbox) NeonPalette.Green else NeonPalette.Cyan
+                                color = if (isXbox) NeonPalette.Green else NeonPalette.Cyan,
+                                maxLines = 1,
+                                softWrap = false
                             )
                             Icon(
                                 Icons.Rounded.ArrowDropDown,
@@ -232,24 +246,24 @@ fun HudTopBar(
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
                         border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                         modifier = Modifier.height(34.dp)
                     ) {
                         Icon(Icons.Rounded.AddCircleOutline, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Buttons", fontSize = 11.sp)
+                        Text("Buttons", fontSize = 11.sp, maxLines = 1, softWrap = false)
                     }
 
                     Button(
                         onClick = onSave,
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                         modifier = Modifier.height(34.dp)
                     ) {
                         Icon(Icons.Rounded.Save, contentDescription = null, tint = Color.Black, modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("SAVE", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("SAVE", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                     }
                 }
             }

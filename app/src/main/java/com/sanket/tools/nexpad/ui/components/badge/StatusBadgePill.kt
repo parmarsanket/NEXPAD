@@ -46,6 +46,12 @@ fun StatusBadgePill(
                 .clip(CircleShape)
                 .background(dotColor)
         )
-        Text(text, style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp), color = textColor)
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+            color = textColor,
+            maxLines = 1,
+            softWrap = false
+        )
     }
 }

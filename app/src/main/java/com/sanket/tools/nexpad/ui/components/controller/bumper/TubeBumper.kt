@@ -1,0 +1,565 @@
+package com.sanket.tools.nexpad.ui.components.controller.bumper
+
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.model.NexpadKeys
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
+import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
+import kotlin.math.roundToInt
+
+/**
+ * NEXPAD Bumper F — Tube (LB / RB / L1 / R1)
+ *
+ * Implements the Bumper F "Tube" design from HTML_TO_COMPOSE_CONTROLLER_BLUEPRINT.md:
+ * - Cylindrical glass tube pill contour (154dp × 54dp, corner radius 27dp).
+ * - Dynamic Liquid Surge: Illuminated neon liquid level surges horizontally across the tube
+ *   (0% to 100% width) on press with meniscus meniscus tip.
+ * - Laboratory Calibration Ticks: Repeating horizontal tick marks (1dp tick every 10dp)
+ *   running along the bottom of the tube.
+ * - Recessed Optical Window (74dp × 28dp): Centered pill aperture framing the glyph.
+ * - Emissive Neon Perimeter Ring & Optical Glass Lens.
+ * - Physical spring kinematics (stiffness 440, damping 0.68) with haptic vibration feedback.
+ */
+@Composable
+fun TubeBumper(
+    key: String,
+    isConnected: Boolean = true,
+    onVibrate: () -> Unit = {},
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
+    modifier: Modifier = Modifier,
+    displayLabel: String? = null,
+    isInteractive: Boolean = true
+) {
+    var isPressedLocally by remember { mutableStateOf(false) }
+    val isPressed = isPressedLocally || com.sanket.tools.nexpad.ui.components.controller.isControlPressed(key)
+    val isLeft = remember(key) {
+        val upper = key.uppercase()
+        upper == NexpadKeys.LB || upper == "L1" || upper == "LEFT"
+    }
+
+    val bumperShape = remember { RoundedCornerShape(27.dp) }
+
+    // Kinematic Physics Engine — Damped Harmonic Spring
+    val scaleAnimState = animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 1.0f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "tube_bumper_scale"
+    )
+    val pressOffsetYAnimState = animateFloatAsState(
+        targetValue = if (isPressed) 2.0f else 0f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "tube_bumper_offset"
+    )
+    val ringBloomAlphaState = animateFloatAsState(
+        targetValue = if (isPressed) 1.0f else 0.70f,
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
+        label = "tube_ring_bloom"
+    )
+    val rgbBloomAlphaState = animateFloatAsState(
+        targetValue = if (isPressed) 1.0f else 0.45f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "tube_bumper_rgb_bloom"
+    )
+
+    // Dynamic horizontal liquid surge animation: sweeps from 0% to 100% width on press
+    val liquidProgressState = animateFloatAsState(
+        targetValue = if (isPressed) 1.0f else 0f,
+        animationSpec = spring(dampingRatio = 0.72f, stiffness = 380f),
+        label = "tube_liquid_level"
+    )
+
+    // CSS: --glow: #4fa8ff (Electric Sky Blue) for LB, Hot Coral for RB
+    val neonColor = remember(isRgbEnabled, isLeft) {
+        if (isRgbEnabled) {
+            if (isLeft) NeonPalette.IceBlue else NeonPalette.CoralPink
+        } else {
+            NeonPalette.MetalLight
+        }
+    }
+
+    val currentOnVibrate by rememberUpdatedState(onVibrate)
+    val currentViewModel by rememberUpdatedState(viewModel)
+
+    // Convex dark dome background gradient
+    val baseDomeGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                NeonPalette.MetalBase,
+                NeonPalette.MetalShadow,
+                NeonPalette.PureBlack
+            ),
+            center = Offset(0.50f, 0.55f),
+            radius = 260f
+        )
+    }
+
+    val pressedDomeGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                NeonPalette.MetalMid,
+                NeonPalette.MetalAbyss,
+                NeonPalette.PureBlack
+            ),
+            center = Offset(0.50f, 0.58f),
+            radius = 260f
+        )
+    }
+
+    // Recessed 3D window background
+    val windowGradient = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                NeonPalette.MetalDeep,
+                NeonPalette.MetalDark
+            ),
+            center = Offset(0.50f, 0.60f),
+            radius = 120f
+        )
+    }
+
+    val stadiumBloomColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val tubeBloomColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+    val nodeBloomColors = remember(neonColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
+    val density = LocalDensity.current
+    val borderBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.50f),
+                Color.Black.copy(alpha = 0.80f)
+            )
+        )
+    }
+
+    val undercutShadowColorsNormal = remember {
+        listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f))
+    }
+    val undercutShadowColorsPressed = remember {
+        listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f))
+    }
+
+    val liquidBodyColors = remember(neonColor) {
+        listOf(
+            Color.White.copy(alpha = 0.32f),
+            Color.Transparent,
+            neonColor.copy(alpha = 0.75f)
+        )
+    }
+    val liquidTint = remember(neonColor) { neonColor.copy(alpha = 0.55f) }
+    val meniscusColor = remember(neonColor) { neonColor.copy(alpha = 0.90f) }
+    val meniscusSheenColor = remember { Color.White.copy(alpha = 0.45f) }
+    val tickColor = remember { Color.White.copy(alpha = 0.22f) }
+
+    val ringCornerRadius = remember(density) {
+        val r = with(density) { (27.dp - 2.5.dp).toPx() }
+        CornerRadius(r, r)
+    }
+    val strokeRingBloom = remember(density) {
+        Stroke(width = with(density) { 4.dp.toPx() })
+    }
+    val strokeRingCore = remember(density) {
+        Stroke(width = with(density) { 1.8.dp.toPx() })
+    }
+
+    val sheenColorsNormal = remember {
+        listOf(
+            Color.White.copy(alpha = 0.14f),
+            Color.White.copy(alpha = 0.04f),
+            Color.Transparent
+        )
+    }
+    val sheenColorsPressed = remember {
+        listOf(
+            Color.White.copy(alpha = 0.05f),
+            Color.White.copy(alpha = 0.01f),
+            Color.Transparent
+        )
+    }
+
+    val specLineColorsNormal = remember {
+        listOf(
+            Color.White.copy(alpha = 0.45f),
+            Color.White.copy(alpha = 0.16f)
+        )
+    }
+    val specLineColorsPressed = remember {
+        listOf(
+            Color.White.copy(alpha = 0.12f),
+            Color.White.copy(alpha = 0.04f)
+        )
+    }
+
+    val sheenCircleColors = remember {
+        listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)
+    }
+
+    val windowShape = remember { RoundedCornerShape(14.dp) }
+    val winTopShadowColors = remember {
+        listOf(Color.Black.copy(alpha = 0.90f), Color.Transparent)
+    }
+    val winVignetteBrush = remember {
+        Brush.radialGradient(
+            0.0f to Color.Transparent,
+            0.32f to Color.Transparent,
+            1.0f to Color.Black.copy(alpha = 0.82f)
+        )
+    }
+    val winBorderColor = remember { Color.White.copy(alpha = 0.05f) }
+
+    Box(
+        modifier = modifier
+            .size(154.dp, 54.dp)
+            .graphicsLayer {
+                // Root RenderNode isolation
+            }
+            .drawBehind {
+                if (isRgbEnabled) {
+                    val rgbBloomAlpha = rgbBloomAlphaState.value
+                    val liquidProgress = liquidProgressState.value
+                    val padX = 14.dp.toPx()
+                    val padY = 8.dp.toPx()
+
+                    // 1. Ambient stadium floor aura
+                    stadiumBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.50f else 0.30f))
+                    stadiumBloomColors[1] = neonColor.copy(alpha = rgbBloomAlpha * 0.12f)
+                    stadiumBloomColors[2] = Color.Transparent
+                    drawRoundRect(
+                        brush = Brush.radialGradient(
+                            colors = stadiumBloomColors,
+                            center = center,
+                            radius = size.width * 0.55f
+                        ),
+                        topLeft = Offset(-padX, -padY),
+                        size = Size(size.width + padX * 2f, size.height + padY * 2f),
+                        cornerRadius = CornerRadius(22.dp.toPx(), 22.dp.toPx())
+                    )
+
+                    // 2. Ionized Plasma Tube Column
+                    val tubeH = 18.dp.toPx()
+                    val tubeW = (size.width - 24.dp.toPx()) * (0.45f + 0.55f * liquidProgress)
+                    val tubeLeft = center.x - tubeW / 2f
+
+                    tubeBloomColors[0] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.80f else 0.40f))
+                    tubeBloomColors[1] = Color.White.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.95f else 0.55f))
+                    tubeBloomColors[2] = neonColor.copy(alpha = rgbBloomAlpha * (if (isPressed) 0.80f else 0.40f))
+                    drawRoundRect(
+                        brush = Brush.horizontalGradient(
+                            colors = tubeBloomColors,
+                            startX = tubeLeft,
+                            endX = tubeLeft + tubeW
+                        ),
+                        topLeft = Offset(tubeLeft, center.y - tubeH / 2f),
+                        size = Size(tubeW, tubeH),
+                        cornerRadius = CornerRadius(tubeH / 2f, tubeH / 2f)
+                    )
+
+                    // 3. Glowing Electrode Terminal Endcaps
+                    val nodeRadius = if (isPressed) 14.dp.toPx() else 8.dp.toPx()
+                    val nodeAlpha = rgbBloomAlpha * (if (isPressed) 0.90f else 0.50f)
+                    val leftNodeX = tubeLeft
+                    val rightNodeX = tubeLeft + tubeW
+
+                    nodeBloomColors[0] = Color.White.copy(alpha = nodeAlpha)
+                    nodeBloomColors[1] = neonColor.copy(alpha = nodeAlpha * 0.70f)
+                    nodeBloomColors[2] = Color.Transparent
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = nodeBloomColors,
+                            center = Offset(leftNodeX, center.y),
+                            radius = nodeRadius
+                        ),
+                        center = Offset(leftNodeX, center.y),
+                        radius = nodeRadius
+                    )
+
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = nodeBloomColors,
+                            center = Offset(rightNodeX, center.y),
+                            radius = nodeRadius
+                        ),
+                        center = Offset(rightNodeX, center.y),
+                        radius = nodeRadius
+                    )
+                }
+            }
+            // Outer drop shadow
+            .shadow(
+                elevation = if (isPressed) 1.dp else 4.dp,
+                shape = bumperShape,
+                ambientColor = if (isRgbEnabled) neonColor else Color.Black,
+                spotColor = if (isRgbEnabled) neonColor else Color.Black
+            )
+            .graphicsLayer {
+                scaleX = scaleAnimState.value
+                scaleY = scaleAnimState.value
+                translationY = pressOffsetYAnimState.value * density.density
+            }
+            .clip(bumperShape)
+            .background(if (isPressed) pressedDomeGradient else baseDomeGradient)
+            // 1px casing rim
+            .border(
+                width = 1.dp,
+                brush = borderBrush,
+                shape = bumperShape
+            )
+            .then(
+                if (isInteractive) {
+                    Modifier.pointerInput(key) {
+                        detectTapGestures(
+                            onPress = {
+                                currentOnVibrate()
+                                isPressedLocally = true
+                                currentViewModel?.updateButton(key, true)
+                                tryAwaitRelease()
+                                isPressedLocally = false
+                                currentViewModel?.updateButton(key, false)
+                            }
+                        )
+                    }
+                } else Modifier
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        // Multi-Layer Canvas: Undercut shadow, Liquid Level Surge, Calibration Ticks, Neon Ring, Lens
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+
+            // Inset bottom shadow
+            val insetH = h * 0.40f
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = if (isPressed) undercutShadowColorsPressed else undercutShadowColorsNormal,
+                    startY = h - insetH,
+                    endY = h
+                ),
+                topLeft = Offset(0f, h - insetH),
+                size = Size(w, insetH)
+            )
+
+            // Dynamic Liquid Surge (.tube-liq: sweeps left to right with glowing meniscus)
+            val liquidProgress = liquidProgressState.value
+            if (liquidProgress > 0.01f) {
+                val liqW = w * liquidProgress
+                // Liquid column body
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = liquidBodyColors,
+                        startY = 0f,
+                        endY = h
+                    ),
+                    topLeft = Offset(0f, 0f),
+                    size = Size(liqW, h)
+                )
+                drawRect(
+                    color = liquidTint,
+                    topLeft = Offset(0f, 0f),
+                    size = Size(liqW, h)
+                )
+
+                // Meniscus convex front bubble
+                val meniscusRadius = 14.dp.toPx()
+                drawCircle(
+                    color = meniscusColor,
+                    center = Offset(liqW, h / 2f),
+                    radius = meniscusRadius
+                )
+                drawCircle(
+                    color = meniscusSheenColor,
+                    center = Offset(liqW, h / 2f),
+                    radius = meniscusRadius * 0.60f
+                )
+            }
+
+            // Calibration ruler ticks along bottom (.tube-ticks: 1px tick every 10dp)
+            val tickYStart = h - 9.dp.toPx()
+            val tickYEnd = h - 3.dp.toPx()
+            val tickSpacing = 10.dp.toPx()
+            var curTickX = 16.dp.toPx()
+            while (curTickX < w - 16.dp.toPx()) {
+                drawLine(
+                    color = tickColor,
+                    start = Offset(curTickX, tickYStart),
+                    end = Offset(curTickX, tickYEnd),
+                    strokeWidth = 1.dp.toPx()
+                )
+                curTickX += tickSpacing
+            }
+
+            // Neon perimeter ring — inset 2.5dp with pill radii
+            val ringBloomAlpha = ringBloomAlphaState.value
+            val ringInset = 2.5.dp.toPx()
+            // Outer bloom pass
+            drawRoundRect(
+                color = neonColor.copy(alpha = (if (isPressed) 0.60f else 0.28f) * ringBloomAlpha),
+                topLeft = Offset(ringInset, ringInset),
+                size = Size(w - ringInset * 2f, h - ringInset * 2f),
+                cornerRadius = ringCornerRadius,
+                style = strokeRingBloom
+            )
+            // Core crisp stroke
+            drawRoundRect(
+                color = neonColor.copy(alpha = (if (isPressed) 1.0f else 0.70f) * ringBloomAlpha),
+                topLeft = Offset(ringInset, ringInset),
+                size = Size(w - ringInset * 2f, h - ringInset * 2f),
+                cornerRadius = ringCornerRadius,
+                style = strokeRingCore
+            )
+
+            // Top crescent specular sheen (optical glass lens)
+            val sheenH = h * 0.40f
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = if (isPressed) sheenColorsPressed else sheenColorsNormal,
+                    startY = 0f,
+                    endY = sheenH
+                ),
+                topLeft = Offset(ringInset, ringInset),
+                size = Size(w - ringInset * 2f, sheenH)
+            )
+
+            // Top edge specular line
+            val specStartX = w * 0.15f
+            val specEndX = w * 0.85f
+            drawLine(
+                brush = Brush.horizontalGradient(
+                    colors = if (isPressed) specLineColorsPressed else specLineColorsNormal,
+                    startX = specStartX,
+                    endX = specEndX
+                ),
+                start = Offset(specStartX, 4f),
+                end = Offset(specEndX, 4f),
+                strokeWidth = 1.5f
+            )
+
+            // Bottom-right specular sheen circle
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = sheenCircleColors,
+                    center = Offset(w * 0.70f, h * 0.78f),
+                    radius = w * 0.20f
+                ),
+                center = Offset(w * 0.70f, h * 0.78f),
+                radius = w * 0.20f
+            )
+        }
+
+        // Recessed Optical Window (.lx-window: 74dp × 28dp)
+        Box(
+            modifier = Modifier
+                .size(74.dp, 28.dp)
+                .shadow(
+                    elevation = 2.dp,
+                    shape = windowShape,
+                    ambientColor = Color.Black,
+                    spotColor = Color.Black
+                )
+                .clip(windowShape)
+                .background(windowGradient)
+                .border(
+                    width = 1.dp,
+                    color = winBorderColor,
+                    shape = windowShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val winW = size.width
+                val winH = size.height
+
+                // Inset top shadow
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = winTopShadowColors,
+                        startY = 0f,
+                        endY = 6.dp.toPx()
+                    ),
+                    size = Size(winW, 6.dp.toPx())
+                )
+
+                // Deep vignette
+                drawRect(
+                    brush = winVignetteBrush
+                )
+
+                // Bottom specular edge line
+                drawLine(
+                    color = winBorderColor,
+                    start = Offset(4.dp.toPx(), winH - 0.5f),
+                    end = Offset(winW - 4.dp.toPx(), winH - 0.5f),
+                    strokeWidth = 1.dp.toPx()
+                )
+            }
+
+            val labelText = displayLabel ?: key
+            Text(
+                text = labelText,
+                color = neonColor,
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                letterSpacing = 2.sp,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+/**
+ * Static preview delegate for TubeBumper with 0 touch overhead and 0 coroutines.
+ */
+@Composable
+fun StaticTubeBumper(
+    key: String = "LB",
+    isRgbEnabled: Boolean = true,
+    displayLabel: String? = null,
+    modifier: Modifier = Modifier
+) {
+    TubeBumper(
+        key = key,
+        isConnected = false,
+        onVibrate = {},
+        viewModel = null,
+        isRgbEnabled = isRgbEnabled,
+        modifier = modifier,
+        displayLabel = displayLabel,
+        isInteractive = false
+    )
+}

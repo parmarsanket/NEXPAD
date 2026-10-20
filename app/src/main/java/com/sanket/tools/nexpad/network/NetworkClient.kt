@@ -1,5 +1,6 @@
 package com.sanket.tools.nexpad.network
 
+import com.sanket.tools.nexpad.utils.AppLog as Log
 import com.sanket.tools.nexpad.model.GamepadFeedback
 import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpad.protocol.NexpadProtocol
@@ -10,96 +11,148 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.nio.channels.DatagramChannel
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.sync.Mutex
+import java.nio.channels.DatagramChannel
+import java.util.Arrays
+import java.util.Locale
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.abs
 
-// ... (imports remain)
+class NetworkClient(
+    private val context: android.content.Context? = null
+) : IGamepadConnection {
+    companion object {
+        private const val RTT_RING_SIZE = 128
+        private const val RTT_HISTORY_SIZE = 100
+    }
 
-class NetworkClient : IGamepadConnection {
     private var channel: DatagramChannel? = null
     private var serverAddress: InetSocketAddress? = null
     private var receiveJob: Job? = null
     private var connectionScope: kotlinx.coroutines.CoroutineScope? = null
-    private val disconnecting = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val disconnecting = AtomicBoolean(false)
     
     private val sendBuffer = ByteBuffer.allocateDirect(NexpadProtocol.INPUT_PACKET_SIZE)
     private val sendByteArray = ByteArray(NexpadProtocol.INPUT_PACKET_SIZE)
+    private val sendLock = Any()
     
-    // RTT Measurement (128-element Ring Buffer)
-    private val rttMap = java.util.concurrent.atomic.AtomicLongArray(128)
-    private var lastPacketReceivedTime = 0L
-    private val rttHistory = DoubleArray(100) { 0.0 }
+    // RTT Measurement (Zero-allocation Ring Buffer matching BaseStreamConnection)
+    private val sendTimestamps = LongArray(RTT_RING_SIZE)
+    private val sendSeqNumbers = IntArray(RTT_RING_SIZE) { -1 }
+    private val rttHistory = DoubleArray(RTT_HISTORY_SIZE)
     private var rttHistoryIndex = 0
     private var rttSamples = 0
     private var lastRttLogTime = 0L
-    
-    // SEQ_STAMP_MASK: pack low 16 bits of seq into low 16 bits of nanoTime slot.
-    // This lets us detect stale ring-buffer slots without a second array.
-    // Precision cost: ~0.066ms (65536 ns) — irrelevant for a ping display.
-    private val SEQ_STAMP_MASK = 0xFFFFL
+    private var lastPacketReceivedTime = 0L
+    private var packetsReceived = 0
+    private var packetsSent = 0
+    private var connectionStartTime = 0L
+
+    // Rumble & Sensor Mode State Deduplication (Avoids 100 coroutine/Flow emissions per second)
+    private var lastLeftMotor = -1
+    private var lastRightMotor = -1
+    private var lastRequestedSensorMode: Byte = -1
     
     override var onFeedbackReceived: ((GamepadFeedback) -> Unit)? = null
     override var onConnectionStateChanged: ((Boolean) -> Unit)? = null
     override var onStatusChanged: ((String) -> Unit)? = null
     override var onDiagnosticLog: ((String) -> Unit)? = null
-    override var onNetworkPerformanceUpdated: ((latencyMs: Long, jitterMs: Float, packetLoss: Float) -> Unit)? = null
+    override var onNetworkPerformanceUpdated: ((latencyMs: Float, jitterMs: Float, packetLoss: Float) -> Unit)? = null
     override var onServerNameResolved: ((String) -> Unit)? = null
 
     @Volatile
     private var isHandshakeComplete = false
 
-    var benchmarkStartTimeMs: Long = 0L
-    private var firstPingLogged: Boolean = false
-
     override suspend fun connect(address: String, port: Int) {
-        if (benchmarkStartTimeMs == 0L) {
-            benchmarkStartTimeMs = android.os.SystemClock.elapsedRealtime()
-        }
-        firstPingLogged = false
+        rttSamples = 0
+        rttHistoryIndex = 0
+        lastLeftMotor = -1
+        lastRightMotor = -1
+        lastRequestedSensorMode = -1
+        packetsSent = 0
+        packetsReceived = 0
+        connectionStartTime = System.currentTimeMillis()
+        lastPacketReceivedTime = System.currentTimeMillis()
+        Arrays.fill(sendSeqNumbers, -1)
         disconnecting.set(false)
+
         // Clean up previous connection if any
         channel?.close()
         receiveJob?.cancel()
         connectionScope?.cancel()
 
+        var connected = false
         withContext(Dispatchers.IO) {
             try {
                 serverAddress = InetSocketAddress(address, port)
+                val isUsbTethering = NetworkInterfaceHelper.isUsbTetheringAddress(address)
+                val matchingLocalIp = NetworkInterfaceHelper.findMatchingLocalAddress(address)
                 channel = DatagramChannel.open().apply {
                     configureBlocking(true)
                     // 0xB8 = (46 << 2) = DSCP EF (Expedited Forwarding) -> maps to WMM AC_VO (Voice) Queue
-                    setOption(java.net.StandardSocketOptions.IP_TOS, 0xB8)
-                    socket().bind(InetSocketAddress(0)) // Bind to any local port
+                    try {
+                        setOption(java.net.StandardSocketOptions.IP_TOS, 0xB8)
+                    } catch (_: Exception) {}
+                    socket().sendBufferSize = 65536
+                    socket().receiveBufferSize = 65536
+                    // If connecting via Wi-Fi (not USB Tethering), bind socket to the Wi-Fi physical radio
+                    if (!isUsbTethering && context != null) {
+                        val wifiNetwork = NetworkInterfaceHelper.findWifiNetwork(context)
+                        if (wifiNetwork != null) {
+                            try {
+                                wifiNetwork.bindSocket(socket())
+                                Log.d("NEXPAD", "Bound UDP client socket to Wi-Fi Network")
+                            } catch (e: Exception) {
+                                Log.w("NEXPAD", "Could not bind client socket to Wi-Fi: ${e.message}")
+                            }
+                        }
+                    }
+
+                    // Explicitly bind to matching subnet local IP (wlan0 vs rndis0) to prevent kernel multi-homed routing confusion
+                    if (matchingLocalIp != null) {
+                        socket().bind(InetSocketAddress(matchingLocalIp, 0))
+                        Log.d("NEXPAD", "Bound UDP socket to local interface IP: ${matchingLocalIp.hostAddress}")
+                    } else {
+                        socket().bind(InetSocketAddress(0)) // Bind to any local port
+                    }
                     connect(serverAddress) // Restrict UDP channel to this server to fix NAT/Firewall drops
                 }
                 
-                // Do NOT fire onConnectionStateChanged(true) here.
-                // The socket is open but the handshake has not completed yet.
-                // Locks (WakeLock, WifiLock) are acquired only on handshake success below.
-                android.util.Log.d("NEXPAD", "📡 Connecting to UDP Server at $address:$port...")
+                Log.d("NEXPAD", "📡 Connecting to UDP Server at $address:$port...")
                 onStatusChanged?.invoke("Connecting to $address:$port...")
                 isHandshakeComplete = false
+                connected = true
             } catch (e: Exception) {
+                try { channel?.close() } catch (_: Exception) {}
+                channel = null
                 onConnectionStateChanged?.invoke(false)
                 onStatusChanged?.invoke("Connection failed: ${e.message}")
-                android.util.Log.e("NEXPAD", "❌ Connection failed: ${e.message}")
+                Log.e("NEXPAD", "❌ Connection failed: ${e.message}")
                 return@withContext
             }
         }
+
+        if (!connected || channel == null || channel?.isOpen != true) {
+            return
+        }
         
         val myChannel = channel
-        connectionScope = kotlinx.coroutines.CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        val scope = kotlinx.coroutines.CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        connectionScope = scope
         
-        // Watchdog Coroutine to detect PC disconnection
-        connectionScope!!.launch {
+        // Watchdog Coroutine to detect true PC disconnection (5s timeout, resilient to Wi-Fi jitter)
+        scope.launch {
             while (isActive) {
                 kotlinx.coroutines.delay(1000)
                 if (isHandshakeComplete) {
-                    if (System.currentTimeMillis() - lastPacketReceivedTime > 2000) {
-                        android.util.Log.w("NEXPAD", "⏳ Connection Timeout! PC stopped responding.")
+                    val timeSince = System.currentTimeMillis() - lastPacketReceivedTime
+                    if (timeSince in 2501..3500) {
+                        Log.w("NEXPAD", "⚠️ [UDP CLIENT] Wi-Fi Warning: No packet from PC for ${timeSince}ms (timeout limit 5000ms). Sent: $packetsSent, Recv: $packetsReceived")
+                    }
+                    if (timeSince > 5000) {
+                        val durationSec = (System.currentTimeMillis() - connectionStartTime) / 1000
+                        Log.w("NEXPAD", "⏳ [UDP CLIENT] Connection Timeout! PC stopped responding for ${timeSince}ms. Active duration: ${durationSec}s | Sent: $packetsSent | Recv: $packetsReceived | Channel open: ${myChannel?.isOpen}")
                         onStatusChanged?.invoke("Connection Lost")
                         disconnect()
                         break
@@ -108,15 +161,15 @@ class NetworkClient : IGamepadConnection {
             }
         }
         
-        connectionScope!!.launch {
+        // Handshake Coroutine
+        scope.launch {
             val deviceName = android.os.Build.MODEL
             val nameBytes = deviceName.toByteArray(Charsets.UTF_8)
             val safeLength = nameBytes.size.coerceAtMost(255)
             
-            // Check if target address belongs to an active USB tethering interface (rndis0/usb0/ncm0)
             val isUsbTethering = NetworkInterfaceHelper.isUsbTetheringAddress(address)
             val connectionType: Byte = if (isUsbTethering) 2 else 1
-            android.util.Log.d("NEXPAD", "Handshake target $address -> connectionType=$connectionType (isUsbTethering=$isUsbTethering)")
+            Log.d("NEXPAD", "Handshake target $address -> connectionType=$connectionType (isUsbTethering=$isUsbTethering)")
             
             val handshakeBuffer = ByteBuffer.allocateDirect(3 + safeLength)
             handshakeBuffer.put(NexpadProtocol.PACKET_TYPE_CONNECT)
@@ -126,35 +179,28 @@ class NetworkClient : IGamepadConnection {
             handshakeBuffer.flip()
             
             var handshakeAttempts = 0
-            android.util.Log.d("NEXPAD", "⏱️ [BENCHMARK] Step 1: Handshake loop started at t=${android.os.SystemClock.elapsedRealtime() - benchmarkStartTimeMs}ms with serverAddress=$serverAddress")
             while (isActive && !isHandshakeComplete) {
                 if (handshakeAttempts >= 30) {
-                    val tTimeout = android.os.SystemClock.elapsedRealtime() - benchmarkStartTimeMs
-                    android.util.Log.w("NEXPAD", "⏱️ [BENCHMARK] Handshake loop TIMED OUT after ${tTimeout}ms ($handshakeAttempts attempts)! isHandshakeComplete=$isHandshakeComplete")
-                    onConnectionStateChanged?.invoke(false) // triggers releaseWifiLock() via callback
+                    onConnectionStateChanged?.invoke(false)
                     onStatusChanged?.invoke("Connection Timeout")
+                    disconnect()
                     return@launch
                 }
                 try {
                     handshakeBuffer.rewind()
-                    val bytesSent = myChannel?.send(handshakeBuffer, serverAddress)
+                    myChannel?.send(handshakeBuffer, serverAddress)
                     handshakeAttempts++
-                    if (handshakeAttempts == 1 || handshakeAttempts % 5 == 0) {
-                        android.util.Log.d("NEXPAD", "⏱️ [BENCHMARK] Handshake attempt #$handshakeAttempts sent ($bytesSent bytes) at t=${android.os.SystemClock.elapsedRealtime() - benchmarkStartTimeMs}ms")
-                    }
                 } catch (e: Exception) {
-                    android.util.Log.e("NEXPAD", "Handshake attempt #$handshakeAttempts FAILED with exception: ${e.message}", e)
+                    Log.e("NEXPAD", "Handshake attempt #$handshakeAttempts error: ${e.message}", e)
                 }
                 
                 kotlinx.coroutines.delay(100)
             }
-            android.util.Log.d("NEXPAD", "Exited handshake loop. isHandshakeComplete=$isHandshakeComplete, attempts=$handshakeAttempts")
         }
         
-        // Launch receive job in a separate scope so connect() can return immediately
-        receiveJob = connectionScope!!.launch {
+        // Receive Job
+        receiveJob = scope.launch {
             val receiveBuffer = ByteBuffer.allocateDirect(1024)
-            android.util.Log.d("NEXPAD", "receiveJob started. Waiting for packets at t=${android.os.SystemClock.elapsedRealtime() - benchmarkStartTimeMs}ms...")
             
             while (isActive) {
                 try {
@@ -163,17 +209,21 @@ class NetworkClient : IGamepadConnection {
                     
                     if (senderAddress != null || receiveBuffer.position() > 0) {
                         lastPacketReceivedTime = System.currentTimeMillis()
+                        packetsReceived++
                         receiveBuffer.flip()
                         val bytes = ByteArray(receiveBuffer.remaining())
                         receiveBuffer.get(bytes)
                         
-                        val firstByte = if (bytes.isNotEmpty()) bytes[0] else -1
-                        
+                        if (packetsReceived == 1) {
+                            Log.d("NEXPAD", "📡 [UDP CLIENT] First packet received from PC! Size: ${bytes.size} bytes | First byte: ${bytes.getOrNull(0)}")
+                        } else if (packetsReceived % 120 == 0) {
+                            Log.d("NEXPAD", "📡 [UDP CLIENT] Packets received: $packetsReceived | Sent: $packetsSent | Last RTT samples: $rttSamples")
+                        }
+
                         // Check for Handshake Reply
                         if (bytes.isNotEmpty() && bytes[0] == NexpadProtocol.PACKET_TYPE_CONNECTED) {
                             if (!isHandshakeComplete) {
                                 isHandshakeComplete = true
-                                val tConnected = android.os.SystemClock.elapsedRealtime() - benchmarkStartTimeMs
                                 var resolvedName: String? = null
                                 if (bytes.size >= 2) {
                                     val nameLen = bytes[1].toInt() and 0xFF
@@ -181,104 +231,107 @@ class NetworkClient : IGamepadConnection {
                                         resolvedName = String(bytes, 2, nameLen, Charsets.UTF_8).trim()
                                     }
                                 }
+                                Log.d("NEXPAD", "🤝 [UDP CLIENT] Handshake complete! Connected to PC: ${resolvedName ?: serverAddress?.hostString}")
                                 if (!resolvedName.isNullOrBlank()) {
                                     onServerNameResolved?.invoke(resolvedName)
                                 }
                                 onConnectionStateChanged?.invoke(true)
                                 onStatusChanged?.invoke("Connected to ${resolvedName ?: serverAddress?.hostString}")
-                                android.util.Log.d("NEXPAD", "⏱️ [BENCHMARK] Step 2: ACTUAL CONNECTED! Handshake completed in ${tConnected}ms from button click! Server: $resolvedName")
                             }
                             continue
                         }
                         
-                        // Attempt binary decode first (10 bytes for feedback)
+                        // Feedback & RTT Echo Decode
                         val feedbackPair = NexpadProtocol.decodeFeedback(bytes)
-                        
                         if (feedbackPair != null) {
                             val feedback = feedbackPair.first
                             val echoSeq = feedbackPair.second
                             
-                            // Calculate RTT
-                            val idx = echoSeq % 128
-                            val packed = rttMap.get(idx)
-                            if (packed != 0L) {
-                                val ownerStamp = packed and SEQ_STAMP_MASK
-                                if (ownerStamp == (echoSeq.toLong() and SEQ_STAMP_MASK)) {
-                                    val sentTimeNanos = packed and SEQ_STAMP_MASK.inv()
-                                    val rttMs = (System.nanoTime() - sentTimeNanos) / 1_000_000.0
-                                    rttMap.set(idx, 0L) // Clear to prevent stale matching
-                                    
-                                    // Rolling min/max/avg
-                                    rttHistory[rttHistoryIndex] = rttMs
-                                    rttHistoryIndex = (rttHistoryIndex + 1) % 100
-                                    if (rttSamples < 100) rttSamples++
-                                    
-                                    val now = System.currentTimeMillis()
-                                    if (rttSamples == 1 || (now - lastRttLogTime > 1000)) {
-                                        lastRttLogTime = now
-                                        
-                                        var minRtt = Double.MAX_VALUE
-                                        var maxRtt = Double.MIN_VALUE
-                                        var sumRtt = 0.0
-                                        var sumConsecutiveDelta = 0.0
-                                        for (i in 0 until rttSamples) {
-                                            val v = rttHistory[i]
-                                            if (v < minRtt) minRtt = v
-                                            if (v > maxRtt) maxRtt = v
-                                            sumRtt += v
-                                            if (i > 0) {
-                                                sumConsecutiveDelta += kotlin.math.abs(v - rttHistory[i - 1])
-                                            }
-                                        }
-                                        val avgRtt = sumRtt / rttSamples
-                                        val jitterMs = if (rttSamples > 1) (sumConsecutiveDelta / (rttSamples - 1)) else 0.0
-                                        val rttMsg = String.format("min %.1fms / avg %.1fms / max %.1fms", minRtt, avgRtt, maxRtt)
-                                        val logMsg = "📡 RTT: $rttMsg"
-                                        onDiagnosticLog?.invoke(logMsg)
-                                        
-                                        val lossPctFloat = feedback.packetLossPct / 255f
-                                        onNetworkPerformanceUpdated?.invoke(avgRtt.toLong(), jitterMs.toFloat(), lossPctFloat)
-                                        
-                                        if (!firstPingLogged) {
-                                            firstPingLogged = true
-                                            val tFirstPing = android.os.SystemClock.elapsedRealtime() - benchmarkStartTimeMs
-                                            val inputLag = ((avgRtt + 1) / 2).toLong().coerceAtLeast(1L)
-                                            android.util.Log.d("NEXPAD", "⏱️ [BENCHMARK] Step 3: FIRST PING & LATENCY DATA RECEIVED! RTT: ${avgRtt.toLong()}ms | Input Lag: ${inputLag}ms | Jitter: ±${String.format("%.1f", jitterMs)}ms | Total elapsed from button click: ${tFirstPing}ms")
-                                        } else {
-                                            android.util.Log.d("NEXPAD", logMsg)
-                                        }
-                                    }
-                                }
+                            // Only emit feedback if motor speeds or requested sensor mode actually changed
+                            if (feedback.leftMotorSpeed != lastLeftMotor ||
+                                feedback.rightMotorSpeed != lastRightMotor ||
+                                feedback.requestedSensorMode != lastRequestedSensorMode) {
+                                lastLeftMotor = feedback.leftMotorSpeed
+                                lastRightMotor = feedback.rightMotorSpeed
+                                lastRequestedSensorMode = feedback.requestedSensorMode
+                                onFeedbackReceived?.invoke(feedback)
                             }
                             
-                            onFeedbackReceived?.invoke(feedback)
+                            // Match RTT echo sequence number
+                            val slot = echoSeq and (RTT_RING_SIZE - 1)
+                            val expectedSeq = sendSeqNumbers[slot]
+                            if (expectedSeq == echoSeq) {
+                                val sentTimeNanos = sendTimestamps[slot]
+                                val rttNanos = System.nanoTime() - sentTimeNanos
+                                val rttMs = rttNanos / 1_000_000.0
+                                sendSeqNumbers[slot] = -1
+                                
+                                recordRttSample(rttMs, feedback.packetLossPct)
+                            }
+                        } else if (bytes.isNotEmpty() && packetsReceived % 60 == 0) {
+                            Log.w("NEXPAD", "⚠️ [UDP CLIENT] Received non-feedback packet (${bytes.size} bytes, type: 0x${bytes[0].toString(16)})")
                         }
                     }
                 } catch (e: java.nio.channels.AsynchronousCloseException) {
+                    Log.d("NEXPAD", "ℹ️ [UDP CLIENT] Receive channel closed asynchronously")
                     break // Normal closure
                 } catch (e: java.nio.channels.ClosedChannelException) {
+                    Log.d("NEXPAD", "ℹ️ [UDP CLIENT] Receive channel closed")
                     break // Normal closure
                 } catch (e: java.io.IOException) {
                     if (isActive) {
-                        e.printStackTrace()
+                        Log.e("NEXPAD", "❌ [UDP CLIENT] Receive IOException: ${e.javaClass.simpleName} - ${e.message}", e)
                         if (channel === myChannel) {
                             disconnect()
                         }
                     }
                     break
                 } catch (e: Exception) {
-                    if (isActive) e.printStackTrace()
+                    if (isActive) {
+                        Log.e("NEXPAD", "❌ [UDP CLIENT] Receive unexpected exception: ${e.javaClass.simpleName} - ${e.message}", e)
+                    }
                 }
             }
         }
     }
 
-    private var packetsSent = 0
-    private val sendMutex = Mutex()
-    
-    // DEBUG: Chaos Monkey - Set to true to artificially drop and scramble UDP packets for testing.
-    private val ENABLE_CHAOS_MONKEY = false
-    
+    private fun recordRttSample(rttMs: Double, packetLossByte: Int) {
+        rttHistory[rttHistoryIndex] = rttMs
+        rttHistoryIndex = (rttHistoryIndex + 1) % RTT_HISTORY_SIZE
+        if (rttSamples < RTT_HISTORY_SIZE) rttSamples++
+
+        val now = System.currentTimeMillis()
+        if (rttSamples > 0 && (now - lastRttLogTime > 1000)) {
+            lastRttLogTime = now
+
+            var sumRtt = 0.0
+            var sumConsecutiveDelta = 0.0
+            val count = rttSamples
+
+            for (i in 0 until count) {
+                val v = rttHistory[i]
+                sumRtt += v
+                if (i > 0) {
+                    sumConsecutiveDelta += abs(v - rttHistory[i - 1])
+                }
+            }
+
+            val avgRtt = sumRtt / count
+            val jitterMs = if (count > 1) (sumConsecutiveDelta / (count - 1)) else 0.0
+            val lossPctFloat = (packetLossByte and 0xFF) / 255f
+
+            val sorted = rttHistory.copyOf(count).apply { Arrays.sort(this) }
+            val p50 = sorted[count / 2]
+            val p95 = sorted[(count * 0.95).toInt().coerceAtMost(count - 1)]
+            val p99 = sorted[(count * 0.99).toInt().coerceAtMost(count - 1)]
+            val rttMsg = String.format(Locale.US, "p50 %.2fms / p95 %.2fms / p99 %.2fms / avg %.2fms", p50, p95, p99, avgRtt)
+            val logMsg = "📡 [WIFI] RTT: $rttMsg | Samples: $count | Jitter: ±${String.format(Locale.US, "%.2f", jitterMs)}ms | Loss: ${(lossPctFloat * 100).toInt()}%"
+            onDiagnosticLog?.invoke(logMsg)
+
+            onNetworkPerformanceUpdated?.invoke(avgRtt.toFloat(), jitterMs.toFloat(), lossPctFloat)
+        }
+    }
+
     override suspend fun sendInput(input: GamepadInput) {
         if (!isHandshakeComplete) return
         
@@ -286,14 +339,12 @@ class NetworkClient : IGamepadConnection {
         val target = serverAddress ?: return
         
         try {
-            sendMutex.withLock {
-                // Write directly to the pre-allocated sendBuffer
-                // Track sent time for RTT calculation
-                input.sequenceNumber = NexpadProtocol.nextSequenceNumber()
-                val seq = input.sequenceNumber
-                val idx = seq % 128
-                val stamped = (System.nanoTime() and SEQ_STAMP_MASK.inv()) or (seq.toLong() and SEQ_STAMP_MASK)
-                rttMap.set(idx, stamped)
+            synchronized(sendLock) {
+                val seq = NexpadProtocol.nextSequenceNumber()
+                input.sequenceNumber = seq
+                val slot = seq and (RTT_RING_SIZE - 1)
+                sendSeqNumbers[slot] = seq
+                sendTimestamps[slot] = System.nanoTime()
                 
                 NexpadProtocol.encodeInput(input, sendByteArray)
                 
@@ -301,43 +352,23 @@ class NetworkClient : IGamepadConnection {
                 sendBuffer.put(sendByteArray)
                 sendBuffer.flip()
                 
-                if (ENABLE_CHAOS_MONKEY) {
-                    val rand = Math.random()
-                    if (rand < 0.1) {
-                        // 10% chance to drop the packet entirely — exercises packet-loss counter
-                        return@withLock
-                    }
-                    if (rand < 0.3) {
-                        // 20% chance to delay the packet.
-                        // Use 1500ms to reproduce RTT staleness bug (128 slots ÷ 120Hz ≈ 1.07s threshold).
-                        // Revert delay to 30ms after staleness testing is confirmed.
-                        val CHAOS_DELAY_MS = 1500L
-                        val delayedBuffer = ByteBuffer.allocateDirect(NexpadProtocol.INPUT_PACKET_SIZE)
-                        delayedBuffer.put(sendByteArray).flip()
-                        kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
-                            kotlinx.coroutines.delay(CHAOS_DELAY_MS)
-                            try { currentChannel.send(delayedBuffer, target) } catch (e: Exception) {}
-                        }
-                        return@withLock
-                    }
-                }
-                
-                // Send the pre-allocated packet
                 currentChannel.send(sendBuffer, target)
                 
                 packetsSent++
-                if (packetsSent % 60 == 0) {
-                    onDiagnosticLog?.invoke("Sent $packetsSent packets to ${target.hostString}:${target.port}")
+                if (packetsSent % 120 == 0) {
+                    val logMsg = "📡 [UDP CLIENT] Packets sent: $packetsSent to ${target.hostString}:${target.port}"
+                    Log.d("NEXPAD", logMsg)
+                    onDiagnosticLog?.invoke(logMsg)
                 }
             }
         } catch (e: java.io.IOException) {
-            e.printStackTrace()
+            Log.e("NEXPAD", "❌ [UDP CLIENT] sendInput IOException: ${e.javaClass.simpleName} - ${e.message}", e)
             onDiagnosticLog?.invoke("Network dropped: ${e.message}")
             if (channel === currentChannel) {
                 disconnect()
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("NEXPAD", "❌ [UDP CLIENT] sendInput Exception: ${e.javaClass.simpleName} - ${e.message}", e)
             onDiagnosticLog?.invoke("Send error: ${e.javaClass.simpleName} - ${e.message}")
         }
     }
@@ -345,7 +376,9 @@ class NetworkClient : IGamepadConnection {
     override fun disconnect() {
         if (!disconnecting.compareAndSet(false, true)) return
         
-        // Notify server of disconnect before closing channel
+        val durationSec = if (connectionStartTime > 0L) (System.currentTimeMillis() - connectionStartTime) / 1000 else 0L
+        Log.d("NEXPAD", "🔌 [UDP CLIENT] Disconnecting session. Duration: ${durationSec}s | Sent: $packetsSent | Recv: $packetsReceived")
+
         val currentChannel = channel
         val target = serverAddress
         if (currentChannel != null && target != null && currentChannel.isOpen) {

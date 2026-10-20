@@ -1,7 +1,6 @@
 package com.sanket.tools.nexpad.ui
 
 import android.content.Context
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -29,13 +28,13 @@ import kotlinx.serialization.modules.polymorphic
 fun NavigationGraph(
     viewModel: GamepadViewModel,
     layoutManager: LayoutManager,
-    context: Context,
     onVibrate: () -> Unit
 ) {
     val backStack = rememberNavBackStack(
         configuration = SavedStateConfiguration {
             serializersModule = SerializersModule {
                 polymorphic(NavKey::class) {
+                    subclass(Route.Splash::class, Route.Splash.serializer())
                     subclass(Route.Home::class, Route.Home.serializer())
                     subclass(Route.Settings::class, Route.Settings.serializer())
                     subclass(Route.Connections::class, Route.Connections.serializer())
@@ -46,10 +45,9 @@ fun NavigationGraph(
                 }
             }
         },
-        Route.Home
+        Route.Splash
     )
     val navigator = remember(backStack) { Nav3AppNavigator(backStack) }
-    val sharedPref = remember(context) { context.getSharedPreferences("nexpad_prefs", Context.MODE_PRIVATE) }
 
     // Graph-scoped ViewModel: shared by all entries for cross-screen editing context.
     // This replaces LayoutManager.pendingSelectedKey.
@@ -57,11 +55,6 @@ fun NavigationGraph(
 
     val stateDecorator = rememberSaveableStateHolderNavEntryDecorator<NavKey>()
     val vmDecorator = rememberViewModelStoreNavEntryDecorator<NavKey>()
-
-    // Intercept system/hardware back button when on nested screens
-    BackHandler(enabled = backStack.size > 1) {
-        navigator.popBackStack()
-    }
 
     NavDisplay(
         backStack = backStack,
@@ -82,11 +75,24 @@ fun NavigationGraph(
     ) { key ->
         NavEntry(key) {
             when (key) {
+                is Route.Splash -> {
+                    SplashScreen(
+                        onSplashFinished = {
+                            navigator.replaceRoot(Route.Home)
+                        },
+                        onVibrate = onVibrate
+                    )
+                }
                 is Route.Home -> {
-                    HomeScreen(navController = navigator, layoutManager = layoutManager, viewModel = viewModel)
+                    HomeScreen(
+                        navController = navigator,
+                        layoutManager = layoutManager,
+                        viewModel = viewModel,
+                        navigationViewModel = navigationViewModel
+                    )
                 }
                 is Route.Settings -> {
-                    SettingsScreen(navController = navigator, layoutManager = layoutManager, viewModel = viewModel, sharedPref = sharedPref)
+                    SettingsScreen(navController = navigator, layoutManager = layoutManager, viewModel = viewModel)
                 }
                 is Route.Connections -> {
                     ConnectionScreen(navController = navigator, viewModel = viewModel)
@@ -114,22 +120,15 @@ fun NavigationGraph(
                         layoutManager = layoutManager,
                         navigationViewModel = navigationViewModel,
                         overrideProfileName = key.layoutProfileName,
-                        onBack = { navigator.popBackStack() },
-                        onVibrate = onVibrate
+                        onBack = { navigator.popBackStack() }
                     )
                 }
                 is Route.ButtonStudio -> {
-                    val mode = when {
-                        key.mode.equals("button_editor", ignoreCase = true) -> ButtonStudioMode.BUTTON_EDITOR
-                        key.mode.equals("editor", ignoreCase = true) || key.mode.equals("select", ignoreCase = true) -> ButtonStudioMode.EDITOR
-                        key.profileName.isNotBlank() -> ButtonStudioMode.EDITOR
-                        else -> ButtonStudioMode.VIEWER
-                    }
                     ButtonStudioScreen(
                         navController = navigator,
                         layoutManager = layoutManager,
                         navigationViewModel = navigationViewModel,
-                        initialMode = mode,
+                        initialMode = key.mode,
                         targetProfileName = key.profileName,
                         targetControlKey = key.controlKey,
                         targetCurrentAssetId = key.currentAssetId,

@@ -5,9 +5,9 @@ import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.model.NexpadKeys as K
 import com.sanket.tools.nexpad.runtime.registry.DefaultNativeFamily
 import com.sanket.tools.nexpad.runtime.registry.NativeComponentRegistry
-import com.sanket.tools.nexpad.ui.components.controller.calculateMetaballsTilt
-import com.sanket.tools.nexpad.ui.components.controller.calculateMetaballSatelliteOffset
-import com.sanket.tools.nexpad.ui.components.controller.resolveMetaballsTouch
+import com.sanket.tools.nexpad.ui.components.controller.dpad.calculateMetaballsTilt
+import com.sanket.tools.nexpad.ui.components.controller.dpad.calculateMetaballSatelliteOffset
+import com.sanket.tools.nexpad.ui.components.controller.dpad.resolveMetaballsTouch
 import com.sanket.tools.nexpad.ui.studio.model.ButtonStudioType
 import com.sanket.tools.nexpad.ui.studio.model.resolveButtonSourceType
 import org.junit.Assert.assertEquals

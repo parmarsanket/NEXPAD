@@ -35,16 +35,19 @@ import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 import com.sanket.tools.nexpad.model.LayoutProfile
 import com.sanket.tools.nexpad.model.getDefaultLayoutProfiles
+import com.sanket.tools.nexpad.ui.layout.AdaptiveLayoutSpec
+import com.sanket.tools.nexpad.ui.layout.adaptiveLayoutSpec
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VShapedPanel(
+    layout: AdaptiveLayoutSpec = adaptiveLayoutSpec(500.dp, 380.dp),
     profiles: List<LayoutProfile> = emptyList(),
     activeProfileName: String = "",
     onProfileSelected: (LayoutProfile) -> Unit = {},
     isCompact: Boolean = false,
     modifier: Modifier = Modifier,
-    onPlayClick: () -> Unit
+    onPlayClick: (LayoutProfile) -> Unit = {}
 ) {
     val effectiveProfiles = remember(profiles) {
         if (profiles.isNotEmpty()) profiles else getDefaultLayoutProfiles()
@@ -90,6 +93,27 @@ fun VShapedPanel(
         }
     }
 
+    val carouselHeight = when (layout.deviceType) {
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.Tablet -> if (isCompact) 200.dp else 295.dp
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.Foldable -> if (isCompact) 170.dp else 250.dp
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.MidPhone -> if (isCompact) 145.dp else 225.dp
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.SmallPhone -> if (isCompact) 130.dp else 195.dp
+    }
+
+    val playButtonSize = when (layout.deviceType) {
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.Tablet -> 100.dp
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.Foldable -> 90.dp
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.MidPhone -> 80.dp
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.SmallPhone -> 72.dp
+    }
+
+    val carouselHorizPadding = when (layout.deviceType) {
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.Tablet -> if (isCompact) 16.dp else 32.dp
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.Foldable -> if (isCompact) 14.dp else 28.dp
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.MidPhone -> if (isCompact) 12.dp else 24.dp
+        com.sanket.tools.nexpad.ui.layout.AdaptiveDeviceType.SmallPhone -> if (isCompact) 10.dp else 16.dp
+    }
+
     val boxModifier = if (isCompact) {
         Modifier.fillMaxWidth().then(modifier)
     } else {
@@ -110,10 +134,10 @@ fun VShapedPanel(
                 state = state,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(if (isCompact) 135.dp else 221.dp)
+                    .height(carouselHeight)
                     .padding(
-                        horizontal = if (isCompact) 12.dp else 24.dp,
-                        vertical = if (isCompact) 6.dp else 24.dp
+                        horizontal = carouselHorizPadding,
+                        vertical = if (isCompact) 6.dp else 20.dp
                     ),
                 itemSpacing = 8.dp,
                 contentPadding = PaddingValues(horizontal = if (isCompact) 8.dp else 16.dp)
@@ -126,6 +150,7 @@ fun VShapedPanel(
                         .padding(4.dp)
                         .clickable {
                             if (state.currentItem != index) {
+                                onProfileSelected(profile)
                                 coroutineScope.launch {
                                     isUserGesture = true
                                     try {
@@ -134,6 +159,7 @@ fun VShapedPanel(
                                 }
                             }
                         },
+                    layout = layout,
                     title = profile.name,
                     subtitle = subtitle,
                     isSelected = state.currentItem == index,
@@ -149,7 +175,15 @@ fun VShapedPanel(
                 PlayButton(
                     modifier = Modifier
                         .padding(bottom = if (isCompact) 10.dp else 24.dp),
-                    onClick = onPlayClick
+                    buttonSize = playButtonSize,
+                    onClick = {
+                        val validIdx = state.currentItem.coerceIn(0, effectiveProfiles.lastIndex)
+                        val selected = effectiveProfiles.getOrNull(validIdx) ?: effectiveProfiles.firstOrNull()
+                        if (selected != null) {
+                            onProfileSelected(selected)
+                            onPlayClick(selected)
+                        }
+                    }
                 )
             }
         }

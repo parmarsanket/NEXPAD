@@ -1,33 +1,46 @@
 package com.sanket.tools.nexpad.runtime.registry
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.CategoryType
 import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
+import com.sanket.tools.nexpad.model.BuiltinComponentIds
 import com.sanket.tools.nexpad.model.NexpadKeys as K
-import com.sanket.tools.nexpad.ui.components.controller.*
+import com.sanket.tools.nexpad.ui.components.controller.abxy.*
+import com.sanket.tools.nexpad.ui.components.controller.bumper.*
+import com.sanket.tools.nexpad.ui.components.controller.dpad.*
+import com.sanket.tools.nexpad.ui.components.controller.macros.*
+import com.sanket.tools.nexpad.ui.components.controller.special.*
+import com.sanket.tools.nexpad.ui.components.controller.sticks.*
+import com.sanket.tools.nexpad.ui.components.controller.system.*
+import com.sanket.tools.nexpad.ui.components.controller.trigger.*
 import com.sanket.tools.nexpad.ui.studio.components.*
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 
 /**
  * Encapsulated context containing all runtime state, haptics, and geometry
  * needed to render an interactive native controller element.
  */
+@Stable
 data class NativeRenderContext(
     val controlKey: ControlKey,
     val key: String,
     val isConnected: Boolean,
     val isRgbEnabled: Boolean,
-    val viewModel: GamepadViewModel,
+    val viewModel: GamepadViewModel? = null,
     val onVibrate: () -> Unit = {},
     val sensitivity: Float? = null,
     val heightScale: Float = 1.0f,
     val isFlipped: Boolean = false,
+    val isLocked: Boolean = true,
     val labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
-    val modifier: Modifier = Modifier
+    val modifier: Modifier = Modifier,
+    val touchpadCurve: String? = null
 ) {
     val displayLabel: String get() = CategoryManager.getLabelForStyle(key, labelStyle)
 }
@@ -88,15 +101,17 @@ object RealisticLeftJoystickVariant : BaseNativeVariant("builtin.default_ls", Co
             isConnected = context.isConnected,
             viewModel = context.viewModel,
             isRgbEnabled = context.isRgbEnabled,
+            isLocked = context.isLocked,
             modifier = context.modifier
         )
     }
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = K.LS,
-            labelStyle = context.labelStyle,
+        RealisticJoystick(
+            isLeft = true,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
             modifier = context.modifier
         )
     }
@@ -112,6 +127,7 @@ object FluxLeftJoystickVariant : BaseNativeVariant("builtin.flux_ls", ControlKey
             isConnected = context.isConnected,
             viewModel = context.viewModel,
             isRgbEnabled = context.isRgbEnabled,
+            isLocked = context.isLocked,
             modifier = context.modifier
         )
     }
@@ -135,15 +151,17 @@ object RealisticRightJoystickVariant : BaseNativeVariant("builtin.default_rs", C
             isConnected = context.isConnected,
             viewModel = context.viewModel,
             isRgbEnabled = context.isRgbEnabled,
+            isLocked = context.isLocked,
             modifier = context.modifier
         )
     }
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = K.RS,
-            labelStyle = context.labelStyle,
+        RealisticJoystick(
+            isLeft = false,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
             modifier = context.modifier
         )
     }
@@ -159,6 +177,7 @@ object FluxRightJoystickVariant : BaseNativeVariant("builtin.flux_rs", ControlKe
             isConnected = context.isConnected,
             viewModel = context.viewModel,
             isRgbEnabled = context.isRgbEnabled,
+            isLocked = context.isLocked,
             modifier = context.modifier
         )
     }
@@ -182,6 +201,7 @@ object OrbLeftJoystickVariant : BaseNativeVariant("builtin.orb_ls", ControlKey.L
             isConnected = context.isConnected,
             viewModel = context.viewModel,
             isRgbEnabled = context.isRgbEnabled,
+            isLocked = context.isLocked,
             modifier = context.modifier
         )
     }
@@ -205,6 +225,7 @@ object OrbRightJoystickVariant : BaseNativeVariant("builtin.orb_rs", ControlKey.
             isConnected = context.isConnected,
             viewModel = context.viewModel,
             isRgbEnabled = context.isRgbEnabled,
+            isLocked = context.isLocked,
             modifier = context.modifier
         )
     }
@@ -228,6 +249,7 @@ object CompassLeftJoystickVariant : BaseNativeVariant("builtin.compass_ls", Cont
             isConnected = context.isConnected,
             viewModel = context.viewModel,
             isRgbEnabled = context.isRgbEnabled,
+            isLocked = context.isLocked,
             modifier = context.modifier
         )
     }
@@ -251,6 +273,7 @@ object CompassRightJoystickVariant : BaseNativeVariant("builtin.compass_rs", Con
             isConnected = context.isConnected,
             viewModel = context.viewModel,
             isRgbEnabled = context.isRgbEnabled,
+            isLocked = context.isLocked,
             modifier = context.modifier
         )
     }
@@ -274,6 +297,7 @@ object GyroLeftJoystickVariant : BaseNativeVariant("builtin.gyro_ls", ControlKey
             isConnected = context.isConnected,
             viewModel = context.viewModel,
             isRgbEnabled = context.isRgbEnabled,
+            isLocked = context.isLocked,
             modifier = context.modifier
         )
     }
@@ -297,6 +321,7 @@ object GyroRightJoystickVariant : BaseNativeVariant("builtin.gyro_rs", ControlKe
             isConnected = context.isConnected,
             viewModel = context.viewModel,
             isRgbEnabled = context.isRgbEnabled,
+            isLocked = context.isLocked,
             modifier = context.modifier
         )
     }
@@ -320,6 +345,7 @@ object SpotlightLeftJoystickVariant : BaseNativeVariant("builtin.spotlight_ls", 
             isConnected = context.isConnected,
             viewModel = context.viewModel,
             isRgbEnabled = context.isRgbEnabled,
+            isLocked = context.isLocked,
             modifier = context.modifier
         )
     }
@@ -343,6 +369,7 @@ object SpotlightRightJoystickVariant : BaseNativeVariant("builtin.spotlight_rs",
             isConnected = context.isConnected,
             viewModel = context.viewModel,
             isRgbEnabled = context.isRgbEnabled,
+            isLocked = context.isLocked,
             modifier = context.modifier
         )
     }
@@ -379,9 +406,12 @@ object RealisticLeftStickButtonVariant : BaseNativeVariant("builtin.default_lsb"
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = K.LSB,
-            labelStyle = context.labelStyle,
+        RealisticStickButton(
+            isLeft = true,
+            key = K.LSB,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
             modifier = context.modifier
         )
     }
@@ -433,9 +463,12 @@ object RealisticRightStickButtonVariant : BaseNativeVariant("builtin.default_rsb
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = K.RSB,
-            labelStyle = context.labelStyle,
+        RealisticStickButton(
+            isLeft = false,
+            key = K.RSB,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
             modifier = context.modifier
         )
     }
@@ -697,9 +730,15 @@ class RealisticButtonVariant(
 
     @Composable
     override fun RenderInteractive(context: NativeRenderContext) {
+        val effectiveColor = resolveButtonColor(
+            controlKey = controlKey.key,
+            labelStyle = context.labelStyle,
+            displayLabel = context.displayLabel,
+            fallbackColor = buttonColor
+        )
         RealisticButton(
             key = controlKey.key,
-            buttonColor = buttonColor,
+            buttonColor = effectiveColor,
             isConnected = context.isConnected,
             onVibrate = context.onVibrate,
             viewModel = context.viewModel,
@@ -711,9 +750,18 @@ class RealisticButtonVariant(
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
+        val effectiveColor = resolveButtonColor(
             controlKey = controlKey.key,
             labelStyle = context.labelStyle,
+            displayLabel = context.displayLabel,
+            fallbackColor = buttonColor
+        )
+        RealisticButton(
+            key = controlKey.key,
+            buttonColor = effectiveColor,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
             modifier = context.modifier
         )
     }
@@ -727,9 +775,15 @@ class LiquidButtonVariant(
     override val isBaselineDefault: Boolean = false
     @Composable
     override fun RenderInteractive(context: NativeRenderContext) {
+        val effectiveColor = resolveButtonColor(
+            controlKey = controlKey.key,
+            labelStyle = context.labelStyle,
+            displayLabel = context.displayLabel,
+            fallbackColor = buttonColor
+        )
         LiquidButton(
             key = controlKey.key,
-            buttonColor = buttonColor,
+            buttonColor = effectiveColor,
             isConnected = context.isConnected,
             onVibrate = context.onVibrate,
             viewModel = context.viewModel,
@@ -756,9 +810,15 @@ class FacetButtonVariant(
     override val isBaselineDefault: Boolean = false
     @Composable
     override fun RenderInteractive(context: NativeRenderContext) {
+        val effectiveColor = resolveButtonColor(
+            controlKey = controlKey.key,
+            labelStyle = context.labelStyle,
+            displayLabel = context.displayLabel,
+            fallbackColor = buttonColor
+        )
         FacetButton(
             key = controlKey.key,
-            buttonColor = buttonColor,
+            buttonColor = effectiveColor,
             isConnected = context.isConnected,
             onVibrate = context.onVibrate,
             viewModel = context.viewModel,
@@ -785,9 +845,15 @@ class FlipButtonVariant(
     override val isBaselineDefault: Boolean = false
     @Composable
     override fun RenderInteractive(context: NativeRenderContext) {
+        val effectiveColor = resolveButtonColor(
+            controlKey = controlKey.key,
+            labelStyle = context.labelStyle,
+            displayLabel = context.displayLabel,
+            fallbackColor = buttonColor
+        )
         FlipButton(
             key = controlKey.key,
-            buttonColor = buttonColor,
+            buttonColor = effectiveColor,
             isConnected = context.isConnected,
             onVibrate = context.onVibrate,
             viewModel = context.viewModel,
@@ -814,9 +880,15 @@ class RippleButtonVariant(
     override val isBaselineDefault: Boolean = false
     @Composable
     override fun RenderInteractive(context: NativeRenderContext) {
+        val effectiveColor = resolveButtonColor(
+            controlKey = controlKey.key,
+            labelStyle = context.labelStyle,
+            displayLabel = context.displayLabel,
+            fallbackColor = buttonColor
+        )
         RippleButton(
             key = controlKey.key,
-            buttonColor = buttonColor,
+            buttonColor = effectiveColor,
             isConnected = context.isConnected,
             onVibrate = context.onVibrate,
             viewModel = context.viewModel,
@@ -844,9 +916,15 @@ class OrbitButtonVariant(
     override val isBaselineDefault: Boolean = false
     @Composable
     override fun RenderInteractive(context: NativeRenderContext) {
+        val effectiveColor = resolveButtonColor(
+            controlKey = controlKey.key,
+            labelStyle = context.labelStyle,
+            displayLabel = context.displayLabel,
+            fallbackColor = buttonColor
+        )
         OrbitButton(
             key = controlKey.key,
-            buttonColor = buttonColor,
+            buttonColor = effectiveColor,
             isConnected = context.isConnected,
             onVibrate = context.onVibrate,
             viewModel = context.viewModel,
@@ -873,9 +951,15 @@ class CapsulesButtonVariant(
     override val isBaselineDefault: Boolean = false
     @Composable
     override fun RenderInteractive(context: NativeRenderContext) {
+        val effectiveColor = resolveButtonColor(
+            controlKey = controlKey.key,
+            labelStyle = context.labelStyle,
+            displayLabel = context.displayLabel,
+            fallbackColor = buttonColor
+        )
         CapsulesButton(
             key = controlKey.key,
-            buttonColor = buttonColor,
+            buttonColor = effectiveColor,
             isConnected = context.isConnected,
             onVibrate = context.onVibrate,
             viewModel = context.viewModel,
@@ -902,9 +986,15 @@ class EclipseButtonVariant(
     override val isBaselineDefault: Boolean = false
     @Composable
     override fun RenderInteractive(context: NativeRenderContext) {
+        val effectiveColor = resolveButtonColor(
+            controlKey = controlKey.key,
+            labelStyle = context.labelStyle,
+            displayLabel = context.displayLabel,
+            fallbackColor = buttonColor
+        )
         EclipseButton(
             key = controlKey.key,
-            buttonColor = buttonColor,
+            buttonColor = effectiveColor,
             isConnected = context.isConnected,
             onVibrate = context.onVibrate,
             viewModel = context.viewModel,
@@ -945,9 +1035,11 @@ object RealisticLeftTriggerVariant : BaseNativeVariant("builtin.default_lt", Con
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = K.LT,
-            labelStyle = context.labelStyle,
+        RealisticTrigger(
+            key = K.LT,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
             modifier = context.modifier
         )
     }
@@ -971,9 +1063,11 @@ object RealisticRightTriggerVariant : BaseNativeVariant("builtin.default_rt", Co
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = K.RT,
-            labelStyle = context.labelStyle,
+        RealisticTrigger(
+            key = K.RT,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
             modifier = context.modifier
         )
     }
@@ -997,9 +1091,11 @@ object RealisticLeftBumperVariant : BaseNativeVariant("builtin.default_lb", Cont
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = K.LB,
-            labelStyle = context.labelStyle,
+        RealisticBumper(
+            key = K.LB,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
             modifier = context.modifier
         )
     }
@@ -1023,9 +1119,11 @@ object RealisticRightBumperVariant : BaseNativeVariant("builtin.default_rb", Con
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = K.RB,
-            labelStyle = context.labelStyle,
+        RealisticBumper(
+            key = K.RB,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
             modifier = context.modifier
         )
     }
@@ -1826,9 +1924,9 @@ object RealisticDPadVariant : BaseNativeVariant("builtin.default_dpad", ControlK
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = K.DPAD,
-            labelStyle = context.labelStyle,
+        RealisticDPad(
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
             modifier = context.modifier
         )
     }
@@ -1852,9 +1950,10 @@ class RealisticDPadButtonVariant(controlKey: ControlKey, seedCode: Int) :
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = controlKey.key,
-            labelStyle = context.labelStyle,
+        RealisticDPadButton(
+            direction = controlKey.key,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
             modifier = context.modifier
         )
     }
@@ -1994,12 +2093,68 @@ object RailsDPadVariant : BaseNativeVariant("builtin.rails_dpad", ControlKey.DPA
     }
 }
 
-object RealisticLeftTouchPadVariant : BaseNativeVariant("builtin.default_ltp", ControlKey.LTP, "Realistic 3D", 6001) {
+object RealisticLeftTouchPadVariant : BaseNativeVariant(BuiltinComponentIds.DEFAULT_LTP, ControlKey.LTP, "Realistic 3D", 6001) {
     override val isBaselineDefault: Boolean = true
 
     @Composable
     override fun RenderInteractive(context: NativeRenderContext) {
         RealisticTouchPad(
+            isLeft = true,
+            isConnected = context.isConnected,
+            viewModel = context.viewModel,
+            onVibrate = context.onVibrate,
+            isRgbEnabled = context.isRgbEnabled,
+            sensitivity = context.sensitivity,
+            curve = com.sanket.tools.nexpad.model.TouchpadCurve.fromId(context.touchpadCurve),
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        RealisticTouchPad(
+            isLeft = true,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
+            modifier = context.modifier
+        )
+    }
+}
+
+object RealisticRightTouchPadVariant : BaseNativeVariant(BuiltinComponentIds.DEFAULT_RTP, ControlKey.RTP, "Realistic 3D", 6002) {
+    override val isBaselineDefault: Boolean = true
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        RealisticTouchPad(
+            isLeft = false,
+            isConnected = context.isConnected,
+            viewModel = context.viewModel,
+            onVibrate = context.onVibrate,
+            isRgbEnabled = context.isRgbEnabled,
+            sensitivity = context.sensitivity,
+            curve = com.sanket.tools.nexpad.model.TouchpadCurve.fromId(context.touchpadCurve),
+            modifier = context.modifier
+        )
+    }
+
+    @Composable
+    override fun RenderStaticPreview(context: NativePreviewContext) {
+        RealisticTouchPad(
+            isLeft = false,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
+            modifier = context.modifier
+        )
+    }
+}
+
+object InbuildLeftTouchPadVariant : BaseNativeVariant(BuiltinComponentIds.INBUILD_LTP, ControlKey.LTP, "Inbuild Surface", 6003) {
+    override val isBaselineDefault: Boolean = false
+
+    @Composable
+    override fun RenderInteractive(context: NativeRenderContext) {
+        InbuildTouchpad(
             isLeft = true,
             isConnected = context.isConnected,
             viewModel = context.viewModel,
@@ -2012,20 +2167,20 @@ object RealisticLeftTouchPadVariant : BaseNativeVariant("builtin.default_ltp", C
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = K.LTP,
-            labelStyle = context.labelStyle,
+        StaticInbuildTouchpad(
+            isLeft = true,
+            isRgbEnabled = context.isRgbEnabled,
             modifier = context.modifier
         )
     }
 }
 
-object RealisticRightTouchPadVariant : BaseNativeVariant("builtin.default_rtp", ControlKey.RTP, "Realistic 3D", 6002) {
-    override val isBaselineDefault: Boolean = true
+object InbuildRightTouchPadVariant : BaseNativeVariant(BuiltinComponentIds.INBUILD_RTP, ControlKey.RTP, "Inbuild Surface", 6004) {
+    override val isBaselineDefault: Boolean = false
 
     @Composable
     override fun RenderInteractive(context: NativeRenderContext) {
-        RealisticTouchPad(
+        InbuildTouchpad(
             isLeft = false,
             isConnected = context.isConnected,
             viewModel = context.viewModel,
@@ -2038,9 +2193,9 @@ object RealisticRightTouchPadVariant : BaseNativeVariant("builtin.default_rtp", 
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = K.RTP,
-            labelStyle = context.labelStyle,
+        StaticInbuildTouchpad(
+            isLeft = false,
+            isRgbEnabled = context.isRgbEnabled,
             modifier = context.modifier
         )
     }
@@ -2064,9 +2219,10 @@ class RealisticSystemButtonVariant(controlKey: ControlKey, seedCode: Int) :
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = controlKey.key,
-            labelStyle = context.labelStyle,
+        RealisticSystemButton(
+            key = controlKey.key,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
             modifier = context.modifier
         )
     }
@@ -2114,9 +2270,11 @@ class RealisticMacroButtonVariant(controlKey: ControlKey, seedCode: Int) :
 
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
-        StaticDefaultButtonPreview(
-            controlKey = controlKey.key,
-            labelStyle = context.labelStyle,
+        RealisticMacroButton(
+            key = controlKey.key,
+            isInteractive = false,
+            isRgbEnabled = context.isRgbEnabled,
+            displayLabel = context.displayLabel,
             modifier = context.modifier
         )
     }
@@ -2139,8 +2297,8 @@ object DefaultNativeFamily {
     val familyName: String = "Default Native"
     val familyId: String = "builtin.default"
 
-    private val variantsById = mutableMapOf<String, NativeElementVariant>()
-    private val variantsByControl = mutableMapOf<ControlKey, MutableList<NativeElementVariant>>()
+    private val variantsById = java.util.concurrent.ConcurrentHashMap<String, NativeElementVariant>()
+    private val variantsByControl = java.util.concurrent.ConcurrentHashMap<ControlKey, java.util.concurrent.CopyOnWriteArrayList<NativeElementVariant>>()
 
     init {
         // --- 1. Baseline Hardware Variants ---
@@ -2150,6 +2308,8 @@ object DefaultNativeFamily {
         register(RealisticRightStickButtonVariant)
         register(RealisticLeftTouchPadVariant)
         register(RealisticRightTouchPadVariant)
+        register(InbuildLeftTouchPadVariant)
+        register(InbuildRightTouchPadVariant)
         register(RealisticDPadVariant)
         register(RealisticDPadButtonVariant(ControlKey.UP, 4002))
         register(RealisticDPadButtonVariant(ControlKey.DOWN, 4003))
@@ -2159,38 +2319,38 @@ object DefaultNativeFamily {
         register(RealisticRightTriggerVariant)
         register(RealisticLeftBumperVariant)
         register(RealisticRightBumperVariant)
-        register(RealisticButtonVariant(ControlKey.A, Color(0xFF3FD25A), 1001))
-        register(RealisticButtonVariant(ControlKey.B, Color(0xFFE6474E), 1002))
-        register(RealisticButtonVariant(ControlKey.X, Color(0xFF3F8FE0), 1003))
-        register(RealisticButtonVariant(ControlKey.Y, Color(0xFFE0A03F), 1004))
-        register(LiquidButtonVariant(ControlKey.A, Color(0xFF3FD25A), 1101))
-        register(LiquidButtonVariant(ControlKey.B, Color(0xFFE6474E), 1102))
-        register(LiquidButtonVariant(ControlKey.X, Color(0xFF3F8FE0), 1103))
-        register(LiquidButtonVariant(ControlKey.Y, Color(0xFFE0A03F), 1104))
-        register(FacetButtonVariant(ControlKey.A, Color(0xFF3FD25A), 1201))
-        register(FacetButtonVariant(ControlKey.B, Color(0xFFE6474E), 1202))
-        register(FacetButtonVariant(ControlKey.X, Color(0xFF3F8FE0), 1203))
-        register(FacetButtonVariant(ControlKey.Y, Color(0xFFE0A03F), 1204))
-        register(FlipButtonVariant(ControlKey.A, Color(0xFF3FD25A), 1301))
-        register(FlipButtonVariant(ControlKey.B, Color(0xFFE6474E), 1302))
-        register(FlipButtonVariant(ControlKey.X, Color(0xFF3F8FE0), 1303))
-        register(FlipButtonVariant(ControlKey.Y, Color(0xFFE0A03F), 1304))
-        register(RippleButtonVariant(ControlKey.A, Color(0xFF3FD25A), 1401))
-        register(RippleButtonVariant(ControlKey.B, Color(0xFFE6474E), 1402))
-        register(RippleButtonVariant(ControlKey.X, Color(0xFF3F8FE0), 1403))
-        register(RippleButtonVariant(ControlKey.Y, Color(0xFFE0A03F), 1404))
-        register(OrbitButtonVariant(ControlKey.A, Color(0xFF3FD25A), 1601))
-        register(OrbitButtonVariant(ControlKey.B, Color(0xFFE6474E), 1602))
-        register(OrbitButtonVariant(ControlKey.X, Color(0xFF3F8FE0), 1603))
-        register(OrbitButtonVariant(ControlKey.Y, Color(0xFFE0A03F), 1604))
-        register(CapsulesButtonVariant(ControlKey.A, Color(0xFF3FD25A), 1701))
-        register(CapsulesButtonVariant(ControlKey.B, Color(0xFFE6474E), 1702))
-        register(CapsulesButtonVariant(ControlKey.X, Color(0xFF3F8FE0), 1703))
-        register(CapsulesButtonVariant(ControlKey.Y, Color(0xFFE0A03F), 1704))
-        register(EclipseButtonVariant(ControlKey.A, Color(0xFF3FD25A), 1801))
-        register(EclipseButtonVariant(ControlKey.B, Color(0xFFE6474E), 1802))
-        register(EclipseButtonVariant(ControlKey.X, Color(0xFF3F8FE0), 1803))
-        register(EclipseButtonVariant(ControlKey.Y, Color(0xFFE0A03F), 1804))
+        register(RealisticButtonVariant(ControlKey.A, NeonPalette.XboxGreen, 1001))
+        register(RealisticButtonVariant(ControlKey.B, NeonPalette.XboxRed, 1002))
+        register(RealisticButtonVariant(ControlKey.X, NeonPalette.XboxBlue, 1003))
+        register(RealisticButtonVariant(ControlKey.Y, NeonPalette.XboxYellow, 1004))
+        register(LiquidButtonVariant(ControlKey.A, NeonPalette.XboxGreen, 1101))
+        register(LiquidButtonVariant(ControlKey.B, NeonPalette.XboxRed, 1102))
+        register(LiquidButtonVariant(ControlKey.X, NeonPalette.XboxBlue, 1103))
+        register(LiquidButtonVariant(ControlKey.Y, NeonPalette.XboxYellow, 1104))
+        register(FacetButtonVariant(ControlKey.A, NeonPalette.XboxGreen, 1201))
+        register(FacetButtonVariant(ControlKey.B, NeonPalette.XboxRed, 1202))
+        register(FacetButtonVariant(ControlKey.X, NeonPalette.XboxBlue, 1203))
+        register(FacetButtonVariant(ControlKey.Y, NeonPalette.XboxYellow, 1204))
+        register(FlipButtonVariant(ControlKey.A, NeonPalette.XboxGreen, 1301))
+        register(FlipButtonVariant(ControlKey.B, NeonPalette.XboxRed, 1302))
+        register(FlipButtonVariant(ControlKey.X, NeonPalette.XboxBlue, 1303))
+        register(FlipButtonVariant(ControlKey.Y, NeonPalette.XboxYellow, 1304))
+        register(RippleButtonVariant(ControlKey.A, NeonPalette.XboxGreen, 1401))
+        register(RippleButtonVariant(ControlKey.B, NeonPalette.XboxRed, 1402))
+        register(RippleButtonVariant(ControlKey.X, NeonPalette.XboxBlue, 1403))
+        register(RippleButtonVariant(ControlKey.Y, NeonPalette.XboxYellow, 1404))
+        register(OrbitButtonVariant(ControlKey.A, NeonPalette.XboxGreen, 1601))
+        register(OrbitButtonVariant(ControlKey.B, NeonPalette.XboxRed, 1602))
+        register(OrbitButtonVariant(ControlKey.X, NeonPalette.XboxBlue, 1603))
+        register(OrbitButtonVariant(ControlKey.Y, NeonPalette.XboxYellow, 1604))
+        register(CapsulesButtonVariant(ControlKey.A, NeonPalette.XboxGreen, 1701))
+        register(CapsulesButtonVariant(ControlKey.B, NeonPalette.XboxRed, 1702))
+        register(CapsulesButtonVariant(ControlKey.X, NeonPalette.XboxBlue, 1703))
+        register(CapsulesButtonVariant(ControlKey.Y, NeonPalette.XboxYellow, 1704))
+        register(EclipseButtonVariant(ControlKey.A, NeonPalette.XboxGreen, 1801))
+        register(EclipseButtonVariant(ControlKey.B, NeonPalette.XboxRed, 1802))
+        register(EclipseButtonVariant(ControlKey.X, NeonPalette.XboxBlue, 1803))
+        register(EclipseButtonVariant(ControlKey.Y, NeonPalette.XboxYellow, 1804))
         register(RealisticSystemButtonVariant(ControlKey.GUIDE, 5001))
         register(RealisticSystemButtonVariant(ControlKey.START, 5002))
         register(RealisticSystemButtonVariant(ControlKey.BACK, 5003))
@@ -2315,7 +2475,7 @@ object DefaultNativeFamily {
      */
     fun register(variant: NativeElementVariant) {
         variantsById[variant.id] = variant
-        variantsByControl.getOrPut(variant.controlKey) { mutableListOf() }.apply {
+        variantsByControl.getOrPut(variant.controlKey) { java.util.concurrent.CopyOnWriteArrayList() }.apply {
             if (!contains(variant)) add(variant)
         }
     }
@@ -2375,21 +2535,35 @@ object NativeComponentRegistry {
             id.startsWith("builtin.liq_") || id.startsWith("builtin.facet_") ||
             id.startsWith("builtin.flipbtn_") || id.startsWith("builtin.ripple_") ||
             id.startsWith("builtin.orbit_") ||
-            id.startsWith("builtin.caps_") || id.startsWith("builtin.ecl_")
+            id.startsWith("builtin.caps_") || id.startsWith("builtin.ecl_") ||
+            BuiltinComponentIds.isInbuildTouchpad(id) || id == BuiltinComponentIds.GYRO_BUTTON
         ) return true
         return DefaultNativeFamily.getVariant(id) != null
     }
+
+    /**
+     * Retrieves all native element variants registered for a specific control key.
+     */
+    fun getVariantsFor(controlKey: ControlKey): List<NativeElementVariant> =
+        DefaultNativeFamily.getVariantsFor(controlKey)
+
+    /**
+     * Retrieves a native element variant by its unique ID.
+     */
+    fun getVariant(id: String?): NativeElementVariant? =
+        DefaultNativeFamily.getVariant(id)
 
     /**
      * Resolves the active variant for a given control key and optional custom component ID.
      * If the ID is null, blank, or not found, it gracefully resolves to the baseline default variant.
      */
     fun resolveVariant(key: String, customComponentId: String?): NativeElementVariant? {
-        val ctrl = ControlKey.fromIdentifier(key) ?: return null
+        // Check custom ID first before key lookup
         if (!customComponentId.isNullOrBlank()) {
             val found = DefaultNativeFamily.getVariant(customComponentId)
             if (found != null) return found
         }
+        val ctrl = ControlKey.fromIdentifier(key) ?: return null
         return DefaultNativeFamily.getDefaultVariant(ctrl)
     }
 
@@ -2398,18 +2572,32 @@ object NativeComponentRegistry {
      */
     @Composable
     fun RenderNativeElement(
+        modifier: Modifier = Modifier,
         key: String,
         customComponentId: String?,
         isConnected: Boolean,
         isRgbEnabled: Boolean,
-        viewModel: GamepadViewModel,
+        viewModel: GamepadViewModel? = null,
         onVibrate: () -> Unit = {},
         sensitivity: Float? = null,
         heightScale: Float = 1.0f,
         isFlipped: Boolean = false,
+        isLocked: Boolean = true,
         labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
-        modifier: Modifier = Modifier
+        touchpadCurve: String? = null
     ) {
+        if (key.equals("GYRO", ignoreCase = true) || customComponentId?.startsWith("builtin.gyro_btn") == true) {
+            GyroToggleButton(
+                key = key,
+                isConnected = isConnected,
+                onVibrate = onVibrate,
+                viewModel = viewModel,
+                isRgbEnabled = isRgbEnabled,
+                modifier = modifier
+            )
+            return
+        }
+
         val ctrl = ControlKey.fromIdentifier(key) ?: ControlKey.A
         val variant = resolveVariant(key, customComponentId)
         val context = NativeRenderContext(
@@ -2422,8 +2610,10 @@ object NativeComponentRegistry {
             sensitivity = sensitivity,
             heightScale = heightScale,
             isFlipped = isFlipped,
+            isLocked = isLocked,
             labelStyle = labelStyle,
-            modifier = modifier
+            modifier = modifier,
+            touchpadCurve = touchpadCurve
         )
 
         if (variant != null) {
@@ -2438,11 +2628,20 @@ object NativeComponentRegistry {
      */
     @Composable
     fun RenderStaticPreview(
+        modifier: Modifier = Modifier,
         id: String?,
         controlKey: String,
         labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
-        modifier: Modifier = Modifier
     ) {
+        if (controlKey.equals("GYRO", ignoreCase = true) || id?.startsWith("builtin.gyro_btn") == true) {
+            StaticGyroToggleButton(
+                isRgbEnabled = true,
+                labelStyle = labelStyle,
+                modifier = modifier
+            )
+            return
+        }
+
         val ctrl = ControlKey.fromIdentifier(controlKey) ?: ControlKey.A
         val variant = resolveVariant(controlKey, id)
         val context = NativePreviewContext(
@@ -2482,16 +2681,24 @@ object NativeComponentRegistry {
                 isRgbEnabled = context.isRgbEnabled,
                 modifier = context.modifier
             )
-            else -> RealisticButton(
-                key = context.key,
-                buttonColor = Color.Gray,
-                isConnected = context.isConnected,
-                onVibrate = context.onVibrate,
-                viewModel = context.viewModel,
-                isRgbEnabled = context.isRgbEnabled,
-                displayLabel = context.displayLabel,
-                modifier = context.modifier
-            )
+            else -> {
+                val effectiveColor = resolveButtonColor(
+                    controlKey = context.key,
+                    labelStyle = context.labelStyle,
+                    displayLabel = context.displayLabel,
+                    fallbackColor = Color.Gray
+                )
+                RealisticButton(
+                    key = context.key,
+                    buttonColor = effectiveColor,
+                    isConnected = context.isConnected,
+                    onVibrate = context.onVibrate,
+                    viewModel = context.viewModel,
+                    isRgbEnabled = context.isRgbEnabled,
+                    displayLabel = context.displayLabel,
+                    modifier = context.modifier
+                )
+            }
         }
     }
 }

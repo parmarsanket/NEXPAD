@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
 
 @Composable
@@ -26,7 +27,8 @@ fun HeaderStatusPill(
     isConnected: Boolean,
     modifier: Modifier = Modifier,
     connectedText: String = "Connected",
-    disconnectedText: String = "Disconnected"
+    disconnectedText: String = "Disconnected",
+    fontSize: androidx.compose.ui.unit.TextUnit = 11.sp
 ) {
     Row(
         modifier = modifier
@@ -41,22 +43,27 @@ fun HeaderStatusPill(
                 else Color.White.copy(alpha = 0.15f),
                 RoundedCornerShape(50)
             )
-            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .padding(horizontal = 10.dp, vertical = 4.dp)
             .semantics {
                 contentDescription = "Connection status: " + if (isConnected) connectedText else disconnectedText
             },
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(8.dp)
+                .size(7.dp)
                 .clip(CircleShape)
                 .background(if (isConnected) NeonPalette.ConnectedDot else Color.Red)
         )
         Text(
             if (isConnected) connectedText else disconnectedText,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                fontSize = fontSize
+            ),
+            maxLines = 1,
+            softWrap = false,
             color = if (isConnected) NeonPalette.Green else MaterialTheme.colorScheme.onSurface
         )
     }

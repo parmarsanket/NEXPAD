@@ -1,0 +1,327 @@
+package com.sanket.tools.nexpad.ui.components.controller.special
+
+import com.sanket.tools.nexpad.ui.theme.NeonPalette
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.category.ControllerLabelStyle
+import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
+import kotlin.math.roundToInt
+
+/**
+ * Modern, tactile Gyroscope Sensor Toggle Button for mobile NEXPAD controllers.
+ * Allows the user to toggle phone motion sensing ON or OFF with a single tap during gameplay,
+ * instantly muting sensor updates on the device to prevent unwanted input during pauses or hand rest.
+ *
+ * Implements the 7-Layer Display List Pipeline with dynamic status aura, animated gimbal rings,
+ * and high-contrast ON/OFF state indicators.
+ */
+@Composable
+fun GyroToggleButton(
+    key: String = "GYRO",
+    isConnected: Boolean = true,
+    onVibrate: () -> Unit = {},
+    viewModel: GamepadViewModel? = null,
+    isRgbEnabled: Boolean = true,
+    modifier: Modifier = Modifier,
+    displayLabel: String? = null,
+    isInteractive: Boolean = true
+) {
+    var isPressedLocally by remember { mutableStateOf(false) }
+    val isPressed = isPressedLocally || com.sanket.tools.nexpad.ui.components.controller.isControlPressed(key)
+    val isGyroEnabled = if (isInteractive) {
+        viewModel?.isGyroEnabled?.collectAsState()?.value ?: true
+    } else true
+
+    val scaleAnim = animateFloatAsState(
+        targetValue = if (isPressed) 0.94f else 1.0f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "gyro_scale"
+    )
+    val pressOffsetYAnim = animateFloatAsState(
+        targetValue = if (isPressed) 2.5f else 0f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "gyro_depth"
+    )
+    val rgbBloomAlpha = animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else if (isGyroEnabled) 0.50f else 0.15f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
+        label = "gyro_bloom"
+    )
+
+    val activeAccentColor by animateColorAsState(
+        targetValue = if (isGyroEnabled) NeonPalette.ElectricCyan else NeonPalette.SlateMuted,
+        animationSpec = tween(durationMillis = 200),
+        label = "gyro_accent_color"
+    )
+
+    val statusDotColor by animateColorAsState(
+        targetValue = if (isGyroEnabled) NeonPalette.XboxGreen else NeonPalette.AlertRed,
+        animationSpec = tween(durationMillis = 200),
+        label = "gyro_dot_color"
+    )
+
+    val currentOnVibrate by rememberUpdatedState(onVibrate)
+    val currentViewModel by rememberUpdatedState(viewModel)
+
+    val domeBrush = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                NeonPalette.MetalBase,
+                NeonPalette.MetalDark,
+                NeonPalette.MetalVoid
+            ),
+            center = Offset(0.50f, 0.42f),
+            radius = 180f
+        )
+    }
+
+    val density = LocalDensity.current.density
+    val gimbalStroke = remember(density) {
+        Stroke(
+            width = 1.5f * density,
+            pathEffect = PathEffect.dashPathEffect(
+                floatArrayOf(6f * density, 4f * density), 0f
+            )
+        )
+    }
+    val stroke1_2dp = remember(density) { Stroke(width = 1.2f * density) }
+
+    val borderBrushOn = remember(activeAccentColor) {
+        Brush.verticalGradient(
+            colors = listOf(
+                activeAccentColor.copy(alpha = 0.85f),
+                activeAccentColor.copy(alpha = 0.30f)
+            )
+        )
+    }
+    val borderBrushOff = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.20f),
+                Color.Black.copy(alpha = 0.60f)
+            )
+        )
+    }
+
+    val lensColorsPressed = remember {
+        listOf(Color.White.copy(alpha = 0.08f), Color.Transparent)
+    }
+    val lensColorsNormal = remember {
+        listOf(Color.White.copy(alpha = 0.22f), Color.Transparent)
+    }
+
+    val bloomColorsList = remember(activeAccentColor) {
+        arrayListOf(Color.Transparent, Color.Transparent, Color.Transparent)
+    }
+
+    Box(
+        modifier = modifier
+            .graphicsLayer {
+                // Root RenderNode isolation
+            }
+            .size(76.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        // Outer interactive container with aura & shadow
+        Box(
+            modifier = Modifier
+                .size(66.dp)
+                .shadow(
+                    elevation = if (isPressed) 1.dp else if (isGyroEnabled) 6.dp else 2.dp,
+                    shape = CircleShape,
+                    ambientColor = if (isRgbEnabled && isGyroEnabled) activeAccentColor else Color.Black,
+                    spotColor = if (isRgbEnabled && isGyroEnabled) activeAccentColor else Color.Black
+                )
+                .offset { IntOffset(0, (pressOffsetYAnim.value * density).roundToInt()) }
+                .graphicsLayer {
+                    scaleX = scaleAnim.value
+                    scaleY = scaleAnim.value
+                }
+                .drawBehind {
+                    if (isRgbEnabled && isGyroEnabled) {
+                        val bloomAlpha = rgbBloomAlpha.value
+                        bloomColorsList[0] = activeAccentColor.copy(alpha = bloomAlpha * 0.45f)
+                        bloomColorsList[1] = activeAccentColor.copy(alpha = bloomAlpha * 0.15f)
+                        bloomColorsList[2] = Color.Transparent
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = bloomColorsList,
+                                center = center,
+                                radius = size.minDimension * 0.95f
+                            ),
+                            radius = size.minDimension * 0.95f
+                        )
+                    }
+                }
+                .clip(CircleShape)
+                .background(domeBrush)
+                .border(
+                    width = 1.5.dp,
+                    brush = if (isGyroEnabled) borderBrushOn else borderBrushOff,
+                    shape = CircleShape
+                )
+                .then(
+                    if (isInteractive) {
+                        Modifier.pointerInput(Unit) {
+                            detectTapGestures(
+                                onPress = {
+                                    isPressedLocally = true
+                                    currentOnVibrate()
+                                    currentViewModel?.toggleGyro()
+                                    tryAwaitRelease()
+                                    isPressedLocally = false
+                                }
+                            )
+                        }
+                    } else Modifier
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            // Layer 4 & 5: Gimbal Rings, Reticle, and Acrylic Glare Arc
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val cx = size.width / 2f
+                val cy = size.height / 2f
+                val r = size.minDimension / 2f
+
+                // Outer Gimbal Ring (Tick notched)
+                val gimbalRadius = r - 5.dp.toPx()
+                drawCircle(
+                    color = activeAccentColor.copy(alpha = if (isGyroEnabled) 0.65f else 0.25f),
+                    radius = gimbalRadius,
+                    center = Offset(cx, cy),
+                    style = gimbalStroke
+                )
+
+                // Inner Crosshairs / Horizon Guidelines
+                val crossHairLength = 8.dp.toPx()
+                val alphaGuideline = if (isGyroEnabled) 0.50f else 0.20f
+                drawLine(
+                    color = activeAccentColor.copy(alpha = alphaGuideline),
+                    start = Offset(cx - crossHairLength - 12.dp.toPx(), cy),
+                    end = Offset(cx - 12.dp.toPx(), cy),
+                    strokeWidth = 1.2f * density,
+                    cap = StrokeCap.Round
+                )
+                drawLine(
+                    color = activeAccentColor.copy(alpha = alphaGuideline),
+                    start = Offset(cx + 12.dp.toPx(), cy),
+                    end = Offset(cx + crossHairLength + 12.dp.toPx(), cy),
+                    strokeWidth = 1.2f * density,
+                    cap = StrokeCap.Round
+                )
+
+                // Specular Acrylic Lens Glare Arc (Top Edge)
+                drawArc(
+                    brush = Brush.verticalGradient(
+                        colors = if (isPressed) lensColorsPressed else lensColorsNormal,
+                        startY = 0f,
+                        endY = size.height * 0.35f
+                    ),
+                    startAngle = 180f,
+                    sweepAngle = 180f,
+                    useCenter = false,
+                    topLeft = Offset(2.dp.toPx(), 2.dp.toPx()),
+                    size = Size(size.width - 4.dp.toPx(), size.height - 4.dp.toPx()),
+                    style = stroke1_2dp
+                )
+            }
+
+            // Layer 6: Dynamic Glyph & Status Label
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = displayLabel ?: "GYRO",
+                    color = if (isGyroEnabled) activeAccentColor else NeonPalette.SlateText,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    letterSpacing = 1.sp
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(5.dp)
+                            .clip(CircleShape)
+                            .background(statusDotColor)
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text(
+                        text = if (isGyroEnabled) "ON" else "OFF",
+                        color = if (isGyroEnabled) NeonPalette.CarbonLight else NeonPalette.SlateMuted,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 9.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * High-performance, non-interactive static preview of GyroToggleButton for Button Studio grid.
+ */
+@Composable
+fun StaticGyroToggleButton(
+    isRgbEnabled: Boolean = true,
+    labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
+    modifier: Modifier = Modifier
+) {
+    GyroToggleButton(
+        isConnected = false,
+        onVibrate = {},
+        viewModel = null,
+        isRgbEnabled = isRgbEnabled,
+        modifier = modifier,
+        displayLabel = null,
+        isInteractive = false
+    )
+}
+
+

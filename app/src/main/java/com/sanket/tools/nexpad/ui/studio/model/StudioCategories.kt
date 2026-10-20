@@ -67,7 +67,19 @@ fun CategoryDefinition.toStudioCategory(): StudioCategory {
     )
 }
 
+val SPECIAL_CATEGORY = StudioCategory(
+    id = "SPECIAL",
+    title = "Special",
+    icon = CategorySymbol.SYSTEM.asImageVector(),
+    keys = setOf("GYRO"),
+    subFilters = listOf(
+        StudioSubFilter("ALL", "All Special", null),
+        StudioSubFilter("GYRO", "🎯 Gyro Toggle", "GYRO")
+    )
+)
+
 val STUDIO_CATEGORIES: List<StudioCategory> = CategoryManager.getAllCategories().map { it.toStudioCategory() } + listOf(
+    SPECIAL_CATEGORY,
     StudioCategory(
         id = "ALL",
         title = "All",

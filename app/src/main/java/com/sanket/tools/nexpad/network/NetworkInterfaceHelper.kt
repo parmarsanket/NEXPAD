@@ -1,8 +1,23 @@
 package com.sanket.tools.nexpad.network
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import java.net.Inet4Address
 import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.net.NetworkInterface
+
+/**
+ * Encapsulates an active local network interface target for multi-homed broadcast discovery.
+ */
+data class NetworkBroadcastTarget(
+    val localAddress: Inet4Address,
+    val broadcastAddress: InetSocketAddress,
+    val interfaceName: String,
+    val isUsbTethering: Boolean
+)
 
 object NetworkInterfaceHelper {
 
@@ -33,6 +48,85 @@ object NetworkInterfaceHelper {
             }
         } catch (_: Exception) {}
         return false
+    }
+
+    /**
+     * Finds the local IPv4 address on this Android device that shares the same subnet
+     * as the specified target IP address. This enables binding sockets to the exact physical
+     * network interface (e.g. Wi-Fi wlan0 vs USB Tethering rndis0), preventing multi-homed routing conflicts.
+     */
+    fun findMatchingLocalAddress(targetAddress: String): Inet4Address? {
+        try {
+            val targetInet = InetAddress.getByName(targetAddress)
+            if (targetInet !is Inet4Address) return null
+            val interfaces = NetworkInterface.getNetworkInterfaces() ?: return null
+            while (interfaces.hasMoreElements()) {
+                val iface = interfaces.nextElement()
+                if (!iface.isUp || iface.isLoopback) continue
+                for (ifAddr in iface.interfaceAddresses) {
+                    val addr = ifAddr.address
+                    val prefixLength = ifAddr.networkPrefixLength.toInt()
+                    if (addr is Inet4Address) {
+                        if (isInSameSubnet(addr.address, targetInet.address, prefixLength)) {
+                            return addr
+                        }
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+        return null
+    }
+
+    /**
+     * Finds the active Wi-Fi or physical Ethernet Network object from ConnectivityManager.
+     */
+    fun findWifiNetwork(context: Context): Network? {
+        return try {
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return null
+            val networks = cm.allNetworks
+            networks.firstOrNull { net ->
+                val caps = cm.getNetworkCapabilities(net)
+                caps != null && (
+                    caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                    caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+                )
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Returns all active broadcast targets across all active network interfaces (Wi-Fi, USB Tethering, Hotspot).
+     * Each target includes the interface's local IPv4 and its subnet broadcast address.
+     */
+    fun getActiveBroadcastTargets(port: Int = 9998): List<NetworkBroadcastTarget> {
+        val targets = mutableListOf<NetworkBroadcastTarget>()
+        try {
+            val interfaces = NetworkInterface.getNetworkInterfaces() ?: return emptyList()
+            while (interfaces.hasMoreElements()) {
+                val iface = interfaces.nextElement()
+                if (!iface.isUp || iface.isLoopback) continue
+                val name = iface.name.lowercase()
+                val isUsb = name.startsWith("rndis") || name.startsWith("usb") || name.startsWith("ncm")
+
+                for (ifAddr in iface.interfaceAddresses) {
+                    val addr = ifAddr.address
+                    val broadcast = ifAddr.broadcast
+                    if (addr is Inet4Address && broadcast != null) {
+                        targets.add(
+                            NetworkBroadcastTarget(
+                                localAddress = addr,
+                                broadcastAddress = InetSocketAddress(broadcast, port),
+                                interfaceName = iface.name,
+                                isUsbTethering = isUsb
+                            )
+                        )
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+        return targets
     }
 
     /**
@@ -84,17 +178,47 @@ object NetworkInterfaceHelper {
 
     /**
      * Checks if any active Wi-Fi or Ethernet network connection is currently available.
+     * Uses modern ConnectivityManager activeNetwork and allNetworks capabilities with a physical interface fallback.
      */
     fun hasActiveWifiOrEthernet(context: android.content.Context): Boolean {
         return try {
             val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
-            cm?.allNetworks?.any { net ->
-                val caps = cm.getNetworkCapabilities(net)
-                caps != null && (
+            
+            // Check all networks across interfaces (not just default activeNetwork)
+            val networks = cm?.allNetworks ?: emptyArray()
+            for (net in networks) {
+                val caps = cm?.getNetworkCapabilities(net) ?: continue
+                if (caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ||
+                    caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET)
+                ) {
+                    return true
+                }
+            }
+
+            val activeNet = cm?.activeNetwork
+            if (activeNet != null) {
+                val caps = cm.getNetworkCapabilities(activeNet)
+                if (caps != null && (
                     caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ||
                     caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET)
-                )
-            } ?: false
+                )) {
+                    return true
+                }
+            }
+
+            // Fallback for offline LAN or unmetered local routing where activeNetwork may differ:
+            // scan network interfaces for an UP Wi-Fi (wlan) or Ethernet (eth) adapter with an assigned IPv4 address.
+            val interfaces = NetworkInterface.getNetworkInterfaces() ?: return false
+            while (interfaces.hasMoreElements()) {
+                val iface = interfaces.nextElement()
+                if (!iface.isUp || iface.isLoopback) continue
+                val name = iface.name.lowercase()
+                val isWifiOrEth = name.startsWith("wlan") || name.startsWith("eth")
+                if (isWifiOrEth && iface.interfaceAddresses.any { it.address is Inet4Address }) {
+                    return true
+                }
+            }
+            false
         } catch (_: Exception) {
             false
         }
