@@ -293,13 +293,14 @@ fun ConnectionScreenContent(
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding),
             contentAlignment = Alignment.TopCenter
         ) {
             CyberGrid(modifier = Modifier.matchParentSize())
             ScanLine(modifier = Modifier.matchParentSize())
 
-            val layout = adaptiveLayoutSpec(maxWidth, maxHeight)
+            val layout = windowLayout
 
             val transportsComposable = @Composable {
                 ConnectionTransportsContent(
@@ -339,6 +340,7 @@ fun ConnectionScreenContent(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
+                            .imePadding()
                             .verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
@@ -364,6 +366,7 @@ fun ConnectionScreenContent(
                         modifier = Modifier
                             .weight(1.25f)
                             .fillMaxHeight()
+                            .imePadding()
                             .verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
@@ -389,6 +392,7 @@ fun ConnectionScreenContent(
                     modifier = Modifier
                         .widthIn(max = layout.formMaxWidth)
                         .fillMaxWidth()
+                        .imePadding()
                         .verticalScroll(rememberScrollState())
                         .padding(
                             horizontal = layout.horizontalPadding,
