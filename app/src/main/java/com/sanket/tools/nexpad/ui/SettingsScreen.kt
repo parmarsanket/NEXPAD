@@ -33,6 +33,20 @@ import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.SmartDisplay
 import androidx.compose.material.icons.rounded.Vibration
+import androidx.compose.material.icons.rounded.Lan
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -120,6 +134,9 @@ fun SettingsScreen(
     var esportsMultitouchEnabled by remember {
         mutableStateOf(nexpadPrefs.isEsportsMultitouchEnabled)
     }
+    var communicationPort by remember {
+        mutableIntStateOf(nexpadPrefs.defaultCommunicationPort)
+    }
 
     val hapticHelper = remember(context) { HapticFeedbackHelper(context) }
 
@@ -135,6 +152,12 @@ fun SettingsScreen(
         doubleTapBackExitEnabled = doubleTapBackExitEnabled,
         joystickSlideGuardEnabled = joystickSlideGuardEnabled,
         esportsMultitouchEnabled = esportsMultitouchEnabled,
+        communicationPort = communicationPort,
+        onCommunicationPortChange = { newPort ->
+            communicationPort = newPort
+            nexpadPrefs.defaultCommunicationPort = newPort
+            Toast.makeText(context, "Network port updated to $newPort", Toast.LENGTH_SHORT).show()
+        },
         onRgbChange = {
             layoutManager.saveProfile(currentProfile.copy(isRgbEnabled = it), activate = true)
         },
@@ -209,6 +232,8 @@ fun SettingsScreenContent(
     doubleTapBackExitEnabled: Boolean = true,
     joystickSlideGuardEnabled: Boolean = true,
     esportsMultitouchEnabled: Boolean = true,
+    communicationPort: Int = 9999,
+    onCommunicationPortChange: (Int) -> Unit = {},
     onRgbChange: (Boolean) -> Unit = {},
     onButtonHapticsChange: (Boolean) -> Unit = {},
     onVibrateOfflineChange: (Boolean) -> Unit = {},
@@ -251,6 +276,7 @@ fun SettingsScreenContent(
                 modifier = Modifier
                     .widthIn(max = layout.formMaxWidth)
                     .fillMaxWidth()
+                    .imePadding()
                     .padding(horizontal = layout.horizontalPadding, vertical = layout.verticalPadding)
                     .verticalScroll(scrollState),
                 verticalArrangement = Arrangement.spacedBy(18.dp)
@@ -375,6 +401,20 @@ fun SettingsScreenContent(
                         onCheckedChange = onJoystickSlideGuardChange,
                         accentColor = NeonPalette.Amber,
                         enabled = esportsMultitouchEnabled
+                    )
+                }
+
+
+                // ── Card: Network Communication Port ──────────────────────────────
+                SettingsSectionCard(
+                    accentColor = NeonPalette.Cyan,
+                    title = "NETWORK COMMUNICATION PORT",
+                    subtitle = "Centralized connection port for Wi-Fi UDP streaming, Direct IP, and USB ADB",
+                    icon = Icons.Rounded.Lan
+                ) {
+                    SettingsPortCardContent(
+                        currentPort = communicationPort,
+                        onPortSave = onCommunicationPortChange
                     )
                 }
 
@@ -941,3 +981,141 @@ private fun SettingsLinkRow(
     }
 }
 
+
+
+@Composable
+private fun SettingsPortCardContent(
+    currentPort: Int,
+    onPortSave: (Int) -> Unit
+) {
+    var portText by remember(currentPort) { mutableStateOf(currentPort.toString()) }
+    val parsedPort = portText.toIntOrNull()
+    val isValid = parsedPort != null && parsedPort in 1024..65535
+    val isChanged = isValid && parsedPort != currentPort
+    val isDefault = currentPort == 9999
+    val focusManager = LocalFocusManager.current
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text(
+            text = "Configures the default port for Wi-Fi UDP streaming, Direct IP, and ADB reverse bridge. Change this if port 9999 is blocked or occupied by another service on your PC.",
+            style = MaterialTheme.typography.bodySmall.copy(
+                color = NeonPalette.SlateText,
+                fontSize = 12.sp,
+                lineHeight = 16.sp
+            )
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            OutlinedTextField(
+                value = portText,
+                onValueChange = { input ->
+                    if (input.length <= 5 && input.all { it.isDigit() }) {
+                        portText = input
+                    }
+                },
+                label = { Text("Port Number", color = NeonPalette.SlateText) },
+                placeholder = { Text("9999", color = NeonPalette.SlateMuted) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        focusManager.clearFocus()
+                        if (isChanged && parsedPort != null) {
+                            onPortSave(parsedPort)
+                        }
+                    }
+                ),
+                isError = portText.isNotBlank() && !isValid,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.weight(1.3f),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = NeonPalette.Cyan,
+                    unfocusedBorderColor = NeonPalette.SlateBorder,
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedContainerColor = NeonPalette.FieldBg,
+                    unfocusedContainerColor = NeonPalette.FieldBg
+                )
+            )
+
+            Button(
+                onClick = {
+                    focusManager.clearFocus()
+                    if (parsedPort != null) {
+                        onPortSave(parsedPort)
+                    }
+                },
+                enabled = isChanged,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(52.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = NeonPalette.Cyan,
+                    contentColor = Color.Black,
+                    disabledContainerColor = NeonPalette.DisabledBg,
+                    disabledContentColor = NeonPalette.SlateDisabled
+                )
+            ) {
+                Text(
+                    text = "SAVE",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp
+                )
+            }
+
+            if (!isDefault || isChanged) {
+                OutlinedButton(
+                    onClick = {
+                        focusManager.clearFocus()
+                        portText = "9999"
+                        onPortSave(9999)
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, NeonPalette.Purple.copy(alpha = 0.6f)),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = NeonPalette.Purple
+                    )
+                ) {
+                    Text(
+                        text = "RESET",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 11.sp
+                    )
+                }
+            }
+        }
+
+        // Status indicator
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(if (isValid) NeonPalette.Green else Color.Red)
+            )
+            Text(
+                text = if (isValid) "Active System Port: $currentPort (Valid range: 1024 - 65535)" else "Invalid port! Must be between 1024 and 65535",
+                color = if (isValid) NeonPalette.Green else Color.Red,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}

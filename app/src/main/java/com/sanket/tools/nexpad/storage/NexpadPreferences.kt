@@ -146,15 +146,22 @@ class NexpadPreferences private constructor(context: Context) {
         get() = com.sanket.tools.nexpad.model.HapticStyle.fromId(prefs.getString(NexpadPreferenceKeys.KEY_HAPTICS_STYLE, NexpadPreferenceKeys.DEFAULT_HAPTICS_STYLE))
         set(value) = prefs.edit { putString(NexpadPreferenceKeys.KEY_HAPTICS_STYLE, value.id) }
 
-    // ─── Direct IP Connection Domain APIs ───────────────────────────────
+    // ─── Direct IP & Network Port Domain APIs ───────────────────────────
+
+    var defaultCommunicationPort: Int
+        get() = prefs.getInt(NexpadPreferenceKeys.KEY_COMMUNICATION_PORT, NexpadPreferenceKeys.DEFAULT_COMMUNICATION_PORT)
+        set(value) {
+            prefs.edit { putInt(NexpadPreferenceKeys.KEY_COMMUNICATION_PORT, value) }
+            lastManualPort = value.toString()
+        }
 
     var lastManualIp: String
         get() = connectionPrefs.getString(NexpadPreferenceKeys.KEY_LAST_MANUAL_IP, "") ?: ""
         set(value) = connectionPrefs.edit { putString(NexpadPreferenceKeys.KEY_LAST_MANUAL_IP, value) }
 
     var lastManualPort: String
-        get() = connectionPrefs.getString(NexpadPreferenceKeys.KEY_LAST_MANUAL_PORT, NexpadPreferenceKeys.DEFAULT_MANUAL_PORT)
-            ?: NexpadPreferenceKeys.DEFAULT_MANUAL_PORT
+        get() = connectionPrefs.getString(NexpadPreferenceKeys.KEY_LAST_MANUAL_PORT, defaultCommunicationPort.toString())
+            ?: defaultCommunicationPort.toString()
         set(value) = connectionPrefs.edit { putString(NexpadPreferenceKeys.KEY_LAST_MANUAL_PORT, value) }
 
     companion object {

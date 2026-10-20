@@ -68,4 +68,6 @@ object NexpadPreferenceKeys {
     const val KEY_LAST_MANUAL_IP = "last_manual_ip"
     const val KEY_LAST_MANUAL_PORT = "last_manual_port"
     const val DEFAULT_MANUAL_PORT = "9999"
+    const val KEY_COMMUNICATION_PORT = "communication_port"
+    const val DEFAULT_COMMUNICATION_PORT = 9999
 }
