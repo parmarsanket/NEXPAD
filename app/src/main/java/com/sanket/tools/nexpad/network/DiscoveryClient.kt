@@ -21,7 +21,9 @@ data class DiscoveredServer(
     val lastSeenTimestamp: Long = System.currentTimeMillis()
 )
 
-class DiscoveryClient {
+class DiscoveryClient(
+    private val defaultPortProvider: () -> Int = { 9999 }
+) {
     private var channel: DatagramChannel? = null
     private var listenJob: Job? = null
     private var broadcastJob: Job? = null
@@ -85,12 +87,20 @@ class DiscoveryClient {
                                         
                                         val ip = senderAddr.address.hostAddress ?: ""
                                         val isUsb = NetworkInterfaceHelper.isUsbTetheringAddress(ip)
+                                        
+                                        val serverPort = if (buffer.remaining() >= 2) {
+                                            val p = buffer.short.toInt() and 0xFFFF
+                                            if (p in 1024..65535) p else defaultPortProvider()
+                                        } else {
+                                            defaultPortProvider()
+                                        }
+
                                         withContext(Dispatchers.Main) {
                                             onServerDiscovered(
                                                 DiscoveredServer(
                                                     name = serverName,
                                                     ipAddress = ip,
-                                                    port = 9999,
+                                                    port = serverPort,
                                                     isUsbTethering = isUsb
                                                 )
                                             )

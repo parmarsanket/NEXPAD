@@ -135,7 +135,7 @@ fun ConnectionScreen(
         com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context)
     }
     var manualIp by remember { mutableStateOf(nexpadPrefs.lastManualIp) }
-    var manualPort by remember { mutableStateOf(nexpadPrefs.lastManualPort) }
+    var manualPort by remember(nexpadPrefs.lastManualPort) { mutableStateOf(nexpadPrefs.lastManualPort) }
 
     ConnectionScreenContent(
         isConnected = isConnected,
@@ -155,12 +155,13 @@ fun ConnectionScreen(
             nexpadPrefs.lastManualIp = newIp
         },
         onManualPortChange = { newPort ->
-            manualPort = newPort
-            nexpadPrefs.lastManualPort = newPort
+            val digitsOnly = newPort.filter { it.isDigit() }.take(5)
+            manualPort = digitsOnly
+            nexpadPrefs.lastManualPort = digitsOnly
         },
         onConnectManualIp = {
             if (manualIp.isNotBlank()) {
-                val port = manualPort.toIntOrNull() ?: com.sanket.tools.nexpad.utils.NexpadPreferenceKeys.DEFAULT_MANUAL_PORT.toInt()
+                val port = manualPort.toIntOrNull() ?: nexpadPrefs.defaultCommunicationPort
                 viewModel.connect(manualIp.trim(), port, "Direct IP")
             }
         },

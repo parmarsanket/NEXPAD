@@ -57,7 +57,9 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
         rightStickY = 0f
     }
     
-    private val discoveryClient = DiscoveryClient()
+    private val discoveryClient = DiscoveryClient {
+        com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(getApplication()).defaultCommunicationPort
+    }
     
     private val _discoveredServers = MutableStateFlow<List<DiscoveredServer>>(emptyList())
     val discoveredServers: StateFlow<List<DiscoveredServer>> = _discoveredServers.asStateFlow()
