@@ -800,11 +800,12 @@ fun NxprcCanvasRenderer(
         Modifier
     } else when {
         isStick -> {
-            if (isLocked) {
+            if (isTouchpad || isLocked) {
                 Modifier.pointerInput(document.manifest.id, assignedControl, isCameraMode, cameraSensitivity, effectiveTouchpadCurve, density) {
                 var coastJob: Job? = null
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
+                    if (isTouchpad && down.isConsumed) return@awaitEachGesture
                     coastJob?.cancel()
                     isPressedLocally = true
                     val maxRadius = widthDp * 0.28f * density

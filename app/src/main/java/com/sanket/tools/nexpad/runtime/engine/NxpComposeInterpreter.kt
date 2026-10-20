@@ -509,13 +509,18 @@ private fun RenderNxpJoystick(
     val coroutineScope = rememberCoroutineScope()
     val density = androidx.compose.ui.platform.LocalDensity.current.density
 
-    val gestureModifier = if (!isInteractive || !isLocked) {
+    val isTouchpad = def.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
+            def.manifest.defaultControl.contains("RTP", ignoreCase = true) ||
+            def.manifest.defaultControl.contains("LTP", ignoreCase = true)
+
+    val gestureModifier = if (!isInteractive || (!isLocked && !isTouchpad)) {
         Modifier
     } else if (isCameraMode) {
         Modifier.pointerInput(isConnected, stickControl, cameraSensitivity, effectiveTouchpadCurve, density) {
             var coastJob: Job? = null
             awaitEachGesture {
                 val down = awaitFirstDown(requireUnconsumed = false)
+                if (isTouchpad && down.isConsumed) return@awaitEachGesture
                 coastJob?.cancel()
                 val startTime = System.currentTimeMillis()
                 var previousTouchX = down.position.x

@@ -43,6 +43,7 @@ import kotlin.math.sin
 import android.os.Build
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import android.os.VibrationEffect
 import com.sanket.tools.nexpad.ui.components.controller.bumper.RealisticBumper
 import com.sanket.tools.nexpad.ui.components.controller.abxy.RealisticButton
@@ -52,6 +53,10 @@ import com.sanket.tools.nexpad.ui.components.controller.macros.RealisticMacroBut
 import com.sanket.tools.nexpad.ui.components.controller.system.RealisticSystemButton
 import com.sanket.tools.nexpad.ui.components.controller.trigger.RealisticTrigger
 import com.sanket.tools.nexpad.ui.components.controller.special.InbuildTouchpadHalf
+import com.sanket.tools.nexpad.ui.components.controller.special.InbuildTouchpadVisualState
+import com.sanket.tools.nexpad.ui.components.controller.special.VelocityRingBuffer
+import com.sanket.tools.nexpad.ui.components.controller.special.calculateGamingStickMagnitude
+import kotlin.time.Duration.Companion.milliseconds
 import com.sanket.tools.nexpad.utils.ImmersiveSystemBars
 import com.sanket.tools.nexpad.utils.LockScreenOrientation
 import com.sanket.tools.nexpad.model.JoystickMode
@@ -88,19 +93,26 @@ class BoundsRegistry {
     companion object {
         val EXCLUDED_NON_BUTTON_KEYS = setOf(
             "LS", "RS", "LSB", "RSB", "L3", "R3",
-            "LTP", "RTP"
+            "LTP", "RTP", "TOUCHPAD"
         )
         val NON_SWEEPABLE_KEYS = setOf(
             "START", "BACK", "GUIDE", "GYRO", "SHARE",
             "SELECT", "MENU", "HOME", "CAPTURE"
         )
+
+        fun isNonButton(key: String): Boolean {
+            val upper = key.uppercase()
+            return EXCLUDED_NON_BUTTON_KEYS.contains(upper) ||
+                    upper.contains("TOUCHPAD") ||
+                    upper.contains("STICK")
+        }
     }
 
     fun isNearAny(screenX: Float, screenY: Float, marginPx: Float): Boolean {
         val marginSq = marginPx * marginPx
         for ((key, rect) in bounds) {
             // Sticks and touchpads are never buttons to avoid
-            if (EXCLUDED_NON_BUTTON_KEYS.contains(key.uppercase())) {
+            if (isNonButton(key)) {
                 continue
             }
             val dx = maxOf(rect.left - screenX, 0f, screenX - rect.right)
@@ -114,7 +126,24 @@ class BoundsRegistry {
 
     fun getExclusionRects(isLeft: Boolean, screenWidthPx: Float): List<Rect> {
         val midX = screenWidthPx / 2f
-        return bounds.values.filter { if (isLeft) it.center.x < midX else it.center.x >= midX }
+        return bounds.entries
+            .filter { (key, rect) ->
+                !isNonButton(key) && (if (isLeft) rect.center.x < midX else rect.center.x >= midX)
+            }
+            .map { it.value }
+    }
+
+    fun isInsideDiscreteTouchpad(screenX: Float, screenY: Float): Boolean {
+        val pt = Offset(screenX, screenY)
+        for ((key, rect) in bounds) {
+            val upper = key.uppercase()
+            if (upper == "LTP" || upper == "RTP" || upper.contains("TOUCHPAD")) {
+                if (rect.contains(pt)) {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     /**
@@ -145,7 +174,7 @@ class BoundsRegistry {
 
         for ((key, rect) in bounds) {
             // Exclude sticks, stick clicks, and touchpads from button hit detection
-            if (EXCLUDED_NON_BUTTON_KEYS.contains(key.uppercase())) {
+            if (isNonButton(key)) {
                 continue
             }
 
@@ -515,6 +544,9 @@ fun GamepadScreenContent(
     val rsFloatX = remember { Animatable(0f) }
     val rsFloatY = remember { Animatable(0f) }
 
+    val ltpVisualState = remember { InbuildTouchpadVisualState() }
+    val rtpVisualState = remember { InbuildTouchpadVisualState() }
+
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
@@ -634,6 +666,7 @@ fun GamepadScreenContent(
         // RealisticTouchPad (default), NXPRC, and custom skins render as discrete widgets at their placed positions.
         val inbuildLtp = ltpEntry?.takeIf { it.value.customComponentId?.startsWith("builtin.inbuild_") == true }
         val inbuildRtp = rtpEntry?.takeIf { it.value.customComponentId?.startsWith("builtin.inbuild_") == true }
+        android.util.Log.d("NEXPAD_TOUCH", "GamepadScreenContent: inbuildLtp=${inbuildLtp != null} inbuildRtp=${inbuildRtp != null} rtpEntryKey=${rtpEntry?.key} rtpCustomId=${rtpEntry?.value?.customComponentId}")
 
         if (inbuildLtp != null) {
             val ltpPos = inbuildLtp.value
@@ -652,7 +685,8 @@ fun GamepadScreenContent(
                     isRgbEnabled = profile.isRgbEnabled,
                     viewModel = viewModel,
                     sensitivity = ltpPos.sensitivity,
-                    curve = com.sanket.tools.nexpad.model.TouchpadCurve.fromId(ltpPos.touchpadCurve)
+                    curve = com.sanket.tools.nexpad.model.TouchpadCurve.fromId(ltpPos.touchpadCurve),
+                    visualState = ltpVisualState
                 )
             }
         }
@@ -674,7 +708,8 @@ fun GamepadScreenContent(
                     isRgbEnabled = profile.isRgbEnabled,
                     viewModel = viewModel,
                     sensitivity = rtpPos.sensitivity,
-                    curve = com.sanket.tools.nexpad.model.TouchpadCurve.fromId(rtpPos.touchpadCurve)
+                    curve = com.sanket.tools.nexpad.model.TouchpadCurve.fromId(rtpPos.touchpadCurve),
+                    visualState = rtpVisualState
                 )
             }
         }
@@ -761,12 +796,22 @@ fun GamepadScreenContent(
             lsFloatY = lsFloatY,
             rsFloatX = rsFloatX,
             rsFloatY = rsFloatY,
+            inbuildLtp = inbuildLtp,
+            inbuildRtp = inbuildRtp,
+            hasLeftTouchpad = touchpadEntries.any { it.key.equals("LTP", ignoreCase = true) || it.value.customComponentId?.contains("ltp", ignoreCase = true) == true },
+            hasRightTouchpad = touchpadEntries.any { it.key.equals("RTP", ignoreCase = true) || it.value.customComponentId?.contains("rtp", ignoreCase = true) == true },
             viewModel = viewModel,
             isSlideGuardEnabled = isSlideGuardEnabled,
             isEsportsMultitouchEnabled = isEsportsMultitouchEnabled,
             onVibrate = onVibrate,
             onLeftStickTouching = { isLeftStickTouching = it },
             onRightStickTouching = { isRightStickTouching = it },
+            onLtpTouch = { x, y, touching ->
+                ltpVisualState.update(x, y, touching)
+            },
+            onRtpTouch = { x, y, touching ->
+                rtpVisualState.update(x, y, touching)
+            },
             onPressedKeysChanged = { keys ->
                 pressedButtonKeysState.value = keys
             }
@@ -828,12 +873,18 @@ fun UnifiedTouchSurface(
     lsFloatY: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>,
     rsFloatX: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>,
     rsFloatY: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>,
+    inbuildLtp: Map.Entry<String, com.sanket.tools.nexpad.model.Position>? = null,
+    inbuildRtp: Map.Entry<String, com.sanket.tools.nexpad.model.Position>? = null,
+    hasLeftTouchpad: Boolean = false,
+    hasRightTouchpad: Boolean = false,
     viewModel: GamepadViewModel?,
     isSlideGuardEnabled: Boolean = true,
     isEsportsMultitouchEnabled: Boolean = true,
     onVibrate: () -> Unit,
     onLeftStickTouching: (Boolean) -> Unit,
     onRightStickTouching: (Boolean) -> Unit,
+    onLtpTouch: (x: Float, y: Float, isTouching: Boolean) -> Unit = { _, _, _ -> },
+    onRtpTouch: (x: Float, y: Float, isTouching: Boolean) -> Unit = { _, _, _ -> },
     onPressedKeysChanged: (Set<String>) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -844,11 +895,38 @@ fun UnifiedTouchSurface(
     val currentScreenWidthPx by rememberUpdatedState(screenWidthPx)
     val currentIsSlideGuardEnabled by rememberUpdatedState(isSlideGuardEnabled)
     val currentIsEsportsMultitouchEnabled by rememberUpdatedState(isEsportsMultitouchEnabled)
+    val currentInbuildLtp by rememberUpdatedState(inbuildLtp)
+    val currentInbuildRtp by rememberUpdatedState(inbuildRtp)
+    val currentHasLeftTouchpad by rememberUpdatedState(hasLeftTouchpad)
+    val currentHasRightTouchpad by rememberUpdatedState(hasRightTouchpad)
     val currentViewModel by rememberUpdatedState(viewModel)
     val currentOnVibrate by rememberUpdatedState(onVibrate)
     val currentOnLeftStickTouching by rememberUpdatedState(onLeftStickTouching)
     val currentOnRightStickTouching by rememberUpdatedState(onRightStickTouching)
+    val currentOnLtpTouch by rememberUpdatedState(onLtpTouch)
+    val currentOnRtpTouch by rememberUpdatedState(onRtpTouch)
     val currentOnPressedKeysChanged by rememberUpdatedState(onPressedKeysChanged)
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val ltpPosVal = inbuildLtp?.value ?: lsEntry?.value
+    val ltpEffectiveSensitivity = remember(context, inbuildLtp) {
+        val s = inbuildLtp?.value?.sensitivity
+        if (s != null && s > 0f) s else com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadSensitivity("LTP")
+    }
+    val ltpEffectiveCurve = remember(context, inbuildLtp) {
+        inbuildLtp?.value?.touchpadCurve?.let { com.sanket.tools.nexpad.model.TouchpadCurve.fromId(it) }
+            ?: com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadCurve("LTP")
+    }
+
+    val rtpPosVal = inbuildRtp?.value ?: rsEntry?.value
+    val rtpEffectiveSensitivity = remember(context, inbuildRtp) {
+        val s = inbuildRtp?.value?.sensitivity
+        if (s != null && s > 0f) s else com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadSensitivity("RTP")
+    }
+    val rtpEffectiveCurve = remember(context, inbuildRtp) {
+        inbuildRtp?.value?.touchpadCurve?.let { com.sanket.tools.nexpad.model.TouchpadCurve.fromId(it) }
+            ?: com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadCurve("RTP")
+    }
 
     val maxThrowPx = remember(density) { with(density) { 60.dp.toPx() } }
     val marginPx = remember(density) { with(density) { 32.dp.toPx() } }
@@ -895,6 +973,8 @@ fun UnifiedTouchSurface(
             currentViewModel?.updateRightStick(0f, 0f)
             currentOnLeftStickTouching(false)
             currentOnRightStickTouching(false)
+            currentOnLtpTouch(-1f, -1f, false)
+            currentOnRtpTouch(-1f, -1f, false)
             for (key in currentGlobalPressed) {
                 currentViewModel?.updateButton(key, false)
             }
@@ -914,6 +994,21 @@ fun UnifiedTouchSurface(
                 var rightStickPointerId: PointerId? = null
                 var rightBaseX = 0f
                 var rightBaseY = 0f
+
+                var leftTouchpadPointerId: PointerId? = null
+                var ltpAnchorX = 0f
+                var ltpAnchorY = 0f
+
+                var rightTouchpadPointerId: PointerId? = null
+                var rtpPreviousX = 0f
+                var rtpPreviousY = 0f
+                var rtpPreviousTimeMs = 0L
+                var rtpAccumulatedDeltaX = 0f
+                var rtpAccumulatedDeltaY = 0f
+                var rtpCurrentStickX = 0f
+                var rtpCurrentStickY = 0f
+                val rtpVelocityBuffer = VelocityRingBuffer(8)
+                var rtpDecayJob: Job? = null
 
                 val activePointers = mutableMapOf<PointerId, Set<String>>()
                 val initialPointers = mutableMapOf<PointerId, Set<String>>()
@@ -977,7 +1072,7 @@ fun UnifiedTouchSurface(
                             val isUp = change.previousPressed && !change.pressed
 
                             if (isDown) {
-                                // 1. Check Button Hit-Testing first
+                                // 1. Check Button Hit-Testing first (0ms priority for buttons)
                                 val hits = currentBoundsRegistry.hitTestTouchDisk(
                                     screenX = px,
                                     screenY = py,
@@ -985,21 +1080,53 @@ fun UnifiedTouchSurface(
                                     excludedJoystickCenters = currentExcludedJoysticks
                                 )
 
+                                android.util.Log.d("NEXPAD_TOUCH", "Unified: isDown pid=" + pid + " pos=(" + px + "," + py + ") hits=" + hits + " inbuildRtp=" + (currentInbuildRtp != null))
                                 if (hits.isNotEmpty()) {
                                     change.consume()
                                     activePointers[pid] = hits
                                     initialPointers[pid] = hits
                                     syncButtons()
                                 } else {
-                                    // 2. Not a button: Check floating joystick activation
+                                    // 2. Check if touching near any button (32dp buffer zone prevents miss-clicks)
                                     val nearButton = currentBoundsRegistry.isNearAny(px, py, marginPx)
-                                    val midX = currentScreenWidthPx / 2f
-
                                     if (!nearButton) {
-                                        // Left Stick
-                                        if (px < midX && leftStickPointerId == null && lsMode != JoystickMode.LOCKED) {
+                                        val midX = currentScreenWidthPx / 2f
+                                        val isInsideDiscrete = currentBoundsRegistry.isInsideDiscreteTouchpad(px, py)
+                                        val isInbuildLtpZone = currentInbuildLtp != null && px < midX
+                                        val isInbuildRtpZone = currentInbuildRtp != null && px >= midX
+
+                                        // A. Right Touchpad (Inbuild half-screen or discrete on right half)
+                                        if ((isInbuildRtpZone || (isInsideDiscrete && px >= midX)) && rightTouchpadPointerId == null) {
+                                            rightTouchpadPointerId = pid
+                                            rtpPreviousX = px
+                                            rtpPreviousY = py
+                                            rtpPreviousTimeMs = System.currentTimeMillis()
+                                            rtpAccumulatedDeltaX = 0f
+                                            rtpAccumulatedDeltaY = 0f
+                                            rtpCurrentStickX = 0f
+                                            rtpCurrentStickY = 0f
+                                            rtpVelocityBuffer.clear()
+                                            rtpDecayJob?.cancel()
+                                            change.consume()
+                                            currentOnVibrate()
+                                            currentOnRtpTouch(px - midX, py, true)
+                                            android.util.Log.d("NEXPAD_TOUCH", "Unified: RTP claimed pid=$pid at ($px, $py)")
+                                        }
+                                        // B. Left Touchpad (Inbuild half-screen or discrete on left half)
+                                        else if ((isInbuildLtpZone || (isInsideDiscrete && px < midX)) && leftTouchpadPointerId == null) {
+                                            leftTouchpadPointerId = pid
+                                            ltpAnchorX = px
+                                            ltpAnchorY = py
+                                            change.consume()
+                                            currentOnVibrate()
+                                            currentOnLtpTouch(px, py, true)
+                                            currentViewModel?.updateLeftStick(0f, 0f)
+                                            android.util.Log.d("NEXPAD_TOUCH", "Unified: LTP claimed pid=$pid at ($px, $py)")
+                                        }
+                                        // C. Left Floating Stick (BOX or FULL mode)
+                                        else if (px < midX && leftStickPointerId == null && lsMode != JoystickMode.LOCKED && currentInbuildLtp == null) {
                                             val inZone = when (lsMode) {
-                                                JoystickMode.FULL -> true
+                                                JoystickMode.FULL -> !isInsideDiscrete
                                                 JoystickMode.BOX ->
                                                     abs(px - lsHomeX) <= lsBoxHalfPx &&
                                                     abs(py - lsHomeY) <= lsBoxHalfPx
@@ -1020,10 +1147,10 @@ fun UnifiedTouchSurface(
                                                 currentViewModel?.updateLeftStick(0f, 0f)
                                             }
                                         }
-                                        // Right Stick
-                                        else if (px >= midX && rightStickPointerId == null && rsMode != JoystickMode.LOCKED) {
+                                        // D. Right Floating Stick (BOX or FULL mode)
+                                        else if (px >= midX && rightStickPointerId == null && rsMode != JoystickMode.LOCKED && currentInbuildRtp == null) {
                                             val inZone = when (rsMode) {
-                                                JoystickMode.FULL -> true
+                                                JoystickMode.FULL -> !isInsideDiscrete
                                                 JoystickMode.BOX ->
                                                     abs(px - rsHomeX) <= rsBoxHalfPx &&
                                                     abs(py - rsHomeY) <= rsBoxHalfPx
@@ -1048,7 +1175,108 @@ fun UnifiedTouchSurface(
                                 }
                             } else if (change.pressed) {
                                 // MOVE Events
-                                if (pid == leftStickPointerId) {
+                                if (pid == rightTouchpadPointerId) {
+                                    change.consume()
+                                    val midX = currentScreenWidthPx / 2f
+                                    currentOnRtpTouch(px - midX, py, true)
+
+                                    val deltaX = px - rtpPreviousX
+                                    val deltaY = py - rtpPreviousY
+                                    rtpPreviousX = px
+                                    rtpPreviousY = py
+
+                                    // Directional axis stabilization: suppress minor diagonal cross-talk
+                                    var stepDeltaX = deltaX
+                                    var stepDeltaY = deltaY
+                                    val absX = abs(deltaX)
+                                    val absY = abs(deltaY)
+                                    if (absX > 3.0f * absY) {
+                                        stepDeltaY *= 0.5f
+                                    } else if (absY > 3.0f * absX) {
+                                        stepDeltaX *= 0.5f
+                                    }
+
+                                    rtpAccumulatedDeltaX += stepDeltaX
+                                    rtpAccumulatedDeltaY += stepDeltaY
+
+                                    val distPx = hypot(rtpAccumulatedDeltaX, rtpAccumulatedDeltaY)
+                                    val densityVal = density.density
+                                    val distDp = distPx / densityVal
+
+                                    // Micro-delta threshold: 0.04f dp ensures creeping thumb movements safely accumulate
+                                    if (distDp >= 0.04f) {
+                                        val currentTimeMs = System.currentTimeMillis()
+                                        val dtSec = ((currentTimeMs - rtpPreviousTimeMs).coerceAtLeast(1L)) / 1000f
+                                        rtpPreviousTimeMs = currentTimeMs
+
+                                        rtpVelocityBuffer.push(distDp, dtSec)
+                                        val smoothedSpeed = rtpVelocityBuffer.averageSpeed()
+
+                                        // 100% sensitivity boost: 2x factor enables reaching 1.0f with moderate swipe speeds
+                                        val boostSensitivity = rtpEffectiveSensitivity * 2.0f
+                                        val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, boostSensitivity, rtpEffectiveCurve)
+
+                                        if (stickMagnitude > 0f) {
+                                            val dirX = rtpAccumulatedDeltaX / distPx
+                                            val dirY = rtpAccumulatedDeltaY / distPx
+
+                                            val targetStickX = (dirX * stickMagnitude).coerceIn(-1f, 1f)
+                                            val targetStickY = (-dirY * stickMagnitude).coerceIn(-1f, 1f) // Up is positive Y
+
+                                            // Snappy 75/25 responsiveness
+                                            rtpCurrentStickX = 0.75f * targetStickX + 0.25f * rtpCurrentStickX
+                                            rtpCurrentStickY = 0.75f * targetStickY + 0.25f * rtpCurrentStickY
+
+                                            currentViewModel?.updateRightStick(rtpCurrentStickX, rtpCurrentStickY)
+                                            android.util.Log.d("NEXPAD_TOUCH", "Unified: RTP output stick=($rtpCurrentStickX, $rtpCurrentStickY) speed=$smoothedSpeed")
+
+                                            val decayTimeoutMs = (120L - (smoothedSpeed / 20f).toLong()).coerceIn(50L, 120L)
+                                            rtpDecayJob?.cancel()
+                                            rtpDecayJob = coroutineScope.launch {
+                                                delay(decayTimeoutMs)
+                                                rtpCurrentStickX *= 0.5f
+                                                rtpCurrentStickY *= 0.5f
+                                                currentViewModel?.updateRightStick(rtpCurrentStickX, rtpCurrentStickY)
+                                            android.util.Log.d("NEXPAD_TOUCH", "Unified: RTP output stick=($rtpCurrentStickX, $rtpCurrentStickY) speed=$smoothedSpeed")
+                                                delay(30.milliseconds)
+                                                rtpCurrentStickX *= 0.2f
+                                                rtpCurrentStickY *= 0.2f
+                                                currentViewModel?.updateRightStick(rtpCurrentStickX, rtpCurrentStickY)
+                                            android.util.Log.d("NEXPAD_TOUCH", "Unified: RTP output stick=($rtpCurrentStickX, $rtpCurrentStickY) speed=$smoothedSpeed")
+                                                delay(25.milliseconds)
+                                                rtpCurrentStickX = 0f
+                                                rtpCurrentStickY = 0f
+                                                currentViewModel?.updateRightStick(0f, 0f)
+                                            }
+                                        }
+
+                                        rtpAccumulatedDeltaX = 0f
+                                        rtpAccumulatedDeltaY = 0f
+                                    }
+                                } else if (pid == leftTouchpadPointerId) {
+                                    change.consume()
+                                    currentOnLtpTouch(px, py, true)
+                                    val dx = px - ltpAnchorX
+                                    val dy = py - ltpAnchorY
+                                    val baseRadiusDp = 24.dp
+                                    val maxRadiusPx = with(density) { baseRadiusDp.toPx() }
+                                    val dist = hypot(dx, dy)
+                                    if (dist > 0f) {
+                                        val sens = ltpEffectiveSensitivity.coerceAtLeast(1.0f)
+                                        val scaledDist = dist * sens
+                                        val clampedDist = scaledDist.coerceAtMost(maxRadiusPx)
+                                        val norm = (clampedDist / maxRadiusPx).coerceIn(0f, 1f)
+                                        val normX = (dx / dist * norm).coerceIn(-1f, 1f)
+                                        val normY = (-dy / dist * norm).coerceIn(-1f, 1f)
+                                        currentViewModel?.updateLeftStick(normX, normY)
+                                        android.util.Log.d("NEXPAD_TOUCH", "Unified: LTP output stick=($normX, $normY)")
+                                        val maxTravelPx = maxRadiusPx / sens
+                                        if (dist > maxTravelPx) {
+                                            ltpAnchorX = px - (dx / dist * maxTravelPx)
+                                            ltpAnchorY = py - (dy / dist * maxTravelPx)
+                                        }
+                                    }
+                                } else if (pid == leftStickPointerId) {
                                     change.consume()
                                     val deltaX = px - leftBaseX
                                     val deltaY = py - leftBaseY
@@ -1094,10 +1322,10 @@ fun UnifiedTouchSurface(
                                     } else {
                                         val isRightSide = px >= currentScreenWidthPx / 2f
                                         val isSideGuarded = currentIsSlideGuardEnabled &&
-                                            (if (isRightSide) rightStickPointerId != null else leftStickPointerId != null)
+                                            (if (isRightSide) (rightStickPointerId != null || rightTouchpadPointerId != null) else (leftStickPointerId != null || leftTouchpadPointerId != null))
 
                                         if (isSideGuarded) {
-                                            // Side Guard active: stick is actively touching on this side, suppress acquiring new buttons
+                                            // Side Guard active: stick/touchpad is actively touching on this side, suppress acquiring new buttons
                                             val initial = initialPointers[pid] ?: emptySet()
                                             val hits = currentBoundsRegistry.hitTestTouchDisk(
                                                 screenX = px,
@@ -1136,7 +1364,19 @@ fun UnifiedTouchSurface(
                                     }
                                 }
                             } else if (isUp || !change.pressed) {
-                                if (pid == leftStickPointerId) {
+                                if (pid == rightTouchpadPointerId) {
+                                    rightTouchpadPointerId = null
+                                    rtpAccumulatedDeltaX = 0f
+                                    rtpAccumulatedDeltaY = 0f
+                                    currentOnRtpTouch(-1f, -1f, false)
+                                    if (rtpDecayJob?.isActive != true) {
+                                        currentViewModel?.updateRightStick(0f, 0f)
+                                    }
+                                } else if (pid == leftTouchpadPointerId) {
+                                    leftTouchpadPointerId = null
+                                    currentOnLtpTouch(-1f, -1f, false)
+                                    currentViewModel?.updateLeftStick(0f, 0f)
+                                } else if (pid == leftStickPointerId) {
                                     resetLeftStick()
                                 } else if (pid == rightStickPointerId) {
                                     resetRightStick()
@@ -1151,6 +1391,20 @@ fun UnifiedTouchSurface(
                         }
 
                         // Clean up any stale pointers that are no longer pressed
+                        if (rightTouchpadPointerId != null && event.changes.any { it.id == rightTouchpadPointerId && !it.pressed }) {
+                            rightTouchpadPointerId = null
+                            rtpAccumulatedDeltaX = 0f
+                            rtpAccumulatedDeltaY = 0f
+                            currentOnRtpTouch(-1f, -1f, false)
+                            if (rtpDecayJob?.isActive != true) {
+                                currentViewModel?.updateRightStick(0f, 0f)
+                            }
+                        }
+                        if (leftTouchpadPointerId != null && event.changes.any { it.id == leftTouchpadPointerId && !it.pressed }) {
+                            leftTouchpadPointerId = null
+                            currentOnLtpTouch(-1f, -1f, false)
+                            currentViewModel?.updateLeftStick(0f, 0f)
+                        }
                         if (leftStickPointerId != null && event.changes.any { it.id == leftStickPointerId && !it.pressed }) {
                             resetLeftStick()
                         }

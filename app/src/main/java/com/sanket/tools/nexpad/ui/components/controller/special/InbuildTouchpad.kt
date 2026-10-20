@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -23,6 +24,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
@@ -307,9 +310,23 @@ private fun DrawScope.drawInbuildTouchpadGrid(
 // HALF-SCREEN AMBIENT INBUILD TOUCHPAD SURFACE (Z-INDEX LOWEST)
 // =========================================================================
 
+@Stable
+class InbuildTouchpadVisualState {
+    var touchX by mutableFloatStateOf(-1f)
+    var touchY by mutableFloatStateOf(-1f)
+    var isTouching by mutableStateOf(false)
+
+    fun update(x: Float, y: Float, touching: Boolean) {
+        touchX = x
+        touchY = y
+        isTouching = touching
+    }
+}
+
 /**
  * Consumes the entire half-screen empty space (center to left for LTP, center to right for RTP).
- * Applies 16.dp button exclusion buffer zone so all higher Z-order buttons are never interfered with.
+ * Interactive touches are coordinated by UnifiedTouchSurface, while this composable
+ * provides zero-overhead 120Hz ambient cyberpunk grid and glowing aura ripple rendering.
  */
 @Composable
 fun InbuildTouchpadHalf(
@@ -324,226 +341,30 @@ fun InbuildTouchpadHalf(
     sensitivity: Float? = null,
     curve: com.sanket.tools.nexpad.model.TouchpadCurve? = null,
     modifier: Modifier = Modifier,
-    boundsProvider: (() -> List<Rect>)? = null
+    boundsProvider: (() -> List<Rect>)? = null,
+    visualState: InbuildTouchpadVisualState? = null
 ) {
-    val coroutineScope = rememberCoroutineScope()
     val auraColor = if (isLeft) NeonPalette.Cyan else NeonPalette.Magenta
 
-    var isTouching by remember { mutableStateOf(false) }
-    var touchX by remember { mutableFloatStateOf(-1f) }
-    var touchY by remember { mutableFloatStateOf(-1f) }
-    var decayJob by remember { mutableStateOf<Job?>(null) }
-    val currentExclusionRects by androidx.compose.runtime.rememberUpdatedState(exclusionRects)
-    val currentBoundsProvider by androidx.compose.runtime.rememberUpdatedState(boundsProvider)
-
     val touchAuraAlpha by animateFloatAsState(
-        targetValue = if (isTouching) 1f else 0f,
+        targetValue = if (visualState?.isTouching == true) 1f else 0f,
         animationSpec = tween(durationMillis = 180),
         label = "inbuild_touch_aura"
     )
 
-    val context = LocalContext.current
-    val density = LocalDensity.current.density
-    val padKey = if (isLeft) "LTP" else "RTP"
-    val effectiveSensitivity = remember(context, sensitivity, padKey) {
-        if (sensitivity != null && sensitivity > 0f) {
-            sensitivity
-        } else {
-            com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadSensitivity(padKey)
-        }
-    }
-    val effectiveCurve = remember(context, curve, padKey) {
-        if (curve != null) {
-            curve
-        } else {
-            com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context).getTouchpadCurve(padKey)
-        }
-    }
-
-    val marginPx = with(LocalDensity.current) { 16.dp.toPx() }
-
     Box(
-        modifier = modifier
-            .fillMaxSize()
-            .pointerInput(isLeft, effectiveSensitivity, effectiveCurve, density, screenWidthPx) {
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    decayJob?.cancel()
-
-                    // 1. Skip if already claimed by any higher Z-order control
-                    if (down.isConsumed) return@awaitEachGesture
-
-                    // Convert local half-box coords (0 .. screenWidth/2) to full container coords
-                    val screenX = if (isLeft) down.position.x else down.position.x + screenWidthPx / 2f
-                    val screenY = down.position.y
-
-                    // 2. Universal element boundary exclusion check:
-                    // Dilates any shape uniformly by marginPx (16dp safety buffer zone)
-                    val marginSq = marginPx * marginPx
-                    val activeExclusions = currentBoundsProvider?.invoke() ?: currentExclusionRects
-                    val nearButton = activeExclusions.any { rect ->
-                        val dx = maxOf(abs(screenX - rect.center.x) - rect.width / 2f, 0f)
-                        val dy = maxOf(abs(screenY - rect.center.y) - rect.height / 2f, 0f)
-                        (dx * dx + dy * dy) <= marginSq
-                    }
-                    if (nearButton) return@awaitEachGesture
-
-                    // Claim touch
-                    down.consume()
-                    onVibrate()
-
-                    isTouching = true
-                    touchX = down.position.x
-                    touchY = down.position.y
-                    var anchorX = down.position.x
-                    var anchorY = down.position.y
-
-                    var previousTouchX = down.position.x
-                    var previousTouchY = down.position.y
-                    var previousTimeMs = System.currentTimeMillis()
-                    var currentStickX = 0f
-                    var currentStickY = 0f
-                    var accumulatedDeltaX = 0f
-                    var accumulatedDeltaY = 0f
-                    val velocityBuffer = VelocityRingBuffer(8)
-
-                    if (isLeft) {
-                        viewModel?.updateLeftStick(0f, 0f)
-                    } else {
-                        viewModel?.updateRightStick(0f, 0f)
-                    }
-
-                    try {
-                        // Drag loop
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val change = event.changes.firstOrNull { it.id == down.id }
-                            if (change == null || !change.pressed) break
-
-                            val currentTouchX = change.position.x
-                            val currentTouchY = change.position.y
-                            val deltaX = currentTouchX - previousTouchX
-                            val deltaY = currentTouchY - previousTouchY
-
-                            previousTouchX = currentTouchX
-                            previousTouchY = currentTouchY
-                            change.consume()
-
-                            touchX = currentTouchX
-                            touchY = currentTouchY
-
-                            if (isLeft) {
-                                val dx = currentTouchX - anchorX
-                                val dy = currentTouchY - anchorY
-                                // 100% sensitivity boost: travel radius cut to 24dp for rapid 1.0f reach with short movement
-                                val baseRadiusDp = 24.dp
-                                val maxRadiusPx = baseRadiusDp.toPx()
-                                val dist = hypot(dx, dy)
-                                if (dist > 0f) {
-                                    val sens = effectiveSensitivity.coerceAtLeast(1.0f)
-                                    val scaledDist = dist * sens
-                                    val clampedDist = scaledDist.coerceAtMost(maxRadiusPx)
-                                    val norm = (clampedDist / maxRadiusPx).coerceIn(0f, 1f)
-                                    val normX = (dx / dist * norm).coerceIn(-1f, 1f)
-                                    val normY = (-dy / dist * norm).coerceIn(-1f, 1f)
-                                    viewModel?.updateLeftStick(normX, normY)
-                                    // Sliding anchor tracking
-                                    val maxTravelPx = maxRadiusPx / sens
-                                    if (dist > maxTravelPx) {
-                                        anchorX = currentTouchX - (dx / dist * maxTravelPx)
-                                        anchorY = currentTouchY - (dy / dist * maxTravelPx)
-                                    }
-                                }
-                            } else {
-                                // Directional axis stabilization: suppress minor diagonal cross-talk
-                                var stepDeltaX = deltaX
-                                var stepDeltaY = deltaY
-                                val absX = abs(deltaX)
-                                val absY = abs(deltaY)
-                                if (absX > 3.0f * absY) {
-                                    stepDeltaY *= 0.5f
-                                } else if (absY > 3.0f * absX) {
-                                    stepDeltaX *= 0.5f
-                                }
-
-                                accumulatedDeltaX += stepDeltaX
-                                accumulatedDeltaY += stepDeltaY
-
-                                val distPx = hypot(accumulatedDeltaX, accumulatedDeltaY)
-                                val distDp = distPx / density
-
-                                // Micro-delta threshold: 0.04f dp ensures creeping thumb movements safely accumulate
-                                // across frames without being dropped, delivering smooth micro-aim at any framerate (60Hz, 120Hz).
-                                if (distDp >= 0.04f) {
-                                    val currentTimeMs = System.currentTimeMillis()
-                                    val dtSec = ((currentTimeMs - previousTimeMs).coerceAtLeast(1L)) / 1000f
-                                    previousTimeMs = currentTimeMs
-
-                                    velocityBuffer.push(distDp, dtSec)
-                                    val smoothedSpeed = velocityBuffer.averageSpeed()
-
-                                    // 100% sensitivity boost: 2x factor enables reaching 1.0f with moderate swipe speeds
-                                    val boostSensitivity = effectiveSensitivity * 2.0f
-                                    val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, boostSensitivity, effectiveCurve)
-
-                                    if (stickMagnitude > 0f) {
-                                        val dirX = accumulatedDeltaX / distPx
-                                        val dirY = accumulatedDeltaY / distPx
-
-                                        val targetStickX = (dirX * stickMagnitude).coerceIn(-1f, 1f)
-                                        val targetStickY = (-dirY * stickMagnitude).coerceIn(-1f, 1f) // Up is positive Y
-
-                                        // Snappy 75/25 responsiveness (faster output reach)
-                                        currentStickX = 0.75f * targetStickX + 0.25f * currentStickX
-                                        currentStickY = 0.75f * targetStickY + 0.25f * currentStickY
-
-                                        viewModel?.updateRightStick(currentStickX, currentStickY)
-
-                                        val decayTimeoutMs = (120L - (smoothedSpeed / 20f).toLong()).coerceIn(50L, 120L)
-                                        decayJob?.cancel()
-                                        decayJob = coroutineScope.launch {
-                                            delay(decayTimeoutMs)
-                                            currentStickX *= 0.5f
-                                            currentStickY *= 0.5f
-                                            viewModel?.updateRightStick(currentStickX, currentStickY)
-                                            delay(30.milliseconds)
-                                            currentStickX *= 0.2f
-                                            currentStickY *= 0.2f
-                                            viewModel?.updateRightStick(currentStickX, currentStickY)
-                                            delay(25.milliseconds)
-                                            currentStickX = 0f
-                                            currentStickY = 0f
-                                            viewModel?.updateRightStick(0f, 0f)
-                                        }
-                                    }
-
-                                    accumulatedDeltaX = 0f
-                                    accumulatedDeltaY = 0f
-                                }
-                            }
-                        }
-                    } finally {
-                        isTouching = false
-                        accumulatedDeltaX = 0f
-                        accumulatedDeltaY = 0f
-                        decayJob?.cancel()
-                        if (isLeft) viewModel?.updateLeftStick(0f, 0f)
-                        else viewModel?.updateRightStick(0f, 0f)
-                    }
-                }
-            }
+        modifier = modifier.fillMaxSize()
     ) {
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer { }
         ) {
-            // Gaming small square grid lines covering the entire half-screen
             drawInbuildTouchpadGrid(
                 isLeft = isLeft,
                 auraColor = auraColor,
-                touchX = touchX,
-                touchY = touchY,
+                touchX = visualState?.touchX ?: -1f,
+                touchY = visualState?.touchY ?: -1f,
                 touchAuraAlpha = touchAuraAlpha
             )
         }

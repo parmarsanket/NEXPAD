@@ -505,6 +505,8 @@ fun RealisticTouchPad(
                     Modifier.pointerInput(isLeft, effectiveSensitivity, effectiveCurve, density) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
+                    if (down.isConsumed) return@awaitEachGesture
+                    down.consume()
                     var previousTouchX = down.position.x
                     var previousTouchY = down.position.y
 
