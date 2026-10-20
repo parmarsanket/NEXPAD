@@ -70,7 +70,9 @@ fun NxpComposeInterpreter(
     modifier: Modifier = Modifier,
     isInteractive: Boolean = true,
     labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
-    touchpadCurve: String? = null
+    touchpadCurve: String? = null,
+    isLocked: Boolean = true,
+    viewModel: com.sanket.tools.nexpad.viewmodel.GamepadViewModel? = null
 ) {
     val isDpadCross = definition.manifest.defaultControl.equals(NexpadKeys.DPAD, ignoreCase = true) ||
             (definition.manifest.category.equals(NexpadKeys.DPAD, ignoreCase = true) && definition.size.widthDp >= 100) ||
@@ -79,7 +81,7 @@ fun NxpComposeInterpreter(
     if (definition.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
         definition.interaction.type.equals("Joystick", ignoreCase = true)
     ) {
-        RenderNxpJoystick(definition, assignedControl, isConnected, inputTarget, modifier, isInteractive, touchpadCurve)
+        RenderNxpJoystick(definition, assignedControl, isConnected, inputTarget, modifier, isInteractive, touchpadCurve, isLocked, viewModel)
     } else if (isDpadCross) {
         RenderNxpDPad(definition, isConnected, inputTarget, modifier, isInteractive)
     } else {
@@ -450,7 +452,9 @@ private fun RenderNxpJoystick(
     inputTarget: NexPadInputTarget,
     modifier: Modifier,
     isInteractive: Boolean = true,
-    touchpadCurve: String? = null
+    touchpadCurve: String? = null,
+    isLocked: Boolean = true,
+    viewModel: com.sanket.tools.nexpad.viewmodel.GamepadViewModel? = null
 ) {
     var thumbOffset by remember { mutableStateOf(Offset.Zero) }
     val currentInputTarget by rememberUpdatedState(inputTarget)
@@ -459,6 +463,14 @@ private fun RenderNxpJoystick(
 
     val stickControl = (control as? NexPadControl.Stick)
         ?: NexPadControl.Stick(isLeft = def.manifest.defaultControl.contains("L", ignoreCase = true))
+
+    fun getEffThumbOffset(): Offset {
+        return if (isLocked) thumbOffset else {
+            val curX = (if (stickControl.isLeft) viewModel?.leftStickX else viewModel?.rightStickX) ?: 0f
+            val curY = (if (stickControl.isLeft) viewModel?.leftStickY else viewModel?.rightStickY) ?: 0f
+            Offset(curX * maxRadiusPx, -curY * maxRadiusPx)
+        }
+    }
 
     val baseColor = parseHexColor(def.visual.fillColor, NeonPalette.CyberNavy).copy(alpha = 0.85f)
     val ringColor = parseHexColor(def.visual.borderColor, NeonPalette.ElectricCyan)
@@ -497,7 +509,7 @@ private fun RenderNxpJoystick(
     val coroutineScope = rememberCoroutineScope()
     val density = androidx.compose.ui.platform.LocalDensity.current.density
 
-    val gestureModifier = if (!isInteractive) {
+    val gestureModifier = if (!isInteractive || !isLocked) {
         Modifier
     } else if (isCameraMode) {
         Modifier.pointerInput(isConnected, stickControl, cameraSensitivity, effectiveTouchpadCurve, density) {
@@ -702,7 +714,10 @@ private fun RenderNxpJoystick(
         // Floating thumbstick knob
         Box(
             modifier = Modifier
-                .offset { IntOffset(thumbOffset.x.roundToInt(), thumbOffset.y.roundToInt()) }
+                .offset {
+                    val off = getEffThumbOffset()
+                    IntOffset(off.x.roundToInt(), off.y.roundToInt())
+                }
                 .size((def.size.widthDp * 0.45f).dp)
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {

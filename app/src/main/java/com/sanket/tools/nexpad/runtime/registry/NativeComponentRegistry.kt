@@ -9,7 +9,6 @@ import com.sanket.tools.nexpad.category.CategoryType
 import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.model.NexpadKeys as K
-import com.sanket.tools.nexpad.ui.components.controller.*
 import com.sanket.tools.nexpad.ui.components.controller.abxy.*
 import com.sanket.tools.nexpad.ui.components.controller.bumper.*
 import com.sanket.tools.nexpad.ui.components.controller.dpad.*

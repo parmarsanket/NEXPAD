@@ -83,7 +83,9 @@ fun ControllerElementRenderer(
                 rumbleIntensity = rumbleIntensity,
                 labelStyle = labelStyle,
                 sizingPolicy = com.sanket.tools.nexpad.runtime.engine.NxprcSizingPolicy.GamepadHud,
-                touchpadCurve = touchpadCurve
+                touchpadCurve = touchpadCurve,
+                isLocked = isLocked,
+                viewModel = viewModel
             )
             return
         }
@@ -133,7 +135,9 @@ fun ControllerElementRenderer(
             assignedControl = targetControl,
             isConnected = isConnected,
             inputTarget = viewModel?.asInputTarget(onVibrate) ?: NoOpInputTarget,
-            touchpadCurve = touchpadCurve
+            touchpadCurve = touchpadCurve,
+            isLocked = isLocked,
+            viewModel = viewModel
         )
         return
     }

@@ -1,9 +1,7 @@
-package com.sanket.tools.nexpad.ui.components.controller.special
+package com.sanket.tools.nexpad.ui.components.controller.sticks
 
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
-import android.content.Context
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -29,6 +27,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
@@ -39,10 +38,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.storage.NexpadPreferences
+import com.sanket.tools.nexpad.ui.components.controller.special.VelocityRingBuffer
+import com.sanket.tools.nexpad.ui.components.controller.special.calculateGamingStickMagnitude
 import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
@@ -95,7 +98,7 @@ fun GyroJoystick(
         if (isLeft) {
             Pair(false, 1.0f)
         } else {
-            val prefs = com.sanket.tools.nexpad.storage.NexpadPreferences.getInstance(context)
+            val prefs = NexpadPreferences.getInstance(context)
             Pair(
                 prefs.isRightStickCameraMode,
                 prefs.cameraSensitivity
@@ -241,9 +244,8 @@ fun GyroJoystick(
                 shape = CircleShape
             )
             .then(
-                if (isInteractive) {
+                if (isInteractive && isLocked) {
                     Modifier.pointerInput(isConnected, isLocked, isLeft, isCameraMode, cameraSensitivity, density, maxTravelPx) {
-                        if (!isLocked) return@pointerInput
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)
                             decayJob?.cancel()
@@ -311,8 +313,8 @@ fun GyroJoystick(
                                 if (isCameraMode) {
                                     var finalDeltaX = deltaX
                                     var finalDeltaY = deltaY
-                                    val absX = kotlin.math.abs(deltaX)
-                                    val absY = kotlin.math.abs(deltaY)
+                                    val absX = abs(deltaX)
+                                    val absY = abs(deltaY)
                                     if (absX > 3.0f * absY) {
                                         finalDeltaY *= 0.5f
                                     } else if (absY > 3.0f * absX) {
@@ -330,7 +332,10 @@ fun GyroJoystick(
                                         velocityBuffer.push(distDp, dtSec)
                                         val smoothedSpeed = velocityBuffer.averageSpeed()
 
-                                        val stickMagnitude = calculateGamingStickMagnitude(smoothedSpeed, cameraSensitivity)
+                                        val stickMagnitude = calculateGamingStickMagnitude(
+                                            smoothedSpeed,
+                                            cameraSensitivity
+                                        )
 
                                         if (stickMagnitude > 0f) {
                                             val dirX = finalDeltaX / distPx
@@ -864,17 +869,17 @@ fun GyroStickButton(
         label = "gyro_stick_btn_bloom"
     )
 
-    val strokeGimbal1 = remember(density) { androidx.compose.ui.graphics.drawscope.Stroke(width = 1.8f * density) }
+    val strokeGimbal1 = remember(density) { Stroke(width = 1.8f * density) }
     val strokeGimbal2 = remember(density) {
-        androidx.compose.ui.graphics.drawscope.Stroke(
+        Stroke(
             width = 1.2f * density,
-            pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(4f * density, 6f * density), 0f)
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f * density, 6f * density), 0f)
         )
     }
-    val stroke1_5dp = remember(density) { androidx.compose.ui.graphics.drawscope.Stroke(width = 1.5f * density) }
-    val stroke4dp = remember(density) { androidx.compose.ui.graphics.drawscope.Stroke(width = 4f * density) }
-    val stroke1_8dp = remember(density) { androidx.compose.ui.graphics.drawscope.Stroke(width = 1.8f * density) }
-    val stroke3dp = remember(density) { androidx.compose.ui.graphics.drawscope.Stroke(width = 3f * density) }
+    val stroke1_5dp = remember(density) { Stroke(width = 1.5f * density) }
+    val stroke4dp = remember(density) { Stroke(width = 4f * density) }
+    val stroke1_8dp = remember(density) { Stroke(width = 1.8f * density) }
+    val stroke3dp = remember(density) { Stroke(width = 3f * density) }
     val centerPuckGradient = remember {
         Brush.radialGradient(
             colors = listOf(NeonPalette.MetalDarkest, NeonPalette.MetalDark),

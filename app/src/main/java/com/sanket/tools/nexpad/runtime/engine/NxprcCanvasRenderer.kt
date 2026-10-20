@@ -44,6 +44,7 @@ import com.sanket.tools.nexpad.category.ControllerLabelStyle
 import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpad.runtime.model.NexPadControl
 import com.sanket.tools.nexpad.runtime.model.NexPadInputTarget
+import com.sanket.tools.nexpad.viewmodel.GamepadViewModel
 import com.sanket.tools.nexpad.nxprc.*
 import com.sanket.tools.nexpad.ui.components.controller.abxy.PlayStationSymbol
 import com.sanket.tools.nexpad.ui.theme.NeonPalette
@@ -453,7 +454,9 @@ fun NxprcCanvasRenderer(
     isInteractive: Boolean = true,
     labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
     sizingPolicy: NxprcSizingPolicy = NxprcSizingPolicy.GamepadHud,
-    touchpadCurve: String? = null
+    touchpadCurve: String? = null,
+    isLocked: Boolean = true,
+    viewModel: GamepadViewModel? = null
 ) {
     val buttonControl = remember(assignedControl) {
         when (assignedControl) {
@@ -565,6 +568,21 @@ fun NxprcCanvasRenderer(
         }
     }
 
+    val nominalWidthDp = (overrideSizeDp ?: document.manifest.widthDp).toFloat()
+    val maxStickRadiusPx = nominalWidthDp * 0.28f * density
+    fun getEffThumbX(): Float {
+        return if (isLocked) thumbOffsetX else {
+            val curX = (if (stick.isLeft) viewModel?.leftStickX else viewModel?.rightStickX) ?: 0f
+            curX * maxStickRadiusPx
+        }
+    }
+    fun getEffThumbY(): Float {
+        return if (isLocked) thumbOffsetY else {
+            val curY = (if (stick.isLeft) viewModel?.leftStickY else viewModel?.rightStickY) ?: 0f
+            -curY * maxStickRadiusPx
+        }
+    }
+
     val isTrigger = assignedControl is NexPadControl.Trigger ||
             document.manifest.category.equals("TRIGGER", ignoreCase = true) ||
             document.manifest.defaultControl.uppercase() in listOf(NexpadKeys.LT, NexpadKeys.RT)
@@ -572,11 +590,11 @@ fun NxprcCanvasRenderer(
         ?: if (isTrigger) NexPadControl.Trigger(document.manifest.defaultControl.ifBlank { NexpadKeys.LT }.uppercase()) else null
     val pullProgress = remember { androidx.compose.animation.core.Animatable(0f) }
 
-    val isButtonActive by remember(isInteractive, isStick, isTrigger) {
+    val isButtonActive by remember(isInteractive, isStick, isTrigger, isLocked, viewModel) {
         derivedStateOf {
             isInteractive && (
                 isPressed ||
-                (isStick && (thumbOffsetX != 0f || thumbOffsetY != 0f)) ||
+                (isStick && (getEffThumbX() != 0f || getEffThumbY() != 0f)) ||
                 (isTrigger && pullProgress.value > 0.01f)
             )
         }
@@ -782,7 +800,8 @@ fun NxprcCanvasRenderer(
         Modifier
     } else when {
         isStick -> {
-            Modifier.pointerInput(document.manifest.id, assignedControl, isCameraMode, cameraSensitivity, effectiveTouchpadCurve, density) {
+            if (isLocked) {
+                Modifier.pointerInput(document.manifest.id, assignedControl, isCameraMode, cameraSensitivity, effectiveTouchpadCurve, density) {
                 var coastJob: Job? = null
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -988,6 +1007,7 @@ fun NxprcCanvasRenderer(
                     }
                 }
             }
+            } else Modifier
         }
         isTrigger && trigger != null -> {
             Modifier.pointerInput(document.manifest.id, assignedControl) {
@@ -1190,10 +1210,12 @@ fun NxprcCanvasRenderer(
                     rotateHue(rawAuraColor, activeHueDegrees)
                 } else rawAuraColor
 
+                val effThumbCurX = getEffThumbX()
+                val effThumbCurY = getEffThumbY()
                 val auraBloomAlpha = auraBloomAlphaState?.value ?: 0.40f
                 val effAlpha = if (isButtonActive) {
                     val stickMaxR = (size.minDimension * 0.35f).coerceAtLeast(1f)
-                    val stickDispFraction = (hypot(thumbOffsetX, thumbOffsetY) / stickMaxR).coerceIn(0f, 1f)
+                    val stickDispFraction = (hypot(effThumbCurX, effThumbCurY) / stickMaxR).coerceIn(0f, 1f)
                     val stickBloomAlpha = if (isInteractive) 0.40f + 0.55f * stickDispFraction else 0.40f
                     (if (needsPulse) (pulseAlphaState?.value ?: 1.0f) else 1.0f) * (if (isStick) stickBloomAlpha else auraBloomAlpha)
                 } else {
@@ -1202,7 +1224,7 @@ fun NxprcCanvasRenderer(
 
                 if (isStick && !isTouchpad) {
                     val maxR = (size.minDimension * 0.35f).coerceAtLeast(1f)
-                    val rawDist = hypot(thumbOffsetX, thumbOffsetY)
+                    val rawDist = hypot(effThumbCurX, effThumbCurY)
                     val dispFraction = (rawDist / maxR).coerceIn(0f, 1f)
 
                     // 1. Base socket containment bloom
@@ -1217,8 +1239,8 @@ fun NxprcCanvasRenderer(
 
                     // 2. Deflection comet-plume trailing wake aura
                     val plumeCenter = Offset(
-                        center.x + thumbOffsetX * 0.65f,
-                        center.y + thumbOffsetY * 0.65f
+                        center.x + effThumbCurX * 0.65f,
+                        center.y + effThumbCurY * 0.65f
                     )
                     val plumeRadius = (size.minDimension * (0.40f + 0.35f * dispFraction)).coerceAtLeast(1f)
                     stickPlumeStops[0] = 0.00f to (if (dispFraction > 0.4f) Color.White else baseColor).copy(alpha = effAlpha * (0.50f + 0.35f * dispFraction))
@@ -1235,7 +1257,7 @@ fun NxprcCanvasRenderer(
                     )
 
                     // 3. High-energy thumbstick cap beacon bloom
-                    val capPos = Offset(center.x + thumbOffsetX, center.y + thumbOffsetY)
+                    val capPos = Offset(center.x + effThumbCurX, center.y + effThumbCurY)
                     val capBloomR = ((size.minDimension * 0.32f) + (size.minDimension * 0.08f * dispFraction)).roundToInt().toFloat()
                     val capBrush = auraBrushes.getStickCapBrush(baseColor, capBloomR)
                     translate(capPos.x, capPos.y) {
@@ -1326,8 +1348,8 @@ fun NxprcCanvasRenderer(
                     scaleY = if (isTwoStageStick) 1f else finalScale
                     rotationZ = currentTrackRot
                     alpha = currentTrackOpacity.coerceIn(0f, 1f)
-                    translationX = (if (isStick && !isTwoStageStick && !isTouchpad) thumbOffsetX else 0f) + rumbleShakeX + (currentTrackTransX * density)
-                    translationY = (if (isStick && !isTwoStageStick && !isTouchpad) thumbOffsetY else 0f) + (currentPressY * density) + rumbleShakeY + (currentTrackTransY * density)
+                    translationX = (if (isStick && !isTwoStageStick && !isTouchpad) getEffThumbX() else 0f) + rumbleShakeX + (currentTrackTransX * density)
+                    translationY = (if (isStick && !isTwoStageStick && !isTouchpad) getEffThumbY() else 0f) + (currentPressY * density) + rumbleShakeY + (currentTrackTransY * density)
 
                     val activeHueAngle = if (hasDynamicTracks) {
                         hueTrack?.let { evaluateAnimationTrack(it, progress) } ?: 0f
@@ -2008,7 +2030,7 @@ fun NxprcCanvasRenderer(
                     val isCap = isTwoStageStick && layerIdx in capIndicesSet
                     if (isCap) {
                         withTransform({
-                            translate(left = thumbOffsetX, top = thumbOffsetY)
+                            translate(left = getEffThumbX(), top = getEffThumbY())
                             scale(scaleX = finalScale, scaleY = finalScale, pivot = centerOffset)
                         }) {
                             drawSingleLayer(layer)
@@ -2046,7 +2068,7 @@ fun NxprcCanvasRenderer(
                     val baseOffX = (tl.offsetXRatio * buttonW).dp
                     val baseOffY = (tl.offsetYRatio * buttonH).dp
                     val capOffsetModifier = Modifier.offset {
-                        if (isLayerCap) IntOffset(thumbOffsetX.roundToInt(), thumbOffsetY.roundToInt()) else IntOffset.Zero
+                        if (isLayerCap) IntOffset(getEffThumbX().roundToInt(), getEffThumbY().roundToInt()) else IntOffset.Zero
                     }
 
                     val psShape = getPlayStationShape(resolvedText)
@@ -2128,7 +2150,7 @@ fun NxprcCanvasRenderer(
                 modifier = Modifier
                     .offset(x = baseOffX, y = baseOffY)
                     .offset {
-                        if (isTwoStageStick) IntOffset(thumbOffsetX.roundToInt(), thumbOffsetY.roundToInt()) else IntOffset.Zero
+                        if (isTwoStageStick) IntOffset(getEffThumbX().roundToInt(), getEffThumbY().roundToInt()) else IntOffset.Zero
                     }
                     .graphicsLayer {
                         rotationZ = rootBox?.effectiveTransform?.rotationDegrees ?: 0f

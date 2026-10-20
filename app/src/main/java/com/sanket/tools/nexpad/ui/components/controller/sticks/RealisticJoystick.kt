@@ -102,11 +102,21 @@ fun RealisticJoystick(
     )
 
     val neonColor = if (isLeft) NeonPalette.Cyan else NeonPalette.Magenta
-    val stickX = if (viewModel != null) (if (isLeft) viewModel.leftStickX else viewModel.rightStickX) else 0f
-    val stickY = if (viewModel != null) (if (isLeft) viewModel.leftStickY else viewModel.rightStickY) else 0f
-    val effX = if (isLocked) animOffsetX.value else stickX * maxRadius
-    val effY = if (isLocked) animOffsetY.value else -stickY * maxRadius
-    val deflectionFraction = (hypot(effX, effY) / maxRadius).coerceIn(0f, 1f)
+    fun getEffX(): Float {
+        val curStickX = if (isLeft) viewModel?.leftStickX ?: 0f else viewModel?.rightStickX ?: 0f
+        return if (isLocked) animOffsetX.value else curStickX * maxRadius
+    }
+    fun getEffY(): Float {
+        val curStickY = if (isLeft) viewModel?.leftStickY ?: 0f else viewModel?.rightStickY ?: 0f
+        return if (isLocked) animOffsetY.value else -curStickY * maxRadius
+    }
+    val deflectionFraction by remember(isLocked, isLeft, viewModel) {
+        derivedStateOf {
+            val ex = getEffX()
+            val ey = getEffY()
+            (hypot(ex, ey) / maxRadius).coerceIn(0f, 1f)
+        }
+    }
     val rgbBloomAlpha by animateFloatAsState(
         targetValue = 0.40f + 0.55f * deflectionFraction,
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 800f),
@@ -128,6 +138,8 @@ fun RealisticJoystick(
             }
             .drawBehind {
                 if (isRgbEnabled) {
+                    val effX = getEffX()
+                    val effY = getEffY()
                     val capPos = Offset(center.x + effX, center.y + effY)
                     val disp = hypot(effX, effY)
                     val maxR = size.minDimension * 0.35f
@@ -199,9 +211,9 @@ fun RealisticJoystick(
                 shape = CircleShape
             )
             .then(
-                if (isInteractive) {
+                if (isInteractive && isLocked) {
                     Modifier.pointerInput(isConnected, isLocked, isLeft, isCameraMode, cameraSensitivity, density, maxRadius, tapThresholdPx) {
-                if (!isLocked) return@pointerInput
+
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     decayJob?.cancel()
@@ -436,7 +448,9 @@ fun RealisticJoystick(
         // Thumbstick Cap
         Box(
             modifier = Modifier
-                .offset { IntOffset(effX.roundToInt(), effY.roundToInt()) }
+                .offset {
+                    IntOffset(getEffX().roundToInt(), getEffY().roundToInt())
+                }
                 .size(90.dp)
                 .shadow(
                     elevation = 12.dp,

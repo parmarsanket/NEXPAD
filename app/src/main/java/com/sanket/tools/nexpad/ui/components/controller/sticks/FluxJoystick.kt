@@ -279,9 +279,8 @@ fun FluxJoystick(
                 shape = CircleShape
             )
             .then(
-                if (isInteractive) {
+                if (isInteractive && isLocked) {
                     Modifier.pointerInput(isConnected, isLocked, isLeft, isCameraMode, cameraSensitivity, density, maxTravelPx, tapThresholdPx) {
-                        if (!isLocked) return@pointerInput
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)
                             decayJob?.cancel()
