@@ -43,9 +43,6 @@ class MainActivity : ComponentActivity() {
         // Draw across the camera cutout
         window.attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         
-        // Lock to 120Hz / highest available refresh rate for esports-grade fluid touch response
-        requestHighRefreshRate()
-        
         viewModel = ViewModelProvider(this)[GamepadViewModel::class.java]
         layoutManager = LayoutManager(this)
 
@@ -119,39 +116,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        requestHighRefreshRate()
         viewModel.cancelScreenOffDisconnectTimer()
         viewModel.checkAoaAccessory()
         if (viewModel.isConnected.value && viewModel.isGamepadScreenActive.value) {
             motionSensorCoordinator.start()
         }
-    }
-
-    private fun requestHighRefreshRate() {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                val modes = display?.supportedModes ?: emptyArray()
-                val maxMode = modes.maxByOrNull { it.refreshRate }
-                if (maxMode != null && maxMode.refreshRate >= 90f) {
-                    val params = window.attributes
-                    params.preferredDisplayModeId = maxMode.modeId
-                    params.preferredRefreshRate = maxMode.refreshRate
-                    window.attributes = params
-                    android.util.Log.d("NEXPAD", "⚡ High Refresh Rate: ${maxMode.refreshRate}Hz (Mode ID: ${maxMode.modeId})")
-                }
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                @Suppress("DEPRECATION")
-                val modes = windowManager.defaultDisplay?.supportedModes ?: emptyArray()
-                val maxMode = modes.maxByOrNull { it.refreshRate }
-                if (maxMode != null && maxMode.refreshRate >= 90f) {
-                    val params = window.attributes
-                    params.preferredDisplayModeId = maxMode.modeId
-                    params.preferredRefreshRate = maxMode.refreshRate
-                    window.attributes = params
-                    android.util.Log.d("NEXPAD", "⚡ High Refresh Rate: ${maxMode.refreshRate}Hz (Mode ID: ${maxMode.modeId})")
-                }
-            }
-        } catch (_: Exception) {}
     }
 
     override fun onPause() {
