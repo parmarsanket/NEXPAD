@@ -3,225 +3,706 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacy Policy - NEXPAD</title>
+    <title>Privacy Policy | NEXPAD Virtual Controller</title>
+    <meta name="description" content="Official Privacy Policy for NEXPAD - Zero-telemetry, peer-to-peer open-source virtual gamepad and HUD controller for Android and PC.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+
     <style>
         :root {
-            --bg-color: #0c0f17;
-            --card-bg: #141923;
-            --text-primary: #f0f4fc;
-            --text-secondary: #9aa8be;
+            --bg-deep: #080b11;
+            --bg-surface: #0f1422;
+            --bg-card: rgba(18, 24, 38, 0.75);
+            --bg-card-hover: rgba(24, 32, 50, 0.85);
             --accent-cyan: #00f0ff;
-            --border-color: #222b3d;
-            --table-header: #1a2232;
+            --accent-blue: #2979ff;
+            --accent-magenta: #d500f9;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --text-dim: #64748b;
+            --border-glow: rgba(0, 240, 255, 0.18);
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --pill-bg: rgba(0, 240, 255, 0.08);
+            --pill-border: rgba(0, 240, 255, 0.3);
+            --table-header: rgba(15, 20, 34, 0.95);
         }
 
-        @media (prefers-color-scheme: light) {
-            :root {
-                --bg-color: #f8fafc;
-                --card-bg: #ffffff;
-                --text-primary: #0f172a;
-                --text-secondary: #475569;
-                --accent-cyan: #0284c7;
-                --border-color: #e2e8f0;
-                --table-header: #f1f5f9;
-            }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-primary);
-            line-height: 1.65;
-            margin: 0;
-            padding: 40px 20px;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            line-height: 1.7;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 15% 10%, rgba(0, 240, 255, 0.07) 0%, transparent 40%),
+                radial-gradient(circle at 85% 30%, rgba(213, 0, 249, 0.05) 0%, transparent 45%),
+                radial-gradient(circle at 50% 80%, rgba(41, 121, 255, 0.06) 0%, transparent 50%);
+            background-attachment: fixed;
         }
 
-        .container {
-            max-width: 800px;
+        /* Ambient Lighting Lines */
+        .ambient-glow {
+            position: fixed;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 1200px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent 0%, var(--accent-cyan) 30%, var(--accent-magenta) 70%, transparent 100%);
+            box-shadow: 0 0 24px var(--accent-cyan);
+            z-index: 100;
+        }
+
+        /* Top Navigation Header */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 99;
+            background: rgba(8, 11, 17, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 16px 24px;
+        }
+
+        .nav-content {
+            max-width: 1000px;
             margin: 0 auto;
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 40px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
-        h1 {
-            font-size: 2.2rem;
-            margin-bottom: 8px;
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: var(--text-main);
+        }
+
+        .logo-badge {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-blue) 50%, var(--accent-magenta) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 1.3rem;
+            color: #080b11;
+            box-shadow: 0 0 16px rgba(0, 240, 255, 0.4);
+        }
+
+        .brand-name {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            background: linear-gradient(90deg, #ffffff 30%, var(--accent-cyan) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .nav-btn {
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .nav-btn-secondary {
+            color: var(--text-muted);
+            border: 1px solid var(--border-subtle);
+        }
+
+        .nav-btn-secondary:hover {
+            color: var(--text-main);
+            border-color: var(--accent-cyan);
+            background: rgba(0, 240, 255, 0.05);
+        }
+
+        .nav-btn-primary {
+            background: linear-gradient(90deg, var(--accent-cyan) 0%, var(--accent-blue) 100%);
+            color: #080b11;
+            box-shadow: 0 0 12px rgba(0, 240, 255, 0.3);
+        }
+
+        .nav-btn-primary:hover {
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.6);
+            transform: translateY(-1px);
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 48px 24px 80px;
+        }
+
+        /* Hero Header */
+        .hero {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .hero-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            border-radius: 999px;
+            background: var(--pill-bg);
+            border: 1px solid var(--pill-border);
             color: var(--accent-cyan);
-            letter-spacing: -0.5px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 16px rgba(0, 240, 255, 0.15);
         }
 
-        .subtitle {
-            font-size: 0.95rem;
-            color: var(--text-secondary);
-            margin-bottom: 24px;
+        .hero-pill::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-cyan);
+            box-shadow: 0 0 8px var(--accent-cyan);
+        }
+
+        .hero h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2.8rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 14px;
+            background: linear-gradient(135deg, #ffffff 20%, #e2e8f0 50%, var(--accent-cyan) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            max-width: 680px;
+            margin: 0 auto 12px;
+        }
+
+        .effective-date {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            font-weight: 500;
+        }
+
+        /* Architecture Pillars (Cards Grid) */
+        .pillars-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 16px;
+            margin-bottom: 48px;
+        }
+
+        .pillar-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-glow);
+            border-radius: 14px;
+            padding: 22px 20px;
+            backdrop-filter: blur(12px);
+            transition: all 0.25s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pillar-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--accent-cyan);
+            background: var(--bg-card-hover);
+            box-shadow: 0 8px 24px rgba(0, 240, 255, 0.12);
+        }
+
+        .pillar-icon {
+            font-size: 1.8rem;
+            margin-bottom: 12px;
+            display: inline-block;
+        }
+
+        .pillar-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 6px;
+        }
+
+        .pillar-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* Content Section */
+        .content-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 18px;
+            padding: 36px 32px;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+        }
+
+        .section-block {
+            margin-bottom: 40px;
+        }
+
+        .section-block:last-child {
+            margin-bottom: 0;
         }
 
         h2 {
-            font-size: 1.35rem;
-            margin-top: 36px;
-            margin-bottom: 12px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 8px;
-            color: var(--text-primary);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.45rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
-        p, li {
-            color: var(--text-secondary);
-            font-size: 1rem;
+        h2::before {
+            content: "";
+            display: inline-block;
+            width: 4px;
+            height: 22px;
+            border-radius: 2px;
+            background: linear-gradient(180deg, var(--accent-cyan) 0%, var(--accent-blue) 100%);
+            box-shadow: 0 0 8px var(--accent-cyan);
         }
 
-        strong {
-            color: var(--text-primary);
+        h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            margin: 20px 0 10px;
+        }
+
+        p {
+            color: var(--text-muted);
+            margin-bottom: 14px;
+            font-size: 0.98rem;
         }
 
         ul {
             padding-left: 20px;
+            margin-bottom: 16px;
         }
 
         li {
+            color: var(--text-muted);
             margin-bottom: 8px;
+            font-size: 0.96rem;
+        }
+
+        li strong, p strong {
+            color: var(--text-main);
+        }
+
+        /* High-Tech Table */
+        .table-responsive {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border-glow);
+            background: rgba(10, 14, 24, 0.9);
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
-            font-size: 0.92rem;
-        }
-
-        th, td {
-            border: 1px solid var(--border-color);
-            padding: 12px 14px;
+            font-size: 0.9rem;
             text-align: left;
         }
 
         th {
-            background-color: var(--table-header);
-            color: var(--text-primary);
-            font-weight: 600;
+            background: var(--table-header);
+            color: var(--accent-cyan);
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.5px;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border-glow);
         }
 
         td {
-            color: var(--text-secondary);
+            padding: 14px 18px;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-subtle);
+            vertical-align: top;
         }
 
-        .highlight-box {
-            background: rgba(0, 240, 255, 0.05);
-            border-left: 4px solid var(--accent-cyan);
-            padding: 16px 20px;
-            border-radius: 0 8px 8px 0;
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(0, 240, 255, 0.02);
+            color: var(--text-main);
+        }
+
+        code {
+            font-family: Consolas, Monaco, "Courier New", monospace;
+            background: rgba(0, 240, 255, 0.08);
+            color: var(--accent-cyan);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.84rem;
+            border: 1px solid rgba(0, 240, 255, 0.2);
+        }
+
+        /* Callout Box */
+        .callout {
+            background: linear-gradient(135deg, rgba(0, 240, 255, 0.06) 0%, rgba(41, 121, 255, 0.04) 100%);
+            border-left: 3px solid var(--accent-cyan);
+            border-radius: 0 12px 12px 0;
+            padding: 18px 22px;
             margin: 20px 0;
         }
 
-        .highlight-box p {
-            margin: 0;
-            color: var(--text-primary);
-            font-weight: 500;
+        .callout-title {
+            font-weight: 700;
+            color: #ffffff;
+            font-size: 0.95rem;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        a {
+        .callout p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 0.92rem;
+        }
+
+        /* Contact Badge Card */
+        .contact-box {
+            background: rgba(15, 20, 34, 0.6);
+            border: 1px solid var(--border-glow);
+            border-radius: 14px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.95rem;
+        }
+
+        .contact-item strong {
+            color: var(--text-main);
+            min-width: 90px;
+        }
+
+        .contact-item a {
+            color: var(--accent-cyan);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .contact-item a:hover {
+            color: #ffffff;
+            text-decoration: underline;
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 60px;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border-subtle);
+            padding-top: 28px;
+        }
+
+        footer a {
             color: var(--accent-cyan);
             text-decoration: none;
         }
 
-        a:hover {
-            text-decoration: underline;
-        }
+        /* Mobile Adjustments */
+        @media (max-width: 640px) {
+            .container {
+                padding: 28px 16px 60px;
+            }
 
-        footer {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid var(--border-color);
-            text-align: center;
-            font-size: 0.85rem;
-            color: var(--text-secondary);
+            .hero h1 {
+                font-size: 2.1rem;
+            }
+
+            .content-card {
+                padding: 24px 18px;
+            }
+
+            .nav-content {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            table {
+                font-size: 0.82rem;
+            }
+
+            th, td {
+                padding: 10px 12px;
+            }
         }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>Privacy Policy for NEXPAD</h1>
-    <div class="subtitle"><strong>Effective Date:</strong> October 2026 &bull; <strong>Application:</strong> NEXPAD Virtual Controller</div>
+    <div class="ambient-glow"></div>
 
-    <div class="highlight-box">
-        <p>Summary: NEXPAD collects zero personal data, includes zero third-party trackers or ads, and transmits controller input data exclusively across your local network or direct USB cable to your personal computer.</p>
+    <!-- Navigation Bar -->
+    <header>
+        <div class="nav-content">
+            <a href="https://github.com/parmarsanket/NEXPAD" class="brand-logo" target="_blank" rel="noopener">
+                <div class="logo-badge">N</div>
+                <span class="brand-name">NEXPAD</span>
+            </a>
+            <div class="nav-links">
+                <a href="https://github.com/parmarsanket/NEXPAD" class="nav-btn nav-btn-secondary" target="_blank" rel="noopener">GitHub</a>
+                <a href="mailto:parmarsanket265@gmail.com" class="nav-btn nav-btn-primary">Contact Developer</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        
+        <!-- Hero Header -->
+        <section class="hero">
+            <div class="hero-pill">Verified Zero Tracking &bull; Local P2P Architecture</div>
+            <h1>Privacy Policy</h1>
+            <p>Complete transparency regarding hardware permissions, peer-to-peer data flow, and local privacy guarantees.</p>
+            <div class="effective-date">Effective Date: October 21, 2026 &bull; Application: NEXPAD Virtual Gamepad &bull; Developer: Sanket Parmar</div>
+        </section>
+
+        <!-- Core Architectural Pillars -->
+        <div class="pillars-grid">
+            <div class="pillar-card">
+                <div class="pillar-icon">🔒</div>
+                <div class="pillar-title">Zero Telemetry</div>
+                <div class="pillar-desc">No tracking SDKs, no advertising networks, no user analytics, and zero cloud profiling.</div>
+            </div>
+            <div class="pillar-card">
+                <div class="pillar-icon">⚡</div>
+                <div class="pillar-title">Direct P2P Link</div>
+                <div class="pillar-desc">Input streams travel strictly to your local PC via private Wi-Fi (UDP), USB (AOA), or Bluetooth.</div>
+            </div>
+            <div class="pillar-card">
+                <div class="pillar-icon">🎯</div>
+                <div class="pillar-title">200Hz Sensors</div>
+                <div class="pillar-desc">Motion data is processed purely in volatile RAM and immediately discarded. Never stored.</div>
+            </div>
+            <div class="pillar-card">
+                <div class="pillar-icon">🛡️</div>
+                <div class="pillar-title">100% Open Source</div>
+                <div class="pillar-desc">Licensed under Apache 2.0. The entire source code is publicly auditable on GitHub.</div>
+            </div>
+        </div>
+
+        <!-- Main Content Card -->
+        <main class="content-card">
+
+            <div class="section-block">
+                <h2>1. Executive Summary &amp; Core Principles</h2>
+                <p><strong>NEXPAD</strong> is an open-source, ultra-low-latency virtual gamepad controller and customizable HUD client developed by Sanket Parmar. NEXPAD was purposefully architected on an <strong>offline-first, zero-telemetry, and peer-to-peer</strong> design principle.</p>
+                <div class="callout">
+                    <div class="callout-title">🛡️ Absolute Privacy Guarantee</div>
+                    <p>NEXPAD does not collect, record, log, harvest, or transmit any Personally Identifiable Information (PII), geographic location coordinates, or device fingerprinting identifiers. No user accounts or logins are ever required.</p>
+                </div>
+            </div>
+
+            <div class="section-block">
+                <h2>2. Zero Personal Data Collection</h2>
+                <p>NEXPAD operates entirely as a local hardware controller emulation client. We enforce strict data collection boundaries:</p>
+                <ul>
+                    <li><strong>No Personal Identifiers:</strong> We do not collect names, email addresses, phone numbers, contacts, or biometric data.</li>
+                    <li><strong>No Financial Data:</strong> NEXPAD does not process in-app purchases, credit cards, or payment credentials.</li>
+                    <li><strong>No Location Tracking:</strong> The application never accesses or derives GPS, fine, or coarse geographic location.</li>
+                    <li><strong>No Device Fingerprinting:</strong> No Android Advertising IDs (AAID), IMEI numbers, MAC addresses, or persistent hardware identifiers are read or harvested.</li>
+                    <li><strong>No Cloud Servers:</strong> NEXPAD operates without proprietary cloud servers or backend databases.</li>
+                </ul>
+            </div>
+
+            <div class="section-block">
+                <h2>3. Local Transports &amp; Network Architecture</h2>
+                <p>NEXPAD provides three ultra-low-latency hardware transport layers to bridge virtual controller inputs to the companion NEXPAD Desktop software running on your personal computer:</p>
+
+                <h3>A. Local Wi-Fi (UDP Protocol)</h3>
+                <p>When connected over Wi-Fi, NEXPAD packages analog stick positions, trigger values, and button presses into compact binary UDP packets. These packets are transmitted directly to your computer's private local IPv4 address (e.g., <code>192.168.x.x</code>) on local ports <code>26760</code> / <code>26761</code>. Controller packets <strong>never leave your private local area network (LAN)</strong> and are never routed across the public internet.</p>
+
+                <h3>B. Physical USB Connection (AOA 2.0 &amp; ADB)</h3>
+                <p>NEXPAD supports zero-driver wired connectivity via the official Android Open Accessory (AOA 2.0) protocol and ADB port forwarding. Controller inputs flow directly over the physical copper wire connecting your phone to your host PC. Data never touches any network interface.</p>
+
+                <h3>C. Bluetooth RFCOMM (Serial Port Profile)</h3>
+                <p>In Bluetooth mode, NEXPAD communicates point-to-point with your PC's Bluetooth adapter using native RFCOMM serial communication.</p>
+            </div>
+
+            <div class="section-block">
+                <h2>4. Sensors &amp; Motion Processing</h2>
+                <p>NEXPAD leverages your phone's on-board Inertial Measurement Unit (IMU) sensors to provide precision 6-axis gyro motion aiming and virtual steering wheel emulation:</p>
+                <ul>
+                    <li><strong>Sensors Accessed:</strong> Gyroscope, Accelerometer, Gravity Vector, and Game Rotation Vector (Quaternion).</li>
+                    <li><strong>In-Memory Processing:</strong> Motion signals are sampled at up to 200 Hz in real-time, curved through mathematical algorithms (deadzone filtering, non-linear acceleration, EMA smoothing), and streamed in memory directly to your local PC.</li>
+                    <li><strong>Zero Logging:</strong> Sensor readings are volatile. They are never recorded to disk, never stored in databases, and never transmitted to third parties.</li>
+                </ul>
+            </div>
+
+            <div class="section-block">
+                <h2>5. Android System Permissions &amp; Hardware Usage</h2>
+                <p>In strict compliance with Google Play Policy and Android security guidelines, NEXPAD requests only the minimal set of hardware permissions required to emulate a physical gamepad:</p>
+
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Permission / Feature</th>
+                                <th>Technical Purpose</th>
+                                <th>Data Handling &amp; Scope</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>android.permission.INTERNET</code></td>
+                                <td>Opens local network UDP sockets to stream controller packets to your PC over your private Wi-Fi.</td>
+                                <td>Data stays strictly on your local private network. Never routed to external internet servers.</td>
+                            </tr>
+                            <tr>
+                                <td><code>android.permission.ACCESS_NETWORK_STATE</code><br><code>android.permission.ACCESS_WIFI_STATE</code></td>
+                                <td>Detects active local Wi-Fi connectivity to display your local IP and network latency in the diagnostic HUD.</td>
+                                <td>Used solely for local UI diagnostics. Never transmitted.</td>
+                            </tr>
+                            <tr>
+                                <td><code>android.permission.BLUETOOTH_CONNECT</code><br><code>android.permission.BLUETOOTH_SCAN</code></td>
+                                <td>Enables wireless Bluetooth RFCOMM gamepad connection with your PC on Android 12+ (API 31+).</td>
+                                <td>Declared with <code>android:usesPermissionFlags="neverForLocation"</code> to cryptographically guarantee no physical location data is accessed.</td>
+                            </tr>
+                            <tr>
+                                <td><code>android.hardware.usb.accessory</code></td>
+                                <td>Enables direct zero-driver hardware communication over USB cable via Android Open Accessory protocol.</td>
+                                <td>Direct physical wire communication with host PC.</td>
+                            </tr>
+                            <tr>
+                                <td><code>android.permission.VIBRATE</code></td>
+                                <td>Drives the phone's tactile vibration motor for button feedback and PC game force-feedback rumble.</td>
+                                <td>Hardware motor control only.</td>
+                            </tr>
+                            <tr>
+                                <td><code>android.permission.WAKE_LOCK</code></td>
+                                <td>Prevents the screen from dimming or sleeping during active gameplay sessions.</td>
+                                <td>Power management only.</td>
+                            </tr>
+                            <tr>
+                                <td>Hardware Sensors<br><code>accelerometer</code>, <code>gyroscope</code></td>
+                                <td>Enables 6-Axis motion aiming and virtual steering wheel emulation.</td>
+                                <td>Marked as <code>required="false"</code> so devices without gyros can still use standard button controls.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="section-block">
+                <h2>6. Local Storage &amp; Preferences</h2>
+                <p>User preferences (such as joystick sensitivities, button positions, haptic feedback intensity, and saved PC IP addresses) are stored exclusively in your device's private sandbox storage via Android Jetpack DataStore / SharedPreferences. Custom layout exports (<code>.nxlayout</code> and <code>.nxprc</code>) are initiated solely by you via standard Android system storage pickers.</p>
+            </div>
+
+            <div class="section-block">
+                <h2>7. Third-Party Services &amp; Advertising</h2>
+                <p>NEXPAD contains <strong>zero third-party advertising SDKs</strong> (no AdMob, Unity Ads, AppLovin) and <strong>zero analytics SDKs</strong> (no Google Analytics for Firebase, Adjust, AppsFlyer, or Facebook SDK). The app is built strictly on official Google Android Jetpack open-source libraries.</p>
+            </div>
+
+            <div class="section-block">
+                <h2>8. Children’s Privacy (COPPA &amp; GDPR-K Compliance)</h2>
+                <p>NEXPAD does not knowingly collect or solicit personal information from children under the age of 13 (or under 16 in the European Economic Area). Because the application collects zero personal information, it complies fully with the Children’s Online Privacy Protection Act (COPPA) and international child privacy frameworks.</p>
+            </div>
+
+            <div class="section-block">
+                <h2>9. Data Retention &amp; User Rights (GDPR &amp; CCPA / CPRA)</h2>
+                <ul>
+                    <li><strong>GDPR &amp; UK GDPR:</strong> Because NEXPAD collects zero personal data on remote servers, there is no personal data held by us to access, rectify, or delete.</li>
+                    <li><strong>CCPA / CPRA:</strong> We do not sell, share, or monetize any user data.</li>
+                    <li><strong>Complete Local Deletion:</strong> You can completely erase all locally stored preferences at any time by navigating to your device's <em>Settings &rarr; Apps &rarr; NEXPAD &rarr; Storage &rarr; Clear Data</em>, or by uninstalling the application.</li>
+                </ul>
+            </div>
+
+            <div class="section-block">
+                <h2>10. Open Source Verification</h2>
+                <p>NEXPAD is open-source software licensed under the <strong>Apache License 2.0</strong>. The complete source code is publicly accessible on GitHub. Anyone is welcome to inspect the code to independently verify our privacy and security claims.</p>
+            </div>
+
+            <div class="section-block">
+                <h2>11. Contact &amp; Developer Information</h2>
+                <p>If you have any questions, inquiries, or feedback regarding this Privacy Policy, please contact:</p>
+                <div class="contact-box">
+                    <div class="contact-item">
+                        <strong>Developer:</strong>
+                        <span>Sanket Parmar</span>
+                    </div>
+                    <div class="contact-item">
+                        <strong>Email:</strong>
+                        <a href="mailto:parmarsanket265@gmail.com">parmarsanket265@gmail.com</a>
+                    </div>
+                    <div class="contact-item">
+                        <strong>Repository:</strong>
+                        <a href="https://github.com/parmarsanket/NEXPAD" target="_blank" rel="noopener">github.com/parmarsanket/NEXPAD</a>
+                    </div>
+                    <div class="contact-item">
+                        <strong>Issues:</strong>
+                        <a href="https://github.com/parmarsanket/NEXPAD/issues" target="_blank" rel="noopener">github.com/parmarsanket/NEXPAD/issues</a>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Footer -->
+        <footer>
+            <p>&copy; 2026 Sanket Parmar &bull; NEXPAD Virtual Controller Project &bull; Open Source Apache 2.0</p>
+            <p style="margin-top: 6px;">Hosted on GitHub Pages &bull; <a href="https://github.com/parmarsanket/NEXPAD" target="_blank" rel="noopener">View Source Code</a></p>
+        </footer>
+
     </div>
-
-    <p><strong>NEXPAD</strong> ("we", "our", or "the application") is an open-source virtual gamepad and HUD controller developed by Sanket Parmar. We respect your privacy and are committed to protecting it through transparent, privacy-first software architecture.</p>
-
-    <h2>1. Zero Personal Data Collection</h2>
-    <p>NEXPAD operates entirely as a local, peer-to-peer virtual input client:</p>
-    <ul>
-        <li><strong>No Personal Information:</strong> We do not collect, request, store, or transmit your name, email address, phone number, location, or device identifiers.</li>
-        <li><strong>No Telemetry or Tracking:</strong> There are no third-party analytics SDKs, advertising networks, or telemetry trackers embedded in the application.</li>
-        <li><strong>No Cloud Servers:</strong> NEXPAD does not communicate with external cloud servers. All input signals stream strictly between your Android device and your designated PC host.</li>
-    </ul>
-
-    <h2>2. Permissions and Purpose</h2>
-    <p>NEXPAD requests only the minimal set of hardware permissions necessary to function as a physical gamepad replacement:</p>
-
-    <table>
-        <thead>
-            <tr>
-                <th>Permission</th>
-                <th>Purpose</th>
-                <th>Data Handling</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td><strong>Internet &amp; Wi-Fi</strong><br><code>INTERNET</code><br><code>ACCESS_WIFI_STATE</code></td>
-                <td>Transmits ultra-low-latency UDP gamepad controller packets to NEXPAD Desktop on your local network.</td>
-                <td>Data stays strictly on your local private network. Never routed over the public internet.</td>
-            </tr>
-            <tr>
-                <td><strong>Bluetooth</strong><br><code>BLUETOOTH_CONNECT</code><br><code>BLUETOOTH_SCAN</code></td>
-                <td>Enables optional wireless Bluetooth RFCOMM serial connection between phone and PC.</td>
-                <td>Local device-to-PC pairing only. Location flags are disabled via <code>neverForLocation</code>.</td>
-            </tr>
-            <tr>
-                <td><strong>USB Accessory</strong><br><code>android.hardware.usb.accessory</code></td>
-                <td>Supports zero-driver wired connection using the Android Open Accessory (AOA) protocol.</td>
-                <td>Direct hardware wire communication with host PC.</td>
-            </tr>
-            <tr>
-                <td><strong>Sensors</strong><br><code>Gyroscope &amp; Accelerometer</code></td>
-                <td>Captures device orientation for 6-axis motion aiming and virtual steering wheel emulation.</td>
-                <td>Streams real-time motion coordinates directly to host PC. Sensor data is never saved, logged, or uploaded.</td>
-            </tr>
-            <tr>
-                <td><strong>Vibrate</strong><br><code>VIBRATE</code></td>
-                <td>Provides tactile haptic feedback for button presses and game force-feedback rumble.</td>
-                <td>Hardware motor control only.</td>
-            </tr>
-        </tbody>
-    </table>
-
-    <h2>3. Local Storage and Preferences</h2>
-    <p>Custom controller HUD layouts, analog sensitivities, and connection IP addresses are stored purely on your local device storage using Android Jetpack DataStore / SharedPreferences. This configuration data never leaves your device unless you manually choose to export a layout file.</p>
-
-    <h2>4. Children’s Privacy</h2>
-    <p>NEXPAD does not knowingly collect, store, or transmit personal information from children under the age of 13. The application contains no ads, in-app purchases, or social networking features.</p>
-
-    <h2>5. Open Source Transparency</h2>
-    <p>NEXPAD is open-source software licensed under the <strong>Apache License 2.0</strong>. The complete source code is publicly accessible on GitHub for verification and community review.</p>
-
-    <h2>6. Contact Information</h2>
-    <p>If you have any questions, inquiries, or feedback regarding this Privacy Policy, please contact:</p>
-    <ul>
-        <li><strong>Developer:</strong> Sanket Parmar</li>
-        <li><strong>Email:</strong> <a href="mailto:parmarsanket265@gmail.com">parmarsanket265@gmail.com</a></li>
-        <li><strong>Project Repository:</strong> <a href="https://github.com/parmarsanket/NEXPAD" target="_blank" rel="noopener">github.com/parmarsanket/NEXPAD</a></li>
-    </ul>
-
-    <footer>
-        &copy; 2026 Sanket Parmar &bull; NEXPAD Open Source Project
-    </footer>
-</div>
 
 </body>
 </html>
