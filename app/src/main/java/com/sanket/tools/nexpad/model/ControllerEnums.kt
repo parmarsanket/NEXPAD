@@ -132,11 +132,19 @@ val com.sanket.tools.nexpad.category.ControllerLabelStyle.shortDisplayName: Stri
  * Canonical identifiers for native built-in components, skins, and special actuators.
  */
 object BuiltinComponentIds {
+    const val BUILTIN_PREFIX = "builtin."
+    const val DEFAULT_FAMILY = "builtin.default"
     const val INBUILD_LTP = "builtin.inbuild_ltp"
     const val INBUILD_RTP = "builtin.inbuild_rtp"
     const val INBUILD_PREFIX = "builtin.inbuild_"
     const val DEFAULT_LTP = "builtin.default_ltp"
     const val DEFAULT_RTP = "builtin.default_rtp"
+    const val DEFAULT_LT = "builtin.default_lt"
+    const val DEFAULT_RT = "builtin.default_rt"
+    const val DEFAULT_LB = "builtin.default_lb"
+    const val DEFAULT_RB = "builtin.default_rb"
+    const val DEFAULT_PREFIX = "builtin.default_"
+    const val GYRO = "GYRO"
     const val GYRO_BUTTON = "builtin.gyro_btn"
     const val SLIDER_LT = "builtin.slider_lt"
     const val SLIDER_RT = "builtin.slider_rt"
@@ -202,7 +210,7 @@ object ControllerTouchClassifier {
         K.MENU,
         K.HOME,
         K.CAPTURE,
-        "GYRO"
+        BuiltinComponentIds.GYRO
     )
 
     /** Returns true if the key or component corresponds to a left or right touchpad. */

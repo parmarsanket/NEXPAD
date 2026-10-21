@@ -67,9 +67,7 @@ fun HudCanvas(
         elements.forEach { (controlKey, element) ->
             key(controlKey) {
                 val isSelected = selectedControl == controlKey
-                val isJoystick = controlKey.equals(com.sanket.tools.nexpad.category.ControlKey.LS.name, ignoreCase = true) ||
-                        controlKey.equals(com.sanket.tools.nexpad.category.ControlKey.RS.name, ignoreCase = true) ||
-                        element.categoryTitle.equals("JOYSTICK", ignoreCase = true)
+                val isJoystick = com.sanket.tools.nexpad.model.ControllerTouchClassifier.isJoystick(controlKey, element.skinId)
                 val jsMode = com.sanket.tools.nexpad.model.JoystickMode.fromId(element.transform.joystickMode)
 
                 // 1. Hitbox Box for BOX mode (white border 50% alpha, visible in HUD screen for setting joystick)

@@ -474,7 +474,7 @@ fun DialTrigger(
 
             // High-contrast bold tactical label (LT / RT)
             Text(
-                text = displayLabel ?: (if (isLeft) "LT" else "RT"),
+                text = displayLabel ?: (if (isLeft) com.sanket.tools.nexpad.category.ControlKey.LT.key else com.sanket.tools.nexpad.category.ControlKey.RT.key),
                 color = neonColor,
                 fontWeight = FontWeight.Bold,
                 fontSize = 17.sp,
@@ -490,7 +490,7 @@ fun DialTrigger(
  */
 @Composable
 fun StaticDialTrigger(
-    key: String = "LT",
+    key: String = com.sanket.tools.nexpad.category.ControlKey.LT.key,
     isRgbEnabled: Boolean = true,
     displayLabel: String? = null,
     modifier: Modifier = Modifier

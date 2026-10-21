@@ -469,7 +469,7 @@ fun TargetTrigger(
 
             // Dynamically reactive glyph brightness: 45% at idle to 100% full neon bloom on full pull
             Text(
-                text = displayLabel ?: (if (isLeft) "LT" else "RT"),
+                text = displayLabel ?: (if (isLeft) com.sanket.tools.nexpad.category.ControlKey.LT.key else com.sanket.tools.nexpad.category.ControlKey.RT.key),
                 color = neonColor,
                 modifier = Modifier.graphicsLayer {
                     alpha = (0.45f + fillProgress.value * 0.55f).coerceIn(0.45f, 1.0f)
@@ -488,7 +488,7 @@ fun TargetTrigger(
  */
 @Composable
 fun StaticTargetTrigger(
-    key: String = "LT",
+    key: String = com.sanket.tools.nexpad.category.ControlKey.LT.key,
     isRgbEnabled: Boolean = true,
     displayLabel: String? = null,
     modifier: Modifier = Modifier

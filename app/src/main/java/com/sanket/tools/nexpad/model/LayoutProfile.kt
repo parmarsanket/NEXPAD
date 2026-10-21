@@ -119,7 +119,7 @@ fun standardElitePositions(): Map<String, Position> {
         K.BACK  to Position(0.430f, 0.310f, scale = 0.70f),
         K.START to Position(0.500f, 0.310f, scale = 0.70f),
         K.SHARE to Position(0.570f, 0.310f, scale = 0.70f),
-        "GYRO"  to Position(0.500f, 0.500f, scale = 0.85f)
+        com.sanket.tools.nexpad.model.BuiltinComponentIds.GYRO to Position(0.500f, 0.500f, scale = 0.85f)
     )
 
     // Face Buttons: Aspect-ratio corrected isotropic diamond cluster
@@ -357,7 +357,7 @@ fun getControlDefaultPosition(canonicalKey: String): Position? {
         K.M2    -> Position(0.380f, 0.360f, scale = 0.75f)
         K.M3    -> Position(0.550f, 0.360f, scale = 0.75f)
         K.M4    -> Position(0.450f, 0.360f, scale = 0.75f)
-        "GYRO"  -> Position(0.500f, 0.500f, scale = 0.85f)
+        com.sanket.tools.nexpad.model.BuiltinComponentIds.GYRO -> Position(0.500f, 0.500f, scale = 0.85f)
         else    -> null
     }
 }

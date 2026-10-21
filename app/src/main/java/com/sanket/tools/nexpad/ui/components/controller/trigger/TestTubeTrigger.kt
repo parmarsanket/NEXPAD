@@ -509,7 +509,7 @@ fun TestTubeTrigger(
  */
 @Composable
 fun StaticTestTubeTrigger(
-    key: String = "LT",
+    key: String = com.sanket.tools.nexpad.category.ControlKey.LT.key,
     isRgbEnabled: Boolean = true,
     displayLabel: String? = null,
     modifier: Modifier = Modifier

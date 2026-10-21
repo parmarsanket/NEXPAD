@@ -37,7 +37,7 @@ fun StaticDefaultButtonPreview(
     val key = ctrl?.key ?: controlKey.uppercase()
     val displayLabel = CategoryManager.getLabelForStyle(key, labelStyle)
 
-    if (key.equals("GYRO", ignoreCase = true)) {
+    if (key.equals(com.sanket.tools.nexpad.model.BuiltinComponentIds.GYRO, ignoreCase = true)) {
         StaticGyroToggleButton(
             isRgbEnabled = true,
             labelStyle = labelStyle,
@@ -51,10 +51,10 @@ fun StaticDefaultButtonPreview(
         contentAlignment = Alignment.Center
     ) {
         when (ctrl) {
-            ControlKey.A -> RealisticButton(key = "A", buttonColor = resolveButtonColor("A", labelStyle, displayLabel), displayLabel = displayLabel, isInteractive = false)
-            ControlKey.B -> RealisticButton(key = "B", buttonColor = resolveButtonColor("B", labelStyle, displayLabel), displayLabel = displayLabel, isInteractive = false)
-            ControlKey.X -> RealisticButton(key = "X", buttonColor = resolveButtonColor("X", labelStyle, displayLabel), displayLabel = displayLabel, isInteractive = false)
-            ControlKey.Y -> RealisticButton(key = "Y", buttonColor = resolveButtonColor("Y", labelStyle, displayLabel), displayLabel = displayLabel, isInteractive = false)
+            ControlKey.A -> RealisticButton(key = ControlKey.A.key, buttonColor = resolveButtonColor(ControlKey.A.key, labelStyle, displayLabel), displayLabel = displayLabel, isInteractive = false)
+            ControlKey.B -> RealisticButton(key = ControlKey.B.key, buttonColor = resolveButtonColor(ControlKey.B.key, labelStyle, displayLabel), displayLabel = displayLabel, isInteractive = false)
+            ControlKey.X -> RealisticButton(key = ControlKey.X.key, buttonColor = resolveButtonColor(ControlKey.X.key, labelStyle, displayLabel), displayLabel = displayLabel, isInteractive = false)
+            ControlKey.Y -> RealisticButton(key = ControlKey.Y.key, buttonColor = resolveButtonColor(ControlKey.Y.key, labelStyle, displayLabel), displayLabel = displayLabel, isInteractive = false)
 
             ControlKey.LS -> RealisticJoystick(isLeft = true, isInteractive = false)
             ControlKey.RS -> RealisticJoystick(isLeft = false, isInteractive = false)
@@ -66,16 +66,16 @@ fun StaticDefaultButtonPreview(
             ControlKey.DPAD -> RealisticDPad(isInteractive = false)
             ControlKey.UP, ControlKey.DOWN, ControlKey.LEFT, ControlKey.RIGHT -> RealisticDPadButton(direction = key, isInteractive = false)
 
-            ControlKey.LT -> RealisticTrigger(key = "LT", displayLabel = displayLabel, isInteractive = false)
-            ControlKey.RT -> RealisticTrigger(key = "RT", displayLabel = displayLabel, isInteractive = false)
+            ControlKey.LT -> RealisticTrigger(key = ControlKey.LT.key, displayLabel = displayLabel, isInteractive = false)
+            ControlKey.RT -> RealisticTrigger(key = ControlKey.RT.key, displayLabel = displayLabel, isInteractive = false)
 
-            ControlKey.LB -> RealisticBumper(key = "LB", displayLabel = displayLabel, isInteractive = false)
-            ControlKey.RB -> RealisticBumper(key = "RB", displayLabel = displayLabel, isInteractive = false)
+            ControlKey.LB -> RealisticBumper(key = ControlKey.LB.key, displayLabel = displayLabel, isInteractive = false)
+            ControlKey.RB -> RealisticBumper(key = ControlKey.RB.key, displayLabel = displayLabel, isInteractive = false)
 
-            ControlKey.GUIDE -> RealisticSystemButton(key = "GUIDE", isInteractive = false)
-            ControlKey.START -> RealisticSystemButton(key = "START", isInteractive = false)
-            ControlKey.BACK  -> RealisticSystemButton(key = "BACK", isInteractive = false)
-            ControlKey.SHARE -> RealisticSystemButton(key = "SHARE", isInteractive = false)
+            ControlKey.GUIDE -> RealisticSystemButton(key = ControlKey.GUIDE.key, isInteractive = false)
+            ControlKey.START -> RealisticSystemButton(key = ControlKey.START.key, isInteractive = false)
+            ControlKey.BACK  -> RealisticSystemButton(key = ControlKey.BACK.key, isInteractive = false)
+            ControlKey.SHARE -> RealisticSystemButton(key = ControlKey.SHARE.key, isInteractive = false)
 
             ControlKey.M1, ControlKey.M2, ControlKey.M3, ControlKey.M4 -> RealisticMacroButton(key = key, displayLabel = displayLabel, isInteractive = false)
 

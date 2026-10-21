@@ -409,7 +409,7 @@ fun BloomTrigger(
  */
 @Composable
 fun StaticBloomTrigger(
-    key: String = "LT",
+    key: String = com.sanket.tools.nexpad.category.ControlKey.LT.key,
     isRgbEnabled: Boolean = true,
     displayLabel: String? = null,
     modifier: Modifier = Modifier

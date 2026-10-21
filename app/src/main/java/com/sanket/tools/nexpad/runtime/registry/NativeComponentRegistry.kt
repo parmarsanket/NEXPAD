@@ -1017,7 +1017,7 @@ class EclipseButtonVariant(
 // TRIGGER & BUMPER VARIANTS (LT / RT / LB / RB)
 // =========================================================================
 
-object RealisticLeftTriggerVariant : BaseNativeVariant("builtin.default_lt", ControlKey.LT, "Realistic 3D", 2001) {
+object RealisticLeftTriggerVariant : BaseNativeVariant(BuiltinComponentIds.DEFAULT_LT, ControlKey.LT, "Realistic 3D", 2001) {
     override val isBaselineDefault: Boolean = true
 
     @Composable
@@ -1045,7 +1045,7 @@ object RealisticLeftTriggerVariant : BaseNativeVariant("builtin.default_lt", Con
     }
 }
 
-object RealisticRightTriggerVariant : BaseNativeVariant("builtin.default_rt", ControlKey.RT, "Realistic 3D", 2002) {
+object RealisticRightTriggerVariant : BaseNativeVariant(BuiltinComponentIds.DEFAULT_RT, ControlKey.RT, "Realistic 3D", 2002) {
     override val isBaselineDefault: Boolean = true
 
     @Composable
@@ -1073,7 +1073,7 @@ object RealisticRightTriggerVariant : BaseNativeVariant("builtin.default_rt", Co
     }
 }
 
-object RealisticLeftBumperVariant : BaseNativeVariant("builtin.default_lb", ControlKey.LB, "Realistic 3D", 3001) {
+object RealisticLeftBumperVariant : BaseNativeVariant(BuiltinComponentIds.DEFAULT_LB, ControlKey.LB, "Realistic 3D", 3001) {
     override val isBaselineDefault: Boolean = true
 
     @Composable
@@ -1101,7 +1101,7 @@ object RealisticLeftBumperVariant : BaseNativeVariant("builtin.default_lb", Cont
     }
 }
 
-object RealisticRightBumperVariant : BaseNativeVariant("builtin.default_rb", ControlKey.RB, "Realistic 3D", 3002) {
+object RealisticRightBumperVariant : BaseNativeVariant(BuiltinComponentIds.DEFAULT_RB, ControlKey.RB, "Realistic 3D", 3002) {
     override val isBaselineDefault: Boolean = true
 
     @Composable
@@ -1502,7 +1502,7 @@ object DialLeftTriggerVariant : BaseNativeVariant("builtin.dial_lt", ControlKey.
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticDialTrigger(
-            key = context.displayLabel.ifBlank { "LT" },
+            key = context.displayLabel.ifBlank { K.LT },
             modifier = context.modifier
         )
     }
@@ -1527,7 +1527,7 @@ object DialRightTriggerVariant : BaseNativeVariant("builtin.dial_rt", ControlKey
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticDialTrigger(
-            key = context.displayLabel.ifBlank { "RT" },
+            key = context.displayLabel.ifBlank { K.RT },
             modifier = context.modifier
         )
     }
@@ -1556,7 +1556,7 @@ object LiquidOrbLeftTriggerVariant : BaseNativeVariant("builtin.liquid_lt", Cont
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticLiquidOrbTrigger(
-            key = context.displayLabel.ifBlank { "LT" },
+            key = context.displayLabel.ifBlank { K.LT },
             modifier = context.modifier
         )
     }
@@ -1581,7 +1581,7 @@ object LiquidOrbRightTriggerVariant : BaseNativeVariant("builtin.liquid_rt", Con
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticLiquidOrbTrigger(
-            key = context.displayLabel.ifBlank { "RT" },
+            key = context.displayLabel.ifBlank { K.RT },
             modifier = context.modifier
         )
     }
@@ -1610,7 +1610,7 @@ object VuSlabsLeftTriggerVariant : BaseNativeVariant("builtin.vu_lt", ControlKey
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticVuSlabsTrigger(
-            key = context.displayLabel.ifBlank { "LT" },
+            key = context.displayLabel.ifBlank { K.LT },
             modifier = context.modifier
         )
     }
@@ -1635,7 +1635,7 @@ object VuSlabsRightTriggerVariant : BaseNativeVariant("builtin.vu_rt", ControlKe
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticVuSlabsTrigger(
-            key = context.displayLabel.ifBlank { "RT" },
+            key = context.displayLabel.ifBlank { K.RT },
             modifier = context.modifier
         )
     }
@@ -1664,7 +1664,7 @@ object TargetLeftTriggerVariant : BaseNativeVariant("builtin.target_lt", Control
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticTargetTrigger(
-            key = context.displayLabel.ifBlank { "LT" },
+            key = context.displayLabel.ifBlank { K.LT },
             modifier = context.modifier
         )
     }
@@ -1689,7 +1689,7 @@ object TargetRightTriggerVariant : BaseNativeVariant("builtin.target_rt", Contro
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticTargetTrigger(
-            key = context.displayLabel.ifBlank { "RT" },
+            key = context.displayLabel.ifBlank { K.RT },
             modifier = context.modifier
         )
     }
@@ -1720,7 +1720,7 @@ object SliderLeftTriggerVariant : BaseNativeVariant("builtin.slider_lt", Control
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticSliderTrigger(
-            key = context.displayLabel.ifBlank { "LT" },
+            key = context.displayLabel.ifBlank { K.LT },
             modifier = context.modifier
         )
     }
@@ -1747,7 +1747,7 @@ object SliderRightTriggerVariant : BaseNativeVariant("builtin.slider_rt", Contro
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticSliderTrigger(
-            key = context.displayLabel.ifBlank { "RT" },
+            key = context.displayLabel.ifBlank { K.RT },
             modifier = context.modifier
         )
     }
@@ -1772,7 +1772,7 @@ object NeedleLeftTriggerVariant : BaseNativeVariant("builtin.needle_lt", Control
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticNeedleTrigger(
-            key = context.displayLabel.ifBlank { "LT" },
+            key = context.displayLabel.ifBlank { K.LT },
             modifier = context.modifier
         )
     }
@@ -1797,7 +1797,7 @@ object NeedleRightTriggerVariant : BaseNativeVariant("builtin.needle_rt", Contro
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticNeedleTrigger(
-            key = context.displayLabel.ifBlank { "RT" },
+            key = context.displayLabel.ifBlank { K.RT },
             modifier = context.modifier
         )
     }
@@ -1822,7 +1822,7 @@ object TestTubeLeftTriggerVariant : BaseNativeVariant("builtin.testtube_lt", Con
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticTestTubeTrigger(
-            key = context.displayLabel.ifBlank { "LT" },
+            key = context.displayLabel.ifBlank { K.LT },
             modifier = context.modifier
         )
     }
@@ -1847,7 +1847,7 @@ object TestTubeRightTriggerVariant : BaseNativeVariant("builtin.testtube_rt", Co
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticTestTubeTrigger(
-            key = context.displayLabel.ifBlank { "RT" },
+            key = context.displayLabel.ifBlank { K.RT },
             modifier = context.modifier
         )
     }
@@ -1872,7 +1872,7 @@ object BloomLeftTriggerVariant : BaseNativeVariant("builtin.bloom_lt", ControlKe
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticBloomTrigger(
-            key = context.displayLabel.ifBlank { "LT" },
+            key = context.displayLabel.ifBlank { K.LT },
             modifier = context.modifier
         )
     }
@@ -1897,7 +1897,7 @@ object BloomRightTriggerVariant : BaseNativeVariant("builtin.bloom_rt", ControlK
     @Composable
     override fun RenderStaticPreview(context: NativePreviewContext) {
         StaticBloomTrigger(
-            key = context.displayLabel.ifBlank { "RT" },
+            key = context.displayLabel.ifBlank { K.RT },
             modifier = context.modifier
         )
     }
@@ -2295,7 +2295,7 @@ class RealisticMacroButtonVariant(controlKey: ControlKey, seedCode: Int) :
  */
 object DefaultNativeFamily {
     val familyName: String = "Default Native"
-    val familyId: String = "builtin.default"
+    val familyId: String = BuiltinComponentIds.DEFAULT_FAMILY
 
     private val variantsById = java.util.concurrent.ConcurrentHashMap<String, NativeElementVariant>()
     private val variantsByControl = java.util.concurrent.ConcurrentHashMap<ControlKey, java.util.concurrent.CopyOnWriteArrayList<NativeElementVariant>>()
@@ -2522,21 +2522,9 @@ object NativeComponentRegistry {
      */
     fun isNativeBuiltin(id: String?): Boolean {
         if (id.isNullOrBlank()) return true
-        if (id.startsWith("builtin.default_") || id.startsWith("builtin.flux_") || id.startsWith("builtin.orb_") ||
-            id.startsWith("builtin.compass_") || id.startsWith("builtin.gyro_") || id.startsWith("builtin.spotlight_") ||
-            id.startsWith("builtin.lens_") || id.startsWith("builtin.four_lenses_") || id.startsWith("builtin.disc_") ||
-            id.startsWith("builtin.capsules_") || id.startsWith("builtin.metaballs_") || id.startsWith("builtin.rails_") ||
-            id.startsWith("builtin.arc_") || id.startsWith("builtin.led_") || id.startsWith("builtin.peek_") ||
-            id.startsWith("builtin.rib_") || id.startsWith("builtin.under_") ||
-            id.startsWith("builtin.tube_") || id.startsWith("builtin.flip_") ||
-            id.startsWith("builtin.dial_") || id.startsWith("builtin.liquid_") ||
-            id.startsWith("builtin.vu_") || id.startsWith("builtin.target_") ||
-            id.startsWith("builtin.slider_") ||
-            id.startsWith("builtin.liq_") || id.startsWith("builtin.facet_") ||
-            id.startsWith("builtin.flipbtn_") || id.startsWith("builtin.ripple_") ||
-            id.startsWith("builtin.orbit_") ||
-            id.startsWith("builtin.caps_") || id.startsWith("builtin.ecl_") ||
-            BuiltinComponentIds.isInbuildTouchpad(id) || id == BuiltinComponentIds.GYRO_BUTTON
+        if (id.startsWith(BuiltinComponentIds.BUILTIN_PREFIX) ||
+            BuiltinComponentIds.isInbuildTouchpad(id) ||
+            id == BuiltinComponentIds.GYRO_BUTTON
         ) return true
         return DefaultNativeFamily.getVariant(id) != null
     }
@@ -2586,7 +2574,7 @@ object NativeComponentRegistry {
         labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
         touchpadCurve: String? = null
     ) {
-        if (key.equals("GYRO", ignoreCase = true) || customComponentId?.startsWith("builtin.gyro_btn") == true) {
+        if (key.equals(BuiltinComponentIds.GYRO, ignoreCase = true) || customComponentId?.startsWith(BuiltinComponentIds.GYRO_BUTTON) == true) {
             GyroToggleButton(
                 key = key,
                 isConnected = isConnected,
@@ -2633,7 +2621,7 @@ object NativeComponentRegistry {
         controlKey: String,
         labelStyle: ControllerLabelStyle = ControllerLabelStyle.XBOX,
     ) {
-        if (controlKey.equals("GYRO", ignoreCase = true) || id?.startsWith("builtin.gyro_btn") == true) {
+        if (controlKey.equals(BuiltinComponentIds.GYRO, ignoreCase = true) || id?.startsWith(BuiltinComponentIds.GYRO_BUTTON) == true) {
             StaticGyroToggleButton(
                 isRgbEnabled = true,
                 labelStyle = labelStyle,

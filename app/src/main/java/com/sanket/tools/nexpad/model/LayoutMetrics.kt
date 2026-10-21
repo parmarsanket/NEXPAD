@@ -1,4 +1,5 @@
 package com.sanket.tools.nexpad.model
+import com.sanket.tools.nexpad.category.ControlKey
 
 import com.sanket.tools.nexpad.category.CategoryManager
 import kotlin.math.sqrt
@@ -28,7 +29,7 @@ object LayoutMetrics {
      * Position: index 0 = top (Y), 1 = left (X), 2 = right (B), 3 = bottom (A).
      * This matches the physical Xbox diamond layout: Y top, X left, B right, A bottom.
      */
-    private val abxyKeys: List<String> = listOf("Y", "X", "B", "A")
+    private val abxyKeys: List<String> = listOf(ControlKey.Y.key, ControlKey.X.key, ControlKey.B.key, ControlKey.A.key)
 
     /**
      * Converts a physical distance in DP to normalized (xRatio, yRatio) offsets.
@@ -207,10 +208,10 @@ object LayoutMetrics {
     ): Map<String, Position> {
         if (screenWidthPx <= 0f || screenHeightPx <= 0f) return positions
 
-        val yEntry = positions.entries.firstOrNull { it.key.equals("Y", ignoreCase = true) }
-        val xEntry = positions.entries.firstOrNull { it.key.equals("X", ignoreCase = true) }
-        val bEntry = positions.entries.firstOrNull { it.key.equals("B", ignoreCase = true) }
-        val aEntry = positions.entries.firstOrNull { it.key.equals("A", ignoreCase = true) }
+        val yEntry = positions.entries.firstOrNull { it.key.equals(ControlKey.Y.key, ignoreCase = true) }
+        val xEntry = positions.entries.firstOrNull { it.key.equals(ControlKey.X.key, ignoreCase = true) }
+        val bEntry = positions.entries.firstOrNull { it.key.equals(ControlKey.B.key, ignoreCase = true) }
+        val aEntry = positions.entries.firstOrNull { it.key.equals(ControlKey.A.key, ignoreCase = true) }
 
         if (yEntry == null || xEntry == null || bEntry == null || aEntry == null) {
             return positions
@@ -267,10 +268,10 @@ object LayoutMetrics {
     ): Map<String, HudElement> {
         if (screenWidthPx <= 0f || screenHeightPx <= 0f) return elements
 
-        val yEntry = elements.entries.firstOrNull { it.key.equals("Y", ignoreCase = true) }
-        val xEntry = elements.entries.firstOrNull { it.key.equals("X", ignoreCase = true) }
-        val bEntry = elements.entries.firstOrNull { it.key.equals("B", ignoreCase = true) }
-        val aEntry = elements.entries.firstOrNull { it.key.equals("A", ignoreCase = true) }
+        val yEntry = elements.entries.firstOrNull { it.key.equals(ControlKey.Y.key, ignoreCase = true) }
+        val xEntry = elements.entries.firstOrNull { it.key.equals(ControlKey.X.key, ignoreCase = true) }
+        val bEntry = elements.entries.firstOrNull { it.key.equals(ControlKey.B.key, ignoreCase = true) }
+        val aEntry = elements.entries.firstOrNull { it.key.equals(ControlKey.A.key, ignoreCase = true) }
 
         if (yEntry == null || xEntry == null || bEntry == null || aEntry == null) {
             return elements

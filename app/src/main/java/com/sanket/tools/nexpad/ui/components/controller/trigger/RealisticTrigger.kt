@@ -448,7 +448,7 @@ fun RealisticTrigger(
 
             // Tactical Typography (.lx-g): bold medium glyph with letter spacing, NO 0%-100% text
             Text(
-                text = displayLabel ?: (if (isLeft) "LT" else "RT"),
+                text = displayLabel ?: (if (isLeft) com.sanket.tools.nexpad.category.ControlKey.LT.key else com.sanket.tools.nexpad.category.ControlKey.RT.key),
                 color = neonColor,
                 fontWeight = FontWeight.Medium,
                 fontSize = 18.sp,
@@ -463,7 +463,7 @@ fun RealisticTrigger(
  */
 @Composable
 fun StaticRealisticTrigger(
-    key: String = "LT",
+    key: String = com.sanket.tools.nexpad.category.ControlKey.LT.key,
     isRgbEnabled: Boolean = true,
     displayLabel: String? = null,
     modifier: Modifier = Modifier

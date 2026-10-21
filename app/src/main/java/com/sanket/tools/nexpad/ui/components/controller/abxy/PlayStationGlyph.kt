@@ -117,20 +117,20 @@ fun resolveButtonColor(
     // 2. If active profile style is PLAYSTATION, map the cardinal button position
     if (labelStyle == ControllerLabelStyle.PLAYSTATION) {
         return when (controlKey.trim().uppercase()) {
-            "A", "CROSS", "✕", "×"    -> PlayStationColors.Cross
-            "B", "CIRCLE", "○", "◯"   -> PlayStationColors.Circle
-            "X", "SQUARE", "□", "◻"   -> PlayStationColors.Square
-            "Y", "TRIANGLE", "△", "▲" -> PlayStationColors.Triangle
+            ControlKey.A.key, "CROSS", "✕", "×"    -> PlayStationColors.Cross
+            ControlKey.B.key, "CIRCLE", "○", "◯"   -> PlayStationColors.Circle
+            ControlKey.X.key, "SQUARE", "□", "◻"   -> PlayStationColors.Square
+            ControlKey.Y.key, "TRIANGLE", "△", "▲" -> PlayStationColors.Triangle
             else -> fallbackColor
         }
     }
 
     // 3. Default Xbox Face Button Colors
     return when (controlKey.trim().uppercase()) {
-        "A" -> XboxColors.A
-        "B" -> XboxColors.B
-        "X" -> XboxColors.X
-        "Y" -> XboxColors.Y
+        ControlKey.A.key -> XboxColors.A
+        ControlKey.B.key -> XboxColors.B
+        ControlKey.X.key -> XboxColors.X
+        ControlKey.Y.key -> XboxColors.Y
         else -> fallbackColor
     }
 }

@@ -69,7 +69,7 @@ fun RealisticBumper(
     val isPressed = isPressedLocally || isPressedExternally
     val isLeft = remember(key) {
         val upper = key.uppercase()
-        upper == NexpadKeys.LB || upper == "L1" || upper == "LEFT"
+        upper == NexpadKeys.LB || upper == NexpadKeys.L1 || upper == com.sanket.tools.nexpad.category.ControlKey.LEFT.key
     }
 
     // Flipped Mobile Ergonomic Shape:
@@ -517,7 +517,7 @@ fun RealisticBumper(
  */
 @Composable
 fun StaticRealisticBumper(
-    key: String = "LB",
+    key: String = com.sanket.tools.nexpad.category.ControlKey.LB.key,
     isRgbEnabled: Boolean = true,
     displayLabel: String? = null,
     modifier: Modifier = Modifier

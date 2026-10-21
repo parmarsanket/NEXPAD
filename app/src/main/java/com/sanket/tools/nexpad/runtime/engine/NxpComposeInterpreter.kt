@@ -80,8 +80,8 @@ fun NxpComposeInterpreter(
             (definition.manifest.category.equals(NexpadKeys.DPAD, ignoreCase = true) && definition.size.widthDp >= 100) ||
             (assignedControl is NexPadControl.Button && assignedControl.key.equals(NexpadKeys.DPAD, ignoreCase = true))
 
-    if (definition.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
-        definition.interaction.type.equals("Joystick", ignoreCase = true)
+    if (definition.manifest.category.equals(com.sanket.tools.nexpad.category.ComponentType.JOYSTICK.name, ignoreCase = true) ||
+        definition.interaction.type.equals(com.sanket.tools.nexpad.category.ComponentType.JOYSTICK.name, ignoreCase = true)
     ) {
         RenderNxpJoystick(definition, assignedControl, isConnected, inputTarget, modifier, isInteractive, touchpadCurve, isLocked, viewModel)
     } else if (isDpadCross) {
