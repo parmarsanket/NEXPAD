@@ -124,4 +124,3 @@ If you have questions, feedback, or concerns regarding this Privacy Policy or NE
 * **Developer:** Sanket Parmar
 * **Email:** [parmarsanket265@gmail.com](mailto:parmarsanket265@gmail.com)
 * **GitHub Repository:** [github.com/parmarsanket/NEXPAD](https://github.com/parmarsanket/NEXPAD)
-* **Issue Tracker:** [github.com/parmarsanket/NEXPAD/issues](https://github.com/parmarsanket/NEXPAD/issues)
