@@ -1,4 +1,5 @@
 package com.sanket.tools.nexpad.ui.components.controller.abxy
+import com.sanket.tools.nexpad.category.ControlKey
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -192,10 +193,10 @@ fun RealisticButton(
     // Determine 4-way directional perspective based on face button role
     val perspectiveDirection = remember(key) {
         when {
-            key.equals("A", ignoreCase = true) || key.equals("CROSS", ignoreCase = true) || key.equals("DOWN", ignoreCase = true) -> ButtonPerspectiveDirection.BOTTOM
-            key.equals("Y", ignoreCase = true) || key.equals("TRIANGLE", ignoreCase = true) || key.equals("UP", ignoreCase = true) -> ButtonPerspectiveDirection.TOP
-            key.equals("X", ignoreCase = true) || key.equals("SQUARE", ignoreCase = true) || key.equals("LEFT", ignoreCase = true) -> ButtonPerspectiveDirection.LEFT
-            key.equals("B", ignoreCase = true) || key.equals("CIRCLE", ignoreCase = true) || key.equals("RIGHT", ignoreCase = true) -> ButtonPerspectiveDirection.RIGHT
+            key.equals(ControlKey.A.key, ignoreCase = true) || key.equals(PlayStationShape.CROSS.name, ignoreCase = true) || key.equals(ControlKey.DOWN.key, ignoreCase = true) -> ButtonPerspectiveDirection.BOTTOM
+            key.equals(ControlKey.Y.key, ignoreCase = true) || key.equals(PlayStationShape.TRIANGLE.name, ignoreCase = true) || key.equals(ControlKey.UP.key, ignoreCase = true) -> ButtonPerspectiveDirection.TOP
+            key.equals(ControlKey.X.key, ignoreCase = true) || key.equals(PlayStationShape.SQUARE.name, ignoreCase = true) || key.equals(ControlKey.LEFT.key, ignoreCase = true) -> ButtonPerspectiveDirection.LEFT
+            key.equals(ControlKey.B.key, ignoreCase = true) || key.equals(PlayStationShape.CIRCLE.name, ignoreCase = true) || key.equals(ControlKey.RIGHT.key, ignoreCase = true) -> ButtonPerspectiveDirection.RIGHT
             else -> ButtonPerspectiveDirection.NONE
         }
     }

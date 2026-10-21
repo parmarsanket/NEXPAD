@@ -1319,7 +1319,7 @@ object DefaultComponents {
 
     val DEFAULT_TRIGGER_LT = NxpComponentDef(
         manifest = NxpManifest(
-            id = "builtin.default_lt",
+            id = BuiltinComponentIds.DEFAULT_LT,
             name = "Default Left Trigger (LT)",
             author = "NEXPAD Core",
             version = "1.0.0",
@@ -1338,13 +1338,13 @@ object DefaultComponents {
         ),
         pressed = NxpPressedState(scale = 0.95f, fillColor = "#00E5FF", borderColor = "#FFFFFF"),
         interaction = NxpInteraction(type = "Trigger"),
-        label = NxpLabel(text = "LT", color = "#00E5FF", pressedColor = "#FFFFFF", fontSize = 18f),
+        label = NxpLabel(text = ControlKey.LT.key, color = "#00E5FF", pressedColor = "#FFFFFF", fontSize = 18f),
         size = NxpSize(widthDp = 100, heightDp = 92)
     )
 
     val DEFAULT_TRIGGER_RT = NxpComponentDef(
         manifest = NxpManifest(
-            id = "builtin.default_rt",
+            id = BuiltinComponentIds.DEFAULT_RT,
             name = "Default Right Trigger (RT)",
             author = "NEXPAD Core",
             version = "1.0.0",
@@ -1363,13 +1363,13 @@ object DefaultComponents {
         ),
         pressed = NxpPressedState(scale = 0.95f, fillColor = "#E055B8", borderColor = "#FFFFFF"),
         interaction = NxpInteraction(type = "Trigger"),
-        label = NxpLabel(text = "RT", color = "#E055B8", pressedColor = "#FFFFFF", fontSize = 18f),
+        label = NxpLabel(text = ControlKey.RT.key, color = "#E055B8", pressedColor = "#FFFFFF", fontSize = 18f),
         size = NxpSize(widthDp = 100, heightDp = 92)
     )
 
     val DEFAULT_BUMPER_LB = NxpComponentDef(
         manifest = NxpManifest(
-            id = "builtin.default_lb",
+            id = BuiltinComponentIds.DEFAULT_LB,
             name = "Default Left Bumper (LB)",
             author = "NEXPAD Core",
             version = "1.0.0",
@@ -1387,13 +1387,13 @@ object DefaultComponents {
             glowRadius = 8f
         ),
         pressed = NxpPressedState(scale = 0.94f, fillColor = "#06B6D4", borderColor = "#FFFFFF"),
-        label = NxpLabel(text = "LB", color = "#06B6D4", pressedColor = "#000000", fontSize = 18f),
+        label = NxpLabel(text = ControlKey.LB.key, color = "#06B6D4", pressedColor = "#000000", fontSize = 18f),
         size = NxpSize(widthDp = 160, heightDp = 60)
     )
 
     val DEFAULT_BUMPER_RB = NxpComponentDef(
         manifest = NxpManifest(
-            id = "builtin.default_rb",
+            id = BuiltinComponentIds.DEFAULT_RB,
             name = "Default Right Bumper (RB)",
             author = "NEXPAD Core",
             version = "1.0.0",
@@ -1411,7 +1411,7 @@ object DefaultComponents {
             glowRadius = 8f
         ),
         pressed = NxpPressedState(scale = 0.94f, fillColor = "#06B6D4", borderColor = "#FFFFFF"),
-        label = NxpLabel(text = "RB", color = "#06B6D4", pressedColor = "#000000", fontSize = 18f),
+        label = NxpLabel(text = ControlKey.RB.key, color = "#06B6D4", pressedColor = "#000000", fontSize = 18f),
         size = NxpSize(widthDp = 160, heightDp = 60)
     )
 
@@ -1435,7 +1435,7 @@ object DefaultComponents {
             glowRadius = 10f
         ),
         pressed = NxpPressedState(scale = 0.97f, fillColor = "#A97CF0"),
-        label = NxpLabel(text = "LB", color = "#A97CF0", pressedColor = "#FFFFFF", fontSize = 19f),
+        label = NxpLabel(text = ControlKey.LB.key, color = "#A97CF0", pressedColor = "#FFFFFF", fontSize = 19f),
         size = NxpSize(widthDp = 154, heightDp = 56)
     )
 
@@ -1459,7 +1459,7 @@ object DefaultComponents {
             glowRadius = 10f
         ),
         pressed = NxpPressedState(scale = 0.97f, fillColor = "#A97CF0"),
-        label = NxpLabel(text = "RB", color = "#A97CF0", pressedColor = "#FFFFFF", fontSize = 19f),
+        label = NxpLabel(text = ControlKey.RB.key, color = "#A97CF0", pressedColor = "#FFFFFF", fontSize = 19f),
         size = NxpSize(widthDp = 154, heightDp = 56)
     )
 
@@ -1483,7 +1483,7 @@ object DefaultComponents {
             glowRadius = 10f
         ),
         pressed = NxpPressedState(scale = 0.96f, fillColor = "#A97CF0"),
-        label = NxpLabel(text = "LB", color = "#A97CF0", pressedColor = "#FFFFFF", fontSize = 16f),
+        label = NxpLabel(text = ControlKey.LB.key, color = "#A97CF0", pressedColor = "#FFFFFF", fontSize = 16f),
         size = NxpSize(widthDp = 154, heightDp = 54)
     )
 
@@ -1507,7 +1507,7 @@ object DefaultComponents {
             glowRadius = 10f
         ),
         pressed = NxpPressedState(scale = 0.96f, fillColor = "#A97CF0"),
-        label = NxpLabel(text = "RB", color = "#A97CF0", pressedColor = "#FFFFFF", fontSize = 16f),
+        label = NxpLabel(text = ControlKey.RB.key, color = "#A97CF0", pressedColor = "#FFFFFF", fontSize = 16f),
         size = NxpSize(widthDp = 154, heightDp = 54)
     )
 
@@ -1531,7 +1531,7 @@ object DefaultComponents {
             glowRadius = 10f
         ),
         pressed = NxpPressedState(scale = 0.95f, fillColor = "#A97CF0"),
-        label = NxpLabel(text = "LB", color = "#A97CF0", pressedColor = "#FFFFFF", fontSize = 16f),
+        label = NxpLabel(text = ControlKey.LB.key, color = "#A97CF0", pressedColor = "#FFFFFF", fontSize = 16f),
         size = NxpSize(widthDp = 154, heightDp = 54)
     )
 
@@ -1555,7 +1555,7 @@ object DefaultComponents {
             glowRadius = 10f
         ),
         pressed = NxpPressedState(scale = 0.95f, fillColor = "#A97CF0"),
-        label = NxpLabel(text = "RB", color = "#A97CF0", pressedColor = "#FFFFFF", fontSize = 16f),
+        label = NxpLabel(text = ControlKey.RB.key, color = "#A97CF0", pressedColor = "#FFFFFF", fontSize = 16f),
         size = NxpSize(widthDp = 154, heightDp = 54)
     )
 
@@ -1579,7 +1579,7 @@ object DefaultComponents {
             glowRadius = 10f
         ),
         pressed = NxpPressedState(scale = 0.95f, fillColor = "#3FD2FF"),
-        label = NxpLabel(text = "LB", color = "#3FD2FF", pressedColor = "#FFFFFF", fontSize = 16f),
+        label = NxpLabel(text = ControlKey.LB.key, color = "#3FD2FF", pressedColor = "#FFFFFF", fontSize = 16f),
         size = NxpSize(widthDp = 154, heightDp = 54)
     )
 
@@ -1603,7 +1603,7 @@ object DefaultComponents {
             glowRadius = 10f
         ),
         pressed = NxpPressedState(scale = 0.95f, fillColor = "#FF007F"),
-        label = NxpLabel(text = "RB", color = "#FF007F", pressedColor = "#FFFFFF", fontSize = 16f),
+        label = NxpLabel(text = ControlKey.RB.key, color = "#FF007F", pressedColor = "#FFFFFF", fontSize = 16f),
         size = NxpSize(widthDp = 154, heightDp = 54)
     )
 
@@ -1627,7 +1627,7 @@ object DefaultComponents {
             glowRadius = 10f
         ),
         pressed = NxpPressedState(scale = 0.95f, fillColor = "#5CF29A"),
-        label = NxpLabel(text = "LB", color = "#5CF29A", pressedColor = "#FFFFFF", fontSize = 16f),
+        label = NxpLabel(text = ControlKey.LB.key, color = "#5CF29A", pressedColor = "#FFFFFF", fontSize = 16f),
         size = NxpSize(widthDp = 154, heightDp = 54)
     )
 
@@ -1651,7 +1651,7 @@ object DefaultComponents {
             glowRadius = 10f
         ),
         pressed = NxpPressedState(scale = 0.95f, fillColor = "#FF5252"),
-        label = NxpLabel(text = "RB", color = "#FF5252", pressedColor = "#FFFFFF", fontSize = 16f),
+        label = NxpLabel(text = ControlKey.RB.key, color = "#FF5252", pressedColor = "#FFFFFF", fontSize = 16f),
         size = NxpSize(widthDp = 154, heightDp = 54)
     )
 
@@ -1675,7 +1675,7 @@ object DefaultComponents {
             glowRadius = 10f
         ),
         pressed = NxpPressedState(scale = 0.95f, fillColor = "#4FA8FF"),
-        label = NxpLabel(text = "LB", color = "#4FA8FF", pressedColor = "#FFFFFF", fontSize = 16f),
+        label = NxpLabel(text = ControlKey.LB.key, color = "#4FA8FF", pressedColor = "#FFFFFF", fontSize = 16f),
         size = NxpSize(widthDp = 154, heightDp = 54)
     )
 
@@ -1699,7 +1699,7 @@ object DefaultComponents {
             glowRadius = 10f
         ),
         pressed = NxpPressedState(scale = 0.95f, fillColor = "#FF4F81"),
-        label = NxpLabel(text = "RB", color = "#FF4F81", pressedColor = "#FFFFFF", fontSize = 16f),
+        label = NxpLabel(text = ControlKey.RB.key, color = "#FF4F81", pressedColor = "#FFFFFF", fontSize = 16f),
         size = NxpSize(widthDp = 154, heightDp = 54)
     )
 
@@ -1723,7 +1723,7 @@ object DefaultComponents {
             glowRadius = 10f
         ),
         pressed = NxpPressedState(scale = 0.95f, fillColor = "#FFD23F"),
-        label = NxpLabel(text = "LB", color = "#FFD23F", pressedColor = "#0A0B0C", fontSize = 16f),
+        label = NxpLabel(text = ControlKey.LB.key, color = "#FFD23F", pressedColor = "#0A0B0C", fontSize = 16f),
         size = NxpSize(widthDp = 154, heightDp = 54)
     )
 
@@ -1747,7 +1747,7 @@ object DefaultComponents {
             glowRadius = 10f
         ),
         pressed = NxpPressedState(scale = 0.95f, fillColor = "#FF6B6B"),
-        label = NxpLabel(text = "RB", color = "#FF6B6B", pressedColor = "#0A0B0C", fontSize = 16f),
+        label = NxpLabel(text = ControlKey.RB.key, color = "#FF6B6B", pressedColor = "#0A0B0C", fontSize = 16f),
         size = NxpSize(widthDp = 154, heightDp = 54)
     )
 
@@ -1772,7 +1772,7 @@ object DefaultComponents {
         ),
         pressed = NxpPressedState(scale = 0.95f, fillColor = "#00E5FF", borderColor = "#FFFFFF"),
         interaction = NxpInteraction(type = "Trigger"),
-        label = NxpLabel(text = "LT", color = "#00E5FF", pressedColor = "#FFFFFF", fontSize = 17f),
+        label = NxpLabel(text = ControlKey.LT.key, color = "#00E5FF", pressedColor = "#FFFFFF", fontSize = 17f),
         size = NxpSize(widthDp = 92, heightDp = 92)
     )
 
@@ -1797,7 +1797,7 @@ object DefaultComponents {
         ),
         pressed = NxpPressedState(scale = 0.95f, fillColor = "#E055B8", borderColor = "#FFFFFF"),
         interaction = NxpInteraction(type = "Trigger"),
-        label = NxpLabel(text = "RT", color = "#E055B8", pressedColor = "#FFFFFF", fontSize = 17f),
+        label = NxpLabel(text = ControlKey.RT.key, color = "#E055B8", pressedColor = "#FFFFFF", fontSize = 17f),
         size = NxpSize(widthDp = 92, heightDp = 92)
     )
 
@@ -1822,7 +1822,7 @@ object DefaultComponents {
         ),
         pressed = NxpPressedState(scale = 0.95f, fillColor = "#3FD2C4", borderColor = "#FFFFFF"),
         interaction = NxpInteraction(type = "Trigger"),
-        label = NxpLabel(text = "LT", color = "#3FD2C4", pressedColor = "#FFFFFF", fontSize = 17f),
+        label = NxpLabel(text = ControlKey.LT.key, color = "#3FD2C4", pressedColor = "#FFFFFF", fontSize = 17f),
         size = NxpSize(widthDp = 92, heightDp = 92)
     )
 
@@ -1847,7 +1847,7 @@ object DefaultComponents {
         ),
         pressed = NxpPressedState(scale = 0.95f, fillColor = "#FF5376", borderColor = "#FFFFFF"),
         interaction = NxpInteraction(type = "Trigger"),
-        label = NxpLabel(text = "RT", color = "#FF5376", pressedColor = "#FFFFFF", fontSize = 17f),
+        label = NxpLabel(text = ControlKey.RT.key, color = "#FF5376", pressedColor = "#FFFFFF", fontSize = 17f),
         size = NxpSize(widthDp = 92, heightDp = 92)
     )
 
@@ -1872,7 +1872,7 @@ object DefaultComponents {
         ),
         pressed = NxpPressedState(scale = 0.95f, fillColor = "#3FD25A", borderColor = "#FFFFFF"),
         interaction = NxpInteraction(type = "Trigger"),
-        label = NxpLabel(text = "LT", color = "#3FD25A", pressedColor = "#FFFFFF", fontSize = 15f),
+        label = NxpLabel(text = ControlKey.LT.key, color = "#3FD25A", pressedColor = "#FFFFFF", fontSize = 15f),
         size = NxpSize(widthDp = 100, heightDp = 92)
     )
 
@@ -1897,7 +1897,7 @@ object DefaultComponents {
         ),
         pressed = NxpPressedState(scale = 0.95f, fillColor = "#E055B8", borderColor = "#FFFFFF"),
         interaction = NxpInteraction(type = "Trigger"),
-        label = NxpLabel(text = "RT", color = "#E055B8", pressedColor = "#FFFFFF", fontSize = 15f),
+        label = NxpLabel(text = ControlKey.RT.key, color = "#E055B8", pressedColor = "#FFFFFF", fontSize = 15f),
         size = NxpSize(widthDp = 100, heightDp = 92)
     )
 
@@ -1922,7 +1922,7 @@ object DefaultComponents {
         ),
         pressed = NxpPressedState(scale = 0.95f, fillColor = "#00E5FF", borderColor = "#FFFFFF"),
         interaction = NxpInteraction(type = "Trigger"),
-        label = NxpLabel(text = "LT", color = "#00E5FF", pressedColor = "#FFFFFF", fontSize = 14f),
+        label = NxpLabel(text = ControlKey.LT.key, color = "#00E5FF", pressedColor = "#FFFFFF", fontSize = 14f),
         size = NxpSize(widthDp = 92, heightDp = 92)
     )
 
@@ -1947,7 +1947,7 @@ object DefaultComponents {
         ),
         pressed = NxpPressedState(scale = 0.95f, fillColor = "#FF5A7A", borderColor = "#FFFFFF"),
         interaction = NxpInteraction(type = "Trigger"),
-        label = NxpLabel(text = "RT", color = "#FF5A7A", pressedColor = "#FFFFFF", fontSize = 14f),
+        label = NxpLabel(text = ControlKey.RT.key, color = "#FF5A7A", pressedColor = "#FFFFFF", fontSize = 14f),
         size = NxpSize(widthDp = 92, heightDp = 92)
     )
 
@@ -1972,7 +1972,7 @@ object DefaultComponents {
         ),
         pressed = NxpPressedState(scale = 0.96f, fillColor = "#FFB13F", borderColor = "#FFFFFF"),
         interaction = NxpInteraction(type = "Trigger"),
-        label = NxpLabel(text = "LT", color = "#FFB13F", pressedColor = "#FFFFFF", fontSize = 11f),
+        label = NxpLabel(text = ControlKey.LT.key, color = "#FFB13F", pressedColor = "#FFFFFF", fontSize = 11f),
         size = NxpSize(widthDp = 42, heightDp = 94)
     )
 
@@ -1997,7 +1997,7 @@ object DefaultComponents {
         ),
         pressed = NxpPressedState(scale = 0.96f, fillColor = "#FF5A7A", borderColor = "#FFFFFF"),
         interaction = NxpInteraction(type = "Trigger"),
-        label = NxpLabel(text = "RT", color = "#FF5A7A", pressedColor = "#FFFFFF", fontSize = 11f),
+        label = NxpLabel(text = ControlKey.RT.key, color = "#FF5A7A", pressedColor = "#FFFFFF", fontSize = 11f),
         size = NxpSize(widthDp = 42, heightDp = 94)
     )
 
@@ -2022,7 +2022,7 @@ object DefaultComponents {
         ),
         pressed = NxpPressedState(scale = 0.96f, fillColor = "#5CF29A", borderColor = "#FFFFFF"),
         interaction = NxpInteraction(type = "Trigger"),
-        label = NxpLabel(text = "LT", color = "#5CF29A", pressedColor = "#FFFFFF", fontSize = 12f),
+        label = NxpLabel(text = ControlKey.LT.key, color = "#5CF29A", pressedColor = "#FFFFFF", fontSize = 12f),
         size = NxpSize(widthDp = 108, heightDp = 94)
     )
 
@@ -2047,7 +2047,7 @@ object DefaultComponents {
         ),
         pressed = NxpPressedState(scale = 0.96f, fillColor = "#FF5C8A", borderColor = "#FFFFFF"),
         interaction = NxpInteraction(type = "Trigger"),
-        label = NxpLabel(text = "RT", color = "#FF5C8A", pressedColor = "#FFFFFF", fontSize = 12f),
+        label = NxpLabel(text = ControlKey.RT.key, color = "#FF5C8A", pressedColor = "#FFFFFF", fontSize = 12f),
         size = NxpSize(widthDp = 108, heightDp = 94)
     )
 
@@ -2072,7 +2072,7 @@ object DefaultComponents {
         ),
         pressed = NxpPressedState(scale = 0.96f, fillColor = "#FF9F43", borderColor = "#FFFFFF"),
         interaction = NxpInteraction(type = "Trigger"),
-        label = NxpLabel(text = "LT", color = "#FF9F43", pressedColor = "#FFFFFF", fontSize = 10f),
+        label = NxpLabel(text = ControlKey.LT.key, color = "#FF9F43", pressedColor = "#FFFFFF", fontSize = 10f),
         size = NxpSize(widthDp = 48, heightDp = 98)
     )
 
@@ -2097,7 +2097,7 @@ object DefaultComponents {
         ),
         pressed = NxpPressedState(scale = 0.96f, fillColor = "#BD5CFF", borderColor = "#FFFFFF"),
         interaction = NxpInteraction(type = "Trigger"),
-        label = NxpLabel(text = "RT", color = "#BD5CFF", pressedColor = "#FFFFFF", fontSize = 10f),
+        label = NxpLabel(text = ControlKey.RT.key, color = "#BD5CFF", pressedColor = "#FFFFFF", fontSize = 10f),
         size = NxpSize(widthDp = 48, heightDp = 98)
     )
 
@@ -2122,7 +2122,7 @@ object DefaultComponents {
         ),
         pressed = NxpPressedState(scale = 0.96f, fillColor = "#7C9CFF", borderColor = "#FFFFFF"),
         interaction = NxpInteraction(type = "Trigger"),
-        label = NxpLabel(text = "LT", color = "#7C9CFF", pressedColor = "#FFFFFF", fontSize = 12f),
+        label = NxpLabel(text = ControlKey.LT.key, color = "#7C9CFF", pressedColor = "#FFFFFF", fontSize = 12f),
         size = NxpSize(widthDp = 92, heightDp = 92)
     )
 
@@ -2147,7 +2147,7 @@ object DefaultComponents {
         ),
         pressed = NxpPressedState(scale = 0.96f, fillColor = "#FF6584", borderColor = "#FFFFFF"),
         interaction = NxpInteraction(type = "Trigger"),
-        label = NxpLabel(text = "RT", color = "#FF6584", pressedColor = "#FFFFFF", fontSize = 12f),
+        label = NxpLabel(text = ControlKey.RT.key, color = "#FF6584", pressedColor = "#FFFFFF", fontSize = 12f),
         size = NxpSize(widthDp = 92, heightDp = 92)
     )
 

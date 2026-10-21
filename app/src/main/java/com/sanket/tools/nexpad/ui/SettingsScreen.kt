@@ -1021,7 +1021,7 @@ private fun SettingsPortCardContent(
                     }
                 },
                 label = { Text("Port Number", color = NeonPalette.SlateText) },
-                placeholder = { Text("9999", color = NeonPalette.SlateMuted) },
+                placeholder = { Text(com.sanket.tools.nexpad.utils.NexpadPreferenceKeys.DEFAULT_MANUAL_PORT, color = NeonPalette.SlateMuted) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Number,
@@ -1078,8 +1078,8 @@ private fun SettingsPortCardContent(
                 OutlinedButton(
                     onClick = {
                         focusManager.clearFocus()
-                        portText = "9999"
-                        onPortSave(9999)
+                        portText = com.sanket.tools.nexpad.utils.NexpadPreferenceKeys.DEFAULT_MANUAL_PORT
+                        onPortSave(com.sanket.tools.nexpad.utils.NexpadPreferenceKeys.DEFAULT_COMMUNICATION_PORT)
                     },
                     modifier = Modifier
                         .weight(1f)

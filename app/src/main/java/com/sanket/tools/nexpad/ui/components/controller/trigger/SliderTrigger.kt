@@ -642,7 +642,7 @@ fun SliderTrigger(
  */
 @Composable
 fun StaticSliderTrigger(
-    key: String = "LT",
+    key: String = com.sanket.tools.nexpad.category.ControlKey.LT.key,
     isRgbEnabled: Boolean = true,
     displayLabel: String? = null,
     modifier: Modifier = Modifier,

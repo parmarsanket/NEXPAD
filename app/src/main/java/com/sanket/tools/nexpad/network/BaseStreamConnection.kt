@@ -64,6 +64,7 @@ abstract class BaseStreamConnection : IGamepadConnection {
     private var lastRequestedSensorMode: Byte = -1
 
     private var currentTag = "STREAM"
+    @Volatile protected var lastSendTimestamp = 0L
 
     override suspend fun sendInput(input: GamepadInput) {
         if (!isConnected) return
@@ -77,6 +78,7 @@ abstract class BaseStreamConnection : IGamepadConnection {
 
         try {
             synchronized(txLock) {
+                lastSendTimestamp = System.currentTimeMillis()
                 NexpadProtocol.encodeInput(input, txWriteBuffer)
                 sendTimestamps[slot] = System.nanoTime()
                 stream.write(txWriteBuffer)

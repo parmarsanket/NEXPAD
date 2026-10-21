@@ -658,7 +658,7 @@ class HudEditorViewModel(
 
     companion object {
         private const val TAG = "NexpadHudEditorVM"
-        const val PREFIX_BUILTIN_DEFAULT = "builtin.default_"
+        const val PREFIX_BUILTIN_DEFAULT = com.sanket.tools.nexpad.model.BuiltinComponentIds.DEFAULT_PREFIX
     }
 }
 

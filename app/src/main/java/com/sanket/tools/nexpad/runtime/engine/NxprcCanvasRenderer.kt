@@ -214,10 +214,10 @@ internal fun isDefaultConsoleAccent(color: Color, controlKey: String): Boolean {
     val hsv = color.toHsv()
     val hue = hsv[0]
     return when (controlKey.trim().uppercase()) {
-        "A" -> hue in 120f..175f // Xbox Default Emerald Green
-        "X" -> hue in 180f..230f // Xbox Default Sapphire Blue
-        "Y" -> hue in 30f..70f   // Xbox Default Solar Yellow
-        "B" -> hue in 340f..360f || hue in 0f..20f // Xbox Default Crimson Red
+        ControlKey.A.key -> hue in 120f..175f // Xbox Default Emerald Green
+        ControlKey.X.key -> hue in 180f..230f // Xbox Default Sapphire Blue
+        ControlKey.Y.key -> hue in 30f..70f   // Xbox Default Solar Yellow
+        ControlKey.B.key -> hue in 340f..360f || hue in 0f..20f // Xbox Default Crimson Red
         else -> false
     }
 }
@@ -229,7 +229,7 @@ internal fun isDefaultConsoleAccent(color: Color, controlKey: String): Boolean {
  * 2. Only shifts colors that match the canonical console default palette.
  * 3. User-specified custom colors (Pink, Gold, White, Carbon, etc.) are strictly preserved.
  */
-private val ABXY_KEYS = setOf("A", "B", "X", "Y")
+private val ABXY_KEYS = setOf(ControlKey.A.key, ControlKey.B.key, ControlKey.X.key, ControlKey.Y.key)
 
 internal fun adaptColorForConsole(
     color: Color,
@@ -245,19 +245,19 @@ internal fun adaptColorForConsole(
     val hue = hsv[0]
 
     // Button A: Default Green (120°..175°) -> Shift +60° to PlayStation Blue (~210°..220°)
-    if (upper == "A" && hue in 120f..175f) {
+    if (upper == ControlKey.A.key && hue in 120f..175f) {
         val newHue = (hue + 60f) % 360f
         return hsvToColor(color.alpha, newHue, hsv[1], hsv[2])
     }
 
     // Button X: Default Blue (180°..230°) -> Shift +122° to PlayStation Pink (~315°..330°)
-    if (upper == "X" && hue in 180f..230f) {
+    if (upper == ControlKey.X.key && hue in 180f..230f) {
         val newHue = (hue + 122f) % 360f
         return hsvToColor(color.alpha, newHue, hsv[1], hsv[2])
     }
 
     // Button Y: Default Yellow (30°..70°) -> Shift +85° to PlayStation Green (~120°..145°)
-    if (upper == "Y" && hue in 30f..70f) {
+    if (upper == ControlKey.Y.key && hue in 30f..70f) {
         val newHue = (hue + 85f) % 360f
         return hsvToColor(color.alpha, newHue, hsv[1], hsv[2])
     }
@@ -475,16 +475,16 @@ fun NxprcCanvasRenderer(
     }
 
     val isStickOrTouchpadControl = assignedControl is NexPadControl.Stick ||
-        document.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
-        document.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
+        document.manifest.category.equals(com.sanket.tools.nexpad.category.ComponentType.JOYSTICK.name, ignoreCase = true) ||
+        document.manifest.category.equals(com.sanket.tools.nexpad.category.ComponentType.TOUCHPAD.name, ignoreCase = true) ||
         document.manifest.id.contains("joystick", ignoreCase = true) ||
         document.manifest.id.contains("touchpad", ignoreCase = true) ||
         effectiveControlKey == NexpadKeys.LS ||
         effectiveControlKey == NexpadKeys.RS ||
         effectiveControlKey == NexpadKeys.LTP ||
         effectiveControlKey == NexpadKeys.RTP ||
-        effectiveControlKey.contains("TOUCHPAD") ||
-        effectiveControlKey.contains("JOYSTICK")
+        effectiveControlKey.contains(com.sanket.tools.nexpad.category.ComponentType.TOUCHPAD.name) ||
+        effectiveControlKey.contains(com.sanket.tools.nexpad.category.ComponentType.JOYSTICK.name)
 
     var isPressedLocally by remember { mutableStateOf(false) }
     val isPressedExternally = if (!isStickOrTouchpadControl) {
@@ -519,21 +519,21 @@ fun NxprcCanvasRenderer(
     val density = androidx.compose.ui.platform.LocalDensity.current.density
 
     val isStick = assignedControl is NexPadControl.Stick ||
-            document.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
-            document.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
+            document.manifest.category.equals(com.sanket.tools.nexpad.category.ComponentType.JOYSTICK.name, ignoreCase = true) ||
+            document.manifest.category.equals(com.sanket.tools.nexpad.category.ComponentType.TOUCHPAD.name, ignoreCase = true) ||
             document.manifest.defaultControl.uppercase() in listOf(NexpadKeys.LS, NexpadKeys.RS, NexpadKeys.LTP, NexpadKeys.RTP)
     val stick = run {
         val defCtrl = document.manifest.defaultControl.uppercase()
         val docId = document.manifest.id.lowercase()
         when {
-            defCtrl == NexpadKeys.RTP || defCtrl == NexpadKeys.RS || defCtrl == "R3" || docId.contains("rtp") ->
+            defCtrl == NexpadKeys.RTP || defCtrl == NexpadKeys.RS || defCtrl == NexpadKeys.R3 || docId.contains("rtp") ->
                 NexPadControl.Stick(isLeft = false)
-            defCtrl == NexpadKeys.LTP || defCtrl == NexpadKeys.LS || defCtrl == "L3" || docId.contains("ltp") ->
+            defCtrl == NexpadKeys.LTP || defCtrl == NexpadKeys.LS || defCtrl == NexpadKeys.L3 || docId.contains("ltp") ->
                 NexPadControl.Stick(isLeft = true)
             assignedControl is NexPadControl.Stick ->
                 assignedControl
             else ->
-                NexPadControl.Stick(isLeft = defCtrl != NexpadKeys.RS && defCtrl != "R3" && defCtrl != NexpadKeys.RTP && !defCtrl.contains("RIGHT"))
+                NexPadControl.Stick(isLeft = defCtrl != NexpadKeys.RS && defCtrl != NexpadKeys.R3 && defCtrl != NexpadKeys.RTP && !defCtrl.contains(ControlKey.RIGHT.key))
         }
     }
     var thumbOffsetX by remember { mutableFloatStateOf(0f) }
@@ -582,7 +582,7 @@ fun NxprcCanvasRenderer(
     }
 
     val isTrigger = assignedControl is NexPadControl.Trigger ||
-            document.manifest.category.equals("TRIGGER", ignoreCase = true) ||
+            document.manifest.category.equals(com.sanket.tools.nexpad.category.ComponentType.TRIGGER.name, ignoreCase = true) ||
             document.manifest.defaultControl.uppercase() in listOf(NexpadKeys.LT, NexpadKeys.RT)
     val trigger = (assignedControl as? NexPadControl.Trigger)
         ?: if (isTrigger) NexPadControl.Trigger(document.manifest.defaultControl.ifBlank { NexpadKeys.LT }.uppercase()) else null
@@ -684,7 +684,7 @@ fun NxprcCanvasRenderer(
             (document.manifest.category.equals(NexpadKeys.DPAD, ignoreCase = true) && assignedControl is NexPadControl.Button && assignedControl.key.equals(NexpadKeys.DPAD, ignoreCase = true)) ||
             (document.manifest.id.contains("dpad_cross", ignoreCase = true))
 
-    val isTouchpad = document.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
+    val isTouchpad = document.manifest.category.equals(com.sanket.tools.nexpad.category.ComponentType.TOUCHPAD.name, ignoreCase = true) ||
             document.manifest.defaultControl.uppercase() in listOf(NexpadKeys.LTP, NexpadKeys.RTP)
 
     val (rawWidthDp, rawHeightDp, renderScale) = remember(document, overrideSizeDp, sizingPolicy, isStick, isDpadCross, isTouchpad) {

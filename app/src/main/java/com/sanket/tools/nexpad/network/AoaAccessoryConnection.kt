@@ -13,6 +13,7 @@ import com.sanket.tools.nexpad.utils.AppLog as Log
 import androidx.core.content.ContextCompat
 import androidx.core.content.IntentCompat
 import com.sanket.tools.nexpad.model.GamepadInput
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -31,6 +32,7 @@ class AoaAccessoryConnection(private val context: Context) : BaseStreamConnectio
     private val usbManager: UsbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
     private var fileDescriptor: ParcelFileDescriptor? = null
     private var isReceiverRegistered = false
+    private var keepaliveJob: kotlinx.coroutines.Job? = null
 
     private val permissionReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -105,6 +107,16 @@ class AoaAccessoryConnection(private val context: Context) : BaseStreamConnectio
                 // Immediate initial handshake packet to notify Desktop transport of active session
                 callbackScope?.launch {
                     sendInput(GamepadInput())
+                    // Heartbeat keepalive: keeps the USB accessory stream active and warm when idle
+                    keepaliveJob?.cancel()
+                    keepaliveJob = callbackScope?.launch {
+                        while (isActive && isConnected) {
+                            kotlinx.coroutines.delay(2000)
+                            if (System.currentTimeMillis() - lastSendTimestamp >= 2000L) {
+                                sendInput(GamepadInput())
+                            }
+                        }
+                    }
                 }
 
                 val pcName = accessory.description?.takeIf { it.isNotBlank() && it != "NEXPAD USB Gamepad" } ?: "Windows PC"
@@ -123,6 +135,8 @@ class AoaAccessoryConnection(private val context: Context) : BaseStreamConnectio
 
     override fun disconnect() {
         if (!isConnected && fileDescriptor == null) return
+        keepaliveJob?.cancel()
+        keepaliveJob = null
         stopStreamWorkers()
 
         try {

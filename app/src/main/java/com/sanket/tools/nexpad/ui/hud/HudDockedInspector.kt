@@ -148,7 +148,7 @@ fun HudDockedInspector(
                     )
 
                     val currentSkin = compatibleSkins.firstOrNull { it.id == element.skinId }
-                    val isCustom = element.skinId != null && !element.skinId.startsWith("builtin.default_")
+                    val isCustom = element.skinId != null && !element.skinId.startsWith(BuiltinComponentIds.DEFAULT_PREFIX)
                     val isMissingAsset = isCustom && currentSkin == null
                     val skinLabel = when {
                         !isCustom -> "Default"
@@ -657,7 +657,7 @@ fun HudDockedInspector(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     val currentSkin = compatibleSkins.firstOrNull { it.id == element.skinId }
-                    val isCustom = element.skinId != null && !element.skinId.startsWith("builtin.default_")
+                    val isCustom = element.skinId != null && !element.skinId.startsWith(BuiltinComponentIds.DEFAULT_PREFIX)
                     val isMissingAsset = isCustom && currentSkin == null
 
                     OutlinedButton(

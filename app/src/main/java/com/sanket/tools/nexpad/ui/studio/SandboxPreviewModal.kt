@@ -241,7 +241,7 @@ fun SandboxPreviewModal(
                             val control = when {
                                 isStickCategory ->
                                     NexPadControl.Stick(isLeft = !isRightStick)
-                                componentDef.manifest.category.equals("TRIGGER", ignoreCase = true) ->
+                                componentDef.manifest.category.equals(ComponentType.TRIGGER.name, ignoreCase = true) ->
                                     NexPadControl.Trigger(key = controlKey)
                                 else ->
                                     NexPadControl.Button(controlKey)
@@ -266,7 +266,7 @@ fun SandboxPreviewModal(
                             val control = when {
                                 isStickCategory ->
                                     NexPadControl.Stick(isLeft = !isRightStick)
-                                componentDef.manifest.category.equals("TRIGGER", ignoreCase = true) ->
+                                componentDef.manifest.category.equals(ComponentType.TRIGGER.name, ignoreCase = true) ->
                                     NexPadControl.Trigger(key = controlKey)
                                 else ->
                                     NexPadControl.Button(controlKey)
@@ -311,7 +311,7 @@ fun SandboxPreviewModal(
                                 maxLines = 1
                             )
                         }
-                        if (componentDef.manifest.category.equals("JOYSTICK", ignoreCase = true)) {
+                        if (componentDef.manifest.category.equals(com.sanket.tools.nexpad.category.ComponentType.JOYSTICK.name, ignoreCase = true)) {
                             Text("AXIS: X=%.2f, Y=%.2f".format(axisValues.first, axisValues.second), color = Color.Yellow, fontSize = 11.sp)
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {

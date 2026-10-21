@@ -546,7 +546,7 @@ class GamepadViewModel(application: Application) : AndroidViewModel(application)
     }
 
     companion object {
-        const val KEY_GYRO_CONTROL = "GYRO"
+        const val KEY_GYRO_CONTROL = com.sanket.tools.nexpad.model.BuiltinComponentIds.GYRO
         private val controlKeyCache = ConcurrentHashMap<String, ControlKey?>()
         fun resolveControlKey(identifier: String): ControlKey? {
             return controlKeyCache.computeIfAbsent(identifier) { ControlKey.fromIdentifier(it) }

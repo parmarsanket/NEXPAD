@@ -1,4 +1,5 @@
 package com.sanket.tools.nexpad.ui.components.controller
+import com.sanket.tools.nexpad.category.ComponentType
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -62,14 +63,14 @@ fun ControllerElementRenderer(
             }
             val targetControl = remember(key, remoteDoc) {
                 when {
-                    key.equals(K.LSB, ignoreCase = true) || key.equals(K.RSB, ignoreCase = true) || key.equals("L3", ignoreCase = true) || key.equals("R3", ignoreCase = true) -> NexPadControl.Button(key)
+                    key.equals(K.LSB, ignoreCase = true) || key.equals(K.RSB, ignoreCase = true) || key.equals(K.L3, ignoreCase = true) || key.equals(K.R3, ignoreCase = true) -> NexPadControl.Button(key)
                     key.equals(K.LS, ignoreCase = true) || key.equals(K.LTP, ignoreCase = true) -> NexPadControl.Stick(isLeft = true)
                     key.equals(K.RS, ignoreCase = true) || key.equals(K.RTP, ignoreCase = true) -> NexPadControl.Stick(isLeft = false)
                     key.equals(K.LT, ignoreCase = true) || key.equals(K.RT, ignoreCase = true) -> NexPadControl.Trigger(key.uppercase())
                     key.uppercase() in listOf(K.UP, K.DOWN, K.LEFT, K.RIGHT) -> NexPadControl.DPad(key.uppercase())
-                    remoteDoc.manifest.category.equals("JOYSTICK", ignoreCase = true) || remoteDoc.manifest.category.equals("TOUCHPAD", ignoreCase = true) -> {
+                    remoteDoc.manifest.category.equals(ComponentType.JOYSTICK.name, ignoreCase = true) || remoteDoc.manifest.category.equals(ComponentType.TOUCHPAD.name, ignoreCase = true) -> {
                         val defCtrl = remoteDoc.manifest.defaultControl.uppercase()
-                        val isRight = defCtrl == K.RS || defCtrl == "R3" || defCtrl == K.RSB || defCtrl == K.RTP || defCtrl.contains("RIGHT") || remoteDoc.manifest.id.contains("rtp", ignoreCase = true)
+                        val isRight = defCtrl == K.RS || defCtrl == K.R3 || defCtrl == K.RSB || defCtrl == K.RTP || defCtrl.contains(K.RIGHT) || remoteDoc.manifest.id.contains("rtp", ignoreCase = true)
                         NexPadControl.Stick(isLeft = !isRight)
                     }
                     else -> NexPadControl.Button(key)

@@ -67,7 +67,7 @@ fun UnderglowBumper(
     val isPressed = isPressedLocally || com.sanket.tools.nexpad.ui.components.controller.isControlPressed(key)
     val isLeft = remember(key) {
         val upper = key.uppercase()
-        upper == NexpadKeys.LB || upper == "L1" || upper == "LEFT"
+        upper == NexpadKeys.LB || upper == NexpadKeys.L1 || upper == com.sanket.tools.nexpad.category.ControlKey.LEFT.key
     }
 
     // Outer contour: 14dp top shoulder, 27dp aerodynamic bottom hull
@@ -452,7 +452,7 @@ fun UnderglowBumper(
  */
 @Composable
 fun StaticUnderglowBumper(
-    key: String = "LB",
+    key: String = com.sanket.tools.nexpad.category.ControlKey.LB.key,
     isRgbEnabled: Boolean = true,
     displayLabel: String? = null,
     modifier: Modifier = Modifier

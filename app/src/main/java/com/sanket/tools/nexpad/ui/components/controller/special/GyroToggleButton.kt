@@ -61,7 +61,7 @@ import kotlin.math.roundToInt
  */
 @Composable
 fun GyroToggleButton(
-    key: String = "GYRO",
+    key: String = com.sanket.tools.nexpad.model.BuiltinComponentIds.GYRO,
     isConnected: Boolean = true,
     onVibrate: () -> Unit = {},
     viewModel: GamepadViewModel? = null,
@@ -275,7 +275,7 @@ fun GyroToggleButton(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = displayLabel ?: "GYRO",
+                    text = displayLabel ?: com.sanket.tools.nexpad.model.BuiltinComponentIds.GYRO,
                     color = if (isGyroEnabled) activeAccentColor else NeonPalette.SlateText,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,

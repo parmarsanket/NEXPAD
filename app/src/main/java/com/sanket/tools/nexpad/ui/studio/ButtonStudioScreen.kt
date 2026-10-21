@@ -36,6 +36,7 @@ import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.CategoryType
 import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.category.ControllerLabelStyle
+import com.sanket.tools.nexpad.model.BuiltinComponentIds
 import com.sanket.tools.nexpad.model.Position
 import com.sanket.tools.nexpad.model.shortDisplayName
 import com.sanket.tools.nexpad.model.defaultPositions
@@ -618,9 +619,9 @@ fun ButtonStudioScreen(
                             val targetKey = def.manifest.defaultControl.uppercase()
                             val isControlActive = activeControls[targetKey] == true
                             val type = resolveButtonSourceType(def)
-                            val expectedCustomId = if (def.manifest.id.startsWith("builtin.default_")) null else def.manifest.id
+                            val expectedCustomId = if (def.manifest.id.startsWith(BuiltinComponentIds.DEFAULT_PREFIX)) null else def.manifest.id
                             val isSkinSelected = chosenSkins[targetKey] == def.manifest.id ||
-                                    (def.manifest.id.startsWith("builtin.default_") && chosenSkins[targetKey] == null)
+                                    (def.manifest.id.startsWith(BuiltinComponentIds.DEFAULT_PREFIX) && chosenSkins[targetKey] == null)
 
                             // In VIEWER mode, NEVER glow/highlight as applied.
                             // In EDITOR and BUTTON_EDITOR mode, glow if applied to that particular layout.
@@ -628,9 +629,9 @@ fun ButtonStudioScreen(
                                 false
                             } else if (isContextual || currentMode == ButtonStudioMode.BUTTON_EDITOR) {
                                 val selectedId = contextualSelectedAssetId
-                                val isDefaultSelected = selectedId.isNullOrBlank() || selectedId.startsWith("builtin.default_")
+                                val isDefaultSelected = selectedId.isNullOrBlank() || selectedId.startsWith(BuiltinComponentIds.DEFAULT_PREFIX)
                                 if (isDefaultSelected) {
-                                    def.manifest.id.startsWith("builtin.default_")
+                                    def.manifest.id.startsWith(BuiltinComponentIds.DEFAULT_PREFIX)
                                 } else {
                                     def.manifest.id == selectedId
                                 }
@@ -638,7 +639,7 @@ fun ButtonStudioScreen(
                                 val currentCustomId = activeProfile?.positions?.get(targetKey)?.customComponentId
                                 val isDefaultSelected = currentCustomId.isNullOrBlank() || currentCustomId.startsWith("builtin.default_")
                                 if (isDefaultSelected) {
-                                    def.manifest.id.startsWith("builtin.default_")
+                                    def.manifest.id.startsWith(BuiltinComponentIds.DEFAULT_PREFIX)
                                 } else {
                                     currentCustomId == def.manifest.id
                                 }
@@ -660,7 +661,7 @@ fun ButtonStudioScreen(
                                             navigationViewModel?.commitAssetSelection("")
                                             Toast.makeText(context, "Reverted $targetKey to Default", Toast.LENGTH_SHORT).show()
                                         } else {
-                                            val isDefaultSkin = def.manifest.id.startsWith("builtin.default_")
+                                            val isDefaultSkin = def.manifest.id.startsWith(BuiltinComponentIds.DEFAULT_PREFIX)
                                             val newAssetId = if (isDefaultSkin) "" else def.manifest.id
                                             contextualSelectedAssetId = if (newAssetId.isBlank()) null else newAssetId
                                             navigationViewModel?.commitAssetSelection(newAssetId)
@@ -671,7 +672,7 @@ fun ButtonStudioScreen(
                                         val effectiveName = currentProfileName.ifBlank { activeProfile?.name ?: "" }
                                         if (isAppliedToProfile) {
                                             // Already selected -> Deselect! If custom skin, revert to Default
-                                            if (!def.manifest.id.startsWith("builtin.default_")) {
+                                            if (!def.manifest.id.startsWith(BuiltinComponentIds.DEFAULT_PREFIX)) {
                                                 val updated = removeCustomSkinFromProfile(targetKey, effectiveName, layoutManager, context)
                                                 if (updated != null) {
                                                     activeProfile = updated
@@ -757,7 +758,7 @@ private fun applyButtonSkinToProfile(
     context: Context
 ): com.sanket.tools.nexpad.model.LayoutProfile? {
     val targetKey = def.manifest.defaultControl.uppercase()
-    val customId = if (def.manifest.id.startsWith("builtin.default_")) null else def.manifest.id
+    val customId = if (def.manifest.id.startsWith(BuiltinComponentIds.DEFAULT_PREFIX)) null else def.manifest.id
 
     if (layoutManager == null) return null
 
