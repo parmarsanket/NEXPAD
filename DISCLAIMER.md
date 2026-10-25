@@ -3,7 +3,7 @@
 **Project:** NEXPAD (Android Virtual Gamepad & HUD Engine)  
 **Author / Copyright Holder:** Sanket Parmar  
 **License:** Apache License, Version 2.0  
-**Last Updated:** October 2, 2026
+**Last Updated:** October 2026
 
 ---
 

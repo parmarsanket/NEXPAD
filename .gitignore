@@ -66,3 +66,7 @@ google-services.json
 **/screenshotTestRelease/
 **/screenshotTest*/**/*.png
 .scratch/
+
+# Build release directory
+app/release/
+**/release/
