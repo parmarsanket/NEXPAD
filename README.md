@@ -98,8 +98,8 @@ Select your platform to download or install the pre-compiled production release:
 
 | Platform | Download | Details |
 |---|---|---|
-| **Windows Setup** | [**Download `NEXPAD_Desktop_Setup.exe`**](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) | **Recommended:** Complete Windows companion installer. Automatically bundles and configures the ViGEmBus kernel driver. |
-| **Microsoft Store** | [**Get it from Microsoft Store**](https://apps.microsoft.com/detail/9PL9KK50R4TC) | Official native package for Windows 10 & 11 via the Microsoft Store. |
+| **Microsoft Store** | [**Get it from Microsoft Store**](https://apps.microsoft.com/detail/9PL9KK50R4TC) | **Recommended:** Official native verified package for Windows 10 & 11 via the Microsoft Store. |
+| **GitHub Release** | [**Download `NEXPAD_Desktop_Setup.exe`**](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) | Standalone All-in-One installer (118 MB). Automatically bundles and configures the ViGEmBus kernel driver. |
 
 ### 📦 Standalone Packages & Assets
 
