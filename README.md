@@ -60,6 +60,27 @@ Built completely from scratch using **100% native Jetpack Compose** and hardware
 
 With four interchangeable transport engines—including zero-driver **Android Open Accessory (AOA 2.0)** USB direct streaming ($< 1\,\text{ms}$) and a high-speed **200 Hz** non-blocking UDP engine—NEXPAD pairs seamlessly with the [**NEXPAD Desktop**](https://github.com/parmarsanket/NEXPAD-Desktop) companion server to provide an authentic gaming experience across Steam, Xbox Game Pass, Epic Games, and console emulators.
 
+```
+ ┌───────────────────────────────────┐               ┌───────────────────────────────────┐
+ │       NEXPAD Android Client       │               │      NEXPAD Desktop Server        │
+ │  • 120 FPS Jetpack Compose UI     │  Low Latency  │  • ViGEmBus Kernel Emulation      │
+ │  • 42+ Bespoke Vector Components  │ ─────────────►│  • Zero-Driver USB (WinUSB/AOA)   │
+ │  • Drag-and-Drop HUD Studio       │  ◄────────────  │  • CemuHook DSU Motion Server     │
+ │  • 6-Axis Motion / Gyro Sensor    │   Haptic Packets│  • 100% Native Steam / Game Pass  │
+ └───────────────────────────────────┘               └───────────────────────────────────┘
+```
+
+### 🧭 The NEXPAD Ecosystem
+
+NEXPAD is an integrated, end-to-end gaming ecosystem architected into three specialized open-source pillars:
+
+| Pillar | Role | Repository / Download |
+|---|---|---|
+| **📱 NEXPAD Android** *(This Repo)* | Mobile virtual gamepad client, 200Hz gyro & 120 FPS HUD Studio | [Google Play](https://play.google.com/store/apps/details?id=com.sanket.tools.nexpad) • [Direct APK](https://github.com/parmarsanket/NEXPAD/releases/tag/v1.0.0) |
+| **🖥️ NEXPAD Desktop** | Windows companion server & ViGEmBus kernel driver bridge | [GitHub Repo](https://github.com/parmarsanket/NEXPAD-Desktop) • [Microsoft Store](https://apps.microsoft.com/detail/9PL9KK50R4TC) |
+| **⚡ NEXPAD Protocol** | Shared high-performance binary protocol & NXPRC engine | [GitHub Repo](https://github.com/parmarsanket/NEXPAD-Protocol) |
+
+
 ---
 
 ## 🚀 Quick Install
@@ -70,15 +91,15 @@ Select your platform to download or install the pre-compiled production release:
 
 | Platform | Download | Details |
 |---|---|---|
-| **Google Play Store** | [**Get it on Google Play**](https://play.google.com/store/apps/details?id=com.sanket.tools.nexpad) | Official native release for Android smartphones and tablets (supports Android 8.0+ / API 26–35). *(Coming Soon)* |
-| **Standalone APK** | [**Download `NEXPAD-release.apk`**](https://github.com/parmarsanket/NEXPAD/releases/tag/v1.0.0) | **Direct Download:** Production signed standalone `.apk` for instant sideloading and offline installations. |
+| **Google Play Store** | [**Get it on Google Play**](https://play.google.com/store/apps/details?id=com.sanket.tools.nexpad) | Official native release for Android smartphones and tablets (supports Android 8.0+ / API 26–35). |
+| **Standalone APK** | [**Download `app-release.apk`**](https://github.com/parmarsanket/NEXPAD/releases/tag/v1.0.0) | **Direct Download:** Production signed standalone `.apk` for instant sideloading and offline installations. |
 
 ### 🖥️ Desktop (Windows Companion Server)
 
 | Platform | Download | Details |
 |---|---|---|
 | **Windows Setup** | [**Download `NEXPAD_Desktop_Setup.exe`**](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) | **Recommended:** Complete Windows companion installer. Automatically bundles and configures the ViGEmBus kernel driver. |
-| **Microsoft Store** | [**Get it from Microsoft Store**](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) | Official native package for Windows 10 & 11 via the Microsoft Store *(Coming Soon)*. |
+| **Microsoft Store** | [**Get it from Microsoft Store**](https://apps.microsoft.com/detail/9PL9KK50R4TC) | Official native package for Windows 10 & 11 via the Microsoft Store. |
 
 ### 📦 Standalone Packages & Assets
 
@@ -87,8 +108,8 @@ For direct downloads, offline installers, or manual installation, fetch the asse
 [![Download Standalone Binaries](https://img.shields.io/badge/GitHub%20Releases-Download%20v1.0.0%20Assets-2ea44f?style=for-the-badge&logo=github&logoColor=white)](https://github.com/parmarsanket/NEXPAD/releases/tag/v1.0.0)
 
 **Standalone assets available on GitHub Releases:**
-* 🤖 **Android Mobile APK**: `NEXPAD-release.apk` (Signed production release for Android 8.0+)
-* 🪟 **Windows Companion Setup**: `NEXPAD_Desktop_Setup.exe` (Complete Windows All-in-One Installer)
+* 🤖 **Android Mobile APK**: [`app-release.apk`](https://github.com/parmarsanket/NEXPAD/releases/tag/v1.0.0) (Signed production release for Android 8.0+)
+* 🪟 **Windows Companion Setup**: [`NEXPAD_Desktop_Setup.exe`](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) (Complete Windows All-in-One Installer)
 
 ---
 
@@ -156,6 +177,14 @@ NEXPAD features an asynchronous, non-blocking I/O pipeline supporting four high-
 | **Wi-Fi (UDP 200 Hz)** | **$1.2\text{--}2.5\,\text{ms}$** | $< 0.8\,\text{ms}$ | **Low** (Same local Wi-Fi / Hotspot) | Couch gaming, racing titles, wireless freedom |
 | **ADB Reverse TCP** | **$< 1\,\text{ms}$** | $< 0.2\,\text{ms}$ | **Medium** (Requires USB Debugging enabled) | Wired fallback if OEM disables AOA |
 | **Bluetooth RFCOMM** | **$8\text{--}12\,\text{ms}$** | $< 2.0\,\text{ms}$ | **Medium** (Standard Bluetooth pairing) | Untethered gaming without local Wi-Fi infrastructure |
+
+> [!NOTE]
+> **Engineering Transparency on Polling vs. Stream Rates:**
+> - **Desktop Server & Protocol Capacity**: Up to **$1000\,\text{Hz}$** unthrottled (Windows $1\,\text{ms}$ multimedia timer `timeBeginPeriod(1)`).
+> - **Android Continuous Heartbeat Loop**: Set to **$200\,\text{Hz}$ ($5\,\text{ms}$)** for USB/Wi-Fi and **$125\,\text{Hz}$ ($8\,\text{ms}$)** for Bluetooth to prevent mobile CPU thermal throttling and Wi-Fi radio bufferbloat.
+> - **Instant Event-Driven Fire**: All button taps, releases, and trigger deflections bypass the $5\,\text{ms}$ stream loop and dispatch packets **immediately with zero delay ($<1\,\text{ms}$)**.
+> - **Hardware Touch Digitizer Rates**: Android touchscreen digitizers physically sample touches at **$120\text{–}240\,\text{Hz}$** (up to $360\text{–}480\,\text{Hz}$ on dedicated gaming phones); motion gyroscope sensors run at **$200\,\text{Hz}$**.
+
 
 ---
 
